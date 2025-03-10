@@ -1,15 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PhysicalTrade, PhysicalTradeType, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, Trade, PricingComponent, PhysicalTradeLeg } from '@/types';
+import { PhysicalTrade, PhysicalTradeType, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, Trade, PricingComponent, PhysicalTradeLeg, PricingFormula } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { DatePicker } from '@/components/ui/date-picker';
+import FormulaBuilder from './FormulaBuilder';
+import { createEmptyFormula, convertToTraditionalFormat, convertToNewFormulaFormat } from '@/utils/formulaUtils';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -25,6 +27,7 @@ interface LegFormState {
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
   pricingFormula: PricingComponent[];
+  formula?: PricingFormula;
 }
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
@@ -48,9 +51,15 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
   const [mainPricingFormula, setMainPricingFormula] = useState<PricingComponent[]>([
     { instrument: 'Argus UCOME', percentage: 100, adjustment: 0 }
   ]);
+  const [mainFormula, setMainFormula] = useState<PricingFormula>(createEmptyFormula());
 
   // For legs - only used for term trades
   const [legs, setLegs] = useState<LegFormState[]>([]);
+
+  // Initialize the main formula from pricing components
+  useEffect(() => {
+    setMainFormula(convertToNewFormulaFormat(mainPricingFormula));
+  }, []);
 
   const addPricingComponent = (legIndex: number | null) => {
     if (legIndex === null) {
@@ -108,6 +117,22 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     }
   };
 
+  const handleFormulaChange = (formula: PricingFormula, legIndex: number | null) => {
+    if (legIndex === null) {
+      // Update main formula
+      setMainFormula(formula);
+      // Also update traditional format for backward compatibility
+      setMainPricingFormula(convertToTraditionalFormat(formula));
+    } else {
+      // Update leg formula
+      const newLegs = [...legs];
+      newLegs[legIndex].formula = formula;
+      // Also update traditional format for backward compatibility
+      newLegs[legIndex].pricingFormula = convertToTraditionalFormat(formula);
+      setLegs(newLegs);
+    }
+  };
+
   const addLeg = () => {
     const newLeg: LegFormState = {
       quantity: 0,
@@ -118,7 +143,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       pricingPeriodEnd: new Date(),
       pricingFormula: [
         { instrument: 'Argus UCOME', percentage: 100, adjustment: 0 }
-      ]
+      ],
+      formula: createEmptyFormula()
     };
     
     setLegs([...legs, newLeg]);
@@ -138,7 +164,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       field === 'loadingPeriodStart' || 
       field === 'loadingPeriodEnd' || 
       field === 'pricingPeriodStart' || 
-      field === 'pricingPeriodEnd'
+      field === 'pricingPeriodEnd' ||
+      field === 'formula'
     ) {
       newLegs[index][field] = value;
     } else {
@@ -173,7 +200,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       loadingPeriodEnd: mainLoadingEnd,
       pricingPeriodStart: mainPricingStart,
       pricingPeriodEnd: mainPricingEnd,
-      pricingFormula: [...mainPricingFormula]
+      pricingFormula: [...mainPricingFormula],
+      formula: mainFormula
     };
 
     // Add legs for term trades
@@ -191,7 +219,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
           loadingPeriodEnd: legForm.loadingPeriodEnd,
           pricingPeriodStart: legForm.pricingPeriodStart,
           pricingPeriodEnd: legForm.pricingPeriodEnd,
-          pricingFormula: [...legForm.pricingFormula]
+          pricingFormula: [...legForm.pricingFormula],
+          formula: legForm.formula
         };
         
         return legData;
@@ -411,9 +440,19 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
             </div>
           </div>
 
-          <div className="space-y-2">
+          {/* New Formula Builder */}
+          <div className="border rounded-md p-4 bg-gray-50">
+            <FormulaBuilder 
+              value={mainFormula} 
+              onChange={(formula) => handleFormulaChange(formula, null)}
+              tradeQuantity={mainQuantity || 0}
+            />
+          </div>
+          
+          {/* Legacy Pricing Formula (Hidden but kept for compatibility) */}
+          <div className="hidden">
             <div className="flex items-center justify-between">
-              <Label>Pricing Formula</Label>
+              <Label>Legacy Pricing Formula</Label>
               <Button 
                 type="button" 
                 variant="outline" 
@@ -567,9 +606,19 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                {/* New Formula Builder for Leg */}
+                <div className="border rounded-md p-4 bg-gray-50 mb-4">
+                  <FormulaBuilder 
+                    value={leg.formula || createEmptyFormula()} 
+                    onChange={(formula) => handleFormulaChange(formula, legIndex)}
+                    tradeQuantity={leg.quantity || 0}
+                  />
+                </div>
+
+                {/* Legacy Pricing Formula (Hidden but kept for compatibility) */}
+                <div className="hidden">
                   <div className="flex items-center justify-between">
-                    <Label>Pricing Formula</Label>
+                    <Label>Legacy Pricing Formula</Label>
                     <Button 
                       type="button" 
                       variant="outline" 

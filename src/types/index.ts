@@ -8,6 +8,19 @@ export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
 export type Instrument = "Argus UCOME" | "Argus RME" | "Argus FAME0" | "Platts LSGO" | "Platts diesel";
+export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
+
+export interface FormulaNode {
+  id: string;
+  type: "instrument" | "fixedValue" | "operator" | "group";
+  value: string;
+  children?: FormulaNode[];
+}
+
+export interface PricingFormula {
+  root: FormulaNode;
+  exposures: Record<Instrument, number>;
+}
 
 export interface PricingComponent {
   instrument: Instrument;
@@ -41,6 +54,7 @@ export interface PhysicalTrade extends Trade {
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
   pricingFormula: PricingComponent[];
+  formula?: PricingFormula;
   legs: PhysicalTradeLeg[];
 }
 
@@ -55,6 +69,7 @@ export interface PhysicalTradeLeg {
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
   pricingFormula: PricingComponent[];
+  formula?: PricingFormula;
 }
 
 export interface PaperTrade extends Trade {
