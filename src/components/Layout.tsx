@@ -1,10 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut } from 'lucide-react';
+import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -18,12 +21,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },
   ];
 
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground shadow-md">
+      <header className="bg-primary text-primary-foreground shadow-md z-20">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleSidebar}
+              className="text-primary-foreground hover:bg-primary/90"
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
             <span className="font-bold text-xl">BioDiesel CTRM</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -52,8 +65,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Main Content */}
       <div className="flex flex-1">
         {/* Sidebar */}
-        <aside className="w-64 bg-card shadow-md">
-          <nav className="p-4 space-y-2">
+        <aside 
+          className={cn(
+            "fixed inset-y-0 left-0 pt-16 z-10 bg-card shadow-md transition-all duration-300 ease-in-out",
+            sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
+          )}
+        >
+          <nav className="p-4 space-y-2 overflow-y-auto h-full">
             {menuItems.map((item) => (
               <Link
                 key={item.path}
@@ -72,7 +90,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 p-6 bg-background overflow-auto">
+        <main 
+          className={cn(
+            "flex-1 p-6 bg-background overflow-auto transition-all duration-300 ease-in-out",
+            sidebarOpen ? "ml-64" : "ml-0"
+          )}
+        >
           {children}
         </main>
       </div>
