@@ -1,21 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FormulaNode, Instrument, PricingFormula } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Plus, X } from 'lucide-react';
+import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { 
-  createInstrumentNode, 
-  createFixedValueNode, 
-  createOperatorNode,
-  createGroupNode,
-  calculateExposures,
+  createInstrumentToken,
+  createFixedValueToken,
+  createOperatorToken,
   formulaToString
 } from '@/utils/formulaUtils';
-import { Plus, X, ArrowRight } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 
 interface FormulaBuilderProps {
   value: PricingFormula;
@@ -28,58 +26,63 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   onChange,
   tradeQuantity
 }) => {
-  const [formula, setFormula] = useState<PricingFormula>(value);
-  const [formulaString, setFormulaString] = useState<string>('');
-  const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
-  const [fixedValue, setFixedValue] = useState<string>('0');
+  const [selectedInstrument, setSelectedInstrument] = React.useState<Instrument>('Argus UCOME');
+  const [fixedValue, setFixedValue] = React.useState<string>('0');
 
-  useEffect(() => {
-    // Update formula string whenever the formula changes
-    if (formula && formula.root) {
-      setFormulaString(formulaToString(formula.root));
+  const canAddToken = (type: FormulaToken['type']): boolean => {
+    if (value.tokens.length === 0) {
+      return type === 'instrument' || type === 'fixedValue';
     }
-  }, [formula]);
-
-  useEffect(() => {
-    // Update parent component when formula changes
-    onChange(formula);
-  }, [formula, onChange]);
+    const lastToken = value.tokens[value.tokens.length - 1];
+    if (lastToken.type === 'operator') {
+      return type === 'instrument' || type === 'fixedValue';
+    }
+    return type === 'operator';
+  };
 
   const handleAddInstrument = () => {
-    const newNode = createInstrumentNode(selectedInstrument);
-    updateFormula(newNode);
+    if (!canAddToken('instrument')) return;
+    const newToken = createInstrumentToken(selectedInstrument);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: value.exposures
+    });
   };
 
   const handleAddFixedValue = () => {
-    const value = parseFloat(fixedValue) || 0;
-    const newNode = createFixedValueNode(value);
-    updateFormula(newNode);
+    if (!canAddToken('fixedValue')) return;
+    const newToken = createFixedValueToken(Number(fixedValue) || 0);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: value.exposures
+    });
   };
 
   const handleAddOperator = (operator: string) => {
-    const newNode = createOperatorNode(operator);
-    updateFormula(newNode);
+    if (!canAddToken('operator')) return;
+    const newToken = createOperatorToken(operator);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: value.exposures
+    });
   };
 
-  const handleAddGroup = () => {
-    const newNode = createGroupNode();
-    updateFormula(newNode);
-  };
-
-  const updateFormula = (newNode: FormulaNode) => {
-    // For simplicity, just replace the root node
-    // In a more advanced implementation, we would build a tree
-    const updatedFormula: PricingFormula = {
-      root: newNode,
-      exposures: calculateExposures(newNode, tradeQuantity)
-    };
-    
-    setFormula(updatedFormula);
+  const handleRemoveToken = (tokenId: string) => {
+    const newTokens = value.tokens.filter(token => token.id !== tokenId);
+    onChange({
+      tokens: newTokens,
+      exposures: value.exposures
+    });
   };
 
   const resetFormula = () => {
-    const initialNode = createInstrumentNode('Argus UCOME');
-    updateFormula(initialNode);
+    onChange({
+      tokens: [],
+      exposures: value.exposures
+    });
   };
 
   return (
@@ -98,9 +101,23 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       
       <Card className="border border-muted">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            {formulaString ? (
-              <div className="text-lg font-medium py-2">{formulaString}</div>
+          <div className="flex items-center gap-2 flex-wrap min-h-[2.5rem]">
+            {value.tokens.length > 0 ? (
+              value.tokens.map((token) => (
+                <Badge 
+                  key={token.id} 
+                  variant="outline" 
+                  className="text-sm py-1 px-3 flex items-center gap-2"
+                >
+                  {token.value}
+                  <button 
+                    onClick={() => handleRemoveToken(token.id)}
+                    className="hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))
             ) : (
               <div className="text-muted-foreground">No formula defined</div>
             )}
@@ -128,7 +145,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <SelectItem value="Platts diesel">Platts diesel</SelectItem>
               </SelectContent>
             </Select>
-            <Button type="button" onClick={handleAddInstrument} size="sm">
+            <Button 
+              type="button" 
+              onClick={handleAddInstrument} 
+              size="sm"
+              disabled={!canAddToken('instrument')}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -144,7 +166,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               onChange={(e) => setFixedValue(e.target.value)}
               className="flex-1"
             />
-            <Button type="button" onClick={handleAddFixedValue} size="sm">
+            <Button 
+              type="button" 
+              onClick={handleAddFixedValue} 
+              size="sm"
+              disabled={!canAddToken('fixedValue')}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -154,11 +181,42 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         <div className="space-y-2">
           <Label>Operators</Label>
           <div className="flex gap-2">
-            <Button type="button" onClick={() => handleAddOperator('+')} size="sm" variant="outline">+</Button>
-            <Button type="button" onClick={() => handleAddOperator('-')} size="sm" variant="outline">-</Button>
-            <Button type="button" onClick={() => handleAddOperator('*')} size="sm" variant="outline">×</Button>
-            <Button type="button" onClick={() => handleAddOperator('/')} size="sm" variant="outline">÷</Button>
-            <Button type="button" onClick={handleAddGroup} size="sm" variant="outline">( )</Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('+')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddToken('operator')}
+            >
+              +
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('-')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddToken('operator')}
+            >
+              -
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('*')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddToken('operator')}
+            >
+              ×
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('/')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddToken('operator')}
+            >
+              ÷
+            </Button>
           </div>
         </div>
       </div>
@@ -167,7 +225,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       <div className="mt-4">
         <Label className="text-base font-medium">Resulting Exposure</Label>
         <div className="mt-2 flex flex-wrap gap-2">
-          {Object.entries(formula.exposures).map(([instrument, exposure]) => {
+          {Object.entries(value.exposures).map(([instrument, exposure]) => {
             if (exposure === 0) return null;
             
             const adjustedExposure = exposure * tradeQuantity;
@@ -178,7 +236,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
             );
           })}
           
-          {!Object.values(formula.exposures).some(v => v !== 0) && (
+          {!Object.values(value.exposures).some(v => v !== 0) && (
             <div className="text-muted-foreground">No exposures calculated</div>
           )}
         </div>

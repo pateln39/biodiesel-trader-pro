@@ -1,4 +1,3 @@
-
 export type TradeType = "physical" | "paper";
 export type PhysicalTradeType = "spot" | "term";
 export type BuySell = "buy" | "sell";
@@ -17,8 +16,14 @@ export interface FormulaNode {
   children?: FormulaNode[];
 }
 
+export interface FormulaToken {
+  id: string;
+  type: "instrument" | "fixedValue" | "operator";
+  value: string;
+}
+
 export interface PricingFormula {
-  root: FormulaNode;
+  tokens: FormulaToken[];
   exposures: Record<Instrument, number>;
 }
 
