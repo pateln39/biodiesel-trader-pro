@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TradesPage from "./pages/trades/TradesPage";
+import TradeEntryPage from "./pages/trades/TradeEntryPage";
 import OperationsPage from "./pages/operations/OperationsPage";
 import ExposurePage from "./pages/exposure/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
@@ -25,7 +26,7 @@ const App = () => (
           
           {/* Trade Routes */}
           <Route path="/trades" element={<TradesPage />} />
-          <Route path="/trades/new" element={<NotFound />} />
+          <Route path="/trades/new" element={<TradeEntryPage />} />
           <Route path="/trades/:id" element={<NotFound />} />
           
           {/* Operations Routes */}
