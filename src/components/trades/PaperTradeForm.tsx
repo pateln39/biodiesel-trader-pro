@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Instrument, PaperParentTrade, PaperTradeLeg, Trade } from '@/types';
+import { Instrument, PaperParentTrade, PaperTradeLeg, Trade, BuySell, Product } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +18,8 @@ interface PaperTradeFormProps {
 }
 
 interface PaperLegFormState {
+  buySell: BuySell; // Add to match schema
+  product: Product; // Add to match schema
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -27,6 +29,8 @@ interface PaperLegFormState {
 }
 
 const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
+  buySell: 'buy', // Default value
+  product: 'UCOME', // Default value
   instrument: 'Argus UCOME',
   pricingPeriodStart: new Date(),
   pricingPeriodEnd: new Date(),
@@ -59,7 +63,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     const newLegs = [...legs];
     if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
       newLegs[index][field] = value;
-    } else if (field === 'instrument' || field === 'broker') {
+    } else if (field === 'instrument' || field === 'broker' || field === 'buySell' || field === 'product') {
       newLegs[index][field] = value;
     } else {
       newLegs[index][field] = Number(value);
@@ -88,6 +92,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
         id: crypto.randomUUID(),
         legReference,
         parentTradeId: parentTrade.id,
+        buySell: legForm.buySell,
+        product: legForm.product,
         instrument: legForm.instrument,
         pricingPeriodStart: legForm.pricingPeriodStart,
         pricingPeriodEnd: legForm.pricingPeriodEnd,
@@ -102,7 +108,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     // For backward compatibility, create a trade object that includes both the parent and first leg data
     const tradeData: any = {
       ...parentTrade,
-      ...legs[0]
+      ...legs[0],
+      legs: tradeLegs
     };
 
     onSubmit(tradeData);
@@ -154,6 +161,43 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
               )}
             </CardHeader>
             <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-buy-sell`}>Buy/Sell</Label>
+                  <Select 
+                    value={leg.buySell} 
+                    onValueChange={(value) => updateLeg(legIndex, 'buySell', value as BuySell)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-buy-sell`}>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buy">Buy</SelectItem>
+                      <SelectItem value="sell">Sell</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
+                  <Select 
+                    value={leg.product} 
+                    onValueChange={(value) => updateLeg(legIndex, 'product', value as Product)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-product`}>
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FAME0">FAME0</SelectItem>
+                      <SelectItem value="RME">RME</SelectItem>
+                      <SelectItem value="UCOME">UCOME</SelectItem>
+                      <SelectItem value="UCOME-5">UCOME-5</SelectItem>
+                      <SelectItem value="RME DC">RME DC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-instrument`}>Instrument</Label>

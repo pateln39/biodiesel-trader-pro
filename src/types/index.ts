@@ -83,6 +83,8 @@ export interface PhysicalTradeLeg extends TradeLeg {
 
 // Paper trade leg
 export interface PaperTradeLeg extends TradeLeg {
+  buySell: BuySell;  // Added to match database schema
+  product: Product;   // Added to match database schema
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
