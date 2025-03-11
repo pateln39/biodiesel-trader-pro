@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,7 +99,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     const newLegs = [...legs];
     newLegs[legIndex].pricingFormula[componentIndex] = { 
       ...newLegs[legIndex].pricingFormula[componentIndex], 
-      [field]: field === 'instrument' ? value as Instrument : Number(value) 
+      [field]: field === 'instrument' ? value as string : Number(value) 
     };
     setLegs(newLegs);
   };

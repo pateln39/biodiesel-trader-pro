@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +19,7 @@ interface PaperTradeFormProps {
 interface PaperLegFormState {
   buySell: BuySell;
   product: Product;
-  instrument: Instrument;
+  instrument: string;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
   price: number;
