@@ -5,7 +5,6 @@ import { Plus, Filter, Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/tradeUtils';
-import { toast } from 'sonner';
 import { 
   Trade, 
   PhysicalTrade, 
@@ -14,7 +13,7 @@ import {
 import { useTrades } from '@/hooks/useTrades';
 
 const TradesPage = () => {
-  const { trades, loading } = useTrades();
+  const { trades, loading, refetchTrades } = useTrades();
 
   return (
     <Layout>
