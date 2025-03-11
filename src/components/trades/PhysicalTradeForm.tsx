@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +15,8 @@ import {
   CreditStatus, 
   Trade, 
   PricingComponent, 
-  PricingFormula 
+  PricingFormula,
+  Instrument
 } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,13 +71,11 @@ const createDefaultLeg = (): LegFormState => ({
 });
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
-  // Parent trade fields (minimal)
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>('spot');
   const [counterparty, setCounterparty] = useState('');
   
-  // Legs (all contain trading details)
   const [legs, setLegs] = useState<LegFormState[]>([createDefaultLeg()]);
-  
+
   const addPricingComponent = (legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].pricingFormula.push(
@@ -109,7 +107,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
-    // Also update traditional format for backward compatibility
     newLegs[legIndex].pricingFormula = convertToTraditionalFormat(formula);
     setLegs(newLegs);
   };
@@ -126,17 +123,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     }
   };
 
-  const updateLeg = (index: number, field: keyof LegFormState, value: any) => {
+  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingComponent[] | PricingFormula | undefined) => {
     const newLegs = [...legs];
     if (field === 'pricingFormula' || field === 'formula') {
-      newLegs[index][field] = value;
+      newLegs[index][field] = value as any;
     } else if (
       field === 'loadingPeriodStart' || 
       field === 'loadingPeriodEnd' || 
       field === 'pricingPeriodStart' || 
       field === 'pricingPeriodEnd'
     ) {
-      newLegs[index][field] = value;
+      newLegs[index][field] = value as Date;
     } else if (
       field === 'buySell' || 
       field === 'product' || 
@@ -146,7 +143,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       field === 'paymentTerm' || 
       field === 'creditStatus'
     ) {
-      newLegs[index][field] = value;
+      newLegs[index][field] = value as string;
     } else {
       newLegs[index][field] = Number(value);
     }
@@ -156,7 +153,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create parent trade object
     const parentTrade: PhysicalParentTrade = {
       id: crypto.randomUUID(),
       tradeReference,
@@ -167,7 +163,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       updatedAt: new Date()
     };
 
-    // Create trade legs
     const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
       const legReference = generateLegReference(tradeReference, index);
       
@@ -195,11 +190,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       return legData;
     });
 
-    // Create a backward-compatible trade object for the onSubmit handler
     const tradeData: any = {
       ...parentTrade,
       legs: tradeLegs,
-      // Add first leg's data to the parent for backward compatibility
       ...legs[0]
     };
 
@@ -445,7 +438,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                 </div>
               </div>
 
-              {/* Formula Builder */}
               <div className="border rounded-md p-4 bg-gray-50">
                 <FormulaBuilder 
                   value={leg.formula || createEmptyFormula()} 
@@ -454,7 +446,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                 />
               </div>
               
-              {/* Legacy Pricing Formula (Hidden but kept for compatibility) */}
               <div className="hidden">
                 <div className="flex items-center justify-between">
                   <Label>Legacy Pricing Formula</Label>

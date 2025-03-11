@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,12 +58,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     }
   };
 
-  const updateLeg = (index: number, field: keyof PaperLegFormState, value: any) => {
+  const updateLeg = (index: number, field: keyof PaperLegFormState, value: string | Date | number) => {
     const newLegs = [...legs];
     if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
-      newLegs[index][field] = value;
+      newLegs[index][field] = value as Date;
     } else if (field === 'instrument' || field === 'broker' || field === 'buySell' || field === 'product') {
-      newLegs[index][field] = value;
+      newLegs[index][field] = value as string;
     } else {
       newLegs[index][field] = Number(value);
     }
