@@ -1,7 +1,5 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import {
   Trade,
   TradeType,
@@ -160,12 +158,7 @@ export const useTrades = () => {
     refetch
   } = useQuery({
     queryKey: ['trades'],
-    queryFn: fetchTrades,
-    onError: (err: Error) => {
-      toast.error('Failed to load trades', {
-        description: err.message
-      });
-    }
+    queryFn: fetchTrades
   });
 
   return { trades, loading, error, refetchTrades: refetch };

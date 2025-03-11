@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2 } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/tradeUtils';
@@ -13,7 +14,16 @@ import {
 import { useTrades } from '@/hooks/useTrades';
 
 const TradesPage = () => {
-  const { trades, loading, refetchTrades } = useTrades();
+  const { trades, loading, error, refetchTrades } = useTrades();
+
+  // Show error toast if query fails
+  useEffect(() => {
+    if (error) {
+      toast.error('Failed to load trades', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
+  }, [error]);
 
   return (
     <Layout>
@@ -39,6 +49,19 @@ const TradesPage = () => {
             {loading ? (
               <div className="p-8 flex justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+              <div className="p-8 flex flex-col items-center text-center space-y-4">
+                <AlertCircle className="h-10 w-10 text-destructive" />
+                <div>
+                  <h3 className="font-medium">Failed to load trades</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {error instanceof Error ? error.message : 'Unknown error occurred'}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
+                  Try Again
+                </Button>
               </div>
             ) : (
               <table className="w-full">
