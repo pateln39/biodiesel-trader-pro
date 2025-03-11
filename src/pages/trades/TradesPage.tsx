@@ -132,10 +132,10 @@ const TradesPage = () => {
             return physicalTrade;
           } 
           else if (parent.trade_type === 'paper' && firstLeg) {
-            // For paper trades, check if broker/instrument/price fields exist
-            const broker = 'broker' in firstLeg ? firstLeg.broker : '';
-            const instrument = 'instrument' in firstLeg ? firstLeg.instrument : '';
-            const price = 'price' in firstLeg ? firstLeg.price : 0;
+            // For paper trades, safely extract and type the required properties
+            const brokerValue = firstLeg.hasOwnProperty('broker') ? (firstLeg as any).broker as string : '';
+            const instrumentValue = firstLeg.hasOwnProperty('instrument') ? (firstLeg as any).instrument as string : '';
+            const priceValue = firstLeg.hasOwnProperty('price') ? Number((firstLeg as any).price) : 0;
             
             // Create paper trade
             const paperTrade: PaperTrade = {
@@ -144,9 +144,9 @@ const TradesPage = () => {
               tradeType: 'paper', // Use the literal type instead of variable
               createdAt: new Date(parent.created_at),
               updatedAt: new Date(parent.updated_at),
-              broker: broker || '',
-              instrument: instrument || '',
-              price: price || 0,
+              broker: brokerValue,
+              instrument: instrumentValue,
+              price: priceValue,
               quantity: firstLeg.quantity,
               pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
               pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
