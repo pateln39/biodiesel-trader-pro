@@ -39,14 +39,11 @@ const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
 });
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
-  // Parent trade fields
   const [counterparty, setCounterparty] = useState<string>('');
   
-  // Trade legs
   const [legs, setLegs] = useState<PaperLegFormState[]>([createDefaultLeg()]);
 
   const addLeg = () => {
-    // Use the first leg's broker as a default for new legs
     setLegs([...legs, createDefaultLeg(legs[0].broker)]);
   };
 
@@ -77,7 +74,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create parent trade
     const parentTrade: PaperParentTrade = {
       id: crypto.randomUUID(),
       tradeReference,
@@ -87,7 +83,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
       updatedAt: new Date()
     };
 
-    // Create trade legs
     const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
       const legReference = generateLegReference(tradeReference, index);
       
@@ -108,7 +103,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
       return legData;
     });
 
-    // For backward compatibility, create a trade object that includes both the parent and first leg data
     const tradeData: any = {
       ...parentTrade,
       ...legs[0],
@@ -120,7 +114,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Parent trade fields */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Trade Details</h3>
         <div className="grid grid-cols-1 gap-4">
@@ -136,7 +129,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
         </div>
       </div>
 
-      {/* Trade legs */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Trade Legs</h3>
@@ -206,7 +198,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                   <Label htmlFor={`leg-${legIndex}-instrument`}>Instrument</Label>
                   <Select 
                     value={leg.instrument} 
-                    onValueChange={(value) => updateLeg(legIndex, 'instrument', value as Instrument)}
+                    onValueChange={(value) => updateLeg(legIndex, 'instrument', value)}
                   >
                     <SelectTrigger id={`leg-${legIndex}-instrument`}>
                       <SelectValue placeholder="Select instrument" />

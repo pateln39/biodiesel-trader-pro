@@ -7,7 +7,23 @@ import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/tradeUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Trade } from '@/types';
+import { 
+  Trade, 
+  TradeType, 
+  PhysicalTrade, 
+  PaperTrade,
+  PhysicalTradeLeg,
+  PaperTradeLeg,
+  BuySell,
+  Product,
+  IncoTerm,
+  Unit,
+  PaymentTerm,
+  CreditStatus,
+  Instrument,
+  DbParentTrade,
+  DbTradeLeg
+} from '@/types';
 
 const TradesPage = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -39,47 +55,86 @@ const TradesPage = () => {
         }
 
         // Map parent trades and legs to create the trade objects
-        const mappedTrades = parentTrades.map(parent => {
+        const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
           // Find all legs for this parent trade
-          const legs = tradeLegs.filter(leg => leg.parent_trade_id === parent.id);
+          const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
           
           // Use the first leg for the main trade data (for backward compatibility)
-          const firstLeg = legs[0] || {};
+          const firstLeg = legs.length > 0 ? legs[0] : null;
           
+          if (parent.trade_type === 'physical' && firstLeg) {
+            // Create physical trade
+            const physicalTrade: PhysicalTrade = {
+              id: parent.id,
+              tradeReference: parent.trade_reference,
+              tradeType: parent.trade_type as TradeType,
+              createdAt: new Date(parent.created_at),
+              updatedAt: new Date(parent.updated_at),
+              physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
+              counterparty: parent.counterparty,
+              buySell: firstLeg.buy_sell as BuySell,
+              product: firstLeg.product as Product,
+              sustainability: firstLeg.sustainability || '',
+              incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
+              quantity: firstLeg.quantity,
+              tolerance: firstLeg.tolerance || 0,
+              loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
+              loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
+              pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+              unit: (firstLeg.unit || 'MT') as Unit,
+              paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
+              pricingFormula: firstLeg.pricing_formula || [],
+              legs: legs.map(leg => ({
+                id: leg.id,
+                parentTradeId: leg.parent_trade_id,
+                legReference: leg.leg_reference,
+                buySell: leg.buy_sell as BuySell,
+                product: leg.product as Product,
+                sustainability: leg.sustainability || '',
+                incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+                quantity: leg.quantity,
+                tolerance: leg.tolerance || 0,
+                loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+                loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+                pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+                pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+                unit: (leg.unit || 'MT') as Unit,
+                paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+                creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+                pricingFormula: leg.pricing_formula || [],
+              })) as PhysicalTradeLeg[]
+            };
+            return physicalTrade;
+          } 
+          else if (parent.trade_type === 'paper' && firstLeg) {
+            // Create paper trade
+            const paperTrade: PaperTrade = {
+              id: parent.id,
+              tradeReference: parent.trade_reference,
+              tradeType: parent.trade_type as TradeType,
+              createdAt: new Date(parent.created_at),
+              updatedAt: new Date(parent.updated_at),
+              broker: firstLeg.broker || '',
+              instrument: firstLeg.instrument || '',
+              price: firstLeg.price || 0,
+              quantity: firstLeg.quantity,
+              pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+            };
+            return paperTrade;
+          }
+          
+          // Fallback with minimal data if there are no legs or unknown type
           return {
             id: parent.id,
             tradeReference: parent.trade_reference,
-            tradeType: parent.trade_type,
+            tradeType: parent.trade_type as TradeType,
             createdAt: new Date(parent.created_at),
             updatedAt: new Date(parent.updated_at),
-            counterparty: parent.counterparty,
-            // Add fields from the first leg
-            ...(parent.trade_type === 'physical' ? {
-              physicalType: parent.physical_type,
-              buySell: firstLeg.buy_sell,
-              product: firstLeg.product,
-              sustainability: firstLeg.sustainability,
-              incoTerm: firstLeg.inco_term,
-              quantity: firstLeg.quantity,
-              tolerance: firstLeg.tolerance,
-              loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : null,
-              loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : null,
-              pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : null,
-              pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : null,
-              unit: firstLeg.unit,
-              paymentTerm: firstLeg.payment_term,
-              creditStatus: firstLeg.credit_status,
-              pricingFormula: firstLeg.pricing_formula || [],
-              legs
-            } : {
-              broker: firstLeg.broker,
-              instrument: firstLeg.instrument,
-              price: firstLeg.price,
-              quantity: firstLeg.quantity,
-              pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : null,
-              pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : null,
-            })
-          };
+            counterparty: parent.counterparty
+          } as Trade;
         });
 
         setTrades(mappedTrades);
@@ -136,37 +191,39 @@ const TradesPage = () => {
                 </thead>
                 <tbody>
                   {trades.length > 0 ? (
-                    trades.map((trade) => (
-                      <tr key={trade.id} className="border-t hover:bg-muted/50">
-                        <td className="p-3">
-                          <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                            {trade.tradeReference}
-                          </Link>
-                        </td>
-                        <td className="p-3 capitalize">{trade.tradeType}</td>
-                        <td className="p-3">
-                          {trade.tradeType === 'physical' 
-                            ? (trade as any).counterparty 
-                            : (trade as any).broker}
-                        </td>
-                        <td className="p-3">
-                          {trade.tradeType === 'physical' 
-                            ? (trade as any).product 
-                            : (trade as any).instrument}
-                        </td>
-                        <td className="p-3 text-right">
-                          {trade.tradeType === 'physical' 
-                            ? `${(trade as any).quantity} ${(trade as any).unit}` 
-                            : `${(trade as any).quantity} MT`}
-                        </td>
-                        <td className="p-3">{formatDate(trade.createdAt)}</td>
-                        <td className="p-3 text-center">
-                          <Link to={`/trades/${trade.id}`}>
-                            <Button variant="ghost" size="sm">View</Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
+                    trades.map((trade) => {
+                      const isPhysical = trade.tradeType === 'physical';
+                      const physicalTrade = isPhysical ? trade as PhysicalTrade : null;
+                      const paperTrade = !isPhysical ? trade as PaperTrade : null;
+                      
+                      return (
+                        <tr key={trade.id} className="border-t hover:bg-muted/50">
+                          <td className="p-3">
+                            <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+                              {trade.tradeReference}
+                            </Link>
+                          </td>
+                          <td className="p-3 capitalize">{trade.tradeType}</td>
+                          <td className="p-3">
+                            {isPhysical ? physicalTrade?.counterparty : paperTrade?.broker}
+                          </td>
+                          <td className="p-3">
+                            {isPhysical ? physicalTrade?.product : paperTrade?.instrument}
+                          </td>
+                          <td className="p-3 text-right">
+                            {isPhysical 
+                              ? `${physicalTrade?.quantity} ${physicalTrade?.unit}` 
+                              : `${paperTrade?.quantity} MT`}
+                          </td>
+                          <td className="p-3">{formatDate(trade.createdAt)}</td>
+                          <td className="p-3 text-center">
+                            <Link to={`/trades/${trade.id}`}>
+                              <Button variant="ghost" size="sm">View</Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={7} className="p-6 text-center text-muted-foreground">

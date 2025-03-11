@@ -97,10 +97,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     value: string | number
   ) => {
     const newLegs = [...legs];
-    newLegs[legIndex].pricingFormula[componentIndex] = { 
-      ...newLegs[legIndex].pricingFormula[componentIndex], 
-      [field]: field === 'instrument' ? value as string : Number(value) 
-    };
+    if (field === 'instrument') {
+      newLegs[legIndex].pricingFormula[componentIndex] = { 
+        ...newLegs[legIndex].pricingFormula[componentIndex], 
+        [field]: value as string 
+      };
+    } else {
+      newLegs[legIndex].pricingFormula[componentIndex] = { 
+        ...newLegs[legIndex].pricingFormula[componentIndex], 
+        [field]: Number(value) 
+      };
+    }
     setLegs(newLegs);
   };
 
@@ -538,3 +545,4 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 };
 
 export default PhysicalTradeForm;
+

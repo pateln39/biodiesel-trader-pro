@@ -1,3 +1,4 @@
+
 export type TradeType = "physical" | "paper";
 export type PhysicalTradeType = "spot" | "term";
 export type BuySell = "buy" | "sell";
@@ -31,6 +32,42 @@ export interface PricingComponent {
   instrument: Instrument;
   percentage: number;
   adjustment: number;
+}
+
+// Database response types
+export interface DbParentTrade {
+  id: string;
+  trade_reference: string;
+  trade_type: string;
+  physical_type: string | null;
+  counterparty: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbTradeLeg {
+  id: string;
+  parent_trade_id: string;
+  leg_reference: string;
+  buy_sell: string;
+  product: string;
+  sustainability: string | null;
+  inco_term: string | null;
+  quantity: number;
+  tolerance: number | null;
+  loading_period_start: string | null;
+  loading_period_end: string | null;
+  pricing_period_start: string | null;
+  pricing_period_end: string | null;
+  unit: string | null;
+  payment_term: string | null;
+  credit_status: string | null;
+  pricing_formula: any | null;
+  created_at: string;
+  updated_at: string;
+  broker?: string;
+  instrument?: string;
+  price?: number;
 }
 
 // Base trade interface (parent trade)
