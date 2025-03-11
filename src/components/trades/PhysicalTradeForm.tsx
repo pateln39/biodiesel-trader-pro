@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -125,27 +126,33 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 
   const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingComponent[] | PricingFormula | undefined) => {
     const newLegs = [...legs];
-    if (field === 'pricingFormula' || field === 'formula') {
-      newLegs[index][field] = value as any;
+    if (field === 'pricingFormula') {
+      (newLegs[index] as any)[field] = value as PricingComponent[];
+    } else if (field === 'formula') {
+      (newLegs[index] as any)[field] = value as PricingFormula;
     } else if (
       field === 'loadingPeriodStart' || 
       field === 'loadingPeriodEnd' || 
       field === 'pricingPeriodStart' || 
       field === 'pricingPeriodEnd'
     ) {
-      newLegs[index][field] = value as Date;
-    } else if (
-      field === 'buySell' || 
-      field === 'product' || 
-      field === 'sustainability' || 
-      field === 'incoTerm' || 
-      field === 'unit' || 
-      field === 'paymentTerm' || 
-      field === 'creditStatus'
-    ) {
-      newLegs[index][field] = value as string;
+      (newLegs[index] as any)[field] = value as Date;
+    } else if (field === 'buySell') {
+      (newLegs[index] as any)[field] = value as BuySell;
+    } else if (field === 'product') {
+      (newLegs[index] as any)[field] = value as Product;
+    } else if (field === 'sustainability') {
+      (newLegs[index] as any)[field] = value as string;
+    } else if (field === 'incoTerm') {
+      (newLegs[index] as any)[field] = value as IncoTerm;
+    } else if (field === 'unit') {
+      (newLegs[index] as any)[field] = value as Unit;
+    } else if (field === 'paymentTerm') {
+      (newLegs[index] as any)[field] = value as PaymentTerm;
+    } else if (field === 'creditStatus') {
+      (newLegs[index] as any)[field] = value as CreditStatus;
     } else {
-      newLegs[index][field] = Number(value);
+      (newLegs[index] as any)[field] = Number(value);
     }
     setLegs(newLegs);
   };

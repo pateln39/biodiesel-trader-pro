@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +18,8 @@ interface PaperTradeFormProps {
 }
 
 interface PaperLegFormState {
-  buySell: BuySell; // Add to match schema
-  product: Product; // Add to match schema
+  buySell: BuySell;
+  product: Product;
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -28,8 +29,8 @@ interface PaperLegFormState {
 }
 
 const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
-  buySell: 'buy', // Default value
-  product: 'UCOME', // Default value
+  buySell: 'buy',
+  product: 'UCOME',
   instrument: 'Argus UCOME',
   pricingPeriodStart: new Date(),
   pricingPeriodEnd: new Date(),
@@ -61,11 +62,15 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
   const updateLeg = (index: number, field: keyof PaperLegFormState, value: string | Date | number) => {
     const newLegs = [...legs];
     if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
-      newLegs[index][field] = value as Date;
-    } else if (field === 'instrument' || field === 'broker' || field === 'buySell' || field === 'product') {
-      newLegs[index][field] = value as string;
+      (newLegs[index] as any)[field] = value as Date;
+    } else if (field === 'instrument' || field === 'broker') {
+      (newLegs[index] as any)[field] = value as string;
+    } else if (field === 'buySell') {
+      (newLegs[index] as any)[field] = value as BuySell;
+    } else if (field === 'product') {
+      (newLegs[index] as any)[field] = value as Product;
     } else {
-      newLegs[index][field] = Number(value);
+      (newLegs[index] as any)[field] = Number(value);
     }
     setLegs(newLegs);
   };
