@@ -1,3 +1,4 @@
+
 export type TradeType = "physical" | "paper";
 export type PhysicalTradeType = "spot" | "term";
 export type BuySell = "buy" | "sell";
@@ -33,6 +34,64 @@ export interface PricingComponent {
   adjustment: number;
 }
 
+// Base trade interface (parent trade)
+export interface ParentTrade {
+  id: string;
+  tradeReference: string;
+  tradeType: TradeType;
+  counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Physical parent trade
+export interface PhysicalParentTrade extends ParentTrade {
+  tradeType: "physical";
+  physicalType: PhysicalTradeType;
+}
+
+// Paper parent trade
+export interface PaperParentTrade extends ParentTrade {
+  tradeType: "paper";
+}
+
+// Base trade leg interface
+export interface TradeLeg {
+  id: string;
+  legReference: string;
+  parentTradeId: string;
+}
+
+// Physical trade leg
+export interface PhysicalTradeLeg extends TradeLeg {
+  buySell: BuySell;
+  product: Product;
+  sustainability: string;
+  incoTerm: IncoTerm;
+  quantity: number;
+  tolerance: number;
+  loadingPeriodStart: Date;
+  loadingPeriodEnd: Date;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  unit: Unit;
+  paymentTerm: PaymentTerm;
+  creditStatus: CreditStatus;
+  pricingFormula: PricingComponent[];
+  formula?: PricingFormula;
+}
+
+// Paper trade leg
+export interface PaperTradeLeg extends TradeLeg {
+  instrument: Instrument;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  price: number;
+  quantity: number;
+  broker: string;
+}
+
+// For backward compatibility
 export interface Trade {
   id: string;
   tradeReference: string;
@@ -61,20 +120,6 @@ export interface PhysicalTrade extends Trade {
   pricingFormula: PricingComponent[];
   formula?: PricingFormula;
   legs: PhysicalTradeLeg[];
-}
-
-export interface PhysicalTradeLeg {
-  id: string;
-  legReference: string;
-  parentTradeId: string;
-  quantity: number;
-  tolerance: number;
-  loadingPeriodStart: Date;
-  loadingPeriodEnd: Date;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  pricingFormula: PricingComponent[];
-  formula?: PricingFormula;
 }
 
 export interface PaperTrade extends Trade {

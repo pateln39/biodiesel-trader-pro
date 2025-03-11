@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import { Trade } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { generateTradeReference } from '@/utils/tradeUtils';
 
@@ -17,13 +17,92 @@ const TradeEntryPage = () => {
   const [tradeType, setTradeType] = useState<'physical' | 'paper'>('physical');
   const tradeReference = generateTradeReference();
   
-  const handleSubmit = (trade: Trade) => {
-    // Here you would normally save the trade to a database
-    console.log('Trade submitted:', trade);
-    toast.success('Trade created successfully', {
-      description: `Trade reference: ${trade.tradeReference}`
-    });
-    navigate('/trades');
+  const handleSubmit = async (tradeData: any) => {
+    try {
+      // Extract parent trade data
+      const parentTrade = {
+        trade_reference: tradeData.tradeReference,
+        trade_type: tradeData.tradeType,
+        physical_type: tradeData.physicalType,
+        counterparty: tradeData.counterparty,
+      };
+      
+      // Insert parent trade
+      const { data: parentTradeData, error: parentTradeError } = await supabase
+        .from('parent_trades')
+        .insert(parentTrade)
+        .select('id')
+        .single();
+        
+      if (parentTradeError) {
+        throw new Error(`Error inserting parent trade: ${parentTradeError.message}`);
+      }
+      
+      // Get the parent trade ID
+      const parentTradeId = parentTradeData.id;
+      
+      // Insert trade legs
+      if (tradeData.tradeType === 'physical') {
+        // For physical trades, insert all legs
+        const legs = tradeData.legs.map((leg: any) => ({
+          leg_reference: leg.legReference,
+          parent_trade_id: parentTradeId,
+          buy_sell: leg.buySell,
+          product: leg.product,
+          sustainability: leg.sustainability,
+          inco_term: leg.incoTerm,
+          quantity: leg.quantity,
+          tolerance: leg.tolerance,
+          loading_period_start: leg.loadingPeriodStart,
+          loading_period_end: leg.loadingPeriodEnd,
+          pricing_period_start: leg.pricingPeriodStart,
+          pricing_period_end: leg.pricingPeriodEnd,
+          unit: leg.unit,
+          payment_term: leg.paymentTerm,
+          credit_status: leg.creditStatus,
+          pricing_formula: leg.formula ? leg.formula : null,
+        }));
+        
+        const { error: legsError } = await supabase
+          .from('trade_legs')
+          .insert(legs);
+          
+        if (legsError) {
+          throw new Error(`Error inserting trade legs: ${legsError.message}`);
+        }
+      } else {
+        // For paper trades, we have to extract leg data differently
+        const legData = {
+          leg_reference: generateTradeReference() + '-a', // Default leg reference
+          parent_trade_id: parentTradeId,
+          instrument: tradeData.instrument,
+          pricing_period_start: tradeData.pricingPeriodStart,
+          pricing_period_end: tradeData.pricingPeriodEnd,
+          price: tradeData.price,
+          quantity: tradeData.quantity,
+          broker: tradeData.broker,
+        };
+        
+        const { error: legError } = await supabase
+          .from('trade_legs')
+          .insert(legData);
+          
+        if (legError) {
+          throw new Error(`Error inserting paper trade leg: ${legError.message}`);
+        }
+      }
+      
+      toast.success('Trade created successfully', {
+        description: `Trade reference: ${tradeData.tradeReference}`
+      });
+      
+      navigate('/trades');
+    } catch (error: any) {
+      toast.error('Failed to create trade', {
+        description: error.message
+      });
+      console.error('Error creating trade:', error);
+    }
   };
 
   const handleCancel = () => {

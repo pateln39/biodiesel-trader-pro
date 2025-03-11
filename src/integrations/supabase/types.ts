@@ -140,6 +140,36 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_trades: {
+        Row: {
+          counterparty: string
+          created_at: string
+          id: string
+          physical_type: string | null
+          trade_reference: string
+          trade_type: string
+          updated_at: string
+        }
+        Insert: {
+          counterparty: string
+          created_at?: string
+          id?: string
+          physical_type?: string | null
+          trade_reference: string
+          trade_type: string
+          updated_at?: string
+        }
+        Update: {
+          counterparty?: string
+          created_at?: string
+          id?: string
+          physical_type?: string | null
+          trade_reference?: string
+          trade_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_terms: {
         Row: {
           created_at: string
@@ -327,6 +357,80 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      trade_legs: {
+        Row: {
+          buy_sell: string
+          created_at: string
+          credit_status: string | null
+          id: string
+          inco_term: string | null
+          leg_reference: string
+          loading_period_end: string | null
+          loading_period_start: string | null
+          parent_trade_id: string
+          payment_term: string | null
+          pricing_formula: Json | null
+          pricing_period_end: string | null
+          pricing_period_start: string | null
+          product: string
+          quantity: number
+          sustainability: string | null
+          tolerance: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          buy_sell: string
+          created_at?: string
+          credit_status?: string | null
+          id?: string
+          inco_term?: string | null
+          leg_reference: string
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          parent_trade_id: string
+          payment_term?: string | null
+          pricing_formula?: Json | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product: string
+          quantity: number
+          sustainability?: string | null
+          tolerance?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buy_sell?: string
+          created_at?: string
+          credit_status?: string | null
+          id?: string
+          inco_term?: string | null
+          leg_reference?: string
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          parent_trade_id?: string
+          payment_term?: string | null
+          pricing_formula?: Json | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product?: string
+          quantity?: number
+          sustainability?: string | null
+          tolerance?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_legs_parent_trade_id_fkey"
+            columns: ["parent_trade_id"]
+            isOneToOne: false
+            referencedRelation: "parent_trades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trades: {
         Row: {

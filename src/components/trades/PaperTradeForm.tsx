@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Instrument, PaperTrade, Trade } from '@/types';
+import { Instrument, PaperParentTrade, PaperTradeLeg, Trade } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,11 +13,11 @@ import { DatePicker } from '@/components/ui/date-picker';
 
 interface PaperTradeFormProps {
   tradeReference: string;
-  onSubmit: (trade: Trade) => void;
+  onSubmit: (trade: any) => void;
   onCancel: () => void;
 }
 
-interface PaperTradeLeg {
+interface PaperLegFormState {
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -26,38 +26,36 @@ interface PaperTradeLeg {
   broker: string;
 }
 
-const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
-  // For the first leg (always exists)
-  const [instrument, setInstrument] = useState<Instrument>('Argus UCOME');
-  const [pricingPeriodStart, setPricingPeriodStart] = useState<Date>(new Date());
-  const [pricingPeriodEnd, setPricingPeriodEnd] = useState<Date>(new Date());
-  const [price, setPrice] = useState<number>(0);
-  const [quantity, setQuantity] = useState<number>(0);
-  const [broker, setBroker] = useState<string>('');
+const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
+  instrument: 'Argus UCOME',
+  pricingPeriodStart: new Date(),
+  pricingPeriodEnd: new Date(),
+  price: 0,
+  quantity: 0,
+  broker: broker
+});
 
-  // For additional legs
-  const [legs, setLegs] = useState<PaperTradeLeg[]>([]);
+const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+  // Parent trade fields
+  const [counterparty, setCounterparty] = useState<string>('');
+  
+  // Trade legs
+  const [legs, setLegs] = useState<PaperLegFormState[]>([createDefaultLeg()]);
 
   const addLeg = () => {
-    const newLeg: PaperTradeLeg = {
-      instrument: 'Argus UCOME',
-      pricingPeriodStart: new Date(),
-      pricingPeriodEnd: new Date(),
-      price: 0,
-      quantity: 0,
-      broker: broker // Default to same broker as main trade
-    };
-    
-    setLegs([...legs, newLeg]);
+    // Use the first leg's broker as a default for new legs
+    setLegs([...legs, createDefaultLeg(legs[0].broker)]);
   };
 
   const removeLeg = (index: number) => {
-    const newLegs = [...legs];
-    newLegs.splice(index, 1);
-    setLegs(newLegs);
+    if (legs.length > 1) {
+      const newLegs = [...legs];
+      newLegs.splice(index, 1);
+      setLegs(newLegs);
+    }
   };
 
-  const updateLeg = (index: number, field: keyof PaperTradeLeg, value: any) => {
+  const updateLeg = (index: number, field: keyof PaperLegFormState, value: any) => {
     const newLegs = [...legs];
     if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
       newLegs[index][field] = value;
@@ -72,140 +70,71 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create main trade
-    const mainTrade: PaperTrade = {
+    // Create parent trade
+    const parentTrade: PaperParentTrade = {
       id: crypto.randomUUID(),
       tradeReference,
       tradeType: 'paper',
-      instrument,
-      pricingPeriodStart,
-      pricingPeriodEnd,
-      price,
-      quantity,
-      broker,
+      counterparty,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    // Add additional trades
-    const allTrades: Trade[] = [mainTrade];
-    
-    legs.forEach((leg, index) => {
+    // Create trade legs
+    const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
       const legReference = generateLegReference(tradeReference, index);
       
-      const legTrade: PaperTrade = {
+      const legData: PaperTradeLeg = {
         id: crypto.randomUUID(),
-        tradeReference: legReference,
-        tradeType: 'paper',
-        instrument: leg.instrument,
-        pricingPeriodStart: leg.pricingPeriodStart,
-        pricingPeriodEnd: leg.pricingPeriodEnd,
-        price: leg.price,
-        quantity: leg.quantity,
-        broker: leg.broker,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        legReference,
+        parentTradeId: parentTrade.id,
+        instrument: legForm.instrument,
+        pricingPeriodStart: legForm.pricingPeriodStart,
+        pricingPeriodEnd: legForm.pricingPeriodEnd,
+        price: legForm.price,
+        quantity: legForm.quantity,
+        broker: legForm.broker
       };
       
-      allTrades.push(legTrade);
+      return legData;
     });
 
-    // Pass the main trade to the onSubmit handler
-    // In a real implementation, you'd submit all trades to the backend
-    onSubmit(mainTrade);
+    // For backward compatibility, create a trade object that includes both the parent and first leg data
+    const tradeData: any = {
+      ...parentTrade,
+      ...legs[0]
+    };
+
+    onSubmit(tradeData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Parent trade fields */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Main Trade Details</h3>
-        
-        <div className="grid grid-cols-2 gap-4">
+        <h3 className="text-lg font-semibold">Trade Details</h3>
+        <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="instrument">Instrument</Label>
-            <Select 
-              value={instrument} 
-              onValueChange={(value) => setInstrument(value as Instrument)}
-            >
-              <SelectTrigger id="instrument">
-                <SelectValue placeholder="Select instrument" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                <SelectItem value="Argus RME">Argus RME</SelectItem>
-                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="broker">Broker</Label>
+            <Label htmlFor="counterparty">Counterparty</Label>
             <Input 
-              id="broker" 
-              value={broker} 
-              onChange={(e) => setBroker(e.target.value)} 
-              required 
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Pricing Period Start</Label>
-            <DatePicker 
-              date={pricingPeriodStart} 
-              setDate={setPricingPeriodStart} 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Pricing Period End</Label>
-            <DatePicker 
-              date={pricingPeriodEnd} 
-              setDate={setPricingPeriodEnd} 
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="price">Price</Label>
-            <Input 
-              id="price" 
-              type="number" 
-              value={price} 
-              onChange={(e) => setPrice(Number(e.target.value))} 
-              required 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity (MT)</Label>
-            <Input 
-              id="quantity" 
-              type="number" 
-              value={quantity} 
-              onChange={(e) => setQuantity(Number(e.target.value))} 
+              id="counterparty" 
+              value={counterparty} 
+              onChange={(e) => setCounterparty(e.target.value)} 
               required 
             />
           </div>
         </div>
       </div>
 
+      {/* Trade legs */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Additional Legs</h3>
+          <h3 className="text-lg font-semibold">Trade Legs</h3>
           <Button type="button" variant="outline" onClick={addLeg}>
             <Plus className="h-4 w-4 mr-1" />
             Add Leg
           </Button>
         </div>
-
-        {legs.length === 0 && (
-          <div className="p-4 border border-dashed rounded-md text-center text-muted-foreground">
-            No additional legs added yet. Click "Add Leg" to create additional legs.
-          </div>
-        )}
 
         {legs.map((leg, legIndex) => (
           <Card key={legIndex} className="border border-muted">
@@ -213,24 +142,26 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
               <CardTitle className="text-md">
                 Leg {legIndex + 1} ({generateLegReference(tradeReference, legIndex)})
               </CardTitle>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => removeLeg(legIndex)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              {legs.length > 1 && (
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => removeLeg(legIndex)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-instrument-${legIndex}`}>Instrument</Label>
+                  <Label htmlFor={`leg-${legIndex}-instrument`}>Instrument</Label>
                   <Select 
                     value={leg.instrument} 
                     onValueChange={(value) => updateLeg(legIndex, 'instrument', value as Instrument)}
                   >
-                    <SelectTrigger id={`leg-instrument-${legIndex}`}>
+                    <SelectTrigger id={`leg-${legIndex}-instrument`}>
                       <SelectValue placeholder="Select instrument" />
                     </SelectTrigger>
                     <SelectContent>
@@ -244,9 +175,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-broker-${legIndex}`}>Broker</Label>
+                  <Label htmlFor={`leg-${legIndex}-broker`}>Broker</Label>
                   <Input 
-                    id={`leg-broker-${legIndex}`} 
+                    id={`leg-${legIndex}-broker`} 
                     value={leg.broker} 
                     onChange={(e) => updateLeg(legIndex, 'broker', e.target.value)} 
                     required 
@@ -273,9 +204,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-price-${legIndex}`}>Price</Label>
+                  <Label htmlFor={`leg-${legIndex}-price`}>Price</Label>
                   <Input 
-                    id={`leg-price-${legIndex}`} 
+                    id={`leg-${legIndex}-price`} 
                     type="number" 
                     value={leg.price} 
                     onChange={(e) => updateLeg(legIndex, 'price', e.target.value)} 
@@ -283,9 +214,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-quantity-${legIndex}`}>Quantity (MT)</Label>
+                  <Label htmlFor={`leg-${legIndex}-quantity`}>Quantity (MT)</Label>
                   <Input 
-                    id={`leg-quantity-${legIndex}`} 
+                    id={`leg-${legIndex}-quantity`} 
                     type="number" 
                     value={leg.quantity} 
                     onChange={(e) => updateLeg(legIndex, 'quantity', e.target.value)} 
