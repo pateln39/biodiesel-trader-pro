@@ -96,12 +96,12 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     legIndex: number, 
     componentIndex: number, 
     field: keyof PricingComponent, 
-    value: any
+    value: string | number
   ) => {
     const newLegs = [...legs];
     newLegs[legIndex].pricingFormula[componentIndex] = { 
       ...newLegs[legIndex].pricingFormula[componentIndex], 
-      [field]: field === 'instrument' ? value : Number(value) 
+      [field]: field === 'instrument' ? value as Instrument : Number(value) 
     };
     setLegs(newLegs);
   };

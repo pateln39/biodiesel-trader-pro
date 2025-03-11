@@ -1,4 +1,3 @@
-
 export type TradeType = "physical" | "paper";
 export type PhysicalTradeType = "spot" | "term";
 export type BuySell = "buy" | "sell";
@@ -83,8 +82,8 @@ export interface PhysicalTradeLeg extends TradeLeg {
 
 // Paper trade leg
 export interface PaperTradeLeg extends TradeLeg {
-  buySell: BuySell;  // Added to match database schema
-  product: Product;   // Added to match database schema
+  buySell: BuySell;
+  product: Product;
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;

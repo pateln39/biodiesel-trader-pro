@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,12 +71,11 @@ const TradeEntryPage = () => {
         }
       } else {
         // For paper trades, we have to extract leg data differently
-        // Adding required fields buy_sell and product to meet the database schema requirements
         const legData = {
           leg_reference: generateTradeReference() + '-a', // Default leg reference
           parent_trade_id: parentTradeId,
-          buy_sell: "buy", // Default value for paper trades
-          product: "UCOME", // Default value for paper trades
+          buy_sell: tradeData.buySell,  // Use buySell from the paper trade data
+          product: tradeData.product,   // Use product from the paper trade data
           instrument: tradeData.instrument,
           pricing_period_start: tradeData.pricingPeriodStart,
           pricing_period_end: tradeData.pricingPeriodEnd,
