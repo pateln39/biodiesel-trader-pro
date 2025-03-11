@@ -22,8 +22,30 @@ import {
   CreditStatus,
   Instrument,
   DbParentTrade,
-  DbTradeLeg
+  DbTradeLeg,
+  PricingComponent
 } from '@/types';
+import { convertToNewFormulaFormat } from '@/utils/formulaUtils';
+
+// Helper to safely parse pricingFormula from DB
+const parsePricingFormula = (rawFormula: any): PricingComponent[] => {
+  if (!rawFormula) return [];
+  
+  // If it's already an array with the right structure
+  if (Array.isArray(rawFormula) && 
+      rawFormula.length > 0 && 
+      typeof rawFormula[0] === 'object' && 
+      'instrument' in rawFormula[0]) {
+    return rawFormula as PricingComponent[];
+  }
+  
+  // Default formula if parsing fails
+  return [{ 
+    instrument: 'Argus UCOME', 
+    percentage: 100, 
+    adjustment: 0 
+  }];
+};
 
 const TradesPage = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -67,7 +89,7 @@ const TradesPage = () => {
             const physicalTrade: PhysicalTrade = {
               id: parent.id,
               tradeReference: parent.trade_reference,
-              tradeType: parent.trade_type as TradeType,
+              tradeType: 'physical', // Use the literal type instead of variable
               createdAt: new Date(parent.created_at),
               updatedAt: new Date(parent.updated_at),
               physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
@@ -85,7 +107,7 @@ const TradesPage = () => {
               unit: (firstLeg.unit || 'MT') as Unit,
               paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-              pricingFormula: firstLeg.pricing_formula || [],
+              pricingFormula: parsePricingFormula(firstLeg.pricing_formula),
               legs: legs.map(leg => ({
                 id: leg.id,
                 parentTradeId: leg.parent_trade_id,
@@ -103,22 +125,28 @@ const TradesPage = () => {
                 unit: (leg.unit || 'MT') as Unit,
                 paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
                 creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-                pricingFormula: leg.pricing_formula || [],
+                pricingFormula: parsePricingFormula(leg.pricing_formula),
+                formula: leg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.pricing_formula)) : undefined
               })) as PhysicalTradeLeg[]
             };
             return physicalTrade;
           } 
           else if (parent.trade_type === 'paper' && firstLeg) {
+            // For paper trades, check if broker/instrument/price fields exist
+            const broker = 'broker' in firstLeg ? firstLeg.broker : '';
+            const instrument = 'instrument' in firstLeg ? firstLeg.instrument : '';
+            const price = 'price' in firstLeg ? firstLeg.price : 0;
+            
             // Create paper trade
             const paperTrade: PaperTrade = {
               id: parent.id,
               tradeReference: parent.trade_reference,
-              tradeType: parent.trade_type as TradeType,
+              tradeType: 'paper', // Use the literal type instead of variable
               createdAt: new Date(parent.created_at),
               updatedAt: new Date(parent.updated_at),
-              broker: firstLeg.broker || '',
-              instrument: firstLeg.instrument || '',
-              price: firstLeg.price || 0,
+              broker: broker || '',
+              instrument: instrument || '',
+              price: price || 0,
               quantity: firstLeg.quantity,
               pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
               pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
