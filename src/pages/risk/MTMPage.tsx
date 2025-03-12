@@ -1,11 +1,109 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { RefreshCw, Eye } from 'lucide-react';
+import { useTrades } from '@/hooks/useTrades';
+import { calculateTradeLegPrice } from '@/utils/priceCalculationUtils';
+import PriceDetails from '@/components/pricing/PriceDetails';
+import { PhysicalTrade } from '@/types';
 
 const MTMPage = () => {
+  const { trades, loading: tradesLoading, refetchTrades } = useTrades();
+  const [selectedLeg, setSelectedLeg] = useState<{
+    legId: string;
+    formula: any;
+    startDate: Date;
+    endDate: Date;
+    quantity: number;
+  } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Filter physical trades
+  const physicalTrades = trades.filter(
+    (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
+  );
+
+  // Flatten trade legs for MTM view
+  const tradeLegs = physicalTrades.flatMap(trade => 
+    trade.legs?.map(leg => ({
+      legId: leg.id,
+      tradeRef: trade.tradeReference,
+      buySell: leg.buySell,
+      product: leg.product,
+      quantity: leg.quantity,
+      startDate: leg.pricingPeriodStart,
+      endDate: leg.pricingPeriodEnd,
+      formula: leg.formula,
+      calculatedPrice: 0, // Will be populated by price calculation
+    })) || []
+  );
+
+  // Calculate prices for all legs
+  const { data: mtmPositions, isLoading: calculationLoading } = useQuery({
+    queryKey: ['mtmPositions', tradeLegs],
+    queryFn: async () => {
+      // Skip if no trades
+      if (tradeLegs.length === 0) return [];
+      
+      // Calculate MTM for each leg
+      const positions = await Promise.all(
+        tradeLegs.map(async (leg) => {
+          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmValue: 0 };
+          
+          try {
+            const result = await calculateTradeLegPrice(
+              leg.formula,
+              leg.startDate,
+              leg.endDate
+            );
+            
+            const mtmValue = result.price * leg.quantity * (leg.buySell === 'Buy' ? -1 : 1);
+            
+            return {
+              ...leg,
+              calculatedPrice: result.price,
+              mtmValue,
+              periodType: result.periodType
+            };
+          } catch (error) {
+            console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
+            return { ...leg, calculatedPrice: 0, mtmValue: 0 };
+          }
+        })
+      );
+      
+      return positions;
+    },
+    enabled: !tradesLoading && tradeLegs.length > 0
+  });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetchTrades();
+    setRefreshing(false);
+  };
+
+  const handleViewPrices = (leg: any) => {
+    setSelectedLeg({
+      legId: leg.legId,
+      formula: leg.formula,
+      startDate: leg.startDate,
+      endDate: leg.endDate,
+      quantity: leg.quantity
+    });
+  };
+
+  // Calculate total MTM position
+  const totalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
+
   return (
     <Layout>
       <Helmet>
@@ -13,27 +111,124 @@ const MTMPage = () => {
       </Helmet>
       
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Mark-to-Market</h1>
-        <p className="text-muted-foreground">
-          View real-time Mark-to-Market positions across all trading activities
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Mark-to-Market</h1>
+            <p className="text-muted-foreground">
+              View real-time Mark-to-Market positions across all trading activities
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleRefresh}
+            disabled={refreshing || tradesLoading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
 
         <Separator />
         
         <Card>
           <CardHeader>
-            <CardTitle>MTM Positions</CardTitle>
-            <CardDescription>
-              Current Mark-to-Market position values by instrument and trade type
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>MTM Positions</CardTitle>
+                <CardDescription>
+                  Current Mark-to-Market position values by instrument and trade
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium">Total MTM Position</div>
+                <div className={`text-2xl font-bold ${totalMtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${totalMtm.toFixed(2)}
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center p-12 text-muted-foreground">
-              <p>MTM reporting dashboard coming soon...</p>
-            </div>
+            {tradesLoading || calculationLoading ? (
+              <div className="flex items-center justify-center p-12 text-muted-foreground">
+                <p>Loading MTM positions...</p>
+              </div>
+            ) : mtmPositions && mtmPositions.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Trade Ref</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>B/S</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">MTM Value</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mtmPositions.map((position) => (
+                    <TableRow key={position.legId}>
+                      <TableCell>{position.tradeRef}</TableCell>
+                      <TableCell>{position.product}</TableCell>
+                      <TableCell>
+                        <Badge variant={position.buySell === 'Buy' ? 'default' : 'outline'}>
+                          {position.buySell}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {position.quantity.toLocaleString()} MT
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${position.calculatedPrice.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${position.mtmValue.toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          position.periodType === 'historical' ? 'default' : 
+                          position.periodType === 'current' ? 'secondary' : 
+                          'outline'
+                        }>
+                          {position.periodType || 'Unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewPrices(position)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex items-center justify-center p-12 text-muted-foreground">
+                <p>No MTM positions available. Add trades with pricing formulas to see data here.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {selectedLeg && (
+        <PriceDetails
+          isOpen={!!selectedLeg}
+          onClose={() => setSelectedLeg(null)}
+          tradeLegId={selectedLeg.legId}
+          formula={selectedLeg.formula}
+          startDate={selectedLeg.startDate}
+          endDate={selectedLeg.endDate}
+          quantity={selectedLeg.quantity}
+        />
+      )}
     </Layout>
   );
 };

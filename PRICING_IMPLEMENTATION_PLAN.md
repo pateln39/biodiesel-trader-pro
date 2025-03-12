@@ -28,14 +28,14 @@ The pricing database will store historical and forward prices for various instru
 - [x] Create database insertion logic
 - [x] Build upload interface
 
-## Phase 3: Price Calculation Engine
+## Phase 3: Price Calculation Engine ✅
 
-- [ ] Implement historical price calculation logic
-- [ ] Implement pricing period logic (current, past, future)
-- [ ] Create forward price selection logic
-- [ ] Build recalculation trigger system
-- [ ] Implement trade leg price update mechanism
-- [ ] Add `last_calculation_date` tracking
+- [x] Implement historical price calculation logic
+- [x] Implement pricing period logic (current, past, future)
+- [x] Create forward price selection logic
+- [x] Build recalculation trigger system
+- [x] Implement trade leg price update mechanism
+- [x] Add `last_calculation_date` tracking
 
 ## Phase 4: Formula Builder Integration
 
@@ -43,14 +43,14 @@ The pricing database will store historical and forward prices for various instru
 - [ ] Connect formula builder to calculation engine
 - [ ] Implement exposure calculation based on formula
 
-## Phase 5: Price Details Interface
+## Phase 5: Price Details Interface ✅
 
-- [ ] Create price details modal component
-- [ ] Implement daily price breakdown table
-- [ ] Build period information display
-- [ ] Create average price calculation display
-- [ ] Implement forward price logic display
-- [ ] Connect to trade details view
+- [x] Create price details modal component
+- [x] Implement daily price breakdown table
+- [x] Build period information display
+- [x] Create average price calculation display
+- [x] Implement forward price logic display
+- [x] Connect to trade details view
 
 ## Phase 6: Testing and Validation
 
