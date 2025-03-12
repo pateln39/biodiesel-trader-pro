@@ -1,4 +1,5 @@
 
+
 # Pricing Database Implementation Plan
 
 This document outlines the phased approach for implementing the pricing database functionality, including Excel upload, price calculation, and price details display.
@@ -52,18 +53,42 @@ The pricing database will store historical and forward prices for various instru
 - [x] Implement forward price logic display
 - [x] Connect to trade details view
 
-## Phase 6: Testing and Validation
+## Phase 6: Testing and Validation ⏳
 
 - [ ] Create test data for historical prices
+  - Create sample dataset with at least 90 days of historical prices
+  - Include weekends and holidays to test date handling
+  - Test with multiple instruments (UCOME, RME, FAME0, LSGO, diesel)
 - [ ] Create test data for forward prices
+  - Create sample forward curves for at least 6 months
+  - Include all supported instruments
+  - Test month-end transitions
 - [ ] Test calculation logic with different formulas
-- [ ] Test edge cases (weekends, holidays, missing prices)
+  - Simple formulas (single instrument)
+  - Complex formulas (multiple instruments with operators)
+  - Edge cases (division by zero, missing instrument data)
+- [ ] Test edge cases for price calculations
+  - Weekends and holidays price handling
+  - Missing prices in the middle of a period
+  - Pricing periods that span historical and forward prices
 - [ ] Validate upload functionality
+  - Test validation error handling
+  - Test duplicate price handling
+  - Test large file uploads
 - [ ] Test recalculation triggers
+  - Verify price updates propagate to trade valuations
+  - Test automatic and manual recalculation
 
 ## Status Tracking
 
 Regular updates to this document will be made to track progress. Each item will be marked complete once implemented and tested.
+
+- **Phase 1**: Completed ✅ - Database schema successfully implemented
+- **Phase 2**: Completed ✅ - Excel upload functionality working
+- **Phase 3**: Completed ✅ - Price calculation engine operational
+- **Phase 4**: Completed ✅ - Formula builder integrated with calculation engine
+- **Phase 5**: Completed ✅ - Price details display functioning
+- **Phase 6**: In Progress ⏳ - Testing and validation underway
 
 ## Considerations
 
@@ -72,3 +97,14 @@ Regular updates to this document will be made to track progress. Each item will 
 3. **Permissions**: Determine who can upload prices vs. who can only view them
 4. **Audit**: Track who uploaded which prices and when
 5. **Validation**: No partial uploads - all or nothing approach
+
+## Next Steps
+
+1. Complete the Phase 6 testing and validation tasks
+2. Create comprehensive documentation for users
+3. Plan for future enhancements:
+   - Price data visualization tools
+   - Historical price analytics
+   - Automated price imports from external sources
+   - Price forecast modeling
+
