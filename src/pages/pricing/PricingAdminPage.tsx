@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import PriceUploader from '@/components/pricing/PriceUploader';
 import PricingInstruments from '@/components/pricing/PricingInstruments';
 
@@ -16,12 +16,10 @@ const PricingAdminPage = () => {
       </Helmet>
       
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pricing Administration</h1>
-          <p className="text-muted-foreground">
-            Manage pricing instruments and upload price data
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">Pricing Administration</h1>
+        <p className="text-muted-foreground">
+          Manage pricing instruments and upload price data
+        </p>
 
         <Separator />
 
