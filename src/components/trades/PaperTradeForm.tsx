@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useReferenceData } from '@/hooks/useReferenceData';
 import { Instrument, PaperParentTrade, PaperTradeLeg, Trade, BuySell, Product } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,8 @@ const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
 });
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+  const { counterparties } = useReferenceData();
+  
   const [counterparty, setCounterparty] = useState<string>('');
   
   const [legs, setLegs] = useState<PaperLegFormState[]>([createDefaultLeg()]);
@@ -119,12 +121,21 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
         <div className="grid grid-cols-1 gap-4">
           <div className="space-y-2">
             <Label htmlFor="counterparty">Counterparty</Label>
-            <Input 
-              id="counterparty" 
+            <Select 
               value={counterparty} 
-              onChange={(e) => setCounterparty(e.target.value)} 
-              required 
-            />
+              onValueChange={setCounterparty}
+            >
+              <SelectTrigger id="counterparty">
+                <SelectValue placeholder="Select counterparty" />
+              </SelectTrigger>
+              <SelectContent>
+                {counterparties.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

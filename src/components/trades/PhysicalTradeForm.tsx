@@ -1,23 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  PhysicalParentTrade, 
-  PhysicalTradeLeg, 
-  PhysicalTradeType, 
-  BuySell, 
-  Product, 
-  IncoTerm, 
-  Unit, 
-  PaymentTerm, 
-  CreditStatus, 
-  Trade, 
-  PricingComponent, 
-  PricingFormula,
-  Instrument
-} from '@/types';
+import { useReferenceData } from '@/hooks/useReferenceData';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -71,6 +56,7 @@ const createDefaultLeg = (): LegFormState => ({
 });
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+  const { counterparties, sustainabilityOptions, creditStatusOptions } = useReferenceData();
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>('spot');
   const [counterparty, setCounterparty] = useState('');
   
@@ -233,12 +219,21 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 
         <div className="space-y-2">
           <Label htmlFor="counterparty">Counterparty</Label>
-          <Input 
-            id="counterparty" 
+          <Select 
             value={counterparty} 
-            onChange={(e) => setCounterparty(e.target.value)} 
-            required 
-          />
+            onValueChange={setCounterparty}
+          >
+            <SelectTrigger id="counterparty">
+              <SelectValue placeholder="Select counterparty" />
+            </SelectTrigger>
+            <SelectContent>
+              {counterparties.map((name) => (
+                <SelectItem key={name} value={name}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -311,12 +306,21 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-sustainability`}>Sustainability</Label>
-                  <Input 
-                    id={`leg-${legIndex}-sustainability`} 
+                  <Select 
                     value={leg.sustainability} 
-                    onChange={(e) => updateLeg(legIndex, 'sustainability', e.target.value)} 
-                    required
-                  />
+                    onValueChange={(value) => updateLeg(legIndex, 'sustainability', value)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-sustainability`}>
+                      <SelectValue placeholder="Select sustainability" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sustainabilityOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -381,15 +385,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                   <Label htmlFor={`leg-${legIndex}-credit-status`}>Credit Status</Label>
                   <Select 
                     value={leg.creditStatus} 
-                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value as CreditStatus)}
+                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value)}
                   >
                     <SelectTrigger id={`leg-${legIndex}-credit-status`}>
                       <SelectValue placeholder="Select credit status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
+                      {creditStatusOptions.map((status) => (
+                        <SelectItem key={status} value={status.toLowerCase()}>
+                          {status}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -545,4 +551,3 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 };
 
 export default PhysicalTradeForm;
-
