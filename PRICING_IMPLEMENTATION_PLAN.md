@@ -37,11 +37,11 @@ The pricing database will store historical and forward prices for various instru
 - [x] Implement trade leg price update mechanism
 - [x] Add `last_calculation_date` tracking
 
-## Phase 4: Formula Builder Integration
+## Phase 4: Formula Builder Integration ✅
 
-- [ ] Update formula builder to use instruments from database
-- [ ] Connect formula builder to calculation engine
-- [ ] Implement exposure calculation based on formula
+- [x] Update formula builder to use instruments from database
+- [x] Connect formula builder to calculation engine
+- [x] Implement exposure calculation based on formula
 
 ## Phase 5: Price Details Interface ✅
 
