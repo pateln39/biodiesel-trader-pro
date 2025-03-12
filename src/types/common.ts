@@ -41,7 +41,7 @@ export interface DbTradeLeg {
 export interface ParentTrade {
   id: string;
   tradeReference: string;
-  tradeType: TradeType;
+  tradeType: import('./index').TradeType;
   counterparty: string;
   createdAt: Date;
   updatedAt: Date;
@@ -51,7 +51,7 @@ export interface ParentTrade {
 export interface Trade {
   id: string;
   tradeReference: string;
-  tradeType: TradeType;
+  tradeType: import('./index').TradeType;
   createdAt: Date;
   updatedAt: Date;
 }

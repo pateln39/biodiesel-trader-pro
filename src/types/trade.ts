@@ -1,5 +1,5 @@
 
-import { TradeType } from './common';
+import { TradeType } from './index';
 
 export type BuySell = "buy" | "sell";
 export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
