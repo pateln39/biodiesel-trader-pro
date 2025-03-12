@@ -4,6 +4,7 @@ import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { mockExposureReport } from '@/data/mockData';
+import { Helmet } from 'react-helmet-async';
 
 const ExposurePage = () => {
   // Group exposure data by month
@@ -17,6 +18,10 @@ const ExposurePage = () => {
 
   return (
     <Layout>
+      <Helmet>
+        <title>Exposure Reporting</title>
+      </Helmet>
+      
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Exposure Reporting</h1>

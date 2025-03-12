@@ -10,10 +10,13 @@ import NotFound from "./pages/NotFound";
 import TradesPage from "./pages/trades/TradesPage";
 import TradeEntryPage from "./pages/trades/TradeEntryPage";
 import OperationsPage from "./pages/operations/OperationsPage";
-import ExposurePage from "./pages/exposure/ExposurePage";
+import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 import PricingAdminPage from "./pages/pricing/PricingAdminPage";
+import MTMPage from "./pages/risk/MTMPage";
+import PNLPage from "./pages/risk/PNLPage";
+import PricesPage from "./pages/risk/PricesPage";
 
 const queryClient = new QueryClient();
 
@@ -36,10 +39,13 @@ const App = () => (
             <Route path="/operations" element={<OperationsPage />} />
             <Route path="/operations/:id" element={<NotFound />} />
             
-            {/* Exposure Routes */}
-            <Route path="/exposure" element={<ExposurePage />} />
+            {/* Risk Routes */}
+            <Route path="/risk/mtm" element={<MTMPage />} />
+            <Route path="/risk/pnl" element={<PNLPage />} />
+            <Route path="/risk/exposure" element={<ExposurePage />} />
+            <Route path="/risk/prices" element={<PricesPage />} />
             
-            {/* Pricing Routes */}
+            {/* Pricing Routes - Admin Section */}
             <Route path="/pricing/admin" element={<PricingAdminPage />} />
             
             {/* Audit Log Routes */}

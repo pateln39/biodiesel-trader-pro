@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X } from 'lucide-react';
+import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/', label: 'Dashboard', icon: <PieChart className="h-5 w-5" /> },
     { path: '/trades', label: 'Trade Entry', icon: <FileText className="h-5 w-5" /> },
     { path: '/operations', label: 'Operations', icon: <Package className="h-5 w-5" /> },
-    { path: '/exposure', label: 'Exposure', icon: <TrendingUp className="h-5 w-5" /> },
+    { 
+      label: 'Risk', 
+      icon: <LineChart className="h-5 w-5" />,
+      submenu: [
+        { path: '/risk/mtm', label: 'MTM', icon: <TrendingUp className="h-4 w-4" /> },
+        { path: '/risk/pnl', label: 'PNL', icon: <DollarSign className="h-4 w-4" /> },
+        { path: '/risk/exposure', label: 'Exposure', icon: <BarChart className="h-4 w-4" /> },
+        { path: '/risk/prices', label: 'Prices', icon: <LineChart className="h-4 w-4" /> },
+      ],
+    },
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },
   ];
 
@@ -72,19 +81,44 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
         >
           <nav className="p-4 space-y-2 overflow-y-auto h-full">
-            {menuItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
-                  isActive(item.path)
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-primary/5'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
+            {menuItems.map((item, index) => (
+              item.submenu ? (
+                <div key={index} className="space-y-1">
+                  <div className="flex items-center space-x-3 p-3 font-medium text-muted-foreground">
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </div>
+                  <div className="pl-8 space-y-1">
+                    {item.submenu.map((subItem) => (
+                      <Link
+                        key={subItem.path}
+                        to={subItem.path}
+                        className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                          isActive(subItem.path)
+                            ? 'bg-primary/10 text-primary'
+                            : 'hover:bg-primary/5'
+                        }`}
+                      >
+                        {subItem.icon}
+                        <span>{subItem.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
+                    isActive(item.path)
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-primary/5'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              )
             ))}
           </nav>
         </aside>
