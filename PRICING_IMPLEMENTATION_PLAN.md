@@ -15,18 +15,18 @@ The pricing database will store historical and forward prices for various instru
 - [x] Add required columns to `trade_legs` table
 - [x] Seed `pricing_instruments` table with initial data
 
-## Phase 2: Excel Upload Infrastructure
+## Phase 2: Excel Upload Infrastructure ✅
 
-- [ ] Create Excel template for price uploads
-- [ ] Implement file parsing logic
-- [ ] Build validation system:
-  - [ ] Date format and range validation
-  - [ ] Price format validation
-  - [ ] Duplicate date detection
-  - [ ] Instrument existence validation
-- [ ] Implement validation report generation
-- [ ] Create database insertion logic
-- [ ] Build upload interface
+- [x] Create Excel template for price uploads
+- [x] Implement file parsing logic
+- [x] Build validation system:
+  - [x] Date format and range validation
+  - [x] Price format validation
+  - [x] Duplicate date detection
+  - [x] Instrument existence validation
+- [x] Implement validation report generation
+- [x] Create database insertion logic
+- [x] Build upload interface
 
 ## Phase 3: Price Calculation Engine
 
