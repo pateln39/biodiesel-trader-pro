@@ -45,6 +45,76 @@ export type Database = {
         }
         Relationships: []
       }
+      forward_prices: {
+        Row: {
+          created_at: string
+          forward_month: string
+          id: string
+          instrument_id: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          forward_month: string
+          id?: string
+          instrument_id: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          forward_month?: string
+          id?: string
+          instrument_id?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forward_prices_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historical_prices: {
+        Row: {
+          created_at: string
+          id: string
+          instrument_id: string
+          price: number
+          price_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instrument_id: string
+          price: number
+          price_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instrument_id?: string
+          price?: number
+          price_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_prices_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_instruments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inco_terms: {
         Row: {
           created_at: string
@@ -111,6 +181,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_instruments: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          instrument_code: string
+          is_active: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          instrument_code: string
+          is_active?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          instrument_code?: string
+          is_active?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
@@ -151,11 +254,13 @@ export type Database = {
         Row: {
           broker: string | null
           buy_sell: string
+          calculated_price: number | null
           created_at: string
           credit_status: string | null
           id: string
           inco_term: string | null
           instrument: string | null
+          last_calculation_date: string | null
           leg_reference: string
           loading_period_end: string | null
           loading_period_start: string | null
@@ -175,11 +280,13 @@ export type Database = {
         Insert: {
           broker?: string | null
           buy_sell: string
+          calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
           id?: string
           inco_term?: string | null
           instrument?: string | null
+          last_calculation_date?: string | null
           leg_reference: string
           loading_period_end?: string | null
           loading_period_start?: string | null
@@ -199,11 +306,13 @@ export type Database = {
         Update: {
           broker?: string | null
           buy_sell?: string
+          calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
           id?: string
           inco_term?: string | null
           instrument?: string | null
+          last_calculation_date?: string | null
           leg_reference?: string
           loading_period_end?: string | null
           loading_period_start?: string | null

@@ -7,13 +7,13 @@ This document outlines the phased approach for implementing the pricing database
 
 The pricing database will store historical and forward prices for various instruments, enabling price calculation for trades based on their pricing formulas and periods. The system will support Excel upload with robust validation and provide detailed price information for each trade.
 
-## Phase 1: Database Setup
+## Phase 1: Database Setup ✅
 
-- [ ] Create `pricing_instruments` table
-- [ ] Create `historical_prices` table
-- [ ] Create `forward_prices` table
-- [ ] Add required columns to `trade_legs` table
-- [ ] Seed `pricing_instruments` table with initial data
+- [x] Create `pricing_instruments` table
+- [x] Create `historical_prices` table
+- [x] Create `forward_prices` table
+- [x] Add required columns to `trade_legs` table
+- [x] Seed `pricing_instruments` table with initial data
 
 ## Phase 2: Excel Upload Infrastructure
 
