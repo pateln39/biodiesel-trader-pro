@@ -241,17 +241,39 @@ export const calculateTradeLegPrice = async (
   };
 };
 
+// Calculate MTM value based on trade price and MTM price
+export const calculateMTMValue = (
+  tradePrice: number,
+  mtmPrice: number,
+  quantity: number,
+  buySell: 'buy' | 'sell'
+): number => {
+  // The new MTM calculation: (tradePrice - mtmPrice) * quantity * buySellFactor
+  const buySellFactor = buySell.toLowerCase() === 'buy' ? -1 : 1;
+  
+  return (tradePrice - mtmPrice) * quantity * buySellFactor;
+};
+
 // Update a trade leg's price in the database
 export const updateTradeLegPrice = async (
   legId: string, 
-  price: number
+  price: number,
+  mtmPrice?: number
 ): Promise<boolean> => {
+  const updates: any = { 
+    calculated_price: price,
+    last_calculation_date: new Date().toISOString()
+  };
+  
+  // If MTM price is provided, update that too
+  if (mtmPrice !== undefined) {
+    updates.mtm_calculated_price = mtmPrice;
+    updates.mtm_last_calculation_date = new Date().toISOString();
+  }
+  
   const { error } = await supabase
     .from('trade_legs')
-    .update({ 
-      calculated_price: price,
-      last_calculation_date: new Date().toISOString()
-    })
+    .update(updates)
     .eq('id', legId);
   
   if (error) {

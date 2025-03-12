@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -91,6 +92,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
           pricingFormula: parsePricingFormula(firstLeg.pricing_formula),
+          formula: firstLeg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.pricing_formula)) : undefined,
+          mtmFormula: firstLeg.mtm_formula || undefined,
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -109,7 +112,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             pricingFormula: parsePricingFormula(leg.pricing_formula),
-            formula: leg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.pricing_formula)) : undefined
+            formula: leg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.pricing_formula)) : undefined,
+            mtmFormula: leg.mtm_formula || undefined
           }))
         };
         return physicalTrade;
@@ -128,6 +132,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           quantity: firstLeg.quantity,
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+          formula: firstLeg.pricing_formula || undefined,
+          mtmFormula: firstLeg.mtm_formula || undefined
         };
         return paperTrade;
       }

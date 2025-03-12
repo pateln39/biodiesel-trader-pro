@@ -31,6 +31,7 @@ export interface PhysicalTradeLeg {
   creditStatus: CreditStatus;
   pricingFormula: PricingComponent[];
   formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
 }
 
 // For backward compatibility
@@ -53,5 +54,6 @@ export interface PhysicalTrade extends Trade {
   creditStatus: CreditStatus;
   pricingFormula: PricingComponent[];
   formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
   legs: PhysicalTradeLeg[];
 }

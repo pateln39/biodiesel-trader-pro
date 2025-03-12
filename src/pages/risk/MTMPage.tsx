@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Eye } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
-import { calculateTradeLegPrice, PricingPeriodType } from '@/utils/priceCalculationUtils';
+import { calculateTradeLegPrice, calculateMTMValue, PricingPeriodType } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade } from '@/types';
 
@@ -20,6 +20,7 @@ const MTMPage = () => {
   const [selectedLeg, setSelectedLeg] = useState<{
     legId: string;
     formula: any;
+    mtmFormula: any;
     startDate: Date;
     endDate: Date;
     quantity: number;
@@ -41,7 +42,9 @@ const MTMPage = () => {
     startDate: Date;
     endDate: Date;
     formula: any;
+    mtmFormula: any;
     calculatedPrice: number;
+    mtmCalculatedPrice: number;
     mtmValue: number;
     periodType?: PricingPeriodType;
   };
@@ -57,7 +60,9 @@ const MTMPage = () => {
       startDate: leg.pricingPeriodStart,
       endDate: leg.pricingPeriodEnd,
       formula: leg.formula,
+      mtmFormula: leg.mtmFormula,
       calculatedPrice: 0, // Will be populated by price calculation
+      mtmCalculatedPrice: 0, // Will be populated by MTM price calculation
     })) || []
   );
 
@@ -71,26 +76,43 @@ const MTMPage = () => {
       // Calculate MTM for each leg
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
-          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmValue: 0 };
+          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
           
           try {
-            const result = await calculateTradeLegPrice(
+            // Calculate trade price
+            const priceResult = await calculateTradeLegPrice(
               leg.formula,
               leg.startDate,
               leg.endDate
             );
             
-            const mtmValue = result.price * leg.quantity * (leg.buySell === 'buy' ? -1 : 1);
+            // Calculate MTM price (if MTM formula exists)
+            const mtmPriceResult = leg.mtmFormula 
+              ? await calculateTradeLegPrice(
+                  leg.mtmFormula,
+                  leg.startDate, 
+                  leg.endDate
+                )
+              : { price: priceResult.price, periodType: priceResult.periodType };
+            
+            // Calculate MTM value using the new formula
+            const mtmValue = calculateMTMValue(
+              priceResult.price,
+              mtmPriceResult.price,
+              leg.quantity,
+              leg.buySell as 'buy' | 'sell'
+            );
             
             return {
               ...leg,
-              calculatedPrice: result.price,
+              calculatedPrice: priceResult.price,
+              mtmCalculatedPrice: mtmPriceResult.price,
               mtmValue,
-              periodType: result.periodType
+              periodType: priceResult.periodType
             } as MTMPosition;
           } catch (error) {
             console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
-            return { ...leg, calculatedPrice: 0, mtmValue: 0 } as MTMPosition;
+            return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
           }
         })
       );
@@ -110,6 +132,7 @@ const MTMPage = () => {
     setSelectedLeg({
       legId: leg.legId,
       formula: leg.formula,
+      mtmFormula: leg.mtmFormula,
       startDate: leg.startDate,
       endDate: leg.endDate,
       quantity: leg.quantity
@@ -175,7 +198,8 @@ const MTMPage = () => {
                     <TableHead>Product</TableHead>
                     <TableHead>B/S</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Trade Price</TableHead>
+                    <TableHead className="text-right">MTM Price</TableHead>
                     <TableHead className="text-right">MTM Value</TableHead>
                     <TableHead>Period</TableHead>
                     <TableHead></TableHead>
@@ -196,6 +220,9 @@ const MTMPage = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         ${position.calculatedPrice.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ${position.mtmCalculatedPrice.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -239,6 +266,7 @@ const MTMPage = () => {
           onClose={() => setSelectedLeg(null)}
           tradeLegId={selectedLeg.legId}
           formula={selectedLeg.formula}
+          mtmFormula={selectedLeg.mtmFormula}
           startDate={selectedLeg.startDate}
           endDate={selectedLeg.endDate}
           quantity={selectedLeg.quantity}

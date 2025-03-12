@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { DatePicker } from '@/components/ui/date-picker';
+import FormulaBuilder from './FormulaBuilder';
+import { createEmptyFormula } from '@/utils/formulaUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PricingFormula } from '@/types/pricing';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -27,6 +32,8 @@ interface PaperLegFormState {
   price: number;
   quantity: number;
   broker: string;
+  formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
 }
 
 const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
@@ -37,7 +44,9 @@ const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
   pricingPeriodEnd: new Date(),
   price: 0,
   quantity: 0,
-  broker: broker
+  broker: broker,
+  formula: createEmptyFormula(),
+  mtmFormula: createEmptyFormula()
 });
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
@@ -59,7 +68,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     }
   };
 
-  const updateLeg = (index: number, field: keyof PaperLegFormState, value: string | Date | number) => {
+  const updateLeg = (index: number, field: keyof PaperLegFormState, value: string | Date | number | PricingFormula) => {
     const newLegs = [...legs];
     if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
       (newLegs[index] as any)[field] = value as Date;
@@ -69,10 +78,20 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
       (newLegs[index] as any)[field] = value as BuySell;
     } else if (field === 'product') {
       (newLegs[index] as any)[field] = value as Product;
+    } else if (field === 'formula' || field === 'mtmFormula') {
+      (newLegs[index] as any)[field] = value as PricingFormula;
     } else {
       (newLegs[index] as any)[field] = Number(value);
     }
     setLegs(newLegs);
+  };
+
+  const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
+    updateLeg(legIndex, 'formula', formula);
+  };
+
+  const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
+    updateLeg(legIndex, 'mtmFormula', formula);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,7 +120,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
         pricingPeriodEnd: legForm.pricingPeriodEnd,
         price: legForm.price,
         quantity: legForm.quantity,
-        broker: legForm.broker
+        broker: legForm.broker,
+        formula: legForm.formula,
+        mtmFormula: legForm.mtmFormula
       };
       
       return legData;
@@ -254,15 +275,39 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                 </div>
               </div>
 
+              <div className="border rounded-md p-4 bg-gray-50 mb-4">
+                <Tabs defaultValue="price">
+                  <TabsList className="w-full mb-4">
+                    <TabsTrigger value="price">Price Formula</TabsTrigger>
+                    <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="price">
+                    <FormulaBuilder 
+                      value={leg.formula || createEmptyFormula()} 
+                      onChange={(formula) => handleFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="mtm">
+                    <FormulaBuilder 
+                      value={leg.mtmFormula || createEmptyFormula()} 
+                      onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-${legIndex}-price`}>Price</Label>
+                  <Label htmlFor={`leg-${legIndex}-price`}>Fixed Price (Optional)</Label>
                   <Input 
                     id={`leg-${legIndex}-price`} 
                     type="number" 
                     value={leg.price} 
                     onChange={(e) => updateLeg(legIndex, 'price', e.target.value)} 
-                    required 
                   />
                 </div>
                 <div className="space-y-2">

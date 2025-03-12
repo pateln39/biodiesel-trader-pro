@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,6 +61,7 @@ const TradeEntryPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula ? leg.formula : null,
+          mtm_formula: leg.mtmFormula ? leg.mtmFormula : null,
         }));
         
         const { error: legsError } = await supabase
@@ -82,6 +84,8 @@ const TradeEntryPage = () => {
           price: tradeData.price,
           quantity: tradeData.quantity,
           broker: tradeData.broker,
+          pricing_formula: tradeData.formula ? tradeData.formula : null,
+          mtm_formula: tradeData.mtmFormula ? tradeData.mtmFormula : null,
         };
         
         const { error: legError } = await supabase

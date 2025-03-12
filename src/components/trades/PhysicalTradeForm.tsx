@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +12,7 @@ import { generateLegReference } from '@/utils/tradeUtils';
 import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula, convertToTraditionalFormat, convertToNewFormulaFormat } from '@/utils/formulaUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -36,6 +36,7 @@ interface LegFormState {
   pricingPeriodEnd: Date;
   pricingFormula: PricingComponent[];
   formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -55,7 +56,8 @@ const createDefaultLeg = (): LegFormState => ({
   pricingFormula: [
     { instrument: 'Argus UCOME', percentage: 100, adjustment: 0 }
   ],
-  formula: createEmptyFormula()
+  formula: createEmptyFormula(),
+  mtmFormula: createEmptyFormula()
 });
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
@@ -107,6 +109,12 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     setLegs(newLegs);
   };
 
+  const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
+    const newLegs = [...legs];
+    newLegs[legIndex].mtmFormula = formula;
+    setLegs(newLegs);
+  };
+
   const addLeg = () => {
     setLegs([...legs, createDefaultLeg()]);
   };
@@ -123,7 +131,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     const newLegs = [...legs];
     if (field === 'pricingFormula') {
       (newLegs[index] as any)[field] = value as PricingComponent[];
-    } else if (field === 'formula') {
+    } else if (field === 'formula' || field === 'mtmFormula') {
       (newLegs[index] as any)[field] = value as PricingFormula;
     } else if (
       field === 'loadingPeriodStart' || 
@@ -186,7 +194,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
         paymentTerm: legForm.paymentTerm,
         creditStatus: legForm.creditStatus,
         pricingFormula: [...legForm.pricingFormula],
-        formula: legForm.formula
+        formula: legForm.formula,
+        mtmFormula: legForm.mtmFormula
       };
       
       return legData;
@@ -460,12 +469,29 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                 </div>
               </div>
 
-              <div className="border rounded-md p-4 bg-gray-50">
-                <FormulaBuilder 
-                  value={leg.formula || createEmptyFormula()} 
-                  onChange={(formula) => handleFormulaChange(formula, legIndex)}
-                  tradeQuantity={leg.quantity || 0}
-                />
+              <div className="border rounded-md p-4 bg-gray-50 mb-4">
+                <Tabs defaultValue="price">
+                  <TabsList className="w-full mb-4">
+                    <TabsTrigger value="price">Price Formula</TabsTrigger>
+                    <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="price">
+                    <FormulaBuilder 
+                      value={leg.formula || createEmptyFormula()} 
+                      onChange={(formula) => handleFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="mtm">
+                    <FormulaBuilder 
+                      value={leg.mtmFormula || createEmptyFormula()} 
+                      onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
               
               <div className="hidden">
