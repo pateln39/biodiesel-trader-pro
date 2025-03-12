@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Eye } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
-import { calculateTradeLegPrice } from '@/utils/priceCalculationUtils';
+import { calculateTradeLegPrice, PricingPeriodType } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade } from '@/types';
 
@@ -31,12 +31,27 @@ const MTMPage = () => {
     (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
   );
 
+  // Define the type for MTM positions
+  type MTMPosition = {
+    legId: string;
+    tradeRef: string;
+    buySell: string;
+    product: string;
+    quantity: number;
+    startDate: Date;
+    endDate: Date;
+    formula: any;
+    calculatedPrice: number;
+    mtmValue: number;
+    periodType?: PricingPeriodType;
+  };
+
   // Flatten trade legs for MTM view
   const tradeLegs = physicalTrades.flatMap(trade => 
     trade.legs?.map(leg => ({
       legId: leg.id,
       tradeRef: trade.tradeReference,
-      buySell: leg.buySell,
+      buySell: leg.buySell.toLowerCase(), // Ensure we're using lowercase for consistency
       product: leg.product,
       quantity: leg.quantity,
       startDate: leg.pricingPeriodStart,
@@ -65,17 +80,17 @@ const MTMPage = () => {
               leg.endDate
             );
             
-            const mtmValue = result.price * leg.quantity * (leg.buySell === 'Buy' ? -1 : 1);
+            const mtmValue = result.price * leg.quantity * (leg.buySell === 'buy' ? -1 : 1);
             
             return {
               ...leg,
               calculatedPrice: result.price,
               mtmValue,
               periodType: result.periodType
-            };
+            } as MTMPosition;
           } catch (error) {
             console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
-            return { ...leg, calculatedPrice: 0, mtmValue: 0 };
+            return { ...leg, calculatedPrice: 0, mtmValue: 0 } as MTMPosition;
           }
         })
       );
@@ -172,8 +187,8 @@ const MTMPage = () => {
                       <TableCell>{position.tradeRef}</TableCell>
                       <TableCell>{position.product}</TableCell>
                       <TableCell>
-                        <Badge variant={position.buySell === 'Buy' ? 'default' : 'outline'}>
-                          {position.buySell}
+                        <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
+                          {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
