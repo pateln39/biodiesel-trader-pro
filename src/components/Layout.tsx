@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
@@ -41,7 +40,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="bg-primary text-primary-foreground shadow-md z-20">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -78,9 +76,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex flex-1">
-        {/* Sidebar */}
         <aside 
           className={cn(
             "fixed inset-y-0 left-0 pt-16 z-10 bg-card shadow-md transition-all duration-300 ease-in-out",
@@ -94,10 +90,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   <Collapsible
                     open={riskSubmenuOpen}
                     onOpenChange={toggleRiskSubmenu}
-                    className={cn(
-                      "rounded-md transition-colors",
-                      isRiskSection() ? "bg-primary/10" : ""
-                    )}
+                    className="rounded-md transition-colors"
                   >
                     <CollapsibleTrigger asChild>
                       <button className="flex items-center justify-between w-full p-3 font-medium">
@@ -147,7 +140,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </nav>
         </aside>
 
-        {/* Content */}
         <main 
           className={cn(
             "flex-1 p-6 bg-background overflow-auto transition-all duration-300 ease-in-out",
