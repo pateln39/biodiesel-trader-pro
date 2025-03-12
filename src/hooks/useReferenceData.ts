@@ -2,11 +2,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-interface ReferenceData {
-  id: string;
-  name: string;
-}
-
 export const useReferenceData = () => {
   const fetchCounterparties = async () => {
     const { data, error } = await supabase
