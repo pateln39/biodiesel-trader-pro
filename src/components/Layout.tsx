@@ -1,16 +1,22 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign } from 'lucide-react';
+import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
   
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  const isRiskSection = () => {
+    return location.pathname.startsWith('/risk');
   };
 
   const menuItems = [
@@ -31,6 +37,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   ];
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -84,26 +91,43 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             {menuItems.map((item, index) => (
               item.submenu ? (
                 <div key={index} className="space-y-1">
-                  <div className="flex items-center space-x-3 p-3 font-medium text-muted-foreground">
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </div>
-                  <div className="pl-8 space-y-1">
-                    {item.submenu.map((subItem) => (
-                      <Link
-                        key={subItem.path}
-                        to={subItem.path}
-                        className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
-                          isActive(subItem.path)
-                            ? 'bg-primary/10 text-primary'
-                            : 'hover:bg-primary/5'
-                        }`}
-                      >
-                        {subItem.icon}
-                        <span>{subItem.label}</span>
-                      </Link>
-                    ))}
-                  </div>
+                  <Collapsible
+                    open={riskSubmenuOpen}
+                    onOpenChange={toggleRiskSubmenu}
+                    className={cn(
+                      "rounded-md transition-colors",
+                      isRiskSection() ? "bg-primary/10" : ""
+                    )}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button className="flex items-center justify-between w-full p-3 font-medium">
+                        <div className="flex items-center space-x-3">
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </div>
+                        {riskSubmenuOpen ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronRight className="h-4 w-4" />
+                        }
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pl-8 space-y-1 animate-accordion-down">
+                      {item.submenu.map((subItem) => (
+                        <Link
+                          key={subItem.path}
+                          to={subItem.path}
+                          className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                            isActive(subItem.path)
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-primary/5'
+                          }`}
+                        >
+                          {subItem.icon}
+                          <span>{subItem.label}</span>
+                        </Link>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               ) : (
                 <Link
