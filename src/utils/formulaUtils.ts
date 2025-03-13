@@ -79,6 +79,42 @@ export const formulaToString = (tokens: FormulaToken[]): string => {
   }).join(' ');
 };
 
+// Enhanced formula display with better formatting for UI
+export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
+  if (!tokens || tokens.length === 0) {
+    return 'No formula';
+  }
+  
+  // Format the tokens with better spacing and symbols
+  return tokens.map((token, index) => {
+    switch (token.type) {
+      case 'instrument':
+        // Instruments are displayed more prominently
+        return token.value.replace('Argus ', '').replace('Platts ', '');
+      case 'percentage':
+        // Percentages are formatted with a % sign
+        return `${token.value}%`;
+      case 'fixedValue':
+        // Fixed values are formatted as numbers
+        return Number(token.value).toLocaleString('en-US', { 
+          minimumFractionDigits: 0, 
+          maximumFractionDigits: 2 
+        });
+      case 'operator':
+        // Operators are formatted with spaces for better readability
+        return ` ${token.value} `;
+      case 'openBracket':
+        // Open brackets are formatted with spaces after
+        return '( ';
+      case 'closeBracket':
+        // Close brackets are formatted with spaces before
+        return ' )';
+      default:
+        return token.value;
+    }
+  }).join('').replace(/\s{2,}/g, ' ').trim();
+};
+
 // Convert from formula format to pricingComponents format (for backward compatibility)
 export const convertToTraditionalFormat = (formula: PricingFormula): any[] => {
   if (!formula || !formula.tokens.length) {

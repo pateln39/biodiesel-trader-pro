@@ -9,7 +9,8 @@ import { formatDate } from '@/utils/tradeUtils';
 import { 
   Trade, 
   PhysicalTrade, 
-  PaperTrade 
+  PaperTrade,
+  FormulaToken
 } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -22,13 +23,6 @@ import {
   TableCell 
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +40,10 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  formulaToString, 
+  formulaToDisplayString
+} from '@/utils/formulaUtils';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -141,6 +139,26 @@ const TradesPage = () => {
     }
   };
 
+  // Helper function to display formula in a readable format
+  const renderFormula = (trade: PhysicalTrade | PaperTrade) => {
+    if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
+      return <span className="text-muted-foreground italic">No formula</span>;
+    }
+    
+    const displayText = formulaToDisplayString(trade.formula.tokens);
+    
+    return (
+      <div className="max-w-[200px] overflow-hidden">
+        <span 
+          className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
+          title={displayText}
+        >
+          {displayText}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -216,31 +234,7 @@ const TradesPage = () => {
                           <TableCell className="text-right">{trade.quantity} {trade.unit}</TableCell>
                           <TableCell>{trade.product}</TableCell>
                           <TableCell>{trade.counterparty}</TableCell>
-                          <TableCell>
-                            {trade.pricingFormula && trade.pricingFormula.length > 0 ? (
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="outline" size="sm">View Formula</Button>
-                                </DialogTrigger>
-                                <DialogContent className="w-80">
-                                  <DialogHeader>
-                                    <DialogTitle>Price Formula</DialogTitle>
-                                  </DialogHeader>
-                                  <div className="py-4">
-                                    <div className="text-sm">
-                                      {trade.pricingFormula.map((component, idx) => (
-                                        <div key={idx} className="mb-1">
-                                          {component.instrument}: {component.percentage}% {component.adjustment > 0 ? `+${component.adjustment}` : component.adjustment < 0 ? component.adjustment : ''}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
-                            ) : (
-                              <span className="text-muted-foreground">No formula</span>
-                            )}
-                          </TableCell>
+                          <TableCell>{renderFormula(trade)}</TableCell>
                           <TableCell>
                             <div className="relative">
                               <Textarea 
@@ -311,33 +305,35 @@ const TradesPage = () => {
                     </Button>
                   </div>
                 ) : (
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-muted/50">
-                        <th className="text-left p-3 font-medium">Reference</th>
-                        <th className="text-left p-3 font-medium">Broker</th>
-                        <th className="text-left p-3 font-medium">Instrument</th>
-                        <th className="text-right p-3 font-medium">Price</th>
-                        <th className="text-right p-3 font-medium">Quantity</th>
-                        <th className="text-left p-3 font-medium">Created</th>
-                        <th className="text-center p-3 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Broker</TableHead>
+                        <TableHead>Instrument</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead>Price Formula</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {paperTrades.length > 0 ? (
                         paperTrades.map((trade) => (
-                          <tr key={trade.id} className="border-t hover:bg-muted/50">
-                            <td className="p-3">
+                          <TableRow key={trade.id}>
+                            <TableCell>
                               <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
                                 {trade.tradeReference}
                               </Link>
-                            </td>
-                            <td className="p-3">{trade.broker}</td>
-                            <td className="p-3">{trade.instrument}</td>
-                            <td className="p-3 text-right">{trade.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td className="p-3 text-right">{trade.quantity} MT</td>
-                            <td className="p-3">{formatDate(trade.createdAt)}</td>
-                            <td className="p-3 text-center">
+                            </TableCell>
+                            <TableCell>{trade.broker}</TableCell>
+                            <TableCell>{trade.instrument}</TableCell>
+                            <TableCell className="text-right">{trade.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-right">{trade.quantity} MT</TableCell>
+                            <TableCell>{renderFormula(trade)}</TableCell>
+                            <TableCell>{formatDate(trade.createdAt)}</TableCell>
+                            <TableCell className="text-center">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="sm">Actions</Button>
@@ -355,18 +351,18 @@ const TradesPage = () => {
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                             No paper trades found.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 )}
               </div>
             </TabsContent>
