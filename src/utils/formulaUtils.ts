@@ -89,7 +89,7 @@ export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
   return tokens.map((token, index) => {
     switch (token.type) {
       case 'instrument':
-        // Show full instrument name with prefix (removed the prefix stripping code)
+        // Show full instrument name with prefix
         return token.value;
       case 'percentage':
         // Percentages are formatted with a % sign
@@ -115,29 +115,30 @@ export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
   }).join('').replace(/\s{2,}/g, ' ').trim();
 };
 
-// Convert from formula format to pricingComponents format (for backward compatibility)
-export const convertToTraditionalFormat = (formula: PricingFormula): any[] => {
-  if (!formula || !formula.tokens.length) {
-    return [{
-      instrument: 'Argus UCOME',
-      percentage: 100,
-      adjustment: 0
-    }];
+// Check if the data is already in formula format
+export const isFormulaFormat = (data: any): boolean => {
+  return data && 
+         Array.isArray(data.tokens) && 
+         data.tokens.length > 0 && 
+         data.tokens[0].type !== undefined;
+};
+
+// Convert any formula format to the proper PricingFormula object
+export const ensureFormulaFormat = (formulaData: any): PricingFormula => {
+  // If it's already in the expected format, return it
+  if (isFormulaFormat(formulaData)) {
+    return formulaData as PricingFormula;
   }
-
-  const components = formula.tokens
-    .filter(token => token.type === 'instrument')
-    .map(token => ({
-      instrument: token.value,
-      percentage: 100,
-      adjustment: 0
-    }));
-
-  return components.length ? components : [{
-    instrument: 'Argus UCOME',
-    percentage: 100,
-    adjustment: 0
-  }];
+  
+  // If it's an array of PricingComponents, convert to new format
+  if (Array.isArray(formulaData) && 
+      formulaData.length > 0 && 
+      'instrument' in formulaData[0]) {
+    return convertToNewFormulaFormat(formulaData);
+  }
+  
+  // Default case: return empty formula
+  return createEmptyFormula();
 };
 
 // Helper to convert between old pricingFormula format and new formula format

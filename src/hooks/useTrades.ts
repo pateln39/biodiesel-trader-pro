@@ -14,29 +14,9 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingComponent
+  PricingFormula
 } from '@/types';
-import { convertToNewFormulaFormat } from '@/utils/formulaUtils';
-
-// Helper to safely parse pricingFormula from DB
-const parsePricingFormula = (rawFormula: any): PricingComponent[] => {
-  if (!rawFormula) return [];
-  
-  // If it's already an array with the right structure
-  if (Array.isArray(rawFormula) && 
-      rawFormula.length > 0 && 
-      typeof rawFormula[0] === 'object' && 
-      'instrument' in rawFormula[0]) {
-    return rawFormula as PricingComponent[];
-  }
-  
-  // Default formula if parsing fails
-  return [{ 
-    instrument: 'Argus UCOME', 
-    percentage: 100, 
-    adjustment: 0 
-  }];
-};
+import { createEmptyFormula, ensureFormulaFormat } from '@/utils/formulaUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -91,9 +71,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          pricingFormula: parsePricingFormula(firstLeg.pricing_formula),
-          formula: firstLeg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.pricing_formula)) : undefined,
-          mtmFormula: firstLeg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.mtm_formula)) : undefined,
+          formula: firstLeg.pricing_formula ? ensureFormulaFormat(firstLeg.pricing_formula) : createEmptyFormula(),
+          mtmFormula: firstLeg.mtm_formula ? ensureFormulaFormat(firstLeg.mtm_formula) : createEmptyFormula(),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -111,9 +90,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            pricingFormula: parsePricingFormula(leg.pricing_formula),
-            formula: leg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.pricing_formula)) : undefined,
-            mtmFormula: leg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.mtm_formula)) : undefined
+            formula: leg.pricing_formula ? ensureFormulaFormat(leg.pricing_formula) : createEmptyFormula(),
+            mtmFormula: leg.mtm_formula ? ensureFormulaFormat(leg.mtm_formula) : createEmptyFormula()
           }))
         };
         return physicalTrade;
@@ -132,8 +110,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           quantity: firstLeg.quantity,
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-          formula: firstLeg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.pricing_formula)) : undefined,
-          mtmFormula: firstLeg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.mtm_formula)) : undefined
+          formula: firstLeg.pricing_formula ? ensureFormulaFormat(firstLeg.pricing_formula) : createEmptyFormula(),
+          mtmFormula: firstLeg.mtm_formula ? ensureFormulaFormat(firstLeg.mtm_formula) : createEmptyFormula()
         };
         return paperTrade;
       }
