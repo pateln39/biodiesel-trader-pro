@@ -1,4 +1,3 @@
-
 import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -111,19 +110,134 @@ export const calculateAveragePrice = (prices: { date: Date; price: number }[]): 
   return sum / prices.length;
 };
 
-// Evaluates a token in the formula
-const evaluateToken = (
-  token: FormulaToken, 
+// Parse and evaluate a formula token
+const evaluateFormula = (
+  tokens: FormulaToken[],
   instrumentPrices: Record<Instrument, number>
 ): number => {
-  switch (token.type) {
-    case 'instrument':
-      return instrumentPrices[token.value as Instrument] || 0;
-    case 'fixedValue':
-      return parseFloat(token.value);
-    default:
+  if (!tokens || tokens.length === 0) return 0;
+  
+  // Process tokens to handle implied multiplication, etc.
+  let position = 0;
+  
+  // Parse expression with operator precedence (addition, subtraction)
+  const parseExpression = (): number => {
+    let left = parseTerm();
+    
+    while (position < tokens.length && 
+          (tokens[position].type === 'operator' && 
+           (tokens[position].value === '+' || tokens[position].value === '-'))) {
+      const operator = tokens[position].value;
+      position++;
+      const right = parseTerm();
+      
+      if (operator === '+') {
+        left += right;
+      } else if (operator === '-') {
+        left -= right;
+      }
+    }
+    
+    return left;
+  };
+  
+  // Parse term (multiplication, division)
+  const parseTerm = (): number => {
+    let left = parseFactor();
+    
+    while (position < tokens.length && 
+          (tokens[position].type === 'operator' && 
+           (tokens[position].value === '*' || tokens[position].value === '/'))) {
+      const operator = tokens[position].value;
+      position++;
+      const right = parseFactor();
+      
+      if (operator === '*') {
+        left *= right;
+      } else if (operator === '/') {
+        if (right !== 0) {
+          left /= right;
+        } else {
+          console.error('Division by zero in formula');
+        }
+      }
+    }
+    
+    // Check for percentage after a term
+    if (position < tokens.length && tokens[position].type === 'percentage') {
+      const percentValue = parseFloat(tokens[position].value) / 100;
+      left *= percentValue;
+      position++;
+    }
+    
+    return left;
+  };
+  
+  // Parse factor (value, parenthesized expression)
+  const parseFactor = (): number => {
+    if (position >= tokens.length) {
       return 0;
-  }
+    }
+    
+    const token = tokens[position];
+    
+    if (token.type === 'openBracket') {
+      position++; // Skip open bracket
+      const value = parseExpression();
+      
+      if (position < tokens.length && tokens[position].type === 'closeBracket') {
+        position++; // Skip close bracket
+      }
+      
+      // Check for percentage after parenthesis
+      if (position < tokens.length && tokens[position].type === 'percentage') {
+        const percentValue = parseFloat(tokens[position].value) / 100;
+        position++;
+        return value * percentValue;
+      }
+      
+      return value;
+    } else if (token.type === 'instrument') {
+      position++;
+      const instrumentValue = instrumentPrices[token.value as Instrument] || 0;
+      
+      // Check for percentage after instrument
+      if (position < tokens.length && tokens[position].type === 'percentage') {
+        const percentValue = parseFloat(tokens[position].value) / 100;
+        position++;
+        return instrumentValue * percentValue;
+      }
+      
+      return instrumentValue;
+    } else if (token.type === 'fixedValue') {
+      position++;
+      const value = parseFloat(token.value);
+      
+      // Check for percentage after fixed value
+      if (position < tokens.length && tokens[position].type === 'percentage') {
+        const percentValue = parseFloat(tokens[position].value) / 100;
+        position++;
+        return value * percentValue;
+      }
+      
+      return value;
+    } else if (token.type === 'percentage') {
+      position++;
+      return parseFloat(token.value) / 100;
+    } else if (token.type === 'operator' && (token.value === '+' || token.value === '-')) {
+      // Unary plus or minus
+      position++;
+      const factor = parseFactor();
+      return token.value === '-' ? -factor : factor;
+    }
+    
+    // Skip unknown tokens
+    position++;
+    return 0;
+  };
+  
+  const result = parseExpression();
+  return result;
 };
 
 // Apply formula to calculate the final price
@@ -133,36 +247,12 @@ export const applyPricingFormula = (
 ): number => {
   if (!formula || !formula.tokens || formula.tokens.length === 0) return 0;
   
-  // For now, we're implementing a simple formula evaluation
-  // that supports instruments and fixed values with basic operators
-  let result = 0;
-  let currentOp = '+';
-  
-  for (let i = 0; i < formula.tokens.length; i++) {
-    const token = formula.tokens[i];
-    
-    if (token.type === 'operator') {
-      currentOp = token.value;
-    } else {
-      const value = evaluateToken(token, instrumentPrices);
-      
-      if (currentOp === '+') {
-        result += value;
-      } else if (currentOp === '-') {
-        result -= value;
-      } else if (currentOp === '*') {
-        result *= value;
-      } else if (currentOp === '/') {
-        if (value !== 0) {
-          result /= value;
-        } else {
-          console.error('Division by zero in formula');
-        }
-      }
-    }
+  try {
+    return evaluateFormula(formula.tokens, instrumentPrices);
+  } catch (error) {
+    console.error('Error evaluating formula:', error);
+    return 0;
   }
-  
-  return result;
 };
 
 // Calculate trade leg price based on its formula and date range
