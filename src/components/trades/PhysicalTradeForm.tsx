@@ -210,6 +210,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     onSubmit(tradeData);
   };
 
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -419,6 +423,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                     type="number" 
                     value={leg.quantity} 
                     onChange={(e) => updateLeg(legIndex, 'quantity', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
                     required 
                   />
                 </div>
@@ -430,24 +435,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                     type="number" 
                     value={leg.tolerance} 
                     onChange={(e) => updateLeg(legIndex, 'tolerance', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
                     required 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2">
-                  <Label>Loading Period Start</Label>
-                  <DatePicker 
-                    date={leg.loadingPeriodStart}
-                    setDate={(date) => updateLeg(legIndex, 'loadingPeriodStart', date)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Loading Period End</Label>
-                  <DatePicker 
-                    date={leg.loadingPeriodEnd}
-                    setDate={(date) => updateLeg(legIndex, 'loadingPeriodEnd', date)}
                   />
                 </div>
               </div>
@@ -469,6 +458,23 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label>Loading Period Start</Label>
+                  <DatePicker 
+                    date={leg.loadingPeriodStart}
+                    setDate={(date) => updateLeg(legIndex, 'loadingPeriodStart', date)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Loading Period End</Label>
+                  <DatePicker 
+                    date={leg.loadingPeriodEnd}
+                    setDate={(date) => updateLeg(legIndex, 'loadingPeriodEnd', date)}
+                  />
+                </div>
+              </div>
+
               <div className="border rounded-md p-4 bg-gray-50 mb-4">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
@@ -477,6 +483,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                   </TabsList>
                   
                   <TabsContent value="price">
+                    <div className="mb-2">
+                      <Label className="font-medium">Price Formula</Label>
+                    </div>
                     <FormulaBuilder 
                       value={leg.formula || createEmptyFormula()} 
                       onChange={(formula) => handleFormulaChange(formula, legIndex)}
@@ -485,6 +494,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                   </TabsContent>
                   
                   <TabsContent value="mtm">
+                    <div className="mb-2">
+                      <Label className="font-medium">MTM Pricing Formula</Label>
+                    </div>
                     <FormulaBuilder 
                       value={leg.mtmFormula || createEmptyFormula()} 
                       onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}

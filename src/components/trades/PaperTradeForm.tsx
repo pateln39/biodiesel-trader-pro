@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -135,6 +134,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     };
 
     onSubmit(tradeData);
+  };
+
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
   };
 
   return (
@@ -283,6 +286,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                   </TabsList>
                   
                   <TabsContent value="price">
+                    <div className="mb-2">
+                      <Label className="font-medium">Price Formula</Label>
+                    </div>
                     <FormulaBuilder 
                       value={leg.formula || createEmptyFormula()} 
                       onChange={(formula) => handleFormulaChange(formula, legIndex)}
@@ -291,6 +297,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                   </TabsContent>
                   
                   <TabsContent value="mtm">
+                    <div className="mb-2">
+                      <Label className="font-medium">MTM Pricing Formula</Label>
+                    </div>
                     <FormulaBuilder 
                       value={leg.mtmFormula || createEmptyFormula()} 
                       onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
@@ -308,6 +317,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                     type="number" 
                     value={leg.price} 
                     onChange={(e) => updateLeg(legIndex, 'price', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
                   />
                 </div>
                 <div className="space-y-2">
@@ -317,6 +327,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                     type="number" 
                     value={leg.quantity} 
                     onChange={(e) => updateLeg(legIndex, 'quantity', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
                     required 
                   />
                 </div>
