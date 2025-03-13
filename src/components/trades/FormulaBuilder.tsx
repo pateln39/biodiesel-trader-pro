@@ -204,7 +204,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </CardContent>
       </Card>
       
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Operators & brackets */}
         <div className="space-y-2 flex-1 min-w-[150px]">
           <Label>Operators & Brackets</Label>
@@ -344,8 +344,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </div>
       </div>
       
-      {/* Exposure preview */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Exposure preview - stacked vertically */}
+      <div className="mt-4 space-y-4">
         {/* Physical exposure */}
         <div>
           <Label className="text-base font-medium">Physical Exposure</Label>
@@ -354,7 +354,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               if (exposure === 0) return null;
               
               return (
-                <Badge key={instrument} variant="outline" className="text-sm py-1 px-3">
+                <Badge 
+                  key={instrument} 
+                  variant="outline" 
+                  className={`text-sm py-1 px-3 ${exposure > 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {instrument}: {formatExposure(exposure)} MT
                 </Badge>
               );
@@ -366,7 +370,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           </div>
         </div>
         
-        {/* Pricing exposure */}
+        {/* Pricing exposure - now below physical exposure */}
         <div>
           <Label className="text-base font-medium">Pricing Exposure</Label>
           <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
@@ -374,7 +378,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               if (exposure === 0) return null;
               
               return (
-                <Badge key={instrument} variant="outline" className="text-sm py-1 px-3">
+                <Badge 
+                  key={instrument} 
+                  variant="outline" 
+                  className={`text-sm py-1 px-3 ${exposure > 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {instrument}: {formatExposure(exposure)} MT
                 </Badge>
               );

@@ -36,7 +36,12 @@ export const isOpenBracket = (token: FormulaToken): boolean => token.type === 'o
 // Helper function to check if a token is a close bracket
 export const isCloseBracket = (token: FormulaToken): boolean => token.type === 'closeBracket';
 
+// Helper function to check if token is a value (instrument, fixed value, or percentage)
+export const isValue = (token: FormulaToken): boolean => 
+  isInstrument(token) || isFixedValue(token) || isPercentage(token);
+
 // Enhanced function to determine if we can add a token type at the current position
+// with simplified rules that only enforce basic mathematical validity
 export const canAddTokenType = (tokens: FormulaToken[], type: FormulaToken['type']): boolean => {
   if (tokens.length === 0) {
     // First token can be instrument, fixed value, or open bracket
@@ -47,29 +52,25 @@ export const canAddTokenType = (tokens: FormulaToken[], type: FormulaToken['type
   
   switch (type) {
     case 'instrument':
-      // Can add instrument after operator or open bracket
-      return isOperator(lastToken) || isOpenBracket(lastToken);
-    
     case 'fixedValue':
-      // Can add fixed value after operator or open bracket
-      return isOperator(lastToken) || isOpenBracket(lastToken);
+      // Can add value after operator or open bracket or another value (implicit multiplication)
+      return true;
     
     case 'operator':
-      // Can add operator after instrument, fixed value, percentage, or close bracket
-      return isInstrument(lastToken) || isFixedValue(lastToken) || isPercentage(lastToken) || isCloseBracket(lastToken);
+      // Cannot add an operator after another operator or an open bracket
+      return !isOperator(lastToken) && !isOpenBracket(lastToken);
     
     case 'percentage':
-      // Can add percentage after instrument, fixed value, or close bracket
+      // Can add percentage after any value token or close bracket
       return isInstrument(lastToken) || isFixedValue(lastToken) || isCloseBracket(lastToken);
     
     case 'openBracket':
-      // Can add open bracket after operator or another open bracket
+      // Can add open bracket anytime except after a value or close bracket (would require * operator)
       return isOperator(lastToken) || isOpenBracket(lastToken);
     
     case 'closeBracket': {
-      // Can add close bracket after instrument, fixed value, percentage, or another close bracket
-      // Also need to check that there's at least one unclosed open bracket
-      if (!(isInstrument(lastToken) || isFixedValue(lastToken) || isPercentage(lastToken) || isCloseBracket(lastToken))) {
+      // Cannot add close bracket after operator or open bracket
+      if (isOperator(lastToken) || isOpenBracket(lastToken)) {
         return false;
       }
       
