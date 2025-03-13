@@ -36,10 +36,10 @@ export const isOpenBracket = (token: FormulaToken): boolean => token.type === 'o
 // Helper function to check if a token is a close bracket
 export const isCloseBracket = (token: FormulaToken): boolean => token.type === 'closeBracket';
 
-// Helper function to determine if we can add a token type at the current position
+// Enhanced function to determine if we can add a token type at the current position
 export const canAddTokenType = (tokens: FormulaToken[], type: FormulaToken['type']): boolean => {
   if (tokens.length === 0) {
-    // First token can be instrument, fixed value, percentage, or open bracket
+    // First token can be instrument, fixed value, or open bracket
     return ['instrument', 'fixedValue', 'openBracket'].includes(type);
   }
 
@@ -49,27 +49,48 @@ export const canAddTokenType = (tokens: FormulaToken[], type: FormulaToken['type
     case 'instrument':
       // Can add instrument after operator or open bracket
       return isOperator(lastToken) || isOpenBracket(lastToken);
+    
     case 'fixedValue':
       // Can add fixed value after operator or open bracket
       return isOperator(lastToken) || isOpenBracket(lastToken);
+    
     case 'operator':
       // Can add operator after instrument, fixed value, percentage, or close bracket
       return isInstrument(lastToken) || isFixedValue(lastToken) || isPercentage(lastToken) || isCloseBracket(lastToken);
+    
     case 'percentage':
       // Can add percentage after instrument, fixed value, or close bracket
       return isInstrument(lastToken) || isFixedValue(lastToken) || isCloseBracket(lastToken);
+    
     case 'openBracket':
       // Can add open bracket after operator or another open bracket
-      return isOperator(lastToken) || isOpenBracket(lastToken) || tokens.length === 0;
-    case 'closeBracket':
+      return isOperator(lastToken) || isOpenBracket(lastToken);
+    
+    case 'closeBracket': {
       // Can add close bracket after instrument, fixed value, percentage, or another close bracket
-      return isInstrument(lastToken) || isFixedValue(lastToken) || isPercentage(lastToken) || isCloseBracket(lastToken);
+      // Also need to check that there's at least one unclosed open bracket
+      if (!(isInstrument(lastToken) || isFixedValue(lastToken) || isPercentage(lastToken) || isCloseBracket(lastToken))) {
+        return false;
+      }
+      
+      // Count open and close brackets to ensure we don't have too many close brackets
+      let openCount = 0;
+      let closeCount = 0;
+      
+      for (const token of tokens) {
+        if (isOpenBracket(token)) openCount++;
+        if (isCloseBracket(token)) closeCount++;
+      }
+      
+      return openCount > closeCount;
+    }
+    
     default:
       return false;
   }
 };
 
-// Calculate exposures for a formula
+// Calculate exposures for a formula with implicit multiplication handling
 export const calculateExposures = (
   tokens: FormulaToken[],
   tradeQuantity: number,
@@ -77,29 +98,30 @@ export const calculateExposures = (
 ): ExposureResult => {
   const result = createEmptyExposureResult();
   
-  // For now, implement a simplified calculation
-  // We'll assume a single instrument for physical exposure
-  // In a real implementation, you would need to parse the full formula
-  
-  // Find the primary instrument (first one in the formula)
-  const primaryInstrument = tokens.find(token => token.type === 'instrument');
-  
-  if (primaryInstrument) {
-    const instrument = primaryInstrument.value as Instrument;
-    const sign = buySell === 'buy' ? -1 : 1;
-    
-    // Set physical exposure for the primary instrument
-    result.physical[instrument] = sign * tradeQuantity;
-    
-    // For pricing exposure, include all instruments in the formula
-    tokens.forEach(token => {
-      if (token.type === 'instrument') {
-        const pricingInstrument = token.value as Instrument;
-        // Use opposite sign for pricing exposure
-        result.pricing[pricingInstrument] = -sign * tradeQuantity;
-      }
-    });
+  if (!tokens.length || tradeQuantity === 0) {
+    return result;
   }
+  
+  // Find all instruments in the formula
+  const instrumentTokens = tokens.filter(token => token.type === 'instrument');
+  
+  if (instrumentTokens.length === 0) {
+    return result;
+  }
+  
+  // For physical exposure, we'll use the first instrument in the formula
+  const primaryInstrument = instrumentTokens[0].value as Instrument;
+  const sign = buySell === 'buy' ? -1 : 1;
+  
+  // Set physical exposure for the primary instrument
+  result.physical[primaryInstrument] = sign * tradeQuantity;
+  
+  // For pricing exposure, include all instruments in the formula
+  instrumentTokens.forEach(token => {
+    const pricingInstrument = token.value as Instrument;
+    // Use opposite sign for pricing exposure
+    result.pricing[pricingInstrument] = -sign * tradeQuantity;
+  });
   
   return result;
 };

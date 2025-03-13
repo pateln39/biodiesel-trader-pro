@@ -69,7 +69,7 @@ export const createEmptyFormula = (): PricingFormula => {
   };
 };
 
-// Convert formula to string representation
+// Convert formula to string representation with proper spacing
 export const formulaToString = (tokens: FormulaToken[]): string => {
   return tokens.map(token => {
     if (token.type === 'percentage') {

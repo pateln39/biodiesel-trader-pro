@@ -149,6 +149,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     return token.value;
   };
 
+  // Format large numbers with commas and no decimal places
+  const formatExposure = (value: number): string => {
+    return Math.round(value).toLocaleString('en-US');
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -199,85 +204,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </CardContent>
       </Card>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Instrument selector */}
-        <div className="space-y-2">
-          <Label>Add Instrument</Label>
-          <div className="flex gap-2">
-            <Select 
-              value={selectedInstrument} 
-              onValueChange={(value) => setSelectedInstrument(value as Instrument)}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select instrument" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                <SelectItem value="Argus RME">Argus RME</SelectItem>
-                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              type="button" 
-              onClick={handleAddInstrument} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'instrument')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Fixed value input */}
-        <div className="space-y-2">
-          <Label>Add Fixed Value</Label>
-          <div className="flex gap-2">
-            <Input 
-              type="number"
-              value={fixedValue}
-              onChange={(e) => setFixedValue(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              type="button" 
-              onClick={handleAddFixedValue} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'fixedValue')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        {/* Percentage value input */}
-        <div className="space-y-2">
-          <Label>Add Percentage</Label>
-          <div className="flex gap-2">
-            <Input 
-              type="number"
-              value={percentageValue}
-              onChange={(e) => setPercentageValue(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              type="button" 
-              onClick={handleAddPercentage} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'percentage')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Operators and brackets */}
-      <div className="flex flex-wrap gap-2">
-        <div className="space-y-2 w-full">
+      <div className="flex flex-wrap gap-4">
+        {/* Operators & brackets */}
+        <div className="space-y-2 flex-1 min-w-[150px]">
           <Label>Operators & Brackets</Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button 
               type="button" 
               onClick={() => handleAddOperator('+')} 
@@ -336,6 +267,83 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </div>
       </div>
       
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Instrument selector */}
+        <div className="space-y-2">
+          <Label>Add Instrument</Label>
+          <div className="flex gap-2">
+            <Select 
+              value={selectedInstrument} 
+              onValueChange={(value) => setSelectedInstrument(value as Instrument)}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
+                <SelectItem value="Argus RME">Argus RME</SelectItem>
+                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
+                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              type="button" 
+              onClick={handleAddInstrument} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'instrument')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Fixed value input */}
+        <div className="space-y-2">
+          <Label>Add Fixed Value</Label>
+          <div className="flex gap-2">
+            <Input 
+              type="number"
+              value={fixedValue}
+              onChange={(e) => setFixedValue(e.target.value)}
+              className="flex-1"
+            />
+            <Button 
+              type="button" 
+              onClick={handleAddFixedValue} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'fixedValue')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Percentage value input */}
+        <div className="space-y-2">
+          <Label>Add Percentage</Label>
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 flex items-center">
+              <Input 
+                type="number"
+                value={percentageValue}
+                onChange={(e) => setPercentageValue(e.target.value)}
+                className="flex-1"
+              />
+              <div className="pl-2 pr-1">%</div>
+            </div>
+            <Button 
+              type="button" 
+              onClick={handleAddPercentage} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'percentage')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      
       {/* Exposure preview */}
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Physical exposure */}
@@ -345,10 +353,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
             {Object.entries(value.exposures.physical).map(([instrument, exposure]) => {
               if (exposure === 0) return null;
               
-              const adjustedExposure = exposure; // Already calculated with tradeQuantity
               return (
                 <Badge key={instrument} variant="outline" className="text-sm py-1 px-3">
-                  {instrument}: {adjustedExposure.toFixed(2)} MT
+                  {instrument}: {formatExposure(exposure)} MT
                 </Badge>
               );
             })}
@@ -366,10 +373,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
             {Object.entries(value.exposures.pricing).map(([instrument, exposure]) => {
               if (exposure === 0) return null;
               
-              const adjustedExposure = exposure; // Already calculated with tradeQuantity
               return (
                 <Badge key={instrument} variant="outline" className="text-sm py-1 px-3">
-                  {instrument}: {adjustedExposure.toFixed(2)} MT
+                  {instrument}: {formatExposure(exposure)} MT
                 </Badge>
               );
             })}
