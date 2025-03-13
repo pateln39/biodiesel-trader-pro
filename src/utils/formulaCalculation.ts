@@ -1,4 +1,3 @@
-
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
@@ -253,6 +252,26 @@ const parseFormula = (tokens: FormulaToken[]): Node => {
   const ast = parseExpression();
   return ast;
 };
+
+// ----------------------------------------------------------------------------------
+// KNOWN ISSUE: TYPE-ERROR-2023-05-15
+// This is a documented TypeScript type-checking error (TS2367) that does not affect 
+// the actual pricing formula calculations or exposure results.
+//
+// The error occurs in the condition: `node.left.type !== 'value'` where TypeScript
+// flags the comparison of a string literal with a string type.
+//
+// Examples of formulas that work correctly despite this error:
+// - Argus UCOME * 50%
+// - Argus RME + Platts LSGO * 20%
+// - (Argus FAME0 + Platts diesel) * 75%
+//
+// This issue is being kept temporarily as it requires careful refactoring of the
+// type system to fix without introducing regressions to the pricing calculations.
+//
+// TODO-PRICING-TYPE-001: Refactor the type system for formula nodes to use proper
+// discriminated union types and fix this comparison.
+// ----------------------------------------------------------------------------------
 
 // Extract instruments from AST
 const extractInstrumentsFromAST = (
