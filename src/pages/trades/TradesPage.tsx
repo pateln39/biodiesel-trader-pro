@@ -148,7 +148,7 @@ const TradesPage = () => {
     const displayText = formulaToDisplayString(trade.formula.tokens);
     
     return (
-      <div className="max-w-[200px] overflow-hidden">
+      <div className="max-w-[300px] overflow-hidden">
         <span 
           className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
           title={displayText}

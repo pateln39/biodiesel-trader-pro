@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,7 +38,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const [fixedValue, setFixedValue] = useState<string>('0');
   const [percentageValue, setPercentageValue] = useState<string>('0');
 
-  // Recalculate exposures when tokens or trade quantity changes
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
       const newExposures = calculateExposures(value.tokens, tradeQuantity, buySell);
@@ -149,7 +147,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     return token.value;
   };
 
-  // Format large numbers with commas and no decimal places
   const formatExposure = (value: number): string => {
     return Math.round(value).toLocaleString('en-US');
   };
@@ -205,7 +202,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Operators & brackets */}
         <div className="space-y-2 flex-1 min-w-[150px]">
           <Label>Operators & Brackets</Label>
           <div className="flex gap-2 flex-wrap">
@@ -268,7 +264,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Instrument selector */}
         <div className="space-y-2">
           <Label>Add Instrument</Label>
           <div className="flex gap-2">
@@ -298,7 +293,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           </div>
         </div>
         
-        {/* Fixed value input */}
         <div className="space-y-2">
           <Label>Add Fixed Value</Label>
           <div className="flex gap-2">
@@ -319,7 +313,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           </div>
         </div>
         
-        {/* Percentage value input */}
         <div className="space-y-2">
           <Label>Add Percentage</Label>
           <div className="flex gap-2 items-center">
@@ -344,9 +337,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </div>
       </div>
       
-      {/* Exposure preview - stacked vertically */}
       <div className="mt-4 space-y-4">
-        {/* Physical exposure */}
         <div>
           <Label className="text-base font-medium">Physical Exposure</Label>
           <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
@@ -370,7 +361,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           </div>
         </div>
         
-        {/* Pricing exposure - now below physical exposure */}
         <div>
           <Label className="text-base font-medium">Pricing Exposure</Label>
           <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">

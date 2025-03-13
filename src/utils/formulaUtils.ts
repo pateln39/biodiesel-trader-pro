@@ -89,8 +89,8 @@ export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
   return tokens.map((token, index) => {
     switch (token.type) {
       case 'instrument':
-        // Instruments are displayed more prominently
-        return token.value.replace('Argus ', '').replace('Platts ', '');
+        // Show full instrument name with prefix (removed the prefix stripping code)
+        return token.value;
       case 'percentage':
         // Percentages are formatted with a % sign
         return `${token.value}%`;
