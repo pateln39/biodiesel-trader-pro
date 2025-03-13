@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,23 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -44,6 +62,9 @@ const TradesPage = () => {
   const [activeTab, setActiveTab] = useState<"physical" | "paper">("physical");
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
+  const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
   const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
@@ -78,6 +99,46 @@ const TradesPage = () => {
 
   const handleCommentBlur = (tradeId: string) => {
     debouncedSaveComment(tradeId, comments[tradeId] || '');
+  };
+
+  const handleDeleteClick = (tradeId: string) => {
+    setDeletingTradeId(tradeId);
+    setShowDeleteConfirmation(true);
+  };
+
+  const cancelDelete = () => {
+    setDeletingTradeId(null);
+    setShowDeleteConfirmation(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingTradeId) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Delete the parent trade - this should cascade delete the trade legs due to foreign key relationship
+      const { error } = await supabase
+        .from('parent_trades')
+        .delete()
+        .eq('id', deletingTradeId);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success('Trade deleted successfully');
+      refetchTrades();
+    } catch (error) {
+      console.error('Error deleting trade:', error);
+      toast.error('Failed to delete trade', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeletingTradeId(null);
+      setShowDeleteConfirmation(false);
+    }
   };
 
   return (
@@ -198,9 +259,23 @@ const TradesPage = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Link to={`/trades/${trade.id}`}>
-                              <Button variant="ghost" size="sm">View</Button>
-                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">Actions</Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <Link to={`/trades/${trade.id}`}>
+                                  <DropdownMenuItem>View Details</DropdownMenuItem>
+                                </Link>
+                                <DropdownMenuItem 
+                                  className="text-red-600 focus:text-red-600" 
+                                  onClick={() => handleDeleteClick(trade.id)}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Delete Trade
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))
@@ -263,9 +338,23 @@ const TradesPage = () => {
                             <td className="p-3 text-right">{trade.quantity} MT</td>
                             <td className="p-3">{formatDate(trade.createdAt)}</td>
                             <td className="p-3 text-center">
-                              <Link to={`/trades/${trade.id}`}>
-                                <Button variant="ghost" size="sm">View</Button>
-                              </Link>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">Actions</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <Link to={`/trades/${trade.id}`}>
+                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  </Link>
+                                  <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600" 
+                                    onClick={() => handleDeleteClick(trade.id)}
+                                  >
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Delete Trade
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </td>
                           </tr>
                         ))
@@ -284,6 +373,32 @@ const TradesPage = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the trade from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete} 
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</>
+              ) : (
+                <>Delete</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
