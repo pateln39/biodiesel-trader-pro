@@ -1,7 +1,6 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle, MessageSquare } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -27,23 +26,28 @@ import {
   DialogTrigger,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogFooter
+  DialogTitle
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return (...args: any[]) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+};
 
 const TradesPage = () => {
   const { trades, loading, error, refetchTrades } = useTrades();
   const [activeTab, setActiveTab] = useState<"physical" | "paper">("physical");
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
 
-  // Filter trades based on the active tab
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
   const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
 
-  // Show error toast if query fails
   useEffect(() => {
     if (error) {
       toast.error('Failed to load trades', {
@@ -52,15 +56,28 @@ const TradesPage = () => {
     }
   }, [error]);
 
+  const debouncedSaveComment = useCallback(
+    debounce((tradeId: string, comment: string) => {
+      setSavingComments(prev => ({ ...prev, [tradeId]: true }));
+      
+      setTimeout(() => {
+        console.log(`Saving comment for trade ${tradeId}: ${comment}`);
+        toast.success('Comment saved');
+        setSavingComments(prev => ({ ...prev, [tradeId]: false }));
+      }, 500);
+    }, 1000),
+    []
+  );
+
   const handleCommentChange = (tradeId: string, comment: string) => {
     setComments(prev => ({
       ...prev,
       [tradeId]: comment
     }));
-    
-    // Here you would typically save the comment to your backend
-    // For now we'll just show a toast notification
-    toast.success('Comment saved');
+  };
+
+  const handleCommentBlur = (tradeId: string) => {
+    debouncedSaveComment(tradeId, comments[tradeId] || '');
   };
 
   return (
@@ -164,26 +181,21 @@ const TradesPage = () => {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Card className="p-2 min-w-[150px]">
+                            <div className="relative">
                               <Textarea 
-                                placeholder="Add your comments here..."
+                                placeholder="Add comments..."
                                 value={comments[trade.id] || ''}
-                                onChange={(e) => setComments(prev => ({
-                                  ...prev,
-                                  [trade.id]: e.target.value
-                                }))}
-                                className="min-h-[60px] text-sm resize-y"
-                                rows={2}
+                                onChange={(e) => handleCommentChange(trade.id, e.target.value)}
+                                onBlur={() => handleCommentBlur(trade.id)}
+                                className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
+                                rows={1}
                               />
-                              <div className="flex justify-end mt-2">
-                                <Button 
-                                  size="sm"
-                                  onClick={() => handleCommentChange(trade.id, comments[trade.id] || '')}
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </Card>
+                              {savingComments[trade.id] && (
+                                <div className="absolute top-1 right-1">
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <Link to={`/trades/${trade.id}`}>
