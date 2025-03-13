@@ -1,9 +1,9 @@
 
 // Empty the mock data file, as we'll be using Supabase for real data
 import { 
+  Trade, 
   PhysicalTrade, 
-  PaperTrade, 
-  Trade,
+  PaperTrade,
   Movement, 
   AuditLog,
   ExposureReportItem
@@ -16,3 +16,4 @@ export const mockTrades: Trade[] = [];
 export const mockMovements: Movement[] = [];
 export const mockAuditLogs: AuditLog[] = [];
 export const mockExposureReport: ExposureReportItem[] = [];
+

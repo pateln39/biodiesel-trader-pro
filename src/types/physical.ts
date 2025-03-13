@@ -1,6 +1,7 @@
 
-import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, ParentTrade, Trade } from './common';
+import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus } from './trade';
 import { PricingComponent, PricingFormula } from './pricing';
+import { ParentTrade, Trade } from './common';
 
 export type PhysicalTradeType = "spot" | "term";
 
