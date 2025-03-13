@@ -22,7 +22,17 @@ import {
   TableCell 
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 
 const TradesPage = () => {
   const { trades, loading, error, refetchTrades } = useTrades();
@@ -130,13 +140,15 @@ const TradesPage = () => {
                           <TableCell>{trade.counterparty}</TableCell>
                           <TableCell>
                             {trade.pricingFormula && trade.pricingFormula.length > 0 ? (
-                              <Popover>
-                                <PopoverTrigger asChild>
+                              <Dialog>
+                                <DialogTrigger asChild>
                                   <Button variant="outline" size="sm">View Formula</Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80">
-                                  <div className="space-y-2">
-                                    <h4 className="font-medium">Price Formula</h4>
+                                </DialogTrigger>
+                                <DialogContent className="w-80">
+                                  <DialogHeader>
+                                    <DialogTitle>Price Formula</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="py-4">
                                     <div className="text-sm">
                                       {trade.pricingFormula.map((component, idx) => (
                                         <div key={idx} className="mb-1">
@@ -145,43 +157,33 @@ const TradesPage = () => {
                                       ))}
                                     </div>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
+                                </DialogContent>
+                              </Dialog>
                             ) : (
                               <span className="text-muted-foreground">No formula</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MessageSquare className="h-4 w-4 mr-2" />
-                                  {comments[trade.id] ? 'Edit' : 'Add'}
+                            <Card className="p-2 min-w-[150px]">
+                              <Textarea 
+                                placeholder="Add your comments here..."
+                                value={comments[trade.id] || ''}
+                                onChange={(e) => setComments(prev => ({
+                                  ...prev,
+                                  [trade.id]: e.target.value
+                                }))}
+                                className="min-h-[60px] text-sm resize-y"
+                                rows={2}
+                              />
+                              <div className="flex justify-end mt-2">
+                                <Button 
+                                  size="sm"
+                                  onClick={() => handleCommentChange(trade.id, comments[trade.id] || '')}
+                                >
+                                  Save
                                 </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-80">
-                                <div className="space-y-2">
-                                  <h4 className="font-medium">Trade Comments</h4>
-                                  <Textarea 
-                                    placeholder="Add your comments here..."
-                                    value={comments[trade.id] || ''}
-                                    onChange={(e) => setComments(prev => ({
-                                      ...prev,
-                                      [trade.id]: e.target.value
-                                    }))}
-                                    className="min-h-[100px]"
-                                  />
-                                  <div className="flex justify-end">
-                                    <Button 
-                                      size="sm"
-                                      onClick={() => handleCommentChange(trade.id, comments[trade.id] || '')}
-                                    >
-                                      Save
-                                    </Button>
-                                  </div>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                              </div>
+                            </Card>
                           </TableCell>
                           <TableCell className="text-center">
                             <Link to={`/trades/${trade.id}`}>
