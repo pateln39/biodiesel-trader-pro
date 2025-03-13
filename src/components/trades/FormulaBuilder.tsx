@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Percent, BracketsCurly } from 'lucide-react';
+import { Plus, X, Percent, Brackets } from 'lucide-react';
 import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { 
   createInstrumentToken,

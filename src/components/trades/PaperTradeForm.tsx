@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product } from '@/types';
+import { BuySell, Product, Instrument } from '@/types';
 import { PaperParentTrade, PaperTradeLeg } from '@/types/paper';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +25,7 @@ interface PaperTradeFormProps {
 interface PaperLegFormState {
   buySell: BuySell;
   product: Product;
-  instrument: string;
+  instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
   price: number;
@@ -98,7 +97,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     e.preventDefault();
 
     const parentTrade: PaperParentTrade = {
-      id: crypto.randomUUID(),
       tradeReference,
       tradeType: 'paper',
       counterparty,
@@ -112,10 +110,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
       const legData: PaperTradeLeg = {
         id: crypto.randomUUID(),
         legReference,
-        parentTradeId: parentTrade.id,
+        parentTradeId: parentTrade.tradeReference,
         buySell: legForm.buySell,
         product: legForm.product,
-        instrument: legForm.instrument,
+        instrument: legForm.instrument as Instrument,
         pricingPeriodStart: legForm.pricingPeriodStart,
         pricingPeriodEnd: legForm.pricingPeriodEnd,
         price: legForm.price,

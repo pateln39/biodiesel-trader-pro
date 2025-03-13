@@ -14,7 +14,8 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingComponent
+  PricingComponent,
+  Instrument
 } from '@/types';
 import { convertToNewFormulaFormat } from '@/utils/formulaUtils';
 
@@ -71,8 +72,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
       if (parent.trade_type === 'physical' && firstLeg) {
         // Create physical trade
         const physicalTrade: PhysicalTrade = {
-          id: parent.id,
           tradeReference: parent.trade_reference,
+          id: parent.id,
           tradeType: 'physical', 
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
@@ -126,8 +127,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
           tradeType: 'paper',
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
+          counterparty: parent.counterparty,
           broker: firstLeg.broker || '',
-          instrument: firstLeg.instrument || '',
+          instrument: (firstLeg.instrument || 'Argus UCOME') as Instrument,
           price: firstLeg.price || 0,
           quantity: firstLeg.quantity,
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),

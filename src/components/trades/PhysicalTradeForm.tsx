@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingComponent, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg } from '@/types';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingComponent, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg, Instrument } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -91,7 +91,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     if (field === 'instrument') {
       newLegs[legIndex].pricingFormula[componentIndex] = { 
         ...newLegs[legIndex].pricingFormula[componentIndex], 
-        [field]: value as string 
+        [field]: value as Instrument 
       };
     } else {
       newLegs[legIndex].pricingFormula[componentIndex] = { 
@@ -164,7 +164,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     e.preventDefault();
 
     const parentTrade: PhysicalParentTrade = {
-      id: crypto.randomUUID(),
       tradeReference,
       tradeType: 'physical',
       physicalType,
@@ -179,7 +178,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
       const legData: PhysicalTradeLeg = {
         id: crypto.randomUUID(),
         legReference,
-        parentTradeId: parentTrade.id,
+        parentTradeId: parentTrade.tradeReference,
         buySell: legForm.buySell,
         product: legForm.product,
         sustainability: legForm.sustainability,

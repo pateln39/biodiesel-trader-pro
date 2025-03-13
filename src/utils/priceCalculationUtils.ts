@@ -308,13 +308,13 @@ export const calculateTradeLegPrice = async (
     'Platts LSGO': 0,
     'Platts diesel': 0,
   };
-  
-  const priceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }> = {
+
+  const priceData: Record<Instrument, { average: number; prices: { date: Date; price: number; }[] }> = {
     'Argus UCOME': { average: 0, prices: [] },
     'Argus RME': { average: 0, prices: [] },
     'Argus FAME0': { average: 0, prices: [] },
     'Platts LSGO': { average: 0, prices: [] },
-    'Platts diesel': { average: 0, prices: [] },
+    'Platts diesel': { average: 0, prices: [] }
   };
 
   // Track which instruments are used in the formula for exposure calculation
@@ -337,7 +337,7 @@ export const calculateTradeLegPrice = async (
       const average = calculateAveragePrice(prices);
       
       instrumentPrices[instrument] = average;
-      priceDetails[instrument] = { average, prices };
+      priceData[instrument] = { average, prices };
     }
   }
   
@@ -347,7 +347,7 @@ export const calculateTradeLegPrice = async (
   // Only return price details for instruments actually used in the formula
   const filteredPriceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }> = 
     Object.fromEntries(
-      Object.entries(priceDetails)
+      Object.entries(priceData)
         .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
     ) as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   
