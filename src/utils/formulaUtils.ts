@@ -69,6 +69,44 @@ export const createEmptyFormula = (): PricingFormula => {
   };
 };
 
+// Ensure pricing formula has complete exposure structure
+export const ensureCompleteExposures = (formula: PricingFormula | undefined): PricingFormula => {
+  if (!formula) {
+    return createEmptyFormula();
+  }
+  
+  // Create a complete default exposure structure
+  const defaultExposures = createEmptyExposureResult();
+  
+  // If formula has no exposures property or it's incomplete, merge with defaults
+  if (!formula.exposures) {
+    return {
+      ...formula,
+      exposures: defaultExposures
+    };
+  }
+  
+  // Merge physical exposures, preserving existing values
+  const mergedPhysical: Record<Instrument, number> = {
+    ...defaultExposures.physical,
+    ...(formula.exposures.physical || {})
+  };
+  
+  // Merge pricing exposures, preserving existing values
+  const mergedPricing: Record<Instrument, number> = {
+    ...defaultExposures.pricing,
+    ...(formula.exposures.pricing || {})
+  };
+  
+  return {
+    ...formula,
+    exposures: {
+      physical: mergedPhysical,
+      pricing: mergedPricing
+    }
+  };
+};
+
 // Convert formula to string representation with proper spacing
 export const formulaToString = (tokens: FormulaToken[]): string => {
   return tokens.map(token => {

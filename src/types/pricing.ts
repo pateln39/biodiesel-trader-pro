@@ -23,3 +23,14 @@ export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
 }
+
+// Utility type to handle potentially incomplete data from the database
+export type PartialExposureResult = {
+  physical?: Partial<Record<Instrument, number>>;
+  pricing?: Partial<Record<Instrument, number>>;
+};
+
+export type PartialPricingFormula = {
+  tokens: FormulaToken[];
+  exposures?: PartialExposureResult;
+};
