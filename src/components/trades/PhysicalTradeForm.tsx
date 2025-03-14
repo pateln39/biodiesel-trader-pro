@@ -318,18 +318,20 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-${legIndex}-unit`}>Unit</Label>
+                  <Label htmlFor={`leg-${legIndex}-credit-status`}>Credit Status</Label>
                   <Select 
-                    value={leg.unit} 
-                    onValueChange={(value) => updateLeg(legIndex, 'unit', value as Unit)}
+                    value={leg.creditStatus} 
+                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value)}
                   >
-                    <SelectTrigger id={`leg-${legIndex}-unit`}>
-                      <SelectValue placeholder="Select unit" />
+                    <SelectTrigger id={`leg-${legIndex}-credit-status`}>
+                      <SelectValue placeholder="Select credit status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MT">Metric Tons (MT)</SelectItem>
-                      <SelectItem value="KG">Kilograms (KG)</SelectItem>
-                      <SelectItem value="L">Liters (L)</SelectItem>
+                      {creditStatusOptions.map((status) => (
+                        <SelectItem key={status} value={status.toLowerCase()}>
+                          {status}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -355,25 +357,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
-                  <Label htmlFor={`leg-${legIndex}-credit-status`}>Credit Status</Label>
-                  <Select 
-                    value={leg.creditStatus} 
-                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value)}
-                  >
-                    <SelectTrigger id={`leg-${legIndex}-credit-status`}>
-                      <SelectValue placeholder="Select credit status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {creditStatusOptions.map((status) => (
-                        <SelectItem key={status} value={status.toLowerCase()}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-quantity`}>Quantity</Label>
                   <Input 
                     id={`leg-${legIndex}-quantity`} 
@@ -383,6 +366,23 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                     onFocus={handleNumberInputFocus}
                     required 
                   />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-unit`}>Unit</Label>
+                  <Select 
+                    value={leg.unit} 
+                    onValueChange={(value) => updateLeg(legIndex, 'unit', value as Unit)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-unit`}>
+                      <SelectValue placeholder="Select unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MT">Metric Tons (MT)</SelectItem>
+                      <SelectItem value="KG">Kilograms (KG)</SelectItem>
+                      <SelectItem value="L">Liters (L)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
