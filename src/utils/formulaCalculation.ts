@@ -407,14 +407,16 @@ export const calculateExposures = (
     return result;
   }
   
-  // Find physical exposure - first instrument in the formula
+  // UPDATED: Find physical exposure - first instrument in the formula
+  // This determines which product is being physically traded
   const physicalInstrument = tokens.find(token => token.type === 'instrument');
   
   if (!physicalInstrument) {
     return result;
   }
   
-  // Set physical exposure - buy is negative, sell is positive
+  // UPDATED: Set physical exposure - buy is positive, sell is negative
+  // This follows the business rule that buying physical = positive exposure, selling = negative
   const physicalExposureSign = buySell === 'buy' ? 1 : -1;
   result.physical[physicalInstrument.value as Instrument] = physicalExposureSign * tradeQuantity;
   
@@ -423,16 +425,9 @@ export const calculateExposures = (
     const ast = parseFormula(tokens);
     const instrumentWeights = extractInstrumentsFromAST(ast);
     
-    // Apply pricing exposure - buy is negative, sell is positive (opposite of physical)
+    // UPDATED: Apply pricing exposure - buy is negative, sell is positive (opposite of physical)
+    // This follows the business rule that buying physical means you're short the pricing component
     const pricingExposureSign = buySell === 'buy' ? -1 : 1;
-    
-    // Calculate total weight for normalization
-    let totalWeight = 0;
-    for (const weight of Object.values(instrumentWeights)) {
-      totalWeight += Math.abs(weight);
-    }
-    
-    if (totalWeight === 0) totalWeight = 1; // Prevent division by zero
     
     // Apply pricing exposure with proper weights and signs
     for (const [instrument, weight] of Object.entries(instrumentWeights)) {
