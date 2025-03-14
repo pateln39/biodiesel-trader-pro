@@ -382,63 +382,97 @@ export const calculateExposures = (
   buySell: 'buy' | 'sell' = 'buy',
   selectedProduct?: string
 ): ExposureResult => {
-  const result = createEmptyExposureResult();
+  // We now separate the physical and pricing calculation
+  return {
+    // Calculate physical exposure based on the formula tokens
+    // This is used when this function is called with MTM formula
+    physical: calculatePhysicalExposure(tokens, tradeQuantity, buySell),
+    // Calculate pricing exposure based on the formula tokens
+    // This is used when this function is called with pricing formula
+    pricing: calculatePricingExposure(tokens, tradeQuantity, buySell)
+  };
+};
+
+// Calculate physical exposure from formula tokens
+export const calculatePhysicalExposure = (
+  tokens: FormulaToken[],
+  tradeQuantity: number,
+  buySell: 'buy' | 'sell' = 'buy'
+): Record<Instrument, number> => {
+  // Start with empty physical exposure
+  const physicalExposure: Record<Instrument, number> = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Platts LSGO': 0,
+    'Platts diesel': 0,
+  };
   
   if (!tokens.length || tradeQuantity === 0) {
-    return result;
+    return physicalExposure;
   }
   
-  // For physical exposure, use the selectedProduct if provided
-  // Otherwise, fall back to first instrument in formula (for backward compatibility)
-  let physicalInstrument: string;
-  
-  if (selectedProduct) {
-    // Map the product name to the instrument name format
-    // This mapping is necessary because products and instruments might have different naming conventions
-    const productToInstrumentMap: Record<string, Instrument> = {
-      'UCOME': 'Argus UCOME',
-      'RME': 'Argus RME',
-      'FAME0': 'Argus FAME0',
-      'UCOME-5': 'Argus UCOME', // Map to closest match
-      'RME DC': 'Argus RME',    // Map to closest match
-    };
-    
-    physicalInstrument = productToInstrumentMap[selectedProduct] || selectedProduct;
-  } else {
-    // Fallback to first instrument in formula (legacy behavior)
-    const firstInstrumentToken = tokens.find(token => token.type === 'instrument');
-    if (!firstInstrumentToken) return result;
-    physicalInstrument = firstInstrumentToken.value;
-  }
-  
-  // Set physical exposure - buy is positive, sell is negative
-  const physicalExposureSign = buySell === 'buy' ? 1 : -1;
-  
-  // Check if the physicalInstrument exists in our result structure
-  if (physicalInstrument in result.physical) {
-    result.physical[physicalInstrument as Instrument] = physicalExposureSign * tradeQuantity;
-  }
-  
-  // For pricing exposure, parse the formula as before
   try {
     const ast = parseFormula(tokens);
     const instrumentWeights = extractInstrumentsFromAST(ast);
     
-    // Apply pricing exposure - buy is negative, sell is positive (opposite of physical)
+    // Physical exposure sign depends on buy/sell direction
+    // Buy is positive physical exposure, sell is negative physical exposure
+    const physicalExposureSign = buySell === 'buy' ? 1 : -1;
+    
+    // Apply physical exposure based on formula weights
+    for (const [instrument, weight] of Object.entries(instrumentWeights)) {
+      if (instrument in physicalExposure) {
+        // Apply the proportional exposure based on weight
+        physicalExposure[instrument as Instrument] = physicalExposureSign * tradeQuantity * weight;
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating physical exposures:', error);
+  }
+  
+  return physicalExposure;
+};
+
+// Calculate pricing exposure from formula tokens
+export const calculatePricingExposure = (
+  tokens: FormulaToken[],
+  tradeQuantity: number,
+  buySell: 'buy' | 'sell' = 'buy'
+): Record<Instrument, number> => {
+  // Start with empty pricing exposure
+  const pricingExposure: Record<Instrument, number> = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Platts LSGO': 0,
+    'Platts diesel': 0,
+  };
+  
+  if (!tokens.length || tradeQuantity === 0) {
+    return pricingExposure;
+  }
+  
+  try {
+    const ast = parseFormula(tokens);
+    const instrumentWeights = extractInstrumentsFromAST(ast);
+    
+    // Pricing exposure sign is opposite of physical for buy, same for sell
+    // Buy is negative pricing exposure, sell is positive pricing exposure
     const pricingExposureSign = buySell === 'buy' ? -1 : 1;
     
     // Apply pricing exposure with proper weights and signs
     for (const [instrument, weight] of Object.entries(instrumentWeights)) {
-      if (instrument in result.pricing) {
+      if (instrument in pricingExposure) {
         // Apply the proportional exposure based on weight
-        result.pricing[instrument as Instrument] = pricingExposureSign * tradeQuantity * weight;
+        pricingExposure[instrument as Instrument] = pricingExposureSign * tradeQuantity * weight;
       }
     }
   } catch (error) {
-    console.error('Error calculating exposures:', error);
+    console.error('Error calculating pricing exposures:', error);
   }
   
-  return result;
+  return pricingExposure;
 };
 
 // Convert formula to readable string

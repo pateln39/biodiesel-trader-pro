@@ -18,7 +18,9 @@ import {
 } from '@/utils/formulaUtils';
 import { 
   canAddTokenType, 
-  calculateExposures 
+  calculateExposures,
+  calculatePhysicalExposure,
+  calculatePricingExposure
 } from '@/utils/formulaCalculation';
 
 interface FormulaBuilderProps {
@@ -27,6 +29,8 @@ interface FormulaBuilderProps {
   tradeQuantity: number;
   buySell?: 'buy' | 'sell';
   selectedProduct?: string;
+  formulaType: 'price' | 'mtm';
+  otherFormula?: PricingFormula;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
@@ -34,7 +38,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   onChange,
   tradeQuantity,
   buySell = 'buy',
-  selectedProduct
+  selectedProduct,
+  formulaType,
+  otherFormula
 }) => {
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
   const [fixedValue, setFixedValue] = useState<string>('0');
@@ -42,15 +48,40 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
-      const newExposures = calculateExposures(value.tokens, tradeQuantity, buySell, selectedProduct);
-      if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
-        onChange({
-          ...value,
-          exposures: newExposures
-        });
+      if (formulaType === 'price') {
+        const pricingExposure = calculatePricingExposure(value.tokens, tradeQuantity, buySell);
+        const physicalExposure = otherFormula && otherFormula.tokens.length > 0 
+          ? calculatePhysicalExposure(otherFormula.tokens, tradeQuantity, buySell)
+          : createEmptyExposureResult().physical;
+        
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
+          onChange({
+            ...value,
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
+          });
+        }
+      } 
+      else if (formulaType === 'mtm') {
+        const physicalExposure = calculatePhysicalExposure(value.tokens, tradeQuantity, buySell);
+        const pricingExposure = otherFormula && otherFormula.tokens.length > 0
+          ? calculatePricingExposure(otherFormula.tokens, tradeQuantity, buySell)
+          : createEmptyExposureResult().pricing;
+        
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
+          onChange({
+            ...value,
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
+          });
+        }
       }
     }
-  }, [value.tokens, tradeQuantity, buySell, selectedProduct]);
+  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType]);
 
   const handleAddInstrument = () => {
     if (!canAddTokenType(value.tokens, 'instrument')) return;
@@ -156,7 +187,9 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="text-base font-medium">Pricing Formula</Label>
+        <Label className="text-base font-medium">
+          {formulaType === 'price' ? 'Pricing Formula' : 'MTM Formula'}
+        </Label>
         <Button 
           type="button" 
           variant="outline" 

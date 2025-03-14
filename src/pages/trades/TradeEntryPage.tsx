@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,7 +61,7 @@ const TradeEntryPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
+          mtm_formula: leg.mtmFormula, // Save the MTM formula
         }));
         
         const { error: legsError } = await supabase
@@ -71,12 +72,12 @@ const TradeEntryPage = () => {
           throw new Error(`Error inserting trade legs: ${legsError.message}`);
         }
       } else {
-        // For paper trades, we have to extract leg data differently
+        // For paper trades, extract and save both pricing and MTM formulas
         const legData = {
-          leg_reference: generateTradeReference() + '-a', // Default leg reference
+          leg_reference: generateTradeReference() + '-a',
           parent_trade_id: parentTradeId,
-          buy_sell: tradeData.buySell,  // Use buySell from the paper trade data
-          product: tradeData.product,   // Use product from the paper trade data
+          buy_sell: tradeData.buySell,
+          product: tradeData.product,
           instrument: tradeData.instrument,
           pricing_period_start: tradeData.pricingPeriodStart,
           pricing_period_end: tradeData.pricingPeriodEnd,
@@ -84,7 +85,7 @@ const TradeEntryPage = () => {
           quantity: tradeData.quantity,
           broker: tradeData.broker,
           pricing_formula: tradeData.formula,
-          mtm_formula: tradeData.mtmFormula,
+          mtm_formula: tradeData.mtmFormula, // Save the MTM formula
         };
         
         const { error: legError } = await supabase

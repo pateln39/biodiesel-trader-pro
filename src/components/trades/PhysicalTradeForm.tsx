@@ -449,6 +449,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
+                      formulaType="price"
+                      otherFormula={leg.mtmFormula || createEmptyFormula()}
                     />
                   </TabsContent>
                   
@@ -462,6 +464,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
+                      formulaType="mtm"
+                      otherFormula={leg.formula || createEmptyFormula()}
                     />
                   </TabsContent>
                 </Tabs>

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -295,6 +296,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
+                      formulaType="price"
+                      otherFormula={leg.mtmFormula || createEmptyFormula()}
                     />
                   </TabsContent>
                   
@@ -308,6 +311,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
+                      formulaType="mtm"
+                      otherFormula={leg.formula || createEmptyFormula()}
                     />
                   </TabsContent>
                 </Tabs>
