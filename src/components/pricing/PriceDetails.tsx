@@ -12,7 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { calculateTradeLegPrice, calculateMTMValue, PricingPeriodType } from '@/utils/priceCalculationUtils';
+import { 
+  calculateTradeLegPrice, 
+  calculateMTMPrice, 
+  calculateMTMValue, 
+  PricingPeriodType 
+} from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
 import { Instrument, PricingFormula } from '@/types';
 
@@ -49,10 +54,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   
   const [mtmPriceData, setMtmPriceData] = useState<{
     price: number;
-    periodType: PricingPeriodType;
     priceDetails: Record<
       Instrument,
-      { average: number; prices: { date: Date; price: number }[] }
+      { price: number; date: Date | null }
     >;
   } | null>(null);
   
@@ -64,7 +68,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
       setLoading(true);
 
       try {
-        // Fetch trade price data
+        // Fetch trade price data (using pricing period)
         const tradePriceResult = await calculateTradeLegPrice(
           formula,
           startDate,
@@ -72,24 +76,19 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         );
         setPriceData(tradePriceResult);
         
-        // Fetch MTM price data if mtmFormula exists
-        if (mtmFormula) {
-          const mtmPriceResult = await calculateTradeLegPrice(
-            mtmFormula,
-            startDate,
-            endDate
-          );
-          setMtmPriceData(mtmPriceResult);
+        // Fetch MTM price data using most recent prices
+        const formulaToUse = mtmFormula || formula;
+        const mtmPriceResult = await calculateMTMPrice(formulaToUse);
+        setMtmPriceData(mtmPriceResult);
           
-          // Calculate MTM value
-          const mtmVal = calculateMTMValue(
-            tradePriceResult.price,
-            mtmPriceResult.price,
-            quantity,
-            'buy' // Assuming buy for now, should be passed in from props
-          );
-          setMtmValue(mtmVal);
-        }
+        // Calculate MTM value
+        const mtmVal = calculateMTMValue(
+          tradePriceResult.price,
+          mtmPriceResult.price,
+          quantity,
+          'buy' // Assuming buy for now, should be passed in from props
+        );
+        setMtmValue(mtmVal);
       } catch (error) {
         console.error('Error fetching price details:', error);
       } finally {
@@ -103,9 +102,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   // Get the list of instruments used in the formula
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails) return [];
-    return Object.keys(data.priceDetails).filter(
-      (key) => data.priceDetails[key].prices.length > 0
-    );
+    return Object.keys(data.priceDetails);
   };
 
   const tradeInstruments = priceData ? getInstrumentsFromPriceData(priceData) : [];
@@ -274,25 +271,12 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                     <Card>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium">
-                          Pricing Period
+                          Pricing Type
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-sm">
-                          {format(startDate, 'MMM d, yyyy')} -{' '}
-                          {format(endDate, 'MMM d, yyyy')}
-                        </div>
-                        <Badge
-                          className="mt-1"
-                          variant={
-                            mtmPriceData.periodType === 'historical'
-                              ? 'default'
-                              : mtmPriceData.periodType === 'current'
-                              ? 'secondary'
-                              : 'outline'
-                          }
-                        >
-                          {mtmPriceData.periodType}
+                        <Badge className="mt-1">
+                          Latest Available Price
                         </Badge>
                       </CardContent>
                     </Card>
@@ -325,42 +309,27 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                 {instrument}
                               </CardTitle>
                               <div className="font-medium">
-                                Average:{' '}
+                                Latest Price:{' '}
                                 <span className="font-bold">
                                   $
                                   {mtmPriceData.priceDetails[
                                     instrument as Instrument
-                                  ].average.toFixed(2)}
+                                  ].price.toFixed(2)}
                                 </span>
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent className="p-0">
-                            <div className="max-h-60 overflow-y-auto">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead className="text-right">
-                                      Price
-                                    </TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {mtmPriceData.priceDetails[
-                                    instrument as Instrument
-                                  ].prices.map((price, index) => (
-                                    <TableRow key={index}>
-                                      <TableCell>
-                                        {format(price.date, 'MMM d, yyyy')}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        ${price.price.toFixed(2)}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                          <CardContent className="p-3">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Price Date:</span>
+                              <span>
+                                {mtmPriceData.priceDetails[instrument as Instrument].date 
+                                  ? format(mtmPriceData.priceDetails[instrument as Instrument].date as Date, 'MMM d, yyyy') 
+                                  : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-2">
+                              <p>This price represents the most recent available price for {instrument}.</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -389,7 +358,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                               <TableCell className="text-right">${priceData?.price.toFixed(2)}</TableCell>
                             </TableRow>
                             <TableRow>
-                              <TableCell className="font-medium">MTM Price</TableCell>
+                              <TableCell className="font-medium">MTM Price (Latest)</TableCell>
                               <TableCell className="text-right">${mtmPriceData.price.toFixed(2)}</TableCell>
                             </TableRow>
                             <TableRow>

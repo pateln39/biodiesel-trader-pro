@@ -11,7 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Eye } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
-import { calculateTradeLegPrice, calculateMTMValue, PricingPeriodType } from '@/utils/priceCalculationUtils';
+import { 
+  calculateTradeLegPrice, 
+  calculateMTMPrice, 
+  calculateMTMValue, 
+  PricingPeriodType 
+} from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade } from '@/types';
 
@@ -79,21 +84,16 @@ const MTMPage = () => {
           if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
           
           try {
-            // Calculate trade price
+            // Calculate trade price (using pricing period)
             const priceResult = await calculateTradeLegPrice(
               leg.formula,
               leg.startDate,
               leg.endDate
             );
             
-            // Calculate MTM price (if MTM formula exists)
-            const mtmPriceResult = leg.mtmFormula 
-              ? await calculateTradeLegPrice(
-                  leg.mtmFormula,
-                  leg.startDate, 
-                  leg.endDate
-                )
-              : { price: priceResult.price, periodType: priceResult.periodType };
+            // Calculate MTM price using most recent prices (not based on pricing period)
+            const mtmFormula = leg.mtmFormula || leg.formula;
+            const mtmPriceResult = await calculateMTMPrice(mtmFormula);
             
             // Calculate MTM value using the new formula
             const mtmValue = calculateMTMValue(

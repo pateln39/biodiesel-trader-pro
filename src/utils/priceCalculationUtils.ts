@@ -103,6 +103,69 @@ export const fetchForwardPrices = async (
   }));
 };
 
+// New function to fetch the most recent price for a given instrument
+export const fetchMostRecentPrice = async (
+  instrument: Instrument
+): Promise<{ date: Date; price: number } | null> => {
+  // Find the instrument_id based on the display_name
+  const { data: instrumentData, error: instrumentError } = await supabase
+    .from('pricing_instruments')
+    .select('id')
+    .eq('display_name', instrument)
+    .single();
+
+  if (instrumentError || !instrumentData) {
+    console.error(`Error finding instrument ${instrument}:`, instrumentError);
+    return null;
+  }
+
+  const instrumentId = instrumentData.id;
+
+  // Try to get the most recent historical price first
+  const { data: histData, error: histError } = await supabase
+    .from('historical_prices')
+    .select('price_date, price')
+    .eq('instrument_id', instrumentId)
+    .order('price_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // If no historical price is found, check forward prices
+  if (!histData && !histError) {
+    const { data: fwdData, error: fwdError } = await supabase
+      .from('forward_prices')
+      .select('forward_month, price')
+      .eq('instrument_id', instrumentId)
+      .order('forward_month', { ascending: true }) // Get the closest forward month
+      .limit(1)
+      .maybeSingle();
+
+    if (fwdError || !fwdData) {
+      console.error(`No recent price found for instrument ${instrument}`);
+      return null;
+    }
+
+    return {
+      date: new Date(fwdData.forward_month),
+      price: fwdData.price
+    };
+  }
+
+  if (histError) {
+    console.error('Error fetching most recent price:', histError);
+    return null;
+  }
+
+  if (histData) {
+    return {
+      date: new Date(histData.price_date),
+      price: histData.price
+    };
+  }
+
+  return null;
+};
+
 // Calculate average price for a collection of price points
 export const calculateAveragePrice = (prices: { date: Date; price: number }[]): number => {
   if (prices.length === 0) return 0;
@@ -327,6 +390,75 @@ export const calculateTradeLegPrice = async (
   return {
     price: finalPrice,
     periodType,
+    priceDetails: filteredPriceDetails
+  };
+};
+
+// New function to calculate MTM price using most recent prices
+export const calculateMTMPrice = async (
+  formula: PricingFormula,
+): Promise<{
+  price: number;
+  priceDetails: Record<Instrument, { price: number; date: Date | null }>;
+}> => {
+  if (!formula || !formula.tokens || formula.tokens.length === 0) {
+    return {
+      price: 0,
+      priceDetails: {}
+    };
+  }
+  
+  const instrumentPrices: Record<Instrument, number> = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Platts LSGO': 0,
+    'Platts diesel': 0,
+  };
+  
+  const priceDetails: Record<Instrument, { price: number; date: Date | null }> = {
+    'Argus UCOME': { price: 0, date: null },
+    'Argus RME': { price: 0, date: null },
+    'Argus FAME0': { price: 0, date: null },
+    'Platts LSGO': { price: 0, date: null },
+    'Platts diesel': { price: 0, date: null },
+  };
+
+  // Track which instruments are used in the formula
+  const usedInstruments = new Set<Instrument>();
+
+  // Collect most recent price data for each instrument in the formula
+  for (const token of formula.tokens) {
+    if (token.type === 'instrument') {
+      const instrument = token.value as Instrument;
+      usedInstruments.add(instrument);
+      
+      // Fetch most recent price for this instrument
+      const recentPrice = await fetchMostRecentPrice(instrument);
+      
+      if (recentPrice) {
+        instrumentPrices[instrument] = recentPrice.price;
+        priceDetails[instrument] = { price: recentPrice.price, date: recentPrice.date };
+      } else {
+        // If no price found, leave as 0
+        instrumentPrices[instrument] = 0;
+        priceDetails[instrument] = { price: 0, date: null };
+      }
+    }
+  }
+  
+  // Apply the formula to calculate the final price
+  const finalPrice = applyPricingFormula(formula, instrumentPrices);
+  
+  // Only return price details for instruments actually used in the formula
+  const filteredPriceDetails: Record<Instrument, { price: number; date: Date | null }> = 
+    Object.fromEntries(
+      Object.entries(priceDetails)
+        .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
+    ) as Record<Instrument, { price: number; date: Date | null }>;
+  
+  return {
+    price: finalPrice,
     priceDetails: filteredPriceDetails
   };
 };
