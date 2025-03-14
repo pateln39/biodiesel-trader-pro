@@ -1,5 +1,5 @@
 
-import { FormulaToken, Instrument, PricingFormula, ExposureResult } from '@/types';
+import { FormulaToken, Instrument, PricingFormula, ExposureResult, PartialPricingFormula } from '@/types';
 import { createEmptyExposureResult, calculateExposures } from './formulaCalculation';
 
 // Generate a unique ID for formula tokens
@@ -69,8 +69,44 @@ export const createEmptyFormula = (): PricingFormula => {
   };
 };
 
+// Validate and parse a potential pricing formula from the database
+export const validateAndParsePricingFormula = (rawFormula: any): PricingFormula => {
+  // If null or undefined, return empty formula
+  if (!rawFormula) {
+    return createEmptyFormula();
+  }
+  
+  // Check if the raw formula has tokens
+  if (!rawFormula.tokens || !Array.isArray(rawFormula.tokens)) {
+    console.warn('Invalid formula structure: missing or invalid tokens array');
+    return createEmptyFormula();
+  }
+  
+  // Check if all tokens have the required properties
+  const validTokens = rawFormula.tokens.every((token: any) => 
+    token && 
+    typeof token.id === 'string' && 
+    typeof token.type === 'string' && 
+    typeof token.value === 'string'
+  );
+  
+  if (!validTokens) {
+    console.warn('Invalid formula structure: some tokens have invalid properties');
+    return createEmptyFormula();
+  }
+  
+  // Now we can safely cast to PartialPricingFormula
+  const partialFormula: PartialPricingFormula = {
+    tokens: rawFormula.tokens,
+    exposures: rawFormula.exposures
+  };
+  
+  // Use ensureCompleteExposures to fill in any missing exposure data
+  return ensureCompleteExposures(partialFormula);
+};
+
 // Ensure pricing formula has complete exposure structure
-export const ensureCompleteExposures = (formula: PricingFormula | undefined): PricingFormula => {
+export const ensureCompleteExposures = (formula: PartialPricingFormula | undefined): PricingFormula => {
   if (!formula) {
     return createEmptyFormula();
   }

@@ -16,7 +16,7 @@ import {
   DbTradeLeg,
   PricingFormula
 } from '@/types';
-import { createEmptyFormula, ensureCompleteExposures } from '@/utils/formulaUtils';
+import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -71,8 +71,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: ensureCompleteExposures(firstLeg.pricing_formula as PricingFormula),
-          mtmFormula: ensureCompleteExposures(firstLeg.mtm_formula as PricingFormula),
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -90,8 +90,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: ensureCompleteExposures(leg.pricing_formula as PricingFormula),
-            mtmFormula: ensureCompleteExposures(leg.mtm_formula as PricingFormula)
+            formula: validateAndParsePricingFormula(leg.pricing_formula),
+            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
           }))
         };
         return physicalTrade;
@@ -110,8 +110,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           quantity: firstLeg.quantity,
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-          formula: ensureCompleteExposures(firstLeg.pricing_formula as PricingFormula),
-          mtmFormula: ensureCompleteExposures(firstLeg.mtm_formula as PricingFormula)
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
         };
         return paperTrade;
       }
