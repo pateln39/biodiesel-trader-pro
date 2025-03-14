@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import { parseExcelDate, formatDateForStorage } from '@/utils/dateParsingUtils';
 
 // Define validation error types
 type ValidationError = {
@@ -70,16 +71,52 @@ const PriceUploader = () => {
     data.forEach((row, index) => {
       const rowNum = index + 2; // +2 because of 0-indexing and header row
       
-      // Validate date
+      // Validate date with enhanced date parsing
       if (!row.Date) {
         errors.push({ row: rowNum, column: 'Date', message: 'Missing date' });
-      } else if (!(row.Date instanceof Date) || isNaN(row.Date.getTime())) {
-        errors.push({ row: rowNum, column: 'Date', message: 'Invalid date format' });
+      } else {
+        const parsedDateResult = parseExcelDate(row.Date);
+        
+        if (!parsedDateResult.success) {
+          errors.push({ 
+            row: rowNum, 
+            column: 'Date', 
+            message: parsedDateResult.error || 'Invalid date format' 
+          });
+        } else {
+          // Store the parsed date back in the row for later processing
+          row.ParsedDate = parsedDateResult.date;
+          
+          // Check for duplicate dates per instrument
+          const dateStr = formatDateForStorage(parsedDateResult.date!);
+          
+          // Check each instrument column for duplicates
+          Object.keys(row).forEach(key => {
+            if (key === 'Date' || key === 'ParsedDate') return;
+            
+            if (!instrumentCodes.has(key)) return; // Skip non-instrument columns
+            
+            if (!processedDates.has(key)) {
+              processedDates.set(key, new Set());
+            }
+            
+            const datesForInstrument = processedDates.get(key)!;
+            if (datesForInstrument.has(dateStr)) {
+              errors.push({ 
+                row: rowNum, 
+                column: key, 
+                message: `Duplicate date ${dateStr} for instrument ${key}` 
+              });
+            } else {
+              datesForInstrument.add(dateStr);
+            }
+          });
+        }
       }
 
       // Check for each instrument column
       Object.keys(row).forEach(key => {
-        if (key === 'Date') return;
+        if (key === 'Date' || key === 'ParsedDate') return;
         
         // Validate instrument code
         if (!instrumentCodes.has(key)) {
@@ -97,25 +134,6 @@ const PriceUploader = () => {
         const numPrice = Number(price);
         if (isNaN(numPrice)) {
           errors.push({ row: rowNum, column: key, message: `Invalid price value: ${price}` });
-        }
-        
-        // Check for duplicate dates per instrument
-        if (row.Date && !isNaN(row.Date.getTime())) {
-          const dateStr = format(row.Date, 'yyyy-MM-dd');
-          if (!processedDates.has(key)) {
-            processedDates.set(key, new Set());
-          }
-          
-          const datesForInstrument = processedDates.get(key)!;
-          if (datesForInstrument.has(dateStr)) {
-            errors.push({ 
-              row: rowNum, 
-              column: key, 
-              message: `Duplicate date ${dateStr} for instrument ${key}` 
-            });
-          } else {
-            datesForInstrument.add(dateStr);
-          }
         }
       });
     });
@@ -131,36 +149,65 @@ const PriceUploader = () => {
     data.forEach((row, index) => {
       const rowNum = index + 2; // +2 because of 0-indexing and header row
       
-      // Validate forward month
+      // Validate forward month with enhanced date parsing
       if (!row['Forward Month']) {
         errors.push({ row: rowNum, column: 'Forward Month', message: 'Missing forward month' });
       } else {
-        // Check if it's a valid month in format YYYY-MM
-        const monthStr = String(row['Forward Month']);
-        const monthRegex = /^\d{4}-\d{2}$/;
-        if (!monthRegex.test(monthStr)) {
-          errors.push({ 
-            row: rowNum, 
-            column: 'Forward Month', 
-            message: 'Invalid month format. Use YYYY-MM' 
-          });
-        } else {
-          // Check if it's a valid date when appending "-01"
-          const dateStr = `${monthStr}-01`;
-          const date = new Date(dateStr);
-          if (isNaN(date.getTime())) {
+        // For forward month, we need a yyyy-MM format
+        const monthValue = row['Forward Month'];
+        let monthStr: string | null = null;
+        
+        // If it's already a properly formatted string
+        if (typeof monthValue === 'string' && /^\d{4}-\d{2}$/.test(monthValue)) {
+          monthStr = monthValue;
+        } 
+        // If it's a full date, extract year and month
+        else {
+          const parsedDateResult = parseExcelDate(monthValue);
+          
+          if (parsedDateResult.success && parsedDateResult.date) {
+            const date = parsedDateResult.date;
+            monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          } else {
             errors.push({ 
               row: rowNum, 
               column: 'Forward Month', 
-              message: 'Invalid month value' 
+              message: 'Invalid month format. Use YYYY-MM or a recognizable date' 
             });
           }
+        }
+        
+        if (monthStr) {
+          // Store the parsed month back in the row for later processing
+          row.ParsedMonth = monthStr;
+          
+          // Check for duplicate months per instrument
+          Object.keys(row).forEach(key => {
+            if (key === 'Forward Month' || key === 'ParsedMonth') return;
+            
+            if (!instrumentCodes.has(key)) return; // Skip non-instrument columns
+            
+            if (!processedMonths.has(key)) {
+              processedMonths.set(key, new Set());
+            }
+            
+            const monthsForInstrument = processedMonths.get(key)!;
+            if (monthsForInstrument.has(monthStr!)) {
+              errors.push({ 
+                row: rowNum, 
+                column: key, 
+                message: `Duplicate month ${monthStr} for instrument ${key}` 
+              });
+            } else {
+              monthsForInstrument.add(monthStr!);
+            }
+          });
         }
       }
 
       // Check for each instrument column
       Object.keys(row).forEach(key => {
-        if (key === 'Forward Month') return;
+        if (key === 'Forward Month' || key === 'ParsedMonth') return;
         
         // Validate instrument code
         if (!instrumentCodes.has(key)) {
@@ -178,25 +225,6 @@ const PriceUploader = () => {
         const numPrice = Number(price);
         if (isNaN(numPrice)) {
           errors.push({ row: rowNum, column: key, message: `Invalid price value: ${price}` });
-        }
-        
-        // Check for duplicate months per instrument
-        if (row['Forward Month']) {
-          const monthStr = String(row['Forward Month']);
-          if (!processedMonths.has(key)) {
-            processedMonths.set(key, new Set());
-          }
-          
-          const monthsForInstrument = processedMonths.get(key)!;
-          if (monthsForInstrument.has(monthStr)) {
-            errors.push({ 
-              row: rowNum, 
-              column: key, 
-              message: `Duplicate month ${monthStr} for instrument ${key}` 
-            });
-          } else {
-            monthsForInstrument.add(monthStr);
-          }
         }
       });
     });
@@ -213,12 +241,15 @@ const PriceUploader = () => {
 
     for (const row of data) {
       rowsProcessed++;
-      if (!row.Date || isNaN(row.Date.getTime())) continue;
+      // Use the pre-parsed date from validation step, or try to parse again
+      const date = row.ParsedDate || (row.Date ? parseExcelDate(row.Date).date : null);
       
-      const dateStr = format(row.Date, 'yyyy-MM-dd');
+      if (!date) continue;
+      
+      const dateStr = formatDateForStorage(date);
       
       for (const [key, value] of Object.entries(row)) {
-        if (key === 'Date' || value === '' || value === null || value === undefined) continue;
+        if (key === 'Date' || key === 'ParsedDate' || value === '' || value === null || value === undefined) continue;
         
         const instrumentId = instrumentIdMap.get(key);
         if (!instrumentId) continue;
@@ -271,13 +302,24 @@ const PriceUploader = () => {
 
     for (const row of data) {
       rowsProcessed++;
-      if (!row['Forward Month']) continue;
       
-      const monthStr = String(row['Forward Month']);
+      // Use the pre-parsed month from validation step, or try to parse
+      let monthStr = row.ParsedMonth;
+      
+      if (!monthStr && row['Forward Month']) {
+        const parsedDate = parseExcelDate(row['Forward Month']);
+        if (parsedDate.success && parsedDate.date) {
+          const date = parsedDate.date;
+          monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+      
+      if (!monthStr) continue;
+      
       const dateStr = `${monthStr}-01`; // First day of month
       
       for (const [key, value] of Object.entries(row)) {
-        if (key === 'Forward Month' || value === '' || value === null || value === undefined) continue;
+        if (key === 'Forward Month' || key === 'ParsedMonth' || value === '' || value === null || value === undefined) continue;
         
         const instrumentId = instrumentIdMap.get(key);
         if (!instrumentId) continue;
@@ -336,18 +378,51 @@ const PriceUploader = () => {
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       
-      // Convert to JSON with date parsing
+      // Convert to JSON with header handling
       const options = { 
         raw: false, 
         dateNF: 'yyyy-mm-dd',
-        cellDates: true
+        header: 1
       };
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, options);
+      
+      // Get the header row and data rows
+      const rows = XLSX.utils.sheet_to_json(worksheet, { ...options, header: 1 });
+      
+      if (rows.length < 2) {
+        setUploadResult({
+          success: false,
+          message: 'The uploaded file contains no data or is missing headers'
+        });
+        setIsUploading(false);
+        return;
+      }
+      
+      // Extract headers from first row
+      const headers = rows[0] as string[];
+      
+      // Create array of objects with proper headers
+      const jsonData = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i] as any[];
+        const obj: Record<string, any> = {};
+        
+        for (let j = 0; j < headers.length; j++) {
+          if (j < row.length) {
+            obj[headers[j]] = row[j];
+          }
+        }
+        
+        // Skip empty rows (rows with no values)
+        const hasValues = Object.values(obj).some(val => val !== undefined && val !== null && val !== '');
+        if (hasValues) {
+          jsonData.push(obj);
+        }
+      }
       
       if (jsonData.length === 0) {
         setUploadResult({
           success: false,
-          message: 'The uploaded file contains no data'
+          message: 'The uploaded file contains no valid data rows'
         });
         setIsUploading(false);
         return;
