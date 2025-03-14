@@ -447,6 +447,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                       value={leg.formula || createEmptyFormula()} 
                       onChange={(formula) => handleFormulaChange(formula, legIndex)}
                       tradeQuantity={leg.quantity || 0}
+                      buySell={leg.buySell}
+                      selectedProduct={leg.product}
                     />
                   </TabsContent>
                   
@@ -458,6 +460,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                       value={leg.mtmFormula || createEmptyFormula()} 
                       onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
                       tradeQuantity={leg.quantity || 0}
+                      buySell={leg.buySell}
+                      selectedProduct={leg.product}
                     />
                   </TabsContent>
                 </Tabs>

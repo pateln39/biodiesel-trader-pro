@@ -5,8 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Brackets } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula, ExposureResult } from '@/types';
+import { Plus, X } from 'lucide-react';
+import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -26,13 +26,15 @@ interface FormulaBuilderProps {
   onChange: (formula: PricingFormula) => void;
   tradeQuantity: number;
   buySell?: 'buy' | 'sell';
+  selectedProduct?: string;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
   value, 
   onChange,
   tradeQuantity,
-  buySell = 'buy'
+  buySell = 'buy',
+  selectedProduct
 }) => {
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
   const [fixedValue, setFixedValue] = useState<string>('0');
@@ -40,7 +42,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
-      const newExposures = calculateExposures(value.tokens, tradeQuantity, buySell);
+      const newExposures = calculateExposures(value.tokens, tradeQuantity, buySell, selectedProduct);
       if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
         onChange({
           ...value,
@@ -48,7 +50,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         });
       }
     }
-  }, [value.tokens, tradeQuantity, buySell]);
+  }, [value.tokens, tradeQuantity, buySell, selectedProduct]);
 
   const handleAddInstrument = () => {
     if (!canAddTokenType(value.tokens, 'instrument')) return;
@@ -56,7 +58,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -66,7 +68,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -76,7 +78,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -86,7 +88,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -96,7 +98,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -106,7 +108,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -114,7 +116,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = value.tokens.filter(token => token.id !== tokenId);
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 

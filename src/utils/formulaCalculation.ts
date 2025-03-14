@@ -253,26 +253,6 @@ const parseFormula = (tokens: FormulaToken[]): Node => {
   return ast;
 };
 
-// ----------------------------------------------------------------------------------
-// KNOWN ISSUE: TYPE-ERROR-2023-05-15
-// This is a documented TypeScript type-checking error (TS2367) that does not affect 
-// the actual pricing formula calculations or exposure results.
-//
-// The error occurs in the condition: `node.left.type !== 'value'` where TypeScript
-// flags the comparison of a string literal with a string type.
-//
-// Examples of formulas that work correctly despite this error:
-// - Argus UCOME * 50%
-// - Argus RME + Platts LSGO * 20%
-// - (Argus FAME0 + Platts diesel) * 75%
-//
-// This issue is being kept temporarily as it requires careful refactoring of the
-// type system to fix without introducing regressions to the pricing calculations.
-//
-// TODO-PRICING-TYPE-001: Refactor the type system for formula nodes to use proper
-// discriminated union types and fix this comparison.
-// ----------------------------------------------------------------------------------
-
 // Extract instruments from AST
 const extractInstrumentsFromAST = (
   node: Node, 
@@ -399,7 +379,8 @@ const extractInstrumentsFromAST = (
 export const calculateExposures = (
   tokens: FormulaToken[],
   tradeQuantity: number,
-  buySell: 'buy' | 'sell' = 'buy'
+  buySell: 'buy' | 'sell' = 'buy',
+  selectedProduct?: string
 ): ExposureResult => {
   const result = createEmptyExposureResult();
   
@@ -407,26 +388,43 @@ export const calculateExposures = (
     return result;
   }
   
-  // UPDATED: Find physical exposure - first instrument in the formula
-  // This determines which product is being physically traded
-  const physicalInstrument = tokens.find(token => token.type === 'instrument');
+  // For physical exposure, use the selectedProduct if provided
+  // Otherwise, fall back to first instrument in formula (for backward compatibility)
+  let physicalInstrument: string;
   
-  if (!physicalInstrument) {
-    return result;
+  if (selectedProduct) {
+    // Map the product name to the instrument name format
+    // This mapping is necessary because products and instruments might have different naming conventions
+    const productToInstrumentMap: Record<string, Instrument> = {
+      'UCOME': 'Argus UCOME',
+      'RME': 'Argus RME',
+      'FAME0': 'Argus FAME0',
+      'UCOME-5': 'Argus UCOME', // Map to closest match
+      'RME DC': 'Argus RME',    // Map to closest match
+    };
+    
+    physicalInstrument = productToInstrumentMap[selectedProduct] || selectedProduct;
+  } else {
+    // Fallback to first instrument in formula (legacy behavior)
+    const firstInstrumentToken = tokens.find(token => token.type === 'instrument');
+    if (!firstInstrumentToken) return result;
+    physicalInstrument = firstInstrumentToken.value;
   }
   
-  // UPDATED: Set physical exposure - buy is positive, sell is negative
-  // This follows the business rule that buying physical = positive exposure, selling = negative
+  // Set physical exposure - buy is positive, sell is negative
   const physicalExposureSign = buySell === 'buy' ? 1 : -1;
-  result.physical[physicalInstrument.value as Instrument] = physicalExposureSign * tradeQuantity;
   
-  // For pricing exposure, we need to parse the formula
+  // Check if the physicalInstrument exists in our result structure
+  if (physicalInstrument in result.physical) {
+    result.physical[physicalInstrument as Instrument] = physicalExposureSign * tradeQuantity;
+  }
+  
+  // For pricing exposure, parse the formula as before
   try {
     const ast = parseFormula(tokens);
     const instrumentWeights = extractInstrumentsFromAST(ast);
     
-    // UPDATED: Apply pricing exposure - buy is negative, sell is positive (opposite of physical)
-    // This follows the business rule that buying physical means you're short the pricing component
+    // Apply pricing exposure - buy is negative, sell is positive (opposite of physical)
     const pricingExposureSign = buySell === 'buy' ? -1 : 1;
     
     // Apply pricing exposure with proper weights and signs
