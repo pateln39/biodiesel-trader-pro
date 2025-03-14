@@ -23,9 +23,3 @@ export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
 }
-
-export interface PricingComponent {
-  instrument: Instrument;
-  percentage: number;
-  adjustment: number;
-}

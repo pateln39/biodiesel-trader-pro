@@ -4,14 +4,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingComponent, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg } from '@/types';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
-import { createEmptyFormula, convertToTraditionalFormat, convertToNewFormulaFormat } from '@/utils/formulaUtils';
+import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PhysicalTradeFormProps {
@@ -34,7 +34,6 @@ interface LegFormState {
   loadingPeriodEnd: Date;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
-  pricingFormula: PricingComponent[];
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
 }
@@ -53,9 +52,6 @@ const createDefaultLeg = (): LegFormState => ({
   loadingPeriodEnd: new Date(),
   pricingPeriodStart: new Date(),
   pricingPeriodEnd: new Date(),
-  pricingFormula: [
-    { instrument: 'Argus UCOME', percentage: 100, adjustment: 0 }
-  ],
   formula: createEmptyFormula(),
   mtmFormula: createEmptyFormula()
 });
@@ -67,45 +63,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
   
   const [legs, setLegs] = useState<LegFormState[]>([createDefaultLeg()]);
 
-  const addPricingComponent = (legIndex: number) => {
-    const newLegs = [...legs];
-    newLegs[legIndex].pricingFormula.push(
-      { instrument: 'Argus UCOME', percentage: 0, adjustment: 0 }
-    );
-    setLegs(newLegs);
-  };
-
-  const removePricingComponent = (legIndex: number, componentIndex: number) => {
-    const newLegs = [...legs];
-    newLegs[legIndex].pricingFormula.splice(componentIndex, 1);
-    setLegs(newLegs);
-  };
-
-  const updatePricingComponent = (
-    legIndex: number, 
-    componentIndex: number, 
-    field: keyof PricingComponent, 
-    value: string | number
-  ) => {
-    const newLegs = [...legs];
-    if (field === 'instrument') {
-      newLegs[legIndex].pricingFormula[componentIndex] = { 
-        ...newLegs[legIndex].pricingFormula[componentIndex], 
-        [field]: value as string 
-      };
-    } else {
-      newLegs[legIndex].pricingFormula[componentIndex] = { 
-        ...newLegs[legIndex].pricingFormula[componentIndex], 
-        [field]: Number(value) 
-      };
-    }
-    setLegs(newLegs);
-  };
-
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
-    newLegs[legIndex].pricingFormula = convertToTraditionalFormat(formula);
     setLegs(newLegs);
   };
 
@@ -127,11 +87,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     }
   };
 
-  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingComponent[] | PricingFormula | undefined) => {
+  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingFormula | undefined) => {
     const newLegs = [...legs];
-    if (field === 'pricingFormula') {
-      (newLegs[index] as any)[field] = value as PricingComponent[];
-    } else if (field === 'formula' || field === 'mtmFormula') {
+    if (field === 'formula' || field === 'mtmFormula') {
       (newLegs[index] as any)[field] = value as PricingFormula;
     } else if (
       field === 'loadingPeriodStart' || 
@@ -193,7 +151,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
         unit: legForm.unit,
         paymentTerm: legForm.paymentTerm,
         creditStatus: legForm.creditStatus,
-        pricingFormula: [...legForm.pricingFormula],
         formula: legForm.formula,
         mtmFormula: legForm.mtmFormula
       };
@@ -504,73 +461,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
                     />
                   </TabsContent>
                 </Tabs>
-              </div>
-              
-              <div className="hidden">
-                <div className="flex items-center justify-between">
-                  <Label>Legacy Pricing Formula</Label>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => addPricingComponent(legIndex)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Component
-                  </Button>
-                </div>
-                
-                {leg.pricingFormula.map((component, componentIndex) => (
-                  <div key={componentIndex} className="grid grid-cols-10 gap-2 items-end mt-2">
-                    <div className="col-span-4">
-                      <Label htmlFor={`leg-${legIndex}-instrument-${componentIndex}`} className="text-xs">Instrument</Label>
-                      <Select 
-                        value={component.instrument} 
-                        onValueChange={(value) => updatePricingComponent(legIndex, componentIndex, 'instrument', value)}
-                      >
-                        <SelectTrigger id={`leg-${legIndex}-instrument-${componentIndex}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                          <SelectItem value="Argus RME">Argus RME</SelectItem>
-                          <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                          <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                          <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2">
-                      <Label htmlFor={`leg-${legIndex}-percentage-${componentIndex}`} className="text-xs">Percentage (%)</Label>
-                      <Input 
-                        id={`leg-${legIndex}-percentage-${componentIndex}`} 
-                        type="number" 
-                        value={component.percentage} 
-                        onChange={(e) => updatePricingComponent(legIndex, componentIndex, 'percentage', e.target.value)} 
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label htmlFor={`leg-${legIndex}-adjustment-${componentIndex}`} className="text-xs">Adjustment (+/-)</Label>
-                      <Input 
-                        id={`leg-${legIndex}-adjustment-${componentIndex}`} 
-                        type="number" 
-                        value={component.adjustment} 
-                        onChange={(e) => updatePricingComponent(legIndex, componentIndex, 'adjustment', e.target.value)} 
-                      />
-                    </div>
-                    <div className="col-span-2 flex justify-end">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removePricingComponent(legIndex, componentIndex)}
-                        disabled={leg.pricingFormula.length <= 1}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
