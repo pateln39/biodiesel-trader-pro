@@ -1,6 +1,6 @@
 
 import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus } from './trade';
-import { PricingFormula } from './pricing';
+import { PricingComponent, PricingFormula } from './pricing';
 import { ParentTrade, Trade } from './common';
 
 export type PhysicalTradeType = "spot" | "term";
@@ -29,6 +29,7 @@ export interface PhysicalTradeLeg {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
+  pricingFormula: PricingComponent[];
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
 }
@@ -51,6 +52,7 @@ export interface PhysicalTrade extends Trade {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
+  pricingFormula: PricingComponent[];
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   legs: PhysicalTradeLeg[];

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash } from 'lucide-react';
@@ -8,7 +9,8 @@ import { formatDate } from '@/utils/tradeUtils';
 import { 
   Trade, 
   PhysicalTrade, 
-  PaperTrade
+  PaperTrade,
+  FormulaToken
 } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -38,7 +40,10 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { formulaToDisplayString } from '@/utils/formulaUtils';
+import { 
+  formulaToString, 
+  formulaToDisplayString
+} from '@/utils/formulaUtils';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -110,6 +115,7 @@ const TradesPage = () => {
     setIsDeleting(true);
     
     try {
+      // Delete the parent trade - this should cascade delete the trade legs due to foreign key relationship
       const { error } = await supabase
         .from('parent_trades')
         .delete()
@@ -133,6 +139,7 @@ const TradesPage = () => {
     }
   };
 
+  // Helper function to display formula in a readable format
   const renderFormula = (trade: PhysicalTrade | PaperTrade) => {
     if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
       return <span className="text-muted-foreground italic">No formula</span>;
@@ -363,6 +370,7 @@ const TradesPage = () => {
         </div>
       </div>
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
         <AlertDialogContent>
           <AlertDialogHeader>

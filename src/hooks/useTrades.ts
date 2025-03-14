@@ -14,11 +14,29 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingFormula,
-  FormulaToken,
-  ExposureResult
+  PricingComponent
 } from '@/types';
-import { createEmptyExposureResult } from '@/utils/formulaCalculation';
+import { convertToNewFormulaFormat } from '@/utils/formulaUtils';
+
+// Helper to safely parse pricingFormula from DB
+const parsePricingFormula = (rawFormula: any): PricingComponent[] => {
+  if (!rawFormula) return [];
+  
+  // If it's already an array with the right structure
+  if (Array.isArray(rawFormula) && 
+      rawFormula.length > 0 && 
+      typeof rawFormula[0] === 'object' && 
+      'instrument' in rawFormula[0]) {
+    return rawFormula as PricingComponent[];
+  }
+  
+  // Default formula if parsing fails
+  return [{ 
+    instrument: 'Argus UCOME', 
+    percentage: 100, 
+    adjustment: 0 
+  }];
+};
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -49,19 +67,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
       
       // Use the first leg for the main trade data (for backward compatibility)
       const firstLeg = legs.length > 0 ? legs[0] : null;
-
-      // Handle formula data - directly use the JSON data as formula tokens
-      const getFormula = (formulaData: any): PricingFormula | undefined => {
-        if (!formulaData) return undefined;
-        
-        // Check if we already have a tokens array structure
-        if (formulaData.tokens && Array.isArray(formulaData.tokens)) {
-          return formulaData as PricingFormula;
-        }
-        
-        // If not a valid formula structure, return undefined
-        return undefined;
-      };
       
       if (parent.trade_type === 'physical' && firstLeg) {
         // Create physical trade
@@ -86,8 +91,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: getFormula(firstLeg.pricing_formula),
-          mtmFormula: getFormula(firstLeg.mtm_formula),
+          pricingFormula: parsePricingFormula(firstLeg.pricing_formula),
+          formula: firstLeg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.pricing_formula)) : undefined,
+          mtmFormula: firstLeg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.mtm_formula)) : undefined,
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -105,8 +111,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: getFormula(leg.pricing_formula),
-            mtmFormula: getFormula(leg.mtm_formula)
+            pricingFormula: parsePricingFormula(leg.pricing_formula),
+            formula: leg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.pricing_formula)) : undefined,
+            mtmFormula: leg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(leg.mtm_formula)) : undefined
           }))
         };
         return physicalTrade;
@@ -125,8 +132,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           quantity: firstLeg.quantity,
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-          formula: getFormula(firstLeg.pricing_formula),
-          mtmFormula: getFormula(firstLeg.mtm_formula)
+          formula: firstLeg.pricing_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.pricing_formula)) : undefined,
+          mtmFormula: firstLeg.mtm_formula ? convertToNewFormulaFormat(parsePricingFormula(firstLeg.mtm_formula)) : undefined
         };
         return paperTrade;
       }

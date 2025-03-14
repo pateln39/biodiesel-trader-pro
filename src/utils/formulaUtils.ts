@@ -89,7 +89,7 @@ export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
   return tokens.map((token, index) => {
     switch (token.type) {
       case 'instrument':
-        // Show full instrument name
+        // Show full instrument name with prefix (removed the prefix stripping code)
         return token.value;
       case 'percentage':
         // Percentages are formatted with a % sign
@@ -113,4 +113,49 @@ export const formulaToDisplayString = (tokens: FormulaToken[]): string => {
         return token.value;
     }
   }).join('').replace(/\s{2,}/g, ' ').trim();
+};
+
+// Convert from formula format to pricingComponents format (for backward compatibility)
+export const convertToTraditionalFormat = (formula: PricingFormula): any[] => {
+  if (!formula || !formula.tokens.length) {
+    return [{
+      instrument: 'Argus UCOME',
+      percentage: 100,
+      adjustment: 0
+    }];
+  }
+
+  const components = formula.tokens
+    .filter(token => token.type === 'instrument')
+    .map(token => ({
+      instrument: token.value,
+      percentage: 100,
+      adjustment: 0
+    }));
+
+  return components.length ? components : [{
+    instrument: 'Argus UCOME',
+    percentage: 100,
+    adjustment: 0
+  }];
+};
+
+// Helper to convert between old pricingFormula format and new formula format
+export const convertToNewFormulaFormat = (pricingComponents: any[]): PricingFormula => {
+  if (!pricingComponents || pricingComponents.length === 0) {
+    return createEmptyFormula();
+  }
+
+  const tokens: FormulaToken[] = [];
+  pricingComponents.forEach((component, index) => {
+    tokens.push(createInstrumentToken(component.instrument));
+    if (index < pricingComponents.length - 1) {
+      tokens.push(createOperatorToken('+'));
+    }
+  });
+
+  return {
+    tokens,
+    exposures: createEmptyExposureResult(), // Default exposures
+  };
 };
