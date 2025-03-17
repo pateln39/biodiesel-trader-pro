@@ -1,6 +1,6 @@
-
-import { FormulaToken, Instrument, PricingFormula } from '@/types';
+import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { formulaToDisplayString } from './formulaUtils';
 
 // Pricing period types
 export type PricingPeriodType = 'historical' | 'current' | 'forward';
@@ -174,6 +174,38 @@ export const calculateAveragePrice = (prices: { date: Date; price: number }[]): 
   return sum / prices.length;
 };
 
+// Extract fixed components from formula tokens
+const extractFixedComponents = (tokens: FormulaToken[]): FixedComponent[] => {
+  const fixedComponents: FixedComponent[] = [];
+  
+  tokens.forEach((token, index) => {
+    if (token.type === 'fixedValue') {
+      // Check if this is part of an operation with the surrounding tokens
+      const prevToken = index > 0 ? tokens[index - 1] : null;
+      const nextToken = index < tokens.length - 1 ? tokens[index + 1] : null;
+      
+      // For display purposes, include the operator if it exists
+      let displayValue = token.value;
+      
+      if (prevToken && prevToken.type === 'operator') {
+        displayValue = `${prevToken.value}${token.value}`;
+      } else if (nextToken && nextToken.type === 'operator') {
+        // Only prefix with + if it's not already signed
+        if (!displayValue.startsWith('-') && !displayValue.startsWith('+')) {
+          displayValue = `+${displayValue}`;
+        }
+      }
+      
+      fixedComponents.push({
+        value: parseFloat(token.value),
+        displayValue
+      });
+    }
+  });
+  
+  return fixedComponents;
+};
+
 // Parse and evaluate a formula token
 const evaluateFormula = (
   tokens: FormulaToken[],
@@ -327,13 +359,17 @@ export const calculateTradeLegPrice = async (
 ): Promise<{
   price: number;
   periodType: PricingPeriodType;
-  priceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
+  priceDetails: PriceDetail;
 }> => {
   if (!formula || !formula.tokens || formula.tokens.length === 0) {
     return {
       price: 0,
       periodType: 'historical',
-      priceDetails: {}
+      priceDetails: {
+        instruments: {},
+        fixedComponents: [],
+        evaluatedPrice: 0
+      }
     };
   }
   
@@ -353,6 +389,9 @@ export const calculateTradeLegPrice = async (
     'Platts LSGO': { average: 0, prices: [] },
     'Platts diesel': { average: 0, prices: [] },
   };
+
+  // Extract fixed components from the formula
+  const fixedComponents = extractFixedComponents(formula.tokens);
 
   // Track which instruments are used in the formula for exposure calculation
   const usedInstruments = new Set<Instrument>();
@@ -380,17 +419,27 @@ export const calculateTradeLegPrice = async (
     }
   }
   
-  // If there are no instruments in the formula, we need a default date range for display purposes
-  if (!hasInstrument) {
-    // Create a synthetic price point using the start date
-    const syntheticDate = startDate;
+  // If there are no instruments but there are fixed values, create a default date range
+  if (!hasInstrument && fixedComponents.length > 0) {
+    // Create a synthetic price series covering the pricing period
+    const syntheticDates: Date[] = [];
+    const currentDate = new Date(startDate);
     
-    // Use the first instrument as a placeholder (doesn't matter which one)
+    // Generate dates covering the pricing period
+    while (currentDate <= endDate) {
+      syntheticDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Use the first instrument as a placeholder
     const placeholderInstrument = 'Argus UCOME' as Instrument;
     usedInstruments.add(placeholderInstrument);
     
-    // Create a synthetic price of 0 at the start date
-    const syntheticPrices = [{ date: syntheticDate, price: 0 }];
+    // Create synthetic price points with value 0
+    const syntheticPrices = syntheticDates.map(date => ({ 
+      date, 
+      price: 0 
+    }));
     
     priceDetails[placeholderInstrument] = { 
       average: 0, 
@@ -401,18 +450,20 @@ export const calculateTradeLegPrice = async (
   // Apply the formula to calculate the final price
   const finalPrice = applyPricingFormula(formula, instrumentPrices);
   
-  // Only return price details for instruments actually used in the formula,
-  // or the placeholder if we had no instruments
-  const filteredPriceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }> = 
-    Object.fromEntries(
-      Object.entries(priceDetails)
-        .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
-    ) as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
+  // Only include instruments that were used in the formula
+  const filteredInstruments = Object.fromEntries(
+    Object.entries(priceDetails)
+      .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
+  ) as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   
   return {
     price: finalPrice,
     periodType,
-    priceDetails: filteredPriceDetails
+    priceDetails: {
+      instruments: filteredInstruments,
+      fixedComponents,
+      evaluatedPrice: finalPrice
+    }
   };
 };
 
@@ -421,12 +472,16 @@ export const calculateMTMPrice = async (
   formula: PricingFormula,
 ): Promise<{
   price: number;
-  priceDetails: Record<Instrument, { price: number; date: Date | null }>;
+  priceDetails: MTMPriceDetail;
 }> => {
   if (!formula || !formula.tokens || formula.tokens.length === 0) {
     return {
       price: 0,
-      priceDetails: {}
+      priceDetails: {
+        instruments: {},
+        fixedComponents: [],
+        evaluatedPrice: 0
+      }
     };
   }
   
@@ -445,6 +500,9 @@ export const calculateMTMPrice = async (
     'Platts LSGO': { price: 0, date: null },
     'Platts diesel': { price: 0, date: null },
   };
+
+  // Extract fixed components from the formula
+  const fixedComponents = extractFixedComponents(formula.tokens);
 
   // Track which instruments are used in the formula
   const usedInstruments = new Set<Instrument>();
@@ -471,12 +529,12 @@ export const calculateMTMPrice = async (
     }
   }
   
-  // If there are no instruments in the formula, add a synthetic price for display purposes
-  if (!hasInstrument) {
-    // Use the current date
+  // If there are no instruments but there are fixed values, create a default display entry
+  if (!hasInstrument && fixedComponents.length > 0) {
+    // Use today's date
     const today = new Date();
     
-    // Use the first instrument as a placeholder (doesn't matter which one)
+    // Use the first instrument as a placeholder
     const placeholderInstrument = 'Argus UCOME' as Instrument;
     usedInstruments.add(placeholderInstrument);
     
@@ -489,17 +547,19 @@ export const calculateMTMPrice = async (
   // Apply the formula to calculate the final price
   const finalPrice = applyPricingFormula(formula, instrumentPrices);
   
-  // Only return price details for instruments actually used in the formula
-  // or the placeholder if we had no instruments
-  const filteredPriceDetails: Record<Instrument, { price: number; date: Date | null }> = 
-    Object.fromEntries(
-      Object.entries(priceDetails)
-        .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
-    ) as Record<Instrument, { price: number; date: Date | null }>;
+  // Filter the instruments to only those used in the formula
+  const filteredInstruments = Object.fromEntries(
+    Object.entries(priceDetails)
+      .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
+  ) as Record<Instrument, { price: number; date: Date | null }>;
   
   return {
     price: finalPrice,
-    priceDetails: filteredPriceDetails
+    priceDetails: {
+      instruments: filteredInstruments,
+      fixedComponents,
+      evaluatedPrice: finalPrice
+    }
   };
 };
 
