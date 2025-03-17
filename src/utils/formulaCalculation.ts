@@ -1,3 +1,4 @@
+
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
@@ -293,8 +294,9 @@ const extractInstrumentsFromAST = (
       // When we multiply, we need to determine the multiplier first
       let newMultiplier = multiplier;
       
+      // FIX: Corrected the type comparison condition
       // If right side is a simple value, use it as multiplier
-      if (node.right.type === 'value' && !node.left.type !== 'value') {
+      if (node.right.type === 'value' && node.left.type !== 'value') {
         const rightMultiplier = node.right.value;
         const leftInstruments = extractInstrumentsFromAST(node.left, multiplier * rightMultiplier);
         
