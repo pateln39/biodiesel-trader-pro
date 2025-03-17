@@ -20,7 +20,7 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument, PricingFormula } from '@/types';
+import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail, FixedComponent } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface PriceDetailsProps {
@@ -50,18 +50,12 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const [priceData, setPriceData] = useState<{
     price: number;
     periodType: PricingPeriodType;
-    priceDetails: Record<
-      Instrument,
-      { average: number; prices: { date: Date; price: number }[] }
-    >;
+    priceDetails: PriceDetail;
   } | null>(null);
   
   const [mtmPriceData, setMtmPriceData] = useState<{
     price: number;
-    priceDetails: Record<
-      Instrument,
-      { price: number; date: Date | null }
-    >;
+    priceDetails: MTMPriceDetail;
   } | null>(null);
   
   const [mtmValue, setMtmValue] = useState<number>(0);
@@ -101,8 +95,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell]);
 
   const getInstrumentsFromPriceData = (data: any) => {
-    if (!data || !data.priceDetails) return [];
-    return Object.keys(data.priceDetails);
+    if (!data || !data.priceDetails || !data.priceDetails.instruments) return [];
+    return Object.keys(data.priceDetails.instruments);
   };
 
   const tradeInstruments = priceData ? getInstrumentsFromPriceData(priceData) : [];
@@ -114,7 +108,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}, formulaPrice: number}>();
     
     tradeInstruments.forEach(instrument => {
-      const instrumentPrices = priceData.priceDetails[instrument as Instrument]?.prices || [];
+      if (!priceData.priceDetails.instruments[instrument as Instrument]) return;
+      
+      const instrumentPrices = priceData.priceDetails.instruments[instrument as Instrument]?.prices || [];
       instrumentPrices.forEach(({ date, price }) => {
         const dateStr = date.toISOString().split('T')[0];
         
@@ -158,13 +154,83 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const getAveragePrices = () => {
     const averages: {[instrument: string]: number} = {};
     
-    if (priceData) {
+    if (priceData && priceData.priceDetails.instruments) {
       tradeInstruments.forEach(instrument => {
-        averages[instrument] = priceData.priceDetails[instrument as Instrument]?.average || 0;
+        averages[instrument] = priceData.priceDetails.instruments[instrument as Instrument]?.average || 0;
       });
     }
     
     return averages;
+  };
+
+  // Helper function to render fixed components
+  const renderFixedComponents = () => {
+    if (!priceData || !priceData.priceDetails.fixedComponents || priceData.priceDetails.fixedComponents.length === 0) {
+      return null;
+    }
+
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Fixed Value Adjustments</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Component</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {priceData.priceDetails.fixedComponents.map((component, index) => (
+                <TableRow key={`fixed-${index}`}>
+                  <TableCell>Fixed Adjustment {index + 1}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {component.displayValue}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Helper function to render MTM fixed components
+  const renderMTMFixedComponents = () => {
+    if (!mtmPriceData || !mtmPriceData.priceDetails.fixedComponents || mtmPriceData.priceDetails.fixedComponents.length === 0) {
+      return null;
+    }
+
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Fixed Value Adjustments (MTM)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Component</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mtmPriceData.priceDetails.fixedComponents.map((component, index) => (
+                <TableRow key={`mtm-fixed-${index}`}>
+                  <TableCell>Fixed Adjustment {index + 1}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {component.displayValue}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (
@@ -247,68 +313,75 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                       </Card>
                     </div>
 
+                    {/* Render fixed components if present */}
+                    {renderFixedComponents()}
+
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold">
                         Pricing Table
                       </h3>
 
-                      <Card>
-                        <CardHeader className="pb-2 bg-muted/50">
-                          <CardTitle className="text-sm font-medium">
-                            <span>Consolidated Price Data</span>
-                          </CardTitle>
-                        </CardHeader>
-                        <div className="max-h-[400px] overflow-auto">
-                          <Table>
-                            <TableHeader className="sticky top-0 bg-background z-10">
-                              <TableRow>
-                                <TableHead className="w-[120px]">Date</TableHead>
-                                {tradeInstruments.map((instrument) => (
-                                  <TableHead key={instrument} className="text-right">
-                                    {instrument}
-                                  </TableHead>
-                                ))}
-                                <TableHead className="text-right w-[300px]">
-                                  {formula ? formulaToDisplayString(formula.tokens) : 'Formula N/A'}
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {getPricesByDate().map((dateEntry) => (
-                                <TableRow key={dateEntry.date.toISOString()}>
-                                  <TableCell className="font-medium">
-                                    {format(dateEntry.date, 'MMM d, yyyy')}
-                                  </TableCell>
+                      {tradeInstruments.length > 0 ? (
+                        <Card>
+                          <CardHeader className="pb-2 bg-muted/50">
+                            <CardTitle className="text-sm font-medium">
+                              <span>Consolidated Price Data</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <div className="max-h-[400px] overflow-auto">
+                            <Table>
+                              <TableHeader className="sticky top-0 bg-background z-10">
+                                <TableRow>
+                                  <TableHead className="w-[120px]">Date</TableHead>
                                   {tradeInstruments.map((instrument) => (
-                                    <TableCell key={instrument} className="text-right">
-                                      ${(dateEntry.prices[instrument] || 0).toFixed(2)}
-                                    </TableCell>
+                                    <TableHead key={instrument} className="text-right">
+                                      {instrument}
+                                    </TableHead>
                                   ))}
-                                  <TableCell className="text-right">
-                                    ${dateEntry.formulaPrice.toFixed(2)}
+                                  <TableHead className="text-right w-[300px]">
+                                    {formula ? formulaToDisplayString(formula.tokens) : 'Formula N/A'}
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {getPricesByDate().map((dateEntry) => (
+                                  <TableRow key={dateEntry.date.toISOString()}>
+                                    <TableCell className="font-medium">
+                                      {format(dateEntry.date, 'MMM d, yyyy')}
+                                    </TableCell>
+                                    {tradeInstruments.map((instrument) => (
+                                      <TableCell key={instrument} className="text-right">
+                                        ${(dateEntry.prices[instrument] || 0).toFixed(2)}
+                                      </TableCell>
+                                    ))}
+                                    <TableCell className="text-right">
+                                      ${dateEntry.formulaPrice.toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                                <TableRow className="bg-muted/20 font-bold border-t-2">
+                                  <TableCell className="font-bold">Average</TableCell>
+                                  {tradeInstruments.map((instrument) => {
+                                    const averages = getAveragePrices();
+                                    return (
+                                      <TableCell key={`avg-${instrument}`} className="text-right">
+                                        ${(averages[instrument] || 0).toFixed(2)}
+                                      </TableCell>
+                                    );
+                                  })}
+                                  <TableCell className="text-right text-primary">
+                                    ${priceData.price.toFixed(2)}
                                   </TableCell>
                                 </TableRow>
-                              ))}
-                              <TableRow className="bg-muted/20 font-bold border-t-2">
-                                <TableCell className="font-bold">Average</TableCell>
-                                {tradeInstruments.map((instrument) => {
-                                  const averages = getAveragePrices();
-                                  return (
-                                    <TableCell key={`avg-${instrument}`} className="text-right">
-                                      ${(averages[instrument] || 0).toFixed(2)}
-                                    </TableCell>
-                                  );
-                                })}
-                                <TableCell className="text-right text-primary">
-                                  ${priceData.price.toFixed(2)}
-                                </TableCell>
-                              </TableRow>
-                            </TableBody>
-                          </Table>
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </Card>
+                      ) : priceData.priceDetails.fixedComponents && priceData.priceDetails.fixedComponents.length > 0 ? (
+                        <div className="text-muted-foreground">
+                          This formula only contains fixed values, no instrument pricing data available.
                         </div>
-                      </Card>
-
-                      {tradeInstruments.length === 0 && (
+                      ) : (
                         <div className="text-muted-foreground">
                           No price details available for this trade leg
                         </div>
@@ -361,6 +434,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                     </Card>
                   </div>
 
+                  {/* Render MTM fixed components if present */}
+                  {renderMTMFixedComponents()}
+
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">
                       MTM Components
@@ -378,7 +454,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                 Latest Price:{' '}
                                 <span className="font-bold">
                                   $
-                                  {mtmPriceData.priceDetails[
+                                  {mtmPriceData.priceDetails.instruments[
                                     instrument as Instrument
                                   ].price.toFixed(2)}
                                 </span>
@@ -389,8 +465,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Price Date:</span>
                               <span>
-                                {mtmPriceData.priceDetails[instrument as Instrument].date 
-                                  ? format(mtmPriceData.priceDetails[instrument as Instrument].date as Date, 'MMM d, yyyy') 
+                                {mtmPriceData.priceDetails.instruments[instrument as Instrument].date 
+                                  ? format(mtmPriceData.priceDetails.instruments[instrument as Instrument].date as Date, 'MMM d, yyyy') 
                                   : 'N/A'}
                               </span>
                             </div>
@@ -400,6 +476,10 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                           </CardContent>
                         </Card>
                       ))
+                    ) : mtmPriceData.priceDetails.fixedComponents && mtmPriceData.priceDetails.fixedComponents.length > 0 ? (
+                      <div className="text-muted-foreground">
+                        This formula only contains fixed values, no instrument pricing data available.
+                      </div>
                     ) : (
                       <div className="text-muted-foreground">
                         No MTM price details available for this trade leg
