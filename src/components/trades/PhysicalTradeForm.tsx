@@ -13,6 +13,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
+import { toast } from 'sonner';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -146,52 +148,89 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const parentTrade: PhysicalParentTrade = {
-      id: initialData?.id || crypto.randomUUID(),
-      tradeReference,
-      tradeType: 'physical',
-      physicalType,
-      counterparty,
-      createdAt: initialData?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-
-    const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
-      const legReference = initialData?.legs?.[index]?.legReference || 
-                          generateLegReference(tradeReference, index);
+    
+    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
+    
+    const legValidations = legs.map((leg, index) => {
+      const legNumber = index + 1;
+      const validations = [
+        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
+        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
+        validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`),
+        validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`),
+        validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`),
+        validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`),
+        validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`),
+        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
+        
+        validateDateRange(
+          leg.pricingPeriodStart, 
+          leg.pricingPeriodEnd, 
+          `Leg ${legNumber} - Pricing Period`
+        ),
+        validateDateRange(
+          leg.loadingPeriodStart, 
+          leg.loadingPeriodEnd, 
+          `Leg ${legNumber} - Loading Period`
+        )
+      ];
       
-      const legData: PhysicalTradeLeg = {
-        id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
-        legReference,
-        parentTradeId: parentTrade.id,
-        buySell: legForm.buySell,
-        product: legForm.product,
-        sustainability: legForm.sustainability,
-        incoTerm: legForm.incoTerm,
-        quantity: legForm.quantity,
-        tolerance: legForm.tolerance,
-        loadingPeriodStart: legForm.loadingPeriodStart,
-        loadingPeriodEnd: legForm.loadingPeriodEnd,
-        pricingPeriodStart: legForm.pricingPeriodStart,
-        pricingPeriodEnd: legForm.pricingPeriodEnd,
-        unit: legForm.unit,
-        paymentTerm: legForm.paymentTerm,
-        creditStatus: legForm.creditStatus,
-        formula: legForm.formula,
-        mtmFormula: legForm.mtmFormula
-      };
-      
-      return legData;
+      return validateFields(validations);
     });
+    
+    const areAllLegsValid = legValidations.every(isValid => isValid);
+    
+    if (isCounterpartyValid && areAllLegsValid) {
+      const parentTrade: PhysicalParentTrade = {
+        id: initialData?.id || crypto.randomUUID(),
+        tradeReference,
+        tradeType: 'physical',
+        physicalType,
+        counterparty,
+        createdAt: initialData?.createdAt || new Date(),
+        updatedAt: new Date()
+      };
 
-    const tradeData: any = {
-      ...parentTrade,
-      legs: tradeLegs,
-      ...legs[0]
-    };
+      const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                            generateLegReference(tradeReference, index);
+        
+        const legData: PhysicalTradeLeg = {
+          id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
+          legReference,
+          parentTradeId: parentTrade.id,
+          buySell: legForm.buySell,
+          product: legForm.product,
+          sustainability: legForm.sustainability,
+          incoTerm: legForm.incoTerm,
+          quantity: legForm.quantity,
+          tolerance: legForm.tolerance,
+          loadingPeriodStart: legForm.loadingPeriodStart,
+          loadingPeriodEnd: legForm.loadingPeriodEnd,
+          pricingPeriodStart: legForm.pricingPeriodStart,
+          pricingPeriodEnd: legForm.pricingPeriodEnd,
+          unit: legForm.unit,
+          paymentTerm: legForm.paymentTerm,
+          creditStatus: legForm.creditStatus,
+          formula: legForm.formula,
+          mtmFormula: legForm.mtmFormula
+        };
+        
+        return legData;
+      });
 
-    onSubmit(tradeData);
+      const tradeData: any = {
+        ...parentTrade,
+        legs: tradeLegs,
+        ...legs[0]
+      };
+
+      onSubmit(tradeData);
+    } else {
+      toast.error('Please fix the validation errors before submitting', {
+        description: 'Check all required fields and date ranges above.'
+      });
+    }
   };
 
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -517,4 +556,3 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 };
 
 export default PhysicalTradeForm;
-

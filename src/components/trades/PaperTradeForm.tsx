@@ -15,6 +15,8 @@ import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PricingFormula } from '@/types/pricing';
+import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
+import { toast } from 'sonner';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -116,46 +118,74 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const parentTrade: PaperParentTrade = {
-      id: initialData?.id || crypto.randomUUID(),
-      tradeReference,
-      tradeType: 'paper',
-      counterparty,
-      createdAt: initialData?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-
-    const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
-      const legReference = initialData?.legs?.[index]?.legReference || 
-                          generateLegReference(tradeReference, index);
+    
+    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
+    
+    const legValidations = legs.map((leg, index) => {
+      const legNumber = index + 1;
+      const validations = [
+        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
+        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
+        validateRequiredField(leg.instrument, `Leg ${legNumber} - Instrument`),
+        validateRequiredField(leg.broker, `Leg ${legNumber} - Broker`),
+        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
+        validateDateRange(
+          leg.pricingPeriodStart, 
+          leg.pricingPeriodEnd, 
+          `Leg ${legNumber} - Pricing Period`
+        )
+      ];
       
-      const legData: PaperTradeLeg = {
-        id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
-        legReference,
-        parentTradeId: parentTrade.id,
-        buySell: legForm.buySell,
-        product: legForm.product,
-        instrument: legForm.instrument,
-        pricingPeriodStart: legForm.pricingPeriodStart,
-        pricingPeriodEnd: legForm.pricingPeriodEnd,
-        price: legForm.price,
-        quantity: legForm.quantity,
-        broker: legForm.broker,
-        formula: legForm.formula,
-        mtmFormula: legForm.mtmFormula
-      };
-      
-      return legData;
+      return validateFields(validations);
     });
+    
+    const areAllLegsValid = legValidations.every(isValid => isValid);
+    
+    if (isCounterpartyValid && areAllLegsValid) {
+      const parentTrade: PaperParentTrade = {
+        id: initialData?.id || crypto.randomUUID(),
+        tradeReference,
+        tradeType: 'paper',
+        counterparty,
+        createdAt: initialData?.createdAt || new Date(),
+        updatedAt: new Date()
+      };
 
-    const tradeData: any = {
-      ...parentTrade,
-      ...legs[0],
-      legs: tradeLegs
-    };
+      const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                          generateLegReference(tradeReference, index);
+        
+        const legData: PaperTradeLeg = {
+          id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
+          legReference,
+          parentTradeId: parentTrade.id,
+          buySell: legForm.buySell,
+          product: legForm.product,
+          instrument: legForm.instrument,
+          pricingPeriodStart: legForm.pricingPeriodStart,
+          pricingPeriodEnd: legForm.pricingPeriodEnd,
+          price: legForm.price,
+          quantity: legForm.quantity,
+          broker: legForm.broker,
+          formula: legForm.formula,
+          mtmFormula: legForm.mtmFormula
+        };
+        
+        return legData;
+      });
 
-    onSubmit(tradeData);
+      const tradeData: any = {
+        ...parentTrade,
+        ...legs[0],
+        legs: tradeLegs
+      };
+
+      onSubmit(tradeData);
+    } else {
+      toast.error('Please fix the validation errors before submitting', {
+        description: 'Check all required fields and date ranges above.'
+      });
+    }
   };
 
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
