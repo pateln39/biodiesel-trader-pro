@@ -367,7 +367,6 @@ export const calculateTradeLegPrice = async (
       periodType: 'historical',
       priceDetails: {
         instruments: {},
-        fixedComponents: [],
         evaluatedPrice: 0
       }
     };
@@ -456,13 +455,15 @@ export const calculateTradeLegPrice = async (
       .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
   ) as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   
+  const fixedComponentsArray = extractFixedComponents(formula.tokens);
+  
   return {
     price: finalPrice,
     periodType,
     priceDetails: {
       instruments: filteredInstruments,
-      fixedComponents,
-      evaluatedPrice: finalPrice
+      evaluatedPrice: finalPrice,
+      ...(fixedComponentsArray.length > 0 ? { fixedComponents: fixedComponentsArray } : {})
     }
   };
 };
@@ -479,7 +480,6 @@ export const calculateMTMPrice = async (
       price: 0,
       priceDetails: {
         instruments: {},
-        fixedComponents: [],
         evaluatedPrice: 0
       }
     };
@@ -553,12 +553,14 @@ export const calculateMTMPrice = async (
       .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
   ) as Record<Instrument, { price: number; date: Date | null }>;
   
+  const fixedComponentsArray = extractFixedComponents(formula.tokens);
+  
   return {
     price: finalPrice,
     priceDetails: {
       instruments: filteredInstruments,
-      fixedComponents,
-      evaluatedPrice: finalPrice
+      evaluatedPrice: finalPrice,
+      ...(fixedComponentsArray.length > 0 ? { fixedComponents: fixedComponentsArray } : {})
     }
   };
 };
