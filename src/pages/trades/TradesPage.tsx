@@ -140,6 +140,7 @@ const TradesPage = () => {
   };
 
   const cancelDelete = () => {
+    setIsDeleting(false);
     setDeletingTradeId(null);
     setDeletingLegId(null);
     setShowDeleteConfirmation(false);
@@ -189,7 +190,18 @@ const TradesPage = () => {
         });
       }
       
-      refetchTrades();
+      // First close the dialog and reset all state before refetching
+      setShowDeleteConfirmation(false);
+      setIsDeleting(false);
+      setDeletingTradeId(null);
+      setDeletingLegId(null);
+      setDeleteItemDetails({ reference: '' });
+      
+      // Then refetch the data
+      setTimeout(() => {
+        refetchTrades();
+      }, 100);
+
     } catch (error) {
       console.error('Error deleting:', error);
       toast({
@@ -197,10 +209,8 @@ const TradesPage = () => {
         title: "Deletion failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
-    } finally {
+      // Even on error, close the dialog
       setIsDeleting(false);
-      setDeletingTradeId(null);
-      setDeletingLegId(null);
       setShowDeleteConfirmation(false);
     }
   };
@@ -278,7 +288,7 @@ const TradesPage = () => {
             </Button>
           </div>
           
-          <Tabs defaultValue="physical" onValueChange={(value) => setActiveTab(value as "physical" | "paper")} className="w-full">
+          <Tabs defaultValue="physical" value={activeTab} onValueChange={(value) => setActiveTab(value as "physical" | "paper")} className="w-full">
             <div className="px-4 pt-2">
               <TabsList>
                 <TabsTrigger value="physical">Physical Trades</TabsTrigger>
@@ -505,7 +515,13 @@ const TradesPage = () => {
         </div>
       </div>
 
-      <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
+        if (!isOpen && !isDeleting) {
+          // Only handle closing via this callback if not already deleting
+          // This prevents duplicate state resets
+          cancelDelete();
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
