@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle, Trash } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,8 @@ import {
   Trade, 
   PhysicalTrade, 
   PaperTrade,
-  FormulaToken
+  FormulaToken,
+  PhysicalTradeLeg
 } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -44,6 +44,7 @@ import {
   formulaToString, 
   formulaToDisplayString
 } from '@/utils/formulaUtils';
+import { Badge } from '@/components/ui/badge';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -115,7 +116,6 @@ const TradesPage = () => {
     setIsDeleting(true);
     
     try {
-      // Delete the parent trade - this should cascade delete the trade legs due to foreign key relationship
       const { error } = await supabase
         .from('parent_trades')
         .delete()
@@ -139,8 +139,7 @@ const TradesPage = () => {
     }
   };
 
-  // Helper function to display formula in a readable format
-  const renderFormula = (trade: PhysicalTrade | PaperTrade) => {
+  const renderFormula = (trade: PhysicalTrade | PaperTrade | PhysicalTradeLeg) => {
     if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
       return <span className="text-muted-foreground italic">No formula</span>;
     }
@@ -157,6 +156,10 @@ const TradesPage = () => {
         </span>
       </div>
     );
+  };
+
+  const isMultiLegTrade = (trade: PhysicalTrade) => {
+    return trade.legs && trade.legs.length > 1;
   };
 
   return (
@@ -222,57 +225,74 @@ const TradesPage = () => {
                   </TableHeader>
                   <TableBody>
                     {physicalTrades.length > 0 ? (
-                      physicalTrades.map((trade) => (
-                        <TableRow key={trade.id}>
-                          <TableCell>
-                            <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                              {trade.tradeReference}
-                            </Link>
-                          </TableCell>
-                          <TableCell className="capitalize">{trade.buySell}</TableCell>
-                          <TableCell>{trade.incoTerm}</TableCell>
-                          <TableCell className="text-right">{trade.quantity} {trade.unit}</TableCell>
-                          <TableCell>{trade.product}</TableCell>
-                          <TableCell>{trade.counterparty}</TableCell>
-                          <TableCell>{renderFormula(trade)}</TableCell>
-                          <TableCell>
-                            <div className="relative">
-                              <Textarea 
-                                placeholder="Add comments..."
-                                value={comments[trade.id] || ''}
-                                onChange={(e) => handleCommentChange(trade.id, e.target.value)}
-                                onBlur={() => handleCommentBlur(trade.id)}
-                                className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                                rows={1}
-                              />
-                              {savingComments[trade.id] && (
-                                <div className="absolute top-1 right-1">
-                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">Actions</Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <Link to={`/trades/${trade.id}`}>
-                                  <DropdownMenuItem>View Details</DropdownMenuItem>
+                      physicalTrades.flatMap((trade) => {
+                        const hasMultipleLegs = isMultiLegTrade(trade);
+                        
+                        return trade.legs.map((leg, legIndex) => (
+                          <TableRow 
+                            key={leg.id}
+                            className={legIndex > 0 ? "border-t-0" : undefined}
+                          >
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+                                  {leg.legReference}
                                 </Link>
-                                <DropdownMenuItem 
-                                  className="text-red-600 focus:text-red-600" 
-                                  onClick={() => handleDeleteClick(trade.id)}
-                                >
-                                  <Trash className="mr-2 h-4 w-4" />
-                                  Delete Trade
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                {hasMultipleLegs && (
+                                  <Badge variant="outline" className="h-5 text-xs">
+                                    <Link2 className="mr-1 h-3 w-3" />
+                                    {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="capitalize">{leg.buySell}</TableCell>
+                            <TableCell>{leg.incoTerm}</TableCell>
+                            <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
+                            <TableCell>{leg.product}</TableCell>
+                            <TableCell>{trade.counterparty}</TableCell>
+                            <TableCell>{renderFormula(leg)}</TableCell>
+                            <TableCell>
+                              <div className="relative">
+                                <Textarea 
+                                  placeholder="Add comments..."
+                                  value={comments[leg.id] || ''}
+                                  onChange={(e) => handleCommentChange(leg.id, e.target.value)}
+                                  onBlur={() => handleCommentBlur(leg.id)}
+                                  className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
+                                  rows={1}
+                                />
+                                {savingComments[leg.id] && (
+                                  <div className="absolute top-1 right-1">
+                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">Actions</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <Link to={`/trades/${trade.id}`}>
+                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  </Link>
+                                  {legIndex === 0 && (
+                                    <DropdownMenuItem 
+                                      className="text-red-600 focus:text-red-600" 
+                                      onClick={() => handleDeleteClick(trade.id)}
+                                    >
+                                      <Trash className="mr-2 h-4 w-4" />
+                                      Delete Trade
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ));
+                      })
                     ) : (
                       <TableRow>
                         <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
@@ -370,7 +390,6 @@ const TradesPage = () => {
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
         <AlertDialogContent>
           <AlertDialogHeader>
