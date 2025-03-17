@@ -20,7 +20,7 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail, FixedComponent } from '@/types';
+import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface PriceDetailsProps {
@@ -66,10 +66,14 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
       setLoading(true);
 
       try {
+        // Ensure start date is before end date
+        const validStartDate = startDate < endDate ? startDate : endDate;
+        const validEndDate = endDate > startDate ? endDate : startDate;
+
         const tradePriceResult = await calculateTradeLegPrice(
           formula,
-          startDate,
-          endDate
+          validStartDate,
+          validEndDate
         );
         setPriceData(tradePriceResult);
         
@@ -163,76 +167,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     return averages;
   };
 
-  // Helper function to render fixed components
-  const renderFixedComponents = () => {
-    if (!priceData || !priceData.priceDetails.fixedComponents || priceData.priceDetails.fixedComponents.length === 0) {
-      return null;
-    }
-
-    return (
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Fixed Value Adjustments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Component</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {priceData.priceDetails.fixedComponents.map((component, index) => (
-                <TableRow key={`fixed-${index}`}>
-                  <TableCell>Fixed Adjustment {index + 1}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {component.displayValue}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // Helper function to render MTM fixed components
-  const renderMTMFixedComponents = () => {
-    if (!mtmPriceData || !mtmPriceData.priceDetails.fixedComponents || mtmPriceData.priceDetails.fixedComponents.length === 0) {
-      return null;
-    }
-
-    return (
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Fixed Value Adjustments (MTM)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Component</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mtmPriceData.priceDetails.fixedComponents.map((component, index) => (
-                <TableRow key={`mtm-fixed-${index}`}>
-                  <TableCell>Fixed Adjustment {index + 1}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {component.displayValue}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-7xl max-h-[80vh] overflow-y-auto">
@@ -313,9 +247,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                       </Card>
                     </div>
 
-                    {/* Render fixed components if present */}
-                    {renderFixedComponents()}
-
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold">
                         Pricing Table
@@ -377,10 +308,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                             </Table>
                           </div>
                         </Card>
-                      ) : priceData.priceDetails.fixedComponents && priceData.priceDetails.fixedComponents.length > 0 ? (
-                        <div className="text-muted-foreground">
-                          This formula only contains fixed values, no instrument pricing data available.
-                        </div>
                       ) : (
                         <div className="text-muted-foreground">
                           No price details available for this trade leg
@@ -434,9 +361,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                     </Card>
                   </div>
 
-                  {/* Render MTM fixed components if present */}
-                  {renderMTMFixedComponents()}
-
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">
                       MTM Components
@@ -476,10 +400,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                           </CardContent>
                         </Card>
                       ))
-                    ) : mtmPriceData.priceDetails.fixedComponents && mtmPriceData.priceDetails.fixedComponents.length > 0 ? (
-                      <div className="text-muted-foreground">
-                        This formula only contains fixed values, no instrument pricing data available.
-                      </div>
                     ) : (
                       <div className="text-muted-foreground">
                         No MTM price details available for this trade leg

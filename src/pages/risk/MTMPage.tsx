@@ -56,21 +56,34 @@ const MTMPage = () => {
   };
 
   const tradeLegs = physicalTrades.flatMap(trade => 
-    trade.legs?.map(leg => ({
-      legId: leg.id,
-      tradeRef: trade.tradeReference,
-      legReference: leg.legReference,
-      physicalType: trade.physicalType,
-      buySell: leg.buySell.toLowerCase(),
-      product: leg.product,
-      quantity: leg.quantity,
-      startDate: leg.pricingPeriodStart,
-      endDate: leg.pricingPeriodEnd,
-      formula: leg.formula,
-      mtmFormula: leg.mtmFormula,
-      calculatedPrice: 0,
-      mtmCalculatedPrice: 0,
-    })) || []
+    trade.legs?.map(leg => {
+      // Ensure start date is before end date
+      let startDate = leg.pricingPeriodStart;
+      let endDate = leg.pricingPeriodEnd;
+      
+      // Swap dates if start is after end
+      if (startDate > endDate) {
+        const temp = startDate;
+        startDate = endDate;
+        endDate = temp;
+      }
+      
+      return {
+        legId: leg.id,
+        tradeRef: trade.tradeReference,
+        legReference: leg.legReference,
+        physicalType: trade.physicalType,
+        buySell: leg.buySell.toLowerCase(),
+        product: leg.product,
+        quantity: leg.quantity,
+        startDate: startDate,
+        endDate: endDate,
+        formula: leg.formula,
+        mtmFormula: leg.mtmFormula,
+        calculatedPrice: 0,
+        mtmCalculatedPrice: 0,
+      };
+    }) || []
   );
 
   const { data: mtmPositions, isLoading: calculationLoading } = useQuery({

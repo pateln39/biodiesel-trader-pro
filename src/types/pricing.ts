@@ -35,21 +35,13 @@ export type PartialPricingFormula = {
   exposures?: PartialExposureResult;
 };
 
-// New interface to represent a fixed component in a pricing formula
-export interface FixedComponent {
-  value: number;
-  displayValue: string;
-}
-
-// Enhanced price detail interfaces that include fixed components
+// Enhanced price detail interfaces
 export interface PriceDetail {
   instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
-  fixedComponents: FixedComponent[];
   evaluatedPrice: number;
 }
 
 export interface MTMPriceDetail {
   instruments: Record<Instrument, { price: number; date: Date | null }>;
-  fixedComponents: FixedComponent[];
   evaluatedPrice: number;
 }
