@@ -11,7 +11,7 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { PhysicalTrade, PaperTrade } from '@/types';
+import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 const TradeEditPage = () => {
@@ -64,38 +64,38 @@ const TradeEditPage = () => {
             updatedAt: new Date(parentTrade.updated_at),
             physicalType: (parentTrade.physical_type || 'spot') as 'spot' | 'term',
             counterparty: parentTrade.counterparty,
-            buySell: tradeLegs[0].buy_sell,
-            product: tradeLegs[0].product,
+            buySell: tradeLegs[0].buy_sell as BuySell,
+            product: tradeLegs[0].product as Product,
             sustainability: tradeLegs[0].sustainability || '',
-            incoTerm: tradeLegs[0].inco_term || 'FOB',
+            incoTerm: (tradeLegs[0].inco_term || 'FOB') as IncoTerm,
             quantity: tradeLegs[0].quantity,
             tolerance: tradeLegs[0].tolerance || 0,
             loadingPeriodStart: tradeLegs[0].loading_period_start ? new Date(tradeLegs[0].loading_period_start) : new Date(),
             loadingPeriodEnd: tradeLegs[0].loading_period_end ? new Date(tradeLegs[0].loading_period_end) : new Date(),
             pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
             pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
-            unit: tradeLegs[0].unit || 'MT',
-            paymentTerm: tradeLegs[0].payment_term || '30 days',
-            creditStatus: tradeLegs[0].credit_status || 'pending',
+            unit: (tradeLegs[0].unit || 'MT') as Unit,
+            paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
+            creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
             legs: tradeLegs.map(leg => ({
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
               legReference: leg.leg_reference,
-              buySell: leg.buy_sell,
-              product: leg.product,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
               sustainability: leg.sustainability || '',
-              incoTerm: leg.inco_term || 'FOB',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
               quantity: leg.quantity,
               tolerance: leg.tolerance || 0,
               loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
               loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
               pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
               pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              unit: leg.unit || 'MT',
-              paymentTerm: leg.payment_term || '30 days',
-              creditStatus: leg.credit_status || 'pending',
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
               formula: validateAndParsePricingFormula(leg.pricing_formula),
               mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
             }))

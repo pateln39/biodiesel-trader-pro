@@ -1,12 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { BuySell, Product } from '@/types';
-import { PaperParentTrade, PaperTradeLeg } from '@/types/paper';
+import { PaperParentTrade, PaperTradeLeg, PaperTrade } from '@/types/paper';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +20,8 @@ interface PaperTradeFormProps {
   tradeReference: string;
   onSubmit: (trade: any) => void;
   onCancel: () => void;
+  isEditMode?: boolean;
+  initialData?: PaperTrade;
 }
 
 interface PaperLegFormState {
@@ -49,12 +50,31 @@ const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
   mtmFormula: createEmptyFormula()
 });
 
-const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
+  tradeReference, 
+  onSubmit, 
+  onCancel, 
+  isEditMode = false,
+  initialData 
+}) => {
   const { counterparties } = useReferenceData();
   
-  const [counterparty, setCounterparty] = useState<string>('');
+  const [counterparty, setCounterparty] = useState<string>(initialData?.counterparty || '');
   
-  const [legs, setLegs] = useState<PaperLegFormState[]>([createDefaultLeg()]);
+  const [legs, setLegs] = useState<PaperLegFormState[]>([
+    initialData ? {
+      buySell: initialData.buySell || 'buy',
+      product: initialData.product || 'UCOME',
+      instrument: initialData.instrument || '',
+      pricingPeriodStart: initialData.pricingPeriodStart || new Date(),
+      pricingPeriodEnd: initialData.pricingPeriodEnd || new Date(),
+      price: initialData.price || 0,
+      quantity: initialData.quantity || 0,
+      broker: initialData.broker || '',
+      formula: initialData.formula || createEmptyFormula(),
+      mtmFormula: initialData.mtmFormula || createEmptyFormula()
+    } : createDefaultLeg()
+  ]);
 
   const addLeg = () => {
     setLegs([...legs, createDefaultLeg(legs[0].broker)]);
@@ -98,19 +118,20 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     e.preventDefault();
 
     const parentTrade: PaperParentTrade = {
-      id: crypto.randomUUID(),
+      id: initialData?.id || crypto.randomUUID(),
       tradeReference,
       tradeType: 'paper',
       counterparty,
-      createdAt: new Date(),
+      createdAt: initialData?.createdAt || new Date(),
       updatedAt: new Date()
     };
 
     const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
-      const legReference = generateLegReference(tradeReference, index);
+      const legReference = initialData?.legs?.[index]?.legReference || 
+                          generateLegReference(tradeReference, index);
       
       const legData: PaperTradeLeg = {
-        id: crypto.randomUUID(),
+        id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
         legReference,
         parentTradeId: parentTrade.id,
         buySell: legForm.buySell,
@@ -353,7 +374,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
           Cancel
         </Button>
         <Button type="submit">
-          Create Trade
+          {isEditMode ? 'Update Trade' : 'Create Trade'}
         </Button>
       </div>
     </form>

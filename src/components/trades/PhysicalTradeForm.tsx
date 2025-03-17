@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg } from '@/types';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg, PhysicalTrade } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +18,8 @@ interface PhysicalTradeFormProps {
   tradeReference: string;
   onSubmit: (trade: any) => void;
   onCancel: () => void;
+  isEditMode?: boolean;
+  initialData?: PhysicalTrade;
 }
 
 interface LegFormState {
@@ -56,12 +58,36 @@ const createDefaultLeg = (): LegFormState => ({
   mtmFormula: createEmptyFormula()
 });
 
-const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ 
+  tradeReference, 
+  onSubmit, 
+  onCancel,
+  isEditMode = false,
+  initialData
+}) => {
   const { counterparties, sustainabilityOptions, creditStatusOptions } = useReferenceData();
-  const [physicalType, setPhysicalType] = useState<PhysicalTradeType>('spot');
-  const [counterparty, setCounterparty] = useState('');
+  const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
+  const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
   
-  const [legs, setLegs] = useState<LegFormState[]>([createDefaultLeg()]);
+  const [legs, setLegs] = useState<LegFormState[]>(
+    initialData?.legs?.map(leg => ({
+      buySell: leg.buySell,
+      product: leg.product,
+      sustainability: leg.sustainability,
+      incoTerm: leg.incoTerm,
+      unit: leg.unit,
+      paymentTerm: leg.paymentTerm,
+      creditStatus: leg.creditStatus,
+      quantity: leg.quantity,
+      tolerance: leg.tolerance,
+      loadingPeriodStart: leg.loadingPeriodStart,
+      loadingPeriodEnd: leg.loadingPeriodEnd,
+      pricingPeriodStart: leg.pricingPeriodStart,
+      pricingPeriodEnd: leg.pricingPeriodEnd,
+      formula: leg.formula || createEmptyFormula(),
+      mtmFormula: leg.mtmFormula || createEmptyFormula()
+    })) || [createDefaultLeg()]
+  );
 
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
@@ -122,20 +148,21 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
     e.preventDefault();
 
     const parentTrade: PhysicalParentTrade = {
-      id: crypto.randomUUID(),
+      id: initialData?.id || crypto.randomUUID(),
       tradeReference,
       tradeType: 'physical',
       physicalType,
       counterparty,
-      createdAt: new Date(),
+      createdAt: initialData?.createdAt || new Date(),
       updatedAt: new Date()
     };
 
     const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
-      const legReference = generateLegReference(tradeReference, index);
+      const legReference = initialData?.legs?.[index]?.legReference || 
+                          generateLegReference(tradeReference, index);
       
       const legData: PhysicalTradeLeg = {
-        id: crypto.randomUUID(),
+        id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
         legReference,
         parentTradeId: parentTrade.id,
         buySell: legForm.buySell,
@@ -482,7 +509,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
           Cancel
         </Button>
         <Button type="submit">
-          Create Trade
+          {isEditMode ? 'Update Trade' : 'Create Trade'}
         </Button>
       </div>
     </form>
@@ -490,3 +517,4 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ tradeReference, o
 };
 
 export default PhysicalTradeForm;
+

@@ -27,7 +27,7 @@ export interface PaperTradeLeg {
 }
 
 // For backward compatibility
-export interface PaperTrade extends Trade {
+export interface PaperTrade extends ParentTrade {
   tradeType: "paper";
   instrument: Instrument;
   pricingPeriodStart: Date;
