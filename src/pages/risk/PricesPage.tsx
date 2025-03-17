@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import PriceUploader from '@/components/pricing/PriceUploader';
 import HistoricalPricesView from '@/components/pricing/historical/HistoricalPricesView';
+import { Toaster } from '@/components/ui/toaster';
 
 const PricesPage = () => {
   return (
@@ -75,6 +76,8 @@ const PricesPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+      
+      <Toaster />
     </Layout>
   );
 };

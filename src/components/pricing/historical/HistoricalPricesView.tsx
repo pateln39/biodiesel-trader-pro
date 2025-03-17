@@ -6,10 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TableView } from './tabs/TableView';
 import { GraphView } from './tabs/GraphView';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader } from 'lucide-react';
 
 const HistoricalPricesView = () => {
   const [activeTab, setActiveTab] = useState('graph');
+  const [initializing, setInitializing] = useState(true);
   
   const {
     instruments,
@@ -36,6 +37,9 @@ const HistoricalPricesView = () => {
           endDate: null,
         });
       }
+      
+      // Set initializing to false after instruments are loaded and Fame0 is selected
+      setInitializing(false);
     }
   }, [instruments, isLoading]);
   
@@ -55,6 +59,17 @@ const HistoricalPricesView = () => {
         instrumentNames[instrument.id] = instrument.display_name;
       }
     });
+  }
+  
+  // Show loading state when initializing or when instruments are loading
+  if (initializing || (isLoading && (!instruments || instruments.length === 0))) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <Loader className="h-12 w-12 animate-spin text-primary" />
+        <h3 className="text-xl font-medium">Loading Price Data...</h3>
+        <p className="text-sm text-muted-foreground">Please wait while we fetch the latest price information</p>
+      </div>
+    );
   }
   
   return (

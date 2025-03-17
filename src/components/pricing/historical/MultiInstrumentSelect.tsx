@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/hooks/use-toast";
 
 interface Instrument {
   id: string;
@@ -39,6 +40,7 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
   isLoading = false
 }) => {
   const [open, setOpen] = React.useState(false);
+  const { toast } = useToast();
   
   // Ensure we always have valid instruments
   const validInstruments = instruments || [];
@@ -64,9 +66,18 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
     if (!id) return;
     
     if (selectedValues.includes(id)) {
+      // Prevent deselection if it's the only selected instrument
+      if (selectedValues.length === 1) {
+        toast({
+          title: "At least one instrument required",
+          description: "You must have at least one instrument selected at all times.",
+          variant: "default"
+        });
+        return;
+      }
+      
       const newValues = selectedValues.filter(value => value !== id);
-      // Ensure at least one instrument remains selected
-      onChange(newValues.length > 0 ? newValues : [id]);
+      onChange(newValues);
     } else {
       onChange([...selectedValues, id]);
     }

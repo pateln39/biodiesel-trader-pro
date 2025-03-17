@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw, Download } from 'lucide-react';
 import { subMonths, startOfDay } from 'date-fns';
 import { MultiInstrumentSelect } from './MultiInstrumentSelect';
+import { useToast } from "@/hooks/use-toast";
 
 interface HistoricalPriceFilterProps {
   onFilterChange: (filters: HistoricalPriceFilters) => void;
@@ -30,6 +31,7 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
 }) => {
   const defaultStartDate = subMonths(startOfDay(new Date()), 1);
   const defaultEndDate = startOfDay(new Date());
+  const { toast } = useToast();
 
   const [instrumentIds, setInstrumentIds] = useState<string[]>(selectedInstrumentIds || []);
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
@@ -45,6 +47,26 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
   }, [selectedInstrumentIds]);
 
   const handleFilterApply = () => {
+    if (instrumentIds.length === 0 && instruments.length > 0) {
+      // Always ensure at least one instrument is selected
+      const firstInstrumentId = instruments[0].id;
+      const newInstrumentIds = [firstInstrumentId];
+      setInstrumentIds(newInstrumentIds);
+      
+      onFilterChange({
+        instrumentIds: newInstrumentIds,
+        startDate,
+        endDate
+      });
+      
+      toast({
+        title: "No instruments selected",
+        description: "Defaulting to the first available instrument.",
+        variant: "default"
+      });
+      return;
+    }
+    
     onFilterChange({
       instrumentIds,
       startDate,
@@ -54,8 +76,19 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
 
   // Apply initial filter on mount
   useEffect(() => {
-    handleFilterApply();
-  }, []);
+    if (instruments && instruments.length > 0 && (!instrumentIds || instrumentIds.length === 0)) {
+      const defaultIds = selectedInstrumentIds && selectedInstrumentIds.length > 0 
+        ? selectedInstrumentIds 
+        : [instruments[0].id];
+        
+      setInstrumentIds(defaultIds);
+    }
+    
+    // Only apply filter if we have instruments and at least one is selected
+    if (instruments && instruments.length > 0 && instrumentIds && instrumentIds.length > 0) {
+      handleFilterApply();
+    }
+  }, [instruments]);
 
   const handleInstrumentChange = (newIds: string[]) => {
     setInstrumentIds(newIds);
