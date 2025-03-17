@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -15,7 +16,8 @@ import {
   calculateTradeLegPrice, 
   calculateMTMPrice, 
   calculateMTMValue, 
-  PricingPeriodType 
+  PricingPeriodType,
+  applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
 import { Instrument, PricingFormula } from '@/types';
@@ -109,7 +111,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const getPricesByDate = () => {
     if (!priceData) return [];
     
-    const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}}>();
+    const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}, formulaPrice: number}>();
     
     tradeInstruments.forEach(instrument => {
       const instrumentPrices = priceData.priceDetails[instrument as Instrument]?.prices || [];
@@ -121,7 +123,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             date,
             prices: {
               [instrument]: price
-            }
+            },
+            formulaPrice: 0 // Initialize formula price
           });
         } else {
           const existingEntry = dateMap.get(dateStr)!;
@@ -129,6 +132,25 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         }
       });
     });
+    
+    // Calculate formula price for each date
+    if (formula) {
+      const entries = Array.from(dateMap.values());
+      
+      entries.forEach(entry => {
+        const dailyInstrumentPrices: Record<Instrument, number> = {} as Record<Instrument, number>;
+        
+        // Fill in the instrument prices for this day
+        tradeInstruments.forEach(instrument => {
+          dailyInstrumentPrices[instrument as Instrument] = entry.prices[instrument] || 0;
+        });
+        
+        // Apply the formula to get the daily price
+        entry.formulaPrice = applyPricingFormula(formula, dailyInstrumentPrices);
+      });
+      
+      return entries.sort((a, b) => b.date.getTime() - a.date.getTime());
+    }
     
     return Array.from(dateMap.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
   };
@@ -262,8 +284,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                       ${(dateEntry.prices[instrument] || 0).toFixed(2)}
                                     </TableCell>
                                   ))}
-                                  <TableCell className="text-right text-muted-foreground">
-                                    -
+                                  <TableCell className="text-right">
+                                    ${dateEntry.formulaPrice.toFixed(2)}
                                   </TableCell>
                                 </TableRow>
                               ))}
