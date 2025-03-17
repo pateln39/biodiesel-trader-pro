@@ -1,7 +1,7 @@
 
 import { BuySell, Product } from './trade';
 import { Instrument } from './common';
-import { ParentTrade, Trade } from './common';
+import { ParentTrade } from './common';
 import { PricingFormula } from './pricing';
 
 // Paper parent trade
@@ -29,6 +29,8 @@ export interface PaperTradeLeg {
 // For backward compatibility
 export interface PaperTrade extends ParentTrade {
   tradeType: "paper";
+  buySell: BuySell;
+  product: Product;
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -37,4 +39,5 @@ export interface PaperTrade extends ParentTrade {
   broker: string;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
+  legs?: PaperTradeLeg[];
 }

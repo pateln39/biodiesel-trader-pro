@@ -103,6 +103,7 @@ const TradeEditPage = () => {
           setTradeData(physicalTrade);
         } 
         else if (parentTrade.trade_type === 'paper' && tradeLegs.length > 0) {
+          const firstLeg = tradeLegs[0];
           const paperTrade: PaperTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -110,14 +111,31 @@ const TradeEditPage = () => {
             createdAt: new Date(parentTrade.created_at),
             updatedAt: new Date(parentTrade.updated_at),
             counterparty: parentTrade.counterparty,
-            broker: tradeLegs[0].broker || '',
-            instrument: tradeLegs[0].instrument || '',
-            price: tradeLegs[0].price || 0,
-            quantity: tradeLegs[0].quantity,
-            pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
-            pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
-            formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula)
+            buySell: firstLeg.buy_sell as BuySell,
+            product: firstLeg.product as Product,
+            broker: firstLeg.broker || '',
+            instrument: firstLeg.instrument || '',
+            price: firstLeg.price || 0,
+            quantity: firstLeg.quantity,
+            pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+            pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+            formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+            mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
+            legs: tradeLegs.map(leg => ({
+              id: leg.id,
+              legReference: leg.leg_reference,
+              parentTradeId: leg.parent_trade_id,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              instrument: leg.instrument || '',
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              price: leg.price || 0,
+              quantity: leg.quantity,
+              broker: leg.broker || '',
+              formula: validateAndParsePricingFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            }))
           };
           setTradeData(paperTrade);
         } 
@@ -197,30 +215,31 @@ const TradeEditPage = () => {
           }
         }
       } else if (updatedTradeData.tradeType === 'paper') {
-        // For paper trades, update the main leg (there should be only one)
-        const legData = {
-          buy_sell: updatedTradeData.buySell,
-          broker: updatedTradeData.broker,
-          instrument: updatedTradeData.instrument,
-          product: updatedTradeData.product,
-          pricing_period_start: updatedTradeData.pricingPeriodStart?.toISOString().split('T')[0],
-          pricing_period_end: updatedTradeData.pricingPeriodEnd?.toISOString().split('T')[0],
-          price: updatedTradeData.price,
-          quantity: updatedTradeData.quantity,
-          pricing_formula: updatedTradeData.formula,
-          mtm_formula: updatedTradeData.mtmFormula,
-          updated_at: new Date().toISOString()
-        };
+        // For paper trades, update all legs
+        for (const leg of updatedTradeData.legs) {
+          const legData = {
+            buy_sell: leg.buySell,
+            broker: leg.broker,
+            product: leg.product,
+            instrument: leg.instrument,
+            pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
+            pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
+            price: leg.price,
+            quantity: leg.quantity,
+            pricing_formula: leg.formula,
+            mtm_formula: leg.mtmFormula,
+            updated_at: new Date().toISOString()
+          };
 
-        // Update the existing leg
-        const { error: legUpdateError } = await supabase
-          .from('trade_legs')
-          .update(legData)
-          .eq('parent_trade_id', id)
-          .eq('id', updatedTradeData.legs?.[0]?.id || '');
-          
-        if (legUpdateError) {
-          throw new Error(`Error updating paper trade leg: ${legUpdateError.message}`);
+          // Update the existing leg
+          const { error: legUpdateError } = await supabase
+            .from('trade_legs')
+            .update(legData)
+            .eq('id', leg.id);
+            
+          if (legUpdateError) {
+            throw new Error(`Error updating paper trade leg: ${legUpdateError.message}`);
+          }
         }
       }
 

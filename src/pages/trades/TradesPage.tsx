@@ -67,8 +67,6 @@ const TradesPage = () => {
   const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
   const [deleteItemDetails, setDeleteItemDetails] = useState<{
     reference: string;
-    isTermTrade?: boolean;
-    legNumber?: number;
   }>({ reference: '' });
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
@@ -339,8 +337,8 @@ const TradesPage = () => {
                                   <Button variant="ghost" size="sm">Actions</Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <Link to={`/trades/${trade.id}`}>
-                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  <Link to={`/trades/edit/${trade.id}`}>
+                                    <DropdownMenuItem>Edit Trade</DropdownMenuItem>
                                   </Link>
                                   {trade.physicalType === 'spot' && legIndex === 0 && (
                                     <DropdownMenuItem 
@@ -437,8 +435,8 @@ const TradesPage = () => {
                                   <Button variant="ghost" size="sm">Actions</Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <Link to={`/trades/${trade.id}`}>
-                                    <DropdownMenuItem>View Details</DropdownMenuItem>
+                                  <Link to={`/trades/edit/${trade.id}`}>
+                                    <DropdownMenuItem>Edit Trade</DropdownMenuItem>
                                   </Link>
                                   <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600" 
