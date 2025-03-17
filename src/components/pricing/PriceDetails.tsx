@@ -20,6 +20,7 @@ import {
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
 import { Instrument, PricingFormula } from '@/types';
+import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface PriceDetailsProps {
   isOpen: boolean;
@@ -108,6 +109,50 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const tradeInstruments = priceData ? getInstrumentsFromPriceData(priceData) : [];
   const mtmInstruments = mtmPriceData ? getInstrumentsFromPriceData(mtmPriceData) : [];
 
+  // Organize price data by date for the consolidated table
+  const getPricesByDate = () => {
+    if (!priceData) return [];
+    
+    // Create a map of dates to all instrument prices for that date
+    const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}}>(); 
+    
+    // Populate the date map with all unique dates and their corresponding prices
+    tradeInstruments.forEach(instrument => {
+      const instrumentPrices = priceData.priceDetails[instrument as Instrument]?.prices || [];
+      instrumentPrices.forEach(({ date, price }) => {
+        const dateStr = date.toISOString().split('T')[0];
+        
+        if (!dateMap.has(dateStr)) {
+          dateMap.set(dateStr, {
+            date,
+            prices: {
+              [instrument]: price
+            }
+          });
+        } else {
+          const existingEntry = dateMap.get(dateStr)!;
+          existingEntry.prices[instrument] = price;
+        }
+      });
+    });
+    
+    // Convert the map to an array and sort by date (newest first)
+    return Array.from(dateMap.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
+  };
+  
+  // Get the average prices for each instrument
+  const getAveragePrices = () => {
+    const averages: {[instrument: string]: number} = {};
+    
+    if (priceData) {
+      tradeInstruments.forEach(instrument => {
+        averages[instrument] = priceData.priceDetails[instrument as Instrument]?.average || 0;
+      });
+    }
+    
+    return averages;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -190,59 +235,72 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
 
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold">
-                        Price Components
+                        Pricing Table
                       </h3>
 
-                      {tradeInstruments.length > 0 ? (
-                        tradeInstruments.map((instrument) => (
-                          <Card key={instrument} className="overflow-hidden">
-                            <CardHeader className="bg-muted/50 pb-3">
-                              <div className="flex justify-between items-center">
-                                <CardTitle className="text-md">
-                                  {instrument}
-                                </CardTitle>
-                                <div className="font-medium">
-                                  Average:{' '}
-                                  <span className="font-bold">
-                                    $
-                                    {priceData.priceDetails[
-                                      instrument as Instrument
-                                    ].average.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                              <div className="max-h-60 overflow-y-auto">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Date</TableHead>
-                                      <TableHead className="text-right">
-                                        Price
-                                      </TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {priceData.priceDetails[
-                                      instrument as Instrument
-                                    ].prices.map((price, index) => (
-                                      <TableRow key={index}>
-                                        <TableCell>
-                                          {format(price.date, 'MMM d, yyyy')}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                          ${price.price.toFixed(2)}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))
-                      ) : (
+                      <Card>
+                        <CardHeader className="pb-2 bg-muted/50">
+                          <CardTitle className="text-sm font-medium flex items-center justify-between">
+                            <span>Consolidated Price Data</span>
+                            {formula && (
+                              <Badge variant="outline" className="ml-2 text-xs font-normal">
+                                Formula: {formulaToDisplayString(formula.tokens)}
+                              </Badge>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <div className="max-h-[400px] overflow-auto">
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10">
+                              <TableRow>
+                                <TableHead className="w-[120px]">Date</TableHead>
+                                {tradeInstruments.map((instrument) => (
+                                  <TableHead key={instrument} className="text-right">
+                                    {instrument}
+                                  </TableHead>
+                                ))}
+                                <TableHead className="text-right font-bold">
+                                  Formula Result
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {getPricesByDate().map((dateEntry) => (
+                                <TableRow key={dateEntry.date.toISOString()}>
+                                  <TableCell className="font-medium">
+                                    {format(dateEntry.date, 'MMM d, yyyy')}
+                                  </TableCell>
+                                  {tradeInstruments.map((instrument) => (
+                                    <TableCell key={instrument} className="text-right">
+                                      ${(dateEntry.prices[instrument] || 0).toFixed(2)}
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="text-right text-muted-foreground">
+                                    -
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {/* Average row */}
+                              <TableRow className="bg-muted/20 font-bold border-t-2">
+                                <TableCell className="font-bold">Average</TableCell>
+                                {tradeInstruments.map((instrument) => {
+                                  const averages = getAveragePrices();
+                                  return (
+                                    <TableCell key={`avg-${instrument}`} className="text-right">
+                                      ${(averages[instrument] || 0).toFixed(2)}
+                                    </TableCell>
+                                  );
+                                })}
+                                <TableCell className="text-right text-primary">
+                                  ${priceData.price.toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </Card>
+
+                      {tradeInstruments.length === 0 && (
                         <div className="text-muted-foreground">
                           No price details available for this trade leg
                         </div>
