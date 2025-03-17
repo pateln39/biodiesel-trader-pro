@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -69,7 +68,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
       setLoading(true);
 
       try {
-        // Fetch trade price data (using pricing period)
         const tradePriceResult = await calculateTradeLegPrice(
           formula,
           startDate,
@@ -77,17 +75,15 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         );
         setPriceData(tradePriceResult);
         
-        // Fetch MTM price data using most recent prices
         const formulaToUse = mtmFormula || formula;
         const mtmPriceResult = await calculateMTMPrice(formulaToUse);
         setMtmPriceData(mtmPriceResult);
           
-        // Calculate MTM value
         const mtmVal = calculateMTMValue(
           tradePriceResult.price,
           mtmPriceResult.price,
           quantity,
-          'buy' // Assuming buy for now, should be passed in from props
+          'buy'
         );
         setMtmValue(mtmVal);
       } catch (error) {
@@ -100,7 +96,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     fetchPriceData();
   }, [isOpen, formula, mtmFormula, startDate, endDate, quantity]);
 
-  // Get the list of instruments used in the formula
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails) return [];
     return Object.keys(data.priceDetails);
@@ -109,14 +104,11 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const tradeInstruments = priceData ? getInstrumentsFromPriceData(priceData) : [];
   const mtmInstruments = mtmPriceData ? getInstrumentsFromPriceData(mtmPriceData) : [];
 
-  // Organize price data by date for the consolidated table
   const getPricesByDate = () => {
     if (!priceData) return [];
     
-    // Create a map of dates to all instrument prices for that date
-    const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}}>(); 
+    const dateMap = new Map<string, {date: Date, prices: {[instrument: string]: number}}>();
     
-    // Populate the date map with all unique dates and their corresponding prices
     tradeInstruments.forEach(instrument => {
       const instrumentPrices = priceData.priceDetails[instrument as Instrument]?.prices || [];
       instrumentPrices.forEach(({ date, price }) => {
@@ -136,11 +128,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
       });
     });
     
-    // Convert the map to an array and sort by date (newest first)
     return Array.from(dateMap.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
   };
-  
-  // Get the average prices for each instrument
+
   const getAveragePrices = () => {
     const averages: {[instrument: string]: number} = {};
     
@@ -255,12 +245,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                   </TableHead>
                                 ))}
                                 <TableHead className="text-right w-[300px]">
-                                  <div className="flex items-start">
-                                    <span className="font-semibold mr-1">Formula:</span>
-                                    <span className="font-medium text-primary">
-                                      {formula ? formulaToDisplayString(formula.tokens) : 'N/A'}
-                                    </span>
-                                  </div>
+                                  {formula ? formulaToDisplayString(formula.tokens) : 'Formula N/A'}
                                 </TableHead>
                               </TableRow>
                             </TableHeader>
@@ -280,7 +265,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                   </TableCell>
                                 </TableRow>
                               ))}
-                              {/* Average row */}
                               <TableRow className="bg-muted/20 font-bold border-t-2">
                                 <TableCell className="font-bold">Average</TableCell>
                                 {tradeInstruments.map((instrument) => {
@@ -426,12 +410,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                             <TableRow>
                               <TableCell className="font-medium">Direction Factor</TableCell>
                               <TableCell className="text-right">-1 (Buy)</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium">Price Difference</TableCell>
-                              <TableCell className="text-right">
-                                ${(priceData?.price || 0 - mtmPriceData.price).toFixed(2)}
-                              </TableCell>
                             </TableRow>
                             <TableRow className="font-bold text-lg">
                               <TableCell>MTM Value</TableCell>
