@@ -143,7 +143,11 @@ const fetchTrades = async (): Promise<Trade[]> => {
         tradeType: parent.trade_type as TradeType,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
-        counterparty: parent.counterparty
+        counterparty: parent.counterparty,
+        // Add missing required properties for PaperTrade
+        buySell: 'buy' as BuySell,
+        product: 'UCOME' as Product,
+        legs: []
       } as Trade;
     });
 

@@ -45,6 +45,7 @@ import {
   formulaToDisplayString
 } from '@/utils/formulaUtils';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -74,17 +75,21 @@ const TradesPage = () => {
   const [deleteItemDetails, setDeleteItemDetails] = useState<DeleteItemDetails>({ 
     reference: '' 
   });
+  const [pageError, setPageError] = useState<string | null>(null);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
   const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
 
   useEffect(() => {
     if (error) {
+      setPageError(error instanceof Error ? error.message : 'Unknown error occurred');
       toast({
         variant: "destructive",
         title: "Failed to load trades",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
+    } else {
+      setPageError(null);
     }
   }, [error]);
 
@@ -223,6 +228,36 @@ const TradesPage = () => {
     return trade.legs && trade.legs.length > 1;
   };
 
+  if (pageError) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
+            <Link to="/trades/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Trade
+              </Button>
+            </Link>
+          </div>
+          
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              {pageError}
+              <div className="mt-2">
+                <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
+                  Try Again
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -288,8 +323,10 @@ const TradesPage = () => {
                     {physicalTrades.length > 0 ? (
                       physicalTrades.flatMap((trade) => {
                         const hasMultipleLegs = isMultiLegTrade(trade);
+                        // Add safety check to ensure legs is an array
+                        const legs = trade.legs || [];
                         
-                        return trade.legs.map((leg, legIndex) => (
+                        return legs.map((leg, legIndex) => (
                           <TableRow 
                             key={leg.id}
                             className={legIndex > 0 ? "border-t-0" : undefined}
