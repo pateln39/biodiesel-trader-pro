@@ -29,7 +29,7 @@ const MTMPage = () => {
     startDate: Date;
     endDate: Date;
     quantity: number;
-    buySell: 'buy' | 'sell';  // Added buySell property
+    buySell: 'buy' | 'sell';
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -42,6 +42,7 @@ const MTMPage = () => {
   type MTMPosition = {
     legId: string;
     tradeRef: string;
+    legReference: string; // Added leg reference
     buySell: string;
     product: string;
     quantity: number;
@@ -60,15 +61,16 @@ const MTMPage = () => {
     trade.legs?.map(leg => ({
       legId: leg.id,
       tradeRef: trade.tradeReference,
-      buySell: leg.buySell.toLowerCase(), // Ensure we're using lowercase for consistency
+      legReference: leg.legReference, // Include leg reference
+      buySell: leg.buySell.toLowerCase(),
       product: leg.product,
       quantity: leg.quantity,
       startDate: leg.pricingPeriodStart,
       endDate: leg.pricingPeriodEnd,
       formula: leg.formula,
       mtmFormula: leg.mtmFormula,
-      calculatedPrice: 0, // Will be populated by price calculation
-      mtmCalculatedPrice: 0, // Will be populated by MTM price calculation
+      calculatedPrice: 0,
+      mtmCalculatedPrice: 0,
     })) || []
   );
 
@@ -210,7 +212,14 @@ const MTMPage = () => {
                 <TableBody>
                   {mtmPositions.map((position) => (
                     <TableRow key={position.legId}>
-                      <TableCell>{position.tradeRef}</TableCell>
+                      <TableCell>
+                        {position.tradeRef}
+                        {position.legReference && (
+                          <span className="text-muted-foreground ml-1">
+                            {position.legReference.split('-').pop()}
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell>{position.product}</TableCell>
                       <TableCell>
                         <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
@@ -272,7 +281,7 @@ const MTMPage = () => {
           startDate={selectedLeg.startDate}
           endDate={selectedLeg.endDate}
           quantity={selectedLeg.quantity}
-          buySell={selectedLeg.buySell}  // Pass the buySell prop to PriceDetails
+          buySell={selectedLeg.buySell}
         />
       )}
     </Layout>
