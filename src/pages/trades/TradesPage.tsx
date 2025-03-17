@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/tradeUtils';
@@ -63,15 +63,24 @@ const TradesPage = () => {
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
+  const [deletingLegId, setDeletingLegId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
+  const [deleteItemDetails, setDeleteItemDetails] = useState<{
+    reference: string;
+    isTermTrade?: boolean;
+    legNumber?: number;
+  }>({ reference: '' });
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
   const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
 
   useEffect(() => {
     if (error) {
-      toast.error('Failed to load trades', {
+      toast({
+        variant: "destructive",
+        title: "Failed to load trades",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     }
@@ -83,7 +92,10 @@ const TradesPage = () => {
       
       setTimeout(() => {
         console.log(`Saving comment for trade ${tradeId}: ${comment}`);
-        toast.success('Comment saved');
+        toast({
+          title: "Comment saved",
+          description: "Your comment has been saved successfully."
+        });
         setSavingComments(prev => ({ ...prev, [tradeId]: false }));
       }, 500);
     }, 1000),
@@ -101,41 +113,85 @@ const TradesPage = () => {
     debouncedSaveComment(tradeId, comments[tradeId] || '');
   };
 
-  const handleDeleteClick = (tradeId: string) => {
+  const handleDeleteTradeClick = (tradeId: string, reference: string) => {
     setDeletingTradeId(tradeId);
+    setDeletingLegId(null);
+    setDeleteMode('trade');
+    setDeleteItemDetails({ 
+      reference: reference,
+      isTermTrade: false
+    });
+    setShowDeleteConfirmation(true);
+  };
+
+  const handleDeleteLegClick = (legId: string, tradeId: string, reference: string, legNumber: number) => {
+    setDeletingLegId(legId);
+    setDeletingTradeId(tradeId);
+    setDeleteMode('leg');
+    setDeleteItemDetails({
+      reference: reference,
+      isTermTrade: true,
+      legNumber: legNumber
+    });
     setShowDeleteConfirmation(true);
   };
 
   const cancelDelete = () => {
     setDeletingTradeId(null);
+    setDeletingLegId(null);
     setShowDeleteConfirmation(false);
+    setDeleteItemDetails({ reference: '' });
   };
 
   const confirmDelete = async () => {
-    if (!deletingTradeId) return;
-    
     setIsDeleting(true);
     
     try {
-      const { error } = await supabase
-        .from('parent_trades')
-        .delete()
-        .eq('id', deletingTradeId);
-      
-      if (error) {
-        throw error;
+      if (deleteMode === 'trade' && deletingTradeId) {
+        // Delete the entire trade (spot trade)
+        const { error } = await supabase
+          .from('parent_trades')
+          .delete()
+          .eq('id', deletingTradeId);
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Trade deleted",
+          description: "Trade has been deleted successfully."
+        });
+      } else if (deleteMode === 'leg' && deletingLegId) {
+        // Delete just the leg (for term trades)
+        const { error } = await supabase
+          .from('trade_legs')
+          .delete()
+          .eq('id', deletingLegId);
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Trade leg deleted",
+          description: "Trade leg has been deleted successfully."
+        });
       }
       
-      toast.success('Trade deleted successfully');
+      // Refresh the trade list
       refetchTrades();
     } catch (error) {
-      console.error('Error deleting trade:', error);
-      toast.error('Failed to delete trade', {
+      console.error('Error deleting:', error);
+      toast({
+        variant: "destructive",
+        title: "Deletion failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     } finally {
       setIsDeleting(false);
       setDeletingTradeId(null);
+      setDeletingLegId(null);
       setShowDeleteConfirmation(false);
     }
   };
@@ -282,13 +338,30 @@ const TradesPage = () => {
                                   <Link to={`/trades/${trade.id}`}>
                                     <DropdownMenuItem>View Details</DropdownMenuItem>
                                   </Link>
-                                  {legIndex === 0 && (
+                                  {/* For spot trades, allow deleting the entire trade */}
+                                  {trade.physicalType === 'spot' && (
                                     <DropdownMenuItem 
                                       className="text-red-600 focus:text-red-600" 
-                                      onClick={() => handleDeleteClick(trade.id)}
+                                      onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference)}
                                     >
                                       <Trash className="mr-2 h-4 w-4" />
                                       Delete Trade
+                                    </DropdownMenuItem>
+                                  )}
+                                  
+                                  {/* For term trades, only show delete leg option */}
+                                  {trade.physicalType === 'term' && (
+                                    <DropdownMenuItem 
+                                      className="text-red-600 focus:text-red-600" 
+                                      onClick={() => handleDeleteLegClick(
+                                        leg.id, 
+                                        trade.id, 
+                                        `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
+                                        legIndex + 1
+                                      )}
+                                    >
+                                      <Trash className="mr-2 h-4 w-4" />
+                                      Delete Leg
                                     </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
@@ -368,7 +441,7 @@ const TradesPage = () => {
                                   </Link>
                                   <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600" 
-                                    onClick={() => handleDeleteClick(trade.id)}
+                                    onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference)}
                                   >
                                     <Trash className="mr-2 h-4 w-4" />
                                     Delete Trade
@@ -399,7 +472,11 @@ const TradesPage = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the trade from the database.
+              {deleteMode === 'trade' ? (
+                <>This will permanently delete the trade {deleteItemDetails.reference} from the database.</>
+              ) : (
+                <>This will permanently delete leg {deleteItemDetails.legNumber} of trade {deleteItemDetails.reference} from the database.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
