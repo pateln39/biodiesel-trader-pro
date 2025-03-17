@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
@@ -55,6 +56,11 @@ const debounce = (func: Function, delay: number) => {
   };
 };
 
+interface DeleteItemDetails {
+  reference: string;
+  legNumber?: number;
+}
+
 const TradesPage = () => {
   const { trades, loading, error, refetchTrades } = useTrades();
   const [activeTab, setActiveTab] = useState<"physical" | "paper">("physical");
@@ -65,9 +71,9 @@ const TradesPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
-  const [deleteItemDetails, setDeleteItemDetails] = useState<{
-    reference: string;
-  }>({ reference: '' });
+  const [deleteItemDetails, setDeleteItemDetails] = useState<DeleteItemDetails>({ 
+    reference: '' 
+  });
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
   const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
@@ -113,10 +119,7 @@ const TradesPage = () => {
     setDeletingTradeId(tradeId);
     setDeletingLegId(null);
     setDeleteMode('trade');
-    setDeleteItemDetails({ 
-      reference: reference,
-      isTermTrade: false
-    });
+    setDeleteItemDetails({ reference });
     setShowDeleteConfirmation(true);
   };
 
@@ -125,9 +128,8 @@ const TradesPage = () => {
     setDeletingTradeId(tradeId);
     setDeleteMode('leg');
     setDeleteItemDetails({
-      reference: reference,
-      isTermTrade: true,
-      legNumber: legNumber
+      reference,
+      legNumber
     });
     setShowDeleteConfirmation(true);
   };
