@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HistoricalPriceFilter, HistoricalPriceFilters } from './HistoricalPriceFilter';
 import { useHistoricalPrices } from '@/hooks/useHistoricalPrices';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TableView } from './tabs/TableView';
 import { GraphView } from './tabs/GraphView';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const HistoricalPricesView = () => {
   const [activeTab, setActiveTab] = useState('graph');
@@ -15,6 +17,7 @@ const HistoricalPricesView = () => {
     statistics,
     selectedInstruments,
     isLoading,
+    error,
     updateFilters,
     exportToExcel,
   } = useHistoricalPrices();
@@ -29,15 +32,32 @@ const HistoricalPricesView = () => {
   
   // Create a mapping of instrument IDs to names
   const instrumentNames: Record<string, string> = {};
-  instruments.forEach(instrument => {
-    instrumentNames[instrument.id] = instrument.display_name;
-  });
+  if (instruments && Array.isArray(instruments)) {
+    instruments.forEach(instrument => {
+      if (instrument && instrument.id) {
+        instrumentNames[instrument.id] = instrument.display_name;
+      }
+    });
+  }
   
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            There was a problem loading the historical price data. Please try again.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <HistoricalPriceFilter
         onFilterChange={handleFilterChange}
-        instruments={instruments.map(i => ({ id: i.id, displayName: i.display_name }))}
+        instruments={(instruments || []).map(i => ({ 
+          id: i.id, 
+          displayName: i.display_name 
+        }))}
         isLoading={isLoading}
         onExport={exportToExcel}
       />
@@ -55,8 +75,8 @@ const HistoricalPricesView = () => {
         
         <TabsContent value="graph" className="space-y-4">
           <GraphView 
-            data={pricesByInstrument}
-            statistics={statistics}
+            data={pricesByInstrument || {}}
+            statistics={statistics || []}
             instrumentNames={instrumentNames}
             isLoading={isLoading}
           />
@@ -64,7 +84,7 @@ const HistoricalPricesView = () => {
         
         <TabsContent value="table" className="space-y-4">
           <TableView 
-            data={pricesByInstrument}
+            data={pricesByInstrument || {}}
             instrumentNames={instrumentNames}
             isLoading={isLoading}
           />
