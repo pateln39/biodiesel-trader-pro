@@ -1,4 +1,5 @@
 
+import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -173,7 +174,7 @@ export const useTrades = () => {
   });
 
   // Set up real-time subscription to trades changes
-  React.useEffect(() => {
+  useEffect(() => {
     // Subscribe to changes on parent_trades table
     const parentTradesChannel = supabase
       .channel('public:parent_trades')
