@@ -168,8 +168,44 @@ export const useTrades = () => {
     queryKey: ['trades'],
     queryFn: fetchTrades,
     refetchOnWindowFocus: true,
-    staleTime: 30000 // Consider data stale after 30 seconds
+    refetchOnMount: true,
+    staleTime: 0, // Always consider data stale to force refetch when component mounts
   });
+
+  // Set up real-time subscription to trades changes
+  React.useEffect(() => {
+    // Subscribe to changes on parent_trades table
+    const parentTradesChannel = supabase
+      .channel('public:parent_trades')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'parent_trades' 
+      }, () => {
+        console.log('Parent trades changed, refetching...');
+        refetch();
+      })
+      .subscribe();
+
+    // Subscribe to changes on trade_legs table
+    const tradeLegsChannel = supabase
+      .channel('public:trade_legs')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'trade_legs' 
+      }, () => {
+        console.log('Trade legs changed, refetching...');
+        refetch();
+      })
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(parentTradesChannel);
+      supabase.removeChannel(tradeLegsChannel);
+    };
+  }, [refetch]);
 
   return { trades, loading, error, refetchTrades: refetch };
 };

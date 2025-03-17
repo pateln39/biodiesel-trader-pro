@@ -9,4 +9,15 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJ
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});
+
+// Run the following SQL to enable real-time on our tables:
+// ALTER PUBLICATION supabase_realtime ADD TABLE parent_trades, trade_legs;
+// ALTER TABLE parent_trades REPLICA IDENTITY FULL;
+// ALTER TABLE trade_legs REPLICA IDENTITY FULL;

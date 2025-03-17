@@ -11,11 +11,13 @@ import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { generateTradeReference } from '@/utils/tradeUtils';
+import { useQueryClient } from '@tanstack/react-query';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
   const [tradeType, setTradeType] = useState<'physical' | 'paper'>('physical');
   const tradeReference = generateTradeReference();
+  const queryClient = useQueryClient();
   
   const handleSubmit = async (tradeData: any) => {
     try {
@@ -97,11 +99,14 @@ const TradeEntryPage = () => {
         }
       }
       
+      // Force invalidate the trades query cache
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+
       toast.success('Trade created successfully', {
         description: `Trade reference: ${tradeData.tradeReference}`
       });
       
-      navigate('/trades');
+      navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });
     } catch (error: any) {
       toast.error('Failed to create trade', {
         description: error.message

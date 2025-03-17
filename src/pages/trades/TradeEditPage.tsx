@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,9 +9,11 @@ import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { useTrades } from '@/hooks/useTrades';
+import { useQueryClient } from '@tanstack/react-query';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const TradeEditPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [tradeData, setTradeData] = useState<PhysicalTrade | PaperTrade | null>(null);
   const [tradeType, setTradeType] = useState<'physical' | 'paper'>('physical');
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchTradeData = async () => {
@@ -145,9 +147,7 @@ const TradeEditPage = () => {
 
       } catch (error: any) {
         console.error('Error fetching trade:', error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load trade",
+        toast.error("Failed to load trade", {
           description: error.message || "Could not load trade details"
         });
         navigate('/trades');
@@ -243,17 +243,18 @@ const TradeEditPage = () => {
         }
       }
 
-      toast({
-        title: "Trade updated",
+      // Force invalidate the trades query cache to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+
+      toast.success("Trade updated", {
         description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
       });
 
-      navigate('/trades');
+      // Navigate back to trades page with state to indicate successful update
+      navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
     } catch (error: any) {
       console.error('Error updating trade:', error);
-      toast({
-        variant: "destructive",
-        title: "Failed to update trade",
+      toast.error("Failed to update trade", {
         description: error.message || "An error occurred while updating the trade"
       });
     }
