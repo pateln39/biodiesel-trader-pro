@@ -31,7 +31,7 @@ export const useHistoricalPrices = () => {
     endDate: null,
   });
 
-  // Query for instruments
+  // Query for instruments - this will run once on component mount
   const {
     data: instruments = [],
     isLoading: instrumentsLoading,
@@ -59,12 +59,23 @@ export const useHistoricalPrices = () => {
     },
   });
 
-  // Set the first instrument as selected if not already set
+  // We only want to set a default instrument once, when instruments are first loaded
+  // We track if we've initialized once with a ref
+  const [hasSetInitialInstrument, setHasSetInitialInstrument] = useState(false);
+
+  // Only set the default instrument if instruments are loaded and we haven't already initialized
   useEffect(() => {
-    if (instruments && instruments.length > 0 && selectedInstrumentIds.length === 0) {
+    if (
+      !instrumentsLoading && 
+      instruments && 
+      instruments.length > 0 && 
+      selectedInstrumentIds.length === 0 &&
+      !hasSetInitialInstrument
+    ) {
       setSelectedInstrumentIds([instruments[0].id]);
+      setHasSetInitialInstrument(true);
     }
-  }, [instruments]);
+  }, [instruments, instrumentsLoading, hasSetInitialInstrument]);
 
   // Query for historical prices
   const {
@@ -172,9 +183,10 @@ export const useHistoricalPrices = () => {
   }, [pricesByInstrument]);
 
   // Selected instruments
-  const selectedInstruments = instruments.filter(i => 
-    selectedInstrumentIds.includes(i.id)
-  );
+  const selectedInstruments = useMemo(() => {
+    if (!instruments || !Array.isArray(instruments)) return [];
+    return instruments.filter(i => selectedInstrumentIds.includes(i.id));
+  }, [instruments, selectedInstrumentIds]);
 
   // Filter update handler
   const updateFilters = ({
@@ -186,7 +198,7 @@ export const useHistoricalPrices = () => {
     startDate: Date | null;
     endDate: Date | null;
   }) => {
-    if (instrumentIds && instrumentIds.length > 0) {
+    if (instrumentIds && Array.isArray(instrumentIds) && instrumentIds.length > 0) {
       setSelectedInstrumentIds(instrumentIds);
     }
     
@@ -237,6 +249,7 @@ export const useHistoricalPrices = () => {
     pricesByInstrument,
     statistics,
     selectedInstruments,
+    selectedInstrumentIds,
     isLoading: instrumentsLoading || pricesLoading,
     error: instrumentsError || pricesError, 
     updateFilters,

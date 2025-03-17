@@ -16,6 +16,7 @@ const HistoricalPricesView = () => {
     pricesByInstrument,
     statistics,
     selectedInstruments,
+    selectedInstrumentIds,
     isLoading,
     error,
     updateFilters,
@@ -58,6 +59,7 @@ const HistoricalPricesView = () => {
           id: i.id, 
           displayName: i.display_name 
         }))}
+        selectedInstrumentIds={selectedInstrumentIds}
         isLoading={isLoading}
         onExport={exportToExcel}
       />

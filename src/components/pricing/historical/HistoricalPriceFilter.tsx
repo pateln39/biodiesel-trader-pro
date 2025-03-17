@@ -10,6 +10,7 @@ import { MultiInstrumentSelect } from './MultiInstrumentSelect';
 interface HistoricalPriceFilterProps {
   onFilterChange: (filters: HistoricalPriceFilters) => void;
   instruments: Array<{ id: string; displayName: string }>;
+  selectedInstrumentIds: string[];
   isLoading: boolean;
   onExport: () => void;
 }
@@ -23,17 +24,23 @@ export interface HistoricalPriceFilters {
 export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
   onFilterChange,
   instruments,
+  selectedInstrumentIds,
   isLoading,
   onExport
 }) => {
   const defaultStartDate = subMonths(startOfDay(new Date()), 1);
   const defaultEndDate = startOfDay(new Date());
 
-  const [instrumentIds, setInstrumentIds] = useState<string[]>(
-    instruments.length > 0 ? [instruments[0].id] : []
-  );
+  const [instrumentIds, setInstrumentIds] = useState<string[]>(selectedInstrumentIds);
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = useState<Date>(defaultEndDate);
+
+  // Update local state when selected instruments from parent change
+  useEffect(() => {
+    if (selectedInstrumentIds.length > 0 && JSON.stringify(instrumentIds) !== JSON.stringify(selectedInstrumentIds)) {
+      setInstrumentIds(selectedInstrumentIds);
+    }
+  }, [selectedInstrumentIds]);
 
   const handleFilterApply = () => {
     onFilterChange({
@@ -43,19 +50,14 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
     });
   };
 
-  // Update instrument selection when available instruments change
-  useEffect(() => {
-    if (instruments.length > 0 && instrumentIds.length === 0) {
-      setInstrumentIds([instruments[0].id]);
-    }
-  }, [instruments]);
-
   // Apply initial filter on mount
   useEffect(() => {
-    if (instrumentIds.length > 0) {
-      handleFilterApply();
-    }
+    handleFilterApply();
   }, []);
+
+  const handleInstrumentChange = (newIds: string[]) => {
+    setInstrumentIds(newIds);
+  };
 
   return (
     <Card>
@@ -66,7 +68,7 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
             <MultiInstrumentSelect
               instruments={instruments.map(i => ({ id: i.id, displayName: i.displayName }))}
               selectedValues={instrumentIds}
-              onChange={setInstrumentIds}
+              onChange={handleInstrumentChange}
               disabled={instruments.length === 0}
             />
           </div>

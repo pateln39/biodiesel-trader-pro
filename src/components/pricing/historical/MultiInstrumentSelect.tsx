@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,17 +36,35 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
   disabled = false,
 }) => {
   const [open, setOpen] = React.useState(false);
+  
+  // Ensure we always have valid instruments
+  const validInstruments = instruments || [];
+  
+  // Make sure selectedValues only contains valid instrument IDs
+  useEffect(() => {
+    const validIds = validInstruments.map(i => i.id);
+    const validSelectedValues = selectedValues.filter(id => validIds.includes(id));
+    
+    // If the filtered list differs from the current selectedValues, update it
+    if (JSON.stringify(validSelectedValues) !== JSON.stringify(selectedValues) && validSelectedValues.length > 0) {
+      onChange(validSelectedValues);
+    }
+  }, [instruments]);
 
   const handleSelect = (id: string) => {
+    if (!id) return;
+    
     if (selectedValues.includes(id)) {
-      onChange(selectedValues.filter(value => value !== id));
+      const newValues = selectedValues.filter(value => value !== id);
+      // Ensure at least one instrument remains selected
+      onChange(newValues.length > 0 ? newValues : [id]);
     } else {
       onChange([...selectedValues, id]);
     }
   };
 
   // Get the display names of selected instruments
-  const selectedNames = instruments
+  const selectedNames = validInstruments
     .filter(instrument => selectedValues.includes(instrument.id))
     .map(instrument => instrument.displayName);
 
@@ -79,7 +97,7 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
           <CommandInput placeholder="Search instruments..." />
           <CommandEmpty>No instruments found.</CommandEmpty>
           <CommandGroup className="max-h-64 overflow-auto">
-            {instruments.map((instrument) => (
+            {validInstruments.map((instrument) => (
               <CommandItem
                 key={instrument.id}
                 value={instrument.id}
