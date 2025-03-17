@@ -155,7 +155,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-7xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Price Details</DialogTitle>
           <DialogDescription>
@@ -240,13 +240,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
 
                       <Card>
                         <CardHeader className="pb-2 bg-muted/50">
-                          <CardTitle className="text-sm font-medium flex items-center justify-between">
+                          <CardTitle className="text-sm font-medium">
                             <span>Consolidated Price Data</span>
-                            {formula && (
-                              <Badge variant="outline" className="ml-2 text-xs font-normal">
-                                Formula: {formulaToDisplayString(formula.tokens)}
-                              </Badge>
-                            )}
                           </CardTitle>
                         </CardHeader>
                         <div className="max-h-[400px] overflow-auto">
@@ -259,8 +254,13 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                                     {instrument}
                                   </TableHead>
                                 ))}
-                                <TableHead className="text-right font-bold">
-                                  Formula Result
+                                <TableHead className="text-right w-[300px]">
+                                  <div className="flex items-start">
+                                    <span className="font-semibold mr-1">Formula:</span>
+                                    <span className="font-medium text-primary">
+                                      {formula ? formulaToDisplayString(formula.tokens) : 'N/A'}
+                                    </span>
+                                  </div>
                                 </TableHead>
                               </TableRow>
                             </TableHeader>
