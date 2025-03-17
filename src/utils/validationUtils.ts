@@ -37,7 +37,8 @@ export const validateRequiredField = (
   value: string | number | undefined | null,
   fieldName: string
 ): boolean => {
-  if (!value && value !== 0) {
+  // Check for empty strings, undefined, null, or zero values
+  if (value === undefined || value === null || value === '') {
     toast.error(`${fieldName} required`, {
       description: `Please select or enter a value for ${fieldName}.`
     });

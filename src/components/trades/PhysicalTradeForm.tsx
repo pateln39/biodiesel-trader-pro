@@ -45,7 +45,7 @@ interface LegFormState {
 const createDefaultLeg = (): LegFormState => ({
   buySell: 'buy',
   product: 'UCOME',
-  sustainability: 'ISCC',
+  sustainability: '',
   incoTerm: 'FOB',
   unit: 'MT',
   paymentTerm: '30 days',
@@ -75,7 +75,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     initialData?.legs?.map(leg => ({
       buySell: leg.buySell,
       product: leg.product,
-      sustainability: leg.sustainability,
+      sustainability: leg.sustainability || '',
       incoTerm: leg.incoTerm,
       unit: leg.unit,
       paymentTerm: leg.paymentTerm,
