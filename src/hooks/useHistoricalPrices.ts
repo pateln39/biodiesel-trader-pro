@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
@@ -126,7 +126,7 @@ export const useHistoricalPrices = () => {
   });
 
   // Group prices by instrument for easier access
-  const pricesByInstrument = React.useMemo(() => {
+  const pricesByInstrument = useMemo(() => {
     if (!pricesData || !Array.isArray(pricesData)) return {};
     
     return pricesData.reduce((acc, item) => {
@@ -142,7 +142,7 @@ export const useHistoricalPrices = () => {
   }, [pricesData]);
 
   // Calculate statistics for each instrument
-  const statistics = React.useMemo(() => {
+  const statistics = useMemo(() => {
     return Object.entries(pricesByInstrument).map(([instrumentId, prices]) => {
       if (!prices || prices.length === 0) return null;
       
