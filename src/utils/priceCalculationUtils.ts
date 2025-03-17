@@ -1,3 +1,4 @@
+
 import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -355,10 +356,12 @@ export const calculateTradeLegPrice = async (
 
   // Track which instruments are used in the formula for exposure calculation
   const usedInstruments = new Set<Instrument>();
+  let hasInstrument = false;
 
   // Collect price data for each instrument in the formula
   for (const token of formula.tokens) {
     if (token.type === 'instrument') {
+      hasInstrument = true;
       const instrument = token.value as Instrument;
       usedInstruments.add(instrument);
       let prices: { date: Date; price: number }[] = [];
@@ -377,10 +380,29 @@ export const calculateTradeLegPrice = async (
     }
   }
   
+  // If there are no instruments in the formula, we need a default date range for display purposes
+  if (!hasInstrument) {
+    // Create a synthetic price point using the start date
+    const syntheticDate = startDate;
+    
+    // Use the first instrument as a placeholder (doesn't matter which one)
+    const placeholderInstrument = 'Argus UCOME' as Instrument;
+    usedInstruments.add(placeholderInstrument);
+    
+    // Create a synthetic price of 0 at the start date
+    const syntheticPrices = [{ date: syntheticDate, price: 0 }];
+    
+    priceDetails[placeholderInstrument] = { 
+      average: 0, 
+      prices: syntheticPrices
+    };
+  }
+  
   // Apply the formula to calculate the final price
   const finalPrice = applyPricingFormula(formula, instrumentPrices);
   
-  // Only return price details for instruments actually used in the formula
+  // Only return price details for instruments actually used in the formula,
+  // or the placeholder if we had no instruments
   const filteredPriceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }> = 
     Object.fromEntries(
       Object.entries(priceDetails)
@@ -394,7 +416,7 @@ export const calculateTradeLegPrice = async (
   };
 };
 
-// New function to calculate MTM price using most recent prices
+// Calculate MTM price using most recent prices
 export const calculateMTMPrice = async (
   formula: PricingFormula,
 ): Promise<{
@@ -426,10 +448,12 @@ export const calculateMTMPrice = async (
 
   // Track which instruments are used in the formula
   const usedInstruments = new Set<Instrument>();
+  let hasInstrument = false;
 
   // Collect most recent price data for each instrument in the formula
   for (const token of formula.tokens) {
     if (token.type === 'instrument') {
+      hasInstrument = true;
       const instrument = token.value as Instrument;
       usedInstruments.add(instrument);
       
@@ -447,10 +471,26 @@ export const calculateMTMPrice = async (
     }
   }
   
+  // If there are no instruments in the formula, add a synthetic price for display purposes
+  if (!hasInstrument) {
+    // Use the current date
+    const today = new Date();
+    
+    // Use the first instrument as a placeholder (doesn't matter which one)
+    const placeholderInstrument = 'Argus UCOME' as Instrument;
+    usedInstruments.add(placeholderInstrument);
+    
+    priceDetails[placeholderInstrument] = { 
+      price: 0, 
+      date: today
+    };
+  }
+  
   // Apply the formula to calculate the final price
   const finalPrice = applyPricingFormula(formula, instrumentPrices);
   
   // Only return price details for instruments actually used in the formula
+  // or the placeholder if we had no instruments
   const filteredPriceDetails: Record<Instrument, { price: number; date: Date | null }> = 
     Object.fromEntries(
       Object.entries(priceDetails)
