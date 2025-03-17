@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -40,6 +41,7 @@ const MTMPage = () => {
     legId: string;
     tradeRef: string;
     legReference: string;
+    physicalType: string;
     buySell: string;
     product: string;
     quantity: number;
@@ -58,6 +60,7 @@ const MTMPage = () => {
       legId: leg.id,
       tradeRef: trade.tradeReference,
       legReference: leg.legReference,
+      physicalType: trade.physicalType,
       buySell: leg.buySell.toLowerCase(),
       product: leg.product,
       quantity: leg.quantity,
@@ -202,11 +205,12 @@ const MTMPage = () => {
                   {mtmPositions.map((position) => (
                     <TableRow key={position.legId}>
                       <TableCell>
-                        {position.tradeRef}
-                        {position.legReference && (
-                          <span className="text-muted-foreground ml-1">
-                            -{position.legReference.split('-').pop()}
-                          </span>
+                        {position.physicalType === 'term' ? (
+                          // For term trades, show the suffix
+                          <>{position.tradeRef}-{position.legReference.split('-').pop()}</>
+                        ) : (
+                          // For spot trades, show only the trade reference
+                          <>{position.tradeRef}</>
                         )}
                       </TableCell>
                       <TableCell>{position.product}</TableCell>

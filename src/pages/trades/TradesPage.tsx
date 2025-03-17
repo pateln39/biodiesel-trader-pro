@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
@@ -236,9 +237,12 @@ const TradesPage = () => {
                             <TableCell>
                               <div className="flex items-center space-x-2">
                                 <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                                  {leg.legReference}
+                                  {trade.physicalType === 'term' ? 
+                                    `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
+                                    trade.tradeReference
+                                  }
                                 </Link>
-                                {hasMultipleLegs && (
+                                {hasMultipleLegs && trade.physicalType === 'term' && (
                                   <Badge variant="outline" className="h-5 text-xs">
                                     <Link2 className="mr-1 h-3 w-3" />
                                     {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
