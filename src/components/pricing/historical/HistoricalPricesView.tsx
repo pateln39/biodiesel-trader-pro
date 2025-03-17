@@ -21,7 +21,23 @@ const HistoricalPricesView = () => {
     error,
     updateFilters,
     exportToExcel,
+    findFame0Instrument
   } = useHistoricalPrices();
+  
+  // When instruments load, check if Fame0 is present and select it
+  useEffect(() => {
+    if (instruments && instruments.length > 0 && !isLoading) {
+      const fame0Id = findFame0Instrument()?.id;
+      if (fame0Id && (!selectedInstrumentIds || selectedInstrumentIds.length === 0 || 
+          !selectedInstrumentIds.includes(fame0Id))) {
+        updateFilters({
+          instrumentIds: [fame0Id],
+          startDate: null,
+          endDate: null,
+        });
+      }
+    }
+  }, [instruments, isLoading]);
   
   const handleFilterChange = (filters: HistoricalPriceFilters) => {
     updateFilters({
@@ -59,7 +75,7 @@ const HistoricalPricesView = () => {
           id: i.id, 
           displayName: i.display_name 
         }))}
-        selectedInstrumentIds={selectedInstrumentIds}
+        selectedInstrumentIds={selectedInstrumentIds || []}
         isLoading={isLoading}
         onExport={exportToExcel}
       />

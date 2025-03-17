@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Instrument {
   id: string;
@@ -27,13 +28,15 @@ interface MultiInstrumentSelectProps {
   selectedValues: string[];
   onChange: (values: string[]) => void;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
-  instruments,
-  selectedValues,
+  instruments = [],
+  selectedValues = [],
   onChange,
   disabled = false,
+  isLoading = false
 }) => {
   const [open, setOpen] = React.useState(false);
   
@@ -46,10 +49,16 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
     const validSelectedValues = selectedValues.filter(id => validIds.includes(id));
     
     // If the filtered list differs from the current selectedValues, update it
-    if (JSON.stringify(validSelectedValues) !== JSON.stringify(selectedValues) && validSelectedValues.length > 0) {
-      onChange(validSelectedValues);
+    // But ensure at least one instrument remains selected
+    if (JSON.stringify(validSelectedValues) !== JSON.stringify(selectedValues)) {
+      if (validSelectedValues.length > 0) {
+        onChange(validSelectedValues);
+      } else if (validIds.length > 0) {
+        // Default to the first instrument if none are selected
+        onChange([validIds[0]]);
+      }
     }
-  }, [instruments]);
+  }, [instruments, selectedValues]);
 
   const handleSelect = (id: string) => {
     if (!id) return;
@@ -68,6 +77,10 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
     .filter(instrument => selectedValues.includes(instrument.id))
     .map(instrument => instrument.displayName);
 
+  if (isLoading) {
+    return <Skeleton className="h-10 w-full" />;
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -76,7 +89,7 @@ export const MultiInstrumentSelect: React.FC<MultiInstrumentSelectProps> = ({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between h-auto min-h-10"
-          disabled={disabled}
+          disabled={disabled || isLoading}
         >
           <div className="flex flex-wrap gap-1">
             {selectedNames.length > 0 ? (

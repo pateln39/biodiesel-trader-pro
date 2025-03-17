@@ -59,23 +59,28 @@ export const useHistoricalPrices = () => {
     },
   });
 
-  // We only want to set a default instrument once, when instruments are first loaded
-  // We track if we've initialized once with a ref
-  const [hasSetInitialInstrument, setHasSetInitialInstrument] = useState(false);
+  // Helper function to find the Fame0 instrument
+  const findFame0Instrument = () => {
+    if (!instruments || instruments.length === 0) return null;
+    
+    // Look for Fame0 by display_name or instrument_code
+    const fame0 = instruments.find(
+      i => i.display_name?.toLowerCase().includes('fame0') || 
+           i.instrument_code?.toLowerCase().includes('fame0')
+    );
+    
+    return fame0 || instruments[0]; // Fallback to first instrument if Fame0 not found
+  };
 
-  // Only set the default instrument if instruments are loaded and we haven't already initialized
+  // Set initial instrument once instruments are loaded
   useEffect(() => {
-    if (
-      !instrumentsLoading && 
-      instruments && 
-      instruments.length > 0 && 
-      selectedInstrumentIds.length === 0 &&
-      !hasSetInitialInstrument
-    ) {
-      setSelectedInstrumentIds([instruments[0].id]);
-      setHasSetInitialInstrument(true);
+    if (!instrumentsLoading && instruments && instruments.length > 0 && selectedInstrumentIds.length === 0) {
+      const fame0 = findFame0Instrument();
+      if (fame0) {
+        setSelectedInstrumentIds([fame0.id]);
+      }
     }
-  }, [instruments, instrumentsLoading, hasSetInitialInstrument]);
+  }, [instruments, instrumentsLoading]);
 
   // Query for historical prices
   const {
@@ -198,8 +203,13 @@ export const useHistoricalPrices = () => {
     startDate: Date | null;
     endDate: Date | null;
   }) => {
+    // Ensure we have at least one instrument selected
     if (instrumentIds && Array.isArray(instrumentIds) && instrumentIds.length > 0) {
       setSelectedInstrumentIds(instrumentIds);
+    } else if (instruments && instruments.length > 0) {
+      // If no instruments were provided, default to Fame0 or the first instrument
+      const fame0 = findFame0Instrument();
+      setSelectedInstrumentIds(fame0 ? [fame0.id] : [instruments[0].id]);
     }
     
     setSelectedDateRange({
@@ -254,5 +264,6 @@ export const useHistoricalPrices = () => {
     error: instrumentsError || pricesError, 
     updateFilters,
     exportToExcel,
+    findFame0Instrument,
   };
 };

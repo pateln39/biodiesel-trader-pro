@@ -31,13 +31,15 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
   const defaultStartDate = subMonths(startOfDay(new Date()), 1);
   const defaultEndDate = startOfDay(new Date());
 
-  const [instrumentIds, setInstrumentIds] = useState<string[]>(selectedInstrumentIds);
+  const [instrumentIds, setInstrumentIds] = useState<string[]>(selectedInstrumentIds || []);
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = useState<Date>(defaultEndDate);
 
   // Update local state when selected instruments from parent change
   useEffect(() => {
-    if (selectedInstrumentIds.length > 0 && JSON.stringify(instrumentIds) !== JSON.stringify(selectedInstrumentIds)) {
+    if (selectedInstrumentIds && 
+        selectedInstrumentIds.length > 0 && 
+        JSON.stringify(instrumentIds) !== JSON.stringify(selectedInstrumentIds)) {
       setInstrumentIds(selectedInstrumentIds);
     }
   }, [selectedInstrumentIds]);
@@ -66,10 +68,11 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
           <div>
             <label className="text-sm font-medium mb-1 block">Instruments</label>
             <MultiInstrumentSelect
-              instruments={instruments.map(i => ({ id: i.id, displayName: i.displayName }))}
+              instruments={instruments}
               selectedValues={instrumentIds}
               onChange={handleInstrumentChange}
               disabled={instruments.length === 0}
+              isLoading={isLoading && instruments.length === 0}
             />
           </div>
           
