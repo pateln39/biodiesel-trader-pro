@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
@@ -10,7 +9,6 @@ import {
   Trade, 
   PhysicalTrade, 
   PaperTrade,
-  FormulaToken,
   PhysicalTradeLeg
 } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
@@ -148,14 +146,22 @@ const TradesPage = () => {
     
     try {
       if (deleteMode === 'trade' && deletingTradeId) {
-        // Delete the entire trade (spot trade)
-        const { error } = await supabase
+        const { data: legs, error: legsError } = await supabase
+          .from('trade_legs')
+          .delete()
+          .eq('parent_trade_id', deletingTradeId);
+          
+        if (legsError) {
+          throw legsError;
+        }
+        
+        const { error: parentError } = await supabase
           .from('parent_trades')
           .delete()
           .eq('id', deletingTradeId);
-        
-        if (error) {
-          throw error;
+          
+        if (parentError) {
+          throw parentError;
         }
         
         toast({
@@ -163,7 +169,6 @@ const TradesPage = () => {
           description: "Trade has been deleted successfully."
         });
       } else if (deleteMode === 'leg' && deletingLegId) {
-        // Delete just the leg (for term trades)
         const { error } = await supabase
           .from('trade_legs')
           .delete()
@@ -179,7 +184,6 @@ const TradesPage = () => {
         });
       }
       
-      // Refresh the trade list
       refetchTrades();
     } catch (error) {
       console.error('Error deleting:', error);
@@ -338,8 +342,7 @@ const TradesPage = () => {
                                   <Link to={`/trades/${trade.id}`}>
                                     <DropdownMenuItem>View Details</DropdownMenuItem>
                                   </Link>
-                                  {/* For spot trades, allow deleting the entire trade */}
-                                  {trade.physicalType === 'spot' && (
+                                  {trade.physicalType === 'spot' && legIndex === 0 && (
                                     <DropdownMenuItem 
                                       className="text-red-600 focus:text-red-600" 
                                       onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference)}
@@ -348,8 +351,6 @@ const TradesPage = () => {
                                       Delete Trade
                                     </DropdownMenuItem>
                                   )}
-                                  
-                                  {/* For term trades, only show delete leg option */}
                                   {trade.physicalType === 'term' && (
                                     <DropdownMenuItem 
                                       className="text-red-600 focus:text-red-600" 

@@ -142,7 +142,9 @@ export const useTrades = () => {
     refetch
   } = useQuery({
     queryKey: ['trades'],
-    queryFn: fetchTrades
+    queryFn: fetchTrades,
+    refetchOnWindowFocus: true,
+    staleTime: 30000 // Consider data stale after 30 seconds
   });
 
   return { trades, loading, error, refetchTrades: refetch };
