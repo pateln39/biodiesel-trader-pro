@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -33,16 +32,14 @@ const MTMPage = () => {
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filter physical trades
   const physicalTrades = trades.filter(
     (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
   );
 
-  // Define the type for MTM positions
   type MTMPosition = {
     legId: string;
     tradeRef: string;
-    legReference: string; // Added leg reference
+    legReference: string;
     buySell: string;
     product: string;
     quantity: number;
@@ -56,12 +53,11 @@ const MTMPage = () => {
     periodType?: PricingPeriodType;
   };
 
-  // Flatten trade legs for MTM view
   const tradeLegs = physicalTrades.flatMap(trade => 
     trade.legs?.map(leg => ({
       legId: leg.id,
       tradeRef: trade.tradeReference,
-      legReference: leg.legReference, // Include leg reference
+      legReference: leg.legReference,
       buySell: leg.buySell.toLowerCase(),
       product: leg.product,
       quantity: leg.quantity,
@@ -74,31 +70,25 @@ const MTMPage = () => {
     })) || []
   );
 
-  // Calculate prices for all legs
   const { data: mtmPositions, isLoading: calculationLoading } = useQuery({
     queryKey: ['mtmPositions', tradeLegs],
     queryFn: async () => {
-      // Skip if no trades
       if (tradeLegs.length === 0) return [];
       
-      // Calculate MTM for each leg
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
           if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
           
           try {
-            // Calculate trade price (using pricing period)
             const priceResult = await calculateTradeLegPrice(
               leg.formula,
               leg.startDate,
               leg.endDate
             );
             
-            // Calculate MTM price using most recent prices (not based on pricing period)
             const mtmFormula = leg.mtmFormula || leg.formula;
             const mtmPriceResult = await calculateMTMPrice(mtmFormula);
             
-            // Calculate MTM value using the new formula
             const mtmValue = calculateMTMValue(
               priceResult.price,
               mtmPriceResult.price,
@@ -139,11 +129,10 @@ const MTMPage = () => {
       startDate: leg.startDate,
       endDate: leg.endDate,
       quantity: leg.quantity,
-      buySell: leg.buySell as 'buy' | 'sell'  // Pass the buySell value
+      buySell: leg.buySell as 'buy' | 'sell'
     });
   };
 
-  // Calculate total MTM position
   const totalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
 
   return (
@@ -216,7 +205,7 @@ const MTMPage = () => {
                         {position.tradeRef}
                         {position.legReference && (
                           <span className="text-muted-foreground ml-1">
-                            {position.legReference.split('-').pop()}
+                            -{position.legReference.split('-').pop()}
                           </span>
                         )}
                       </TableCell>
