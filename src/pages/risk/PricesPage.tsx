@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import PriceUploader from '@/components/pricing/PriceUploader';
+import HistoricalPricesView from '@/components/pricing/historical/HistoricalPricesView';
 
 const PricesPage = () => {
   return (
@@ -52,9 +53,7 @@ const PricesPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center p-12 text-muted-foreground">
-                  <p>Historical price data view coming soon...</p>
-                </div>
+                <HistoricalPricesView />
               </CardContent>
             </Card>
           </TabsContent>
