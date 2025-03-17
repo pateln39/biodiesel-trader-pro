@@ -30,6 +30,7 @@ interface PriceDetailsProps {
   startDate: Date;
   endDate: Date;
   quantity: number;
+  buySell: 'buy' | 'sell';
 }
 
 const PriceDetails: React.FC<PriceDetailsProps> = ({
@@ -41,6 +42,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   startDate,
   endDate,
   quantity,
+  buySell,
 }) => {
   const [loading, setLoading] = useState(true);
   const [priceData, setPriceData] = useState<{
@@ -83,7 +85,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
           tradePriceResult.price,
           mtmPriceResult.price,
           quantity,
-          'buy'
+          buySell
         );
         setMtmValue(mtmVal);
       } catch (error) {
@@ -94,7 +96,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     };
 
     fetchPriceData();
-  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity]);
+  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell]);
 
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails) return [];
@@ -409,7 +411,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                             </TableRow>
                             <TableRow>
                               <TableCell className="font-medium">Direction Factor</TableCell>
-                              <TableCell className="text-right">-1 (Buy)</TableCell>
+                              <TableCell className="text-right">
+                                {buySell === 'buy' ? '-1 (Buy)' : '+1 (Sell)'}
+                              </TableCell>
                             </TableRow>
                             <TableRow className="font-bold text-lg">
                               <TableCell>MTM Value</TableCell>
@@ -425,7 +429,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                             MTM Value = (Trade Price - MTM Price) × Quantity × Direction Factor
                           </p>
                           <p className="text-sm text-muted-foreground mt-2">
-                            MTM Value = (${priceData?.price.toFixed(2)} - ${mtmPriceData.price.toFixed(2)}) × {quantity.toLocaleString()} × -1 = ${mtmValue.toFixed(2)}
+                            MTM Value = (${priceData?.price.toFixed(2)} - ${mtmPriceData.price.toFixed(2)}) × {quantity.toLocaleString()} × {buySell === 'buy' ? '-1' : '+1'} = ${mtmValue.toFixed(2)}
                           </p>
                         </div>
                       </CardContent>

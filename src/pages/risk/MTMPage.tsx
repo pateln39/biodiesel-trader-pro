@@ -29,6 +29,7 @@ const MTMPage = () => {
     startDate: Date;
     endDate: Date;
     quantity: number;
+    buySell: 'buy' | 'sell';  // Added buySell property
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -135,7 +136,8 @@ const MTMPage = () => {
       mtmFormula: leg.mtmFormula,
       startDate: leg.startDate,
       endDate: leg.endDate,
-      quantity: leg.quantity
+      quantity: leg.quantity,
+      buySell: leg.buySell as 'buy' | 'sell'  // Pass the buySell value
     });
   };
 
@@ -270,6 +272,7 @@ const MTMPage = () => {
           startDate={selectedLeg.startDate}
           endDate={selectedLeg.endDate}
           quantity={selectedLeg.quantity}
+          buySell={selectedLeg.buySell}  // Pass the buySell prop to PriceDetails
         />
       )}
     </Layout>
