@@ -12,6 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
+import { PricingFormula, PartialPricingFormula, PartialExposureResult } from '@/types/pricing';
 
 // Types for exposure data
 interface ExposureItem {
@@ -92,9 +93,13 @@ const ExposurePage = () => {
       // Add physical exposure
       exposures[month][grade].physical += quantity;
       
-      // Process pricing formula exposures
-      if (leg.pricing_formula?.exposures?.pricing) {
-        Object.entries(leg.pricing_formula.exposures.pricing).forEach(([instrument, value]) => {
+      // Process pricing formula exposures - with type checking
+      const pricingFormula = leg.pricing_formula as PartialPricingFormula | null;
+      if (pricingFormula && 
+          typeof pricingFormula === 'object' && 
+          pricingFormula.exposures && 
+          pricingFormula.exposures.pricing) {
+        Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
           if (!exposures[month][instrument]) {
             exposures[month][instrument] = {
               physical: 0,
@@ -108,9 +113,13 @@ const ExposurePage = () => {
         });
       }
       
-      // Process MTM formula exposures (paper)
-      if (leg.mtm_formula?.exposures?.physical) {
-        Object.entries(leg.mtm_formula.exposures.physical).forEach(([instrument, value]) => {
+      // Process MTM formula exposures (paper) - with type checking
+      const mtmFormula = leg.mtm_formula as PartialPricingFormula | null;
+      if (mtmFormula && 
+          typeof mtmFormula === 'object' && 
+          mtmFormula.exposures && 
+          mtmFormula.exposures.physical) {
+        Object.entries(mtmFormula.exposures.physical).forEach(([instrument, value]) => {
           if (!exposures[month][instrument]) {
             exposures[month][instrument] = {
               physical: 0,
