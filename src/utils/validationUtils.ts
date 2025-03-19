@@ -10,18 +10,19 @@ import { toast } from "sonner";
  */
 export const validateDateRange = (
   startDate: Date | null | undefined,
-  endDate: Date | null | undefined
+  endDate: Date | null | undefined,
+  rangeName: string
 ): boolean => {
   if (!startDate || !endDate) {
-    toast.error("Date range validation failed", {
-      description: "Please select both start and end dates."
+    toast.error(`${rangeName} missing`, {
+      description: `Please select both start and end dates for ${rangeName}.`
     });
     return false;
   }
 
   if (startDate >= endDate) {
-    toast.error("Invalid date range", {
-      description: "End date must be after start date."
+    toast.error(`Invalid ${rangeName}`, {
+      description: `${rangeName} end date must be after start date.`
     });
     return false;
   }
@@ -59,35 +60,4 @@ export const validateRequiredField = (
  */
 export const validateFields = (validations: boolean[]): boolean => {
   return validations.every(isValid => isValid);
-};
-
-/**
- * Enhanced validation functions with more customization options
- * These are for advanced validation needs
- */
-
-/**
- * Validates that a date range is valid (start date is before end date)
- * With customizable range name for better error messages
- */
-export const validateDateRangeWithName = (
-  startDate: Date | null | undefined,
-  endDate: Date | null | undefined,
-  rangeName: string
-): boolean => {
-  if (!startDate || !endDate) {
-    toast.error(`${rangeName} missing`, {
-      description: `Please select both start and end dates for ${rangeName}.`
-    });
-    return false;
-  }
-
-  if (startDate >= endDate) {
-    toast.error(`Invalid ${rangeName}`, {
-      description: `${rangeName} end date must be after start date.`
-    });
-    return false;
-  }
-
-  return true;
 };

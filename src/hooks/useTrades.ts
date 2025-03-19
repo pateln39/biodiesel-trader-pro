@@ -17,10 +17,6 @@ import {
   DbTradeLeg,
   PricingFormula
 } from '@/types';
-import { 
-  PaperTradeRow, 
-  PaperTradePositionSide 
-} from '@/types/paper';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
@@ -102,63 +98,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
         return physicalTrade;
       } 
       else if (parent.trade_type === 'paper' && firstLeg) {
-        // Extract all legs and organize them into rows by sideReference
-        const paperSides = legs.map(leg => ({
-          id: leg.id,
-          sideReference: leg.leg_reference,
-          parentTradeId: leg.parent_trade_id,
-          buySell: leg.buy_sell as BuySell,
-          product: leg.product as Product,
-          instrument: leg.instrument || '',
-          pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-          pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-          price: leg.price || 0,
-          quantity: leg.quantity,
-          broker: leg.broker || '',
-          formula: validateAndParsePricingFormula(leg.pricing_formula),
-          mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-        }));
-
-        // Create rows by matching sides with similar references (e.g., TR-001-1A and TR-001-1B)
-        const rowsMap = new Map<string, PaperTradeRow>();
-        
-        paperSides.forEach(side => {
-          // Extract base reference (remove the last character which should be A or B)
-          const baseRef = side.sideReference.slice(0, -1);
-          const isLeftSide = side.sideReference.endsWith('A');
-          
-          let row = rowsMap.get(baseRef);
-          if (!row) {
-            row = {
-              id: crypto.randomUUID(),
-              leftSide: null,
-              rightSide: null,
-              mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
-            };
-            rowsMap.set(baseRef, row);
-          }
-          
-          if (isLeftSide) {
-            row.leftSide = side;
-          } else {
-            row.rightSide = side;
-          }
-        });
-        
-        // If there are no valid rows (unexpected), create a default one
-        if (rowsMap.size === 0 && paperSides.length > 0) {
-          rowsMap.set('default', {
-            id: crypto.randomUUID(),
-            leftSide: paperSides[0],
-            rightSide: null,
-            mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
-          });
-        }
-        
-        // Convert map to array of rows
-        const paperRows = Array.from(rowsMap.values());
-
-        // For paper trades, create the full structure
+        // For paper trades, safely extract and type the required properties from leg
         const paperTrade: PaperTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
@@ -176,8 +116,23 @@ const fetchTrades = async (): Promise<Trade[]> => {
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: paperSides, // Keep legs for backward compatibility
-          rows: paperRows // Use the new row structure
+          legs: tradeLegs
+            .filter(leg => leg.parent_trade_id === parent.id)
+            .map(leg => ({
+              id: leg.id,
+              legReference: leg.leg_reference,
+              parentTradeId: leg.parent_trade_id,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              instrument: leg.instrument || '',
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              price: leg.price || 0,
+              quantity: leg.quantity,
+              broker: leg.broker || '',
+              formula: validateAndParsePricingFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            }))
         };
         return paperTrade;
       }
@@ -193,8 +148,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
         // Add missing required properties for PaperTrade
         buySell: 'buy' as BuySell,
         product: 'UCOME' as Product,
-        legs: [],
-        rows: []
+        legs: []
       } as Trade;
     });
 

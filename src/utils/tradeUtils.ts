@@ -12,8 +12,9 @@ export const generateTradeReference = (): string => {
 };
 
 // Generate a leg reference from a trade reference
-export const generateLegReference = (tradeReference: string, rowIndex: number, side: 'A' | 'B'): string => {
-  return `${tradeReference}-${rowIndex}${side}`;
+export const generateLegReference = (tradeReference: string, legNumber: number): string => {
+  const suffix = String.fromCharCode(97 + legNumber); // 0 -> 'a', 1 -> 'b', etc.
+  return `${tradeReference}-${suffix}`;
 };
 
 // Calculate open quantity for a trade
@@ -27,9 +28,8 @@ export const calculateOpenQuantity = (
 };
 
 // Format a date to a standard display format
-export const formatDate = (date: Date | string): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return dateObj.toLocaleDateString('en-US', {
+export const formatDate = (date: Date): string => {
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -43,57 +43,4 @@ export const calculateNetExposure = (
   paper: number
 ): number => {
   return physical + pricing + paper;
-};
-
-// Get month key from date for exposure calculations
-export const getMonthKey = (date: Date | string): string => {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return dateObj.toLocaleString('default', { month: 'short' }).slice(0, 3);
-};
-
-// Calculate paper trade exposures from trade rows
-export const calculatePaperExposures = (
-  rows: any[], 
-  products: string[]
-): Record<string, Record<string, number>> => {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  
-  // Initialize exposures object
-  const exposures: Record<string, Record<string, number>> = {};
-  months.forEach(month => {
-    exposures[month] = {};
-    products.forEach(product => {
-      exposures[month][product] = 0;
-    });
-  });
-  
-  // Process each row's legs
-  rows.forEach(row => {
-    if (row.legA) {
-      processLegExposure(row.legA, exposures, products);
-    }
-    
-    if (row.legB) {
-      processLegExposure(row.legB, exposures, products);
-    }
-  });
-  
-  return exposures;
-};
-
-// Helper function to process a single leg's exposure
-const processLegExposure = (
-  leg: any, 
-  exposures: Record<string, Record<string, number>>, 
-  products: string[]
-) => {
-  if (!leg.pricingPeriodStart || !products.includes(leg.product)) return;
-  
-  const month = getMonthKey(leg.pricingPeriodStart);
-  const sign = leg.buySell === 'buy' ? 1 : -1;
-  const quantity = leg.quantity || 0;
-  
-  if (exposures[month] && exposures[month][leg.product] !== undefined) {
-    exposures[month][leg.product] += quantity * sign;
-  }
 };

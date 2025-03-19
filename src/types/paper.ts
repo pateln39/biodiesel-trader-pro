@@ -7,14 +7,12 @@ import { PricingFormula } from './pricing';
 // Paper parent trade
 export interface PaperParentTrade extends ParentTrade {
   tradeType: "paper";
-  comment?: string;
-  broker: string;
 }
 
-// Paper trade position side (previously called PaperTradeLeg)
-export interface PaperTradePositionSide {
+// Paper trade leg
+export interface PaperTradeLeg {
   id: string;
-  sideReference: string;
+  legReference: string;
   parentTradeId: string;
   buySell: BuySell;
   product: Product;
@@ -28,32 +26,18 @@ export interface PaperTradePositionSide {
   mtmFormula?: PricingFormula;
 }
 
-// Trade row with left side, optional right side, and MTM formula
-export interface PaperTradeRow {
-  id: string;
-  leftSide: PaperTradePositionSide | null;
-  rightSide: PaperTradePositionSide | null;
-  mtmFormula?: PricingFormula;
-}
-
-// Complete paper trade with rows structure
-export interface PaperTrade extends PaperParentTrade {
-  rows: PaperTradeRow[];
-  // The following fields are for backward compatibility
-  buySell?: BuySell;
-  product?: Product;
-  instrument?: Instrument;
-  pricingPeriodStart?: Date;
-  pricingPeriodEnd?: Date;
-  price?: number;
-  quantity?: number;
+// For backward compatibility
+export interface PaperTrade extends ParentTrade {
+  tradeType: "paper";
+  buySell: BuySell;
+  product: Product;
+  instrument: Instrument;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  price: number;
+  quantity: number;
+  broker: string;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  legs?: PaperTradePositionSide[];
-}
-
-// Exposure entry for the exposure table
-export interface PaperExposure {
-  month: string;
-  products: Record<string, number>;
+  legs?: PaperTradeLeg[];
 }

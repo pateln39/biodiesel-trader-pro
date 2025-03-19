@@ -10,7 +10,7 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PaperTradeRow, PaperTradePositionSide } from '@/types';
+import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useTrades } from '@/hooks/useTrades';
 import { useQueryClient } from '@tanstack/react-query';
@@ -31,6 +31,7 @@ const TradeEditPage = () => {
       }
 
       try {
+        // Fetch parent trade data
         const { data: parentTrade, error: parentError } = await supabase
           .from('parent_trades')
           .select('*')
@@ -41,6 +42,7 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
+        // Fetch trade legs
         const { data: tradeLegs, error: legsError } = await supabase
           .from('trade_legs')
           .select('*')
@@ -51,8 +53,10 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
+        // Set trade type based on parent trade
         setTradeType(parentTrade.trade_type as 'physical' | 'paper');
 
+        // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
@@ -102,58 +106,6 @@ const TradeEditPage = () => {
         } 
         else if (parentTrade.trade_type === 'paper' && tradeLegs.length > 0) {
           const firstLeg = tradeLegs[0];
-          
-          const paperSides = tradeLegs.map(leg => ({
-            id: leg.id,
-            sideReference: leg.leg_reference,
-            parentTradeId: leg.parent_trade_id,
-            buySell: leg.buy_sell as BuySell,
-            product: leg.product as Product,
-            instrument: leg.instrument || '',
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            price: leg.price || 0,
-            quantity: leg.quantity,
-            broker: leg.broker || '',
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-          }));
-          
-          const rowsMap = new Map<string, PaperTradeRow>();
-          
-          paperSides.forEach(side => {
-            const baseRef = side.sideReference.slice(0, -1);
-            const isLeftSide = side.sideReference.endsWith('A');
-            
-            let row = rowsMap.get(baseRef);
-            if (!row) {
-              row = {
-                id: crypto.randomUUID(),
-                leftSide: null,
-                rightSide: null,
-                mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
-              };
-              rowsMap.set(baseRef, row);
-            }
-            
-            if (isLeftSide) {
-              row.leftSide = side;
-            } else {
-              row.rightSide = side;
-            }
-          });
-          
-          if (rowsMap.size === 0 && paperSides.length > 0) {
-            rowsMap.set('default', {
-              id: crypto.randomUUID(),
-              leftSide: paperSides[0],
-              rightSide: null,
-              mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
-            });
-          }
-          
-          const paperRows = Array.from(rowsMap.values());
-          
           const paperTrade: PaperTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -171,8 +123,21 @@ const TradeEditPage = () => {
             pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
             formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-            legs: paperSides,
-            rows: paperRows
+            legs: tradeLegs.map(leg => ({
+              id: leg.id,
+              legReference: leg.leg_reference,
+              parentTradeId: leg.parent_trade_id,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              instrument: leg.instrument || '',
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              price: leg.price || 0,
+              quantity: leg.quantity,
+              broker: leg.broker || '',
+              formula: validateAndParsePricingFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            }))
           };
           setTradeData(paperTrade);
         } 
@@ -198,6 +163,7 @@ const TradeEditPage = () => {
     try {
       if (!id) return;
 
+      // Update the parent trade
       const parentTradeUpdate = {
         trade_reference: updatedTradeData.tradeReference,
         physical_type: updatedTradeData.physicalType,
@@ -214,7 +180,9 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
+      // Handle the updates for trade legs based on trade type
       if (updatedTradeData.tradeType === 'physical') {
+        // For physical trades, we need to update all legs
         for (const leg of updatedTradeData.legs) {
           const legData = {
             parent_trade_id: id,
@@ -236,6 +204,7 @@ const TradeEditPage = () => {
             updated_at: new Date().toISOString()
           };
 
+          // Update the existing leg
           const { error: legUpdateError } = await supabase
             .from('trade_legs')
             .update(legData)
@@ -246,6 +215,7 @@ const TradeEditPage = () => {
           }
         }
       } else if (updatedTradeData.tradeType === 'paper') {
+        // For paper trades, update all legs
         for (const leg of updatedTradeData.legs) {
           const legData = {
             buy_sell: leg.buySell,
@@ -261,6 +231,7 @@ const TradeEditPage = () => {
             updated_at: new Date().toISOString()
           };
 
+          // Update the existing leg
           const { error: legUpdateError } = await supabase
             .from('trade_legs')
             .update(legData)
@@ -272,12 +243,14 @@ const TradeEditPage = () => {
         }
       }
 
+      // Force invalidate the trades query cache to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['trades'] });
 
       toast.success("Trade updated", {
         description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
       });
 
+      // Navigate back to trades page with state to indicate successful update
       navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
     } catch (error: any) {
       console.error('Error updating trade:', error);

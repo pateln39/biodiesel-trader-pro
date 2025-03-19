@@ -49,7 +49,8 @@ interface PaperTradePage {
   
   // Trade Table Section
   tradeTable: {
-    positions: TradePosition[];  // Each position has leftSide and rightSide
+    legA: TradeLeg[];
+    legB: TradeLeg[];
     mtmFormula: FormulaConfig[];
   }
   
@@ -71,10 +72,10 @@ Broker:  [Marex ▼] [+ Add Broker]
 
 Trade Table:
 -----------
-[+]
-LEFT SIDE                          RIGHT SIDE                         MTM
-Product  Qty   Period  Price       Product  Qty   Period  Price      Formula   Period
-[Dynamic Rows with + buttons for adding new positions]
+LEG A                            LEG B                            MTM
+[+]                             [+]
+Product  Qty   Period  Price     Product  Qty   Period  Price    Formula   Period
+[Dynamic Rows with + buttons on both sides]
 
 Exposure Table:
 --------------
@@ -86,10 +87,9 @@ Exposure Table:
 
 ### A. Trade Table Logic
 
-#### Position Row Addition Rules
-- Add button: User creates a new position row
-- Left side completion: User fills LEFT SIDE, auto-populates RIGHT SIDE
-- Right side completion: User fills RIGHT SIDE, auto-populates LEFT SIDE
+#### Row Addition Rules
+- Left + button: User fills LEG A, auto-populates LEG B
+- Right + button: User fills LEG B, auto-populates LEG A
 - Auto-population based on product relationships
 
 #### Product Rules
@@ -124,19 +124,8 @@ interface ExposureRow {
 }
 ```
 
-#### Trade Position Example
-Example of a paper trade with multiple positions:
-- Position 1: UCOME/LSGO 1000 MT for Apr-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
-- Position 2: UCOME/LSGO 1000 MT for May-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
-- Position 3: UCOME/LSGO 1000 MT for Jun-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
-- Position 4: UCOME/LSGO -1000 MT for Jul-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
-- Position 5: UCOME/LSGO -1000 MT for Aug-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
-- Position 6: UCOME/LSGO -1000 MT for Sep-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
-
-This creates an exposure table showing +3,000 MT UCOME in Q2 and -3,000 MT UCOME in Q3.
-
 #### Update Triggers
-- New position row addition
+- New row addition
 - Product changes
 - Quantity modifications
 - Period adjustments
@@ -159,7 +148,7 @@ This creates an exposure table showing +3,000 MT UCOME in Q2 and -3,000 MT UCOME
 - Required selection
 - Must be active broker
 
-#### Trade Position Rows
+#### Trade Rows
 - Valid product selections
 - Non-zero quantities
 - Valid period selections
@@ -175,29 +164,17 @@ This creates an exposure table showing +3,000 MT UCOME in Q2 and -3,000 MT UCOME
 ### A. Trade Table Component
 ```typescript
 interface TradeTableProps {
-  rows: PaperTradeRow[];
-  onAddRow: () => void;
-  onUpdateRow: (updatedRow: PaperTradeRow) => void;
-  onRemoveRow: (id: string) => void;
-  broker: string;
-  tradeReference: string;
-  disabled?: boolean;
+  legA: TradeLeg[];
+  legB: TradeLeg[];
+  onAddLegA: () => void;
+  onAddLegB: () => void;
+  onUpdateLegA: (index: number, updates: Partial<TradeLeg>) => void;
+  onUpdateLegB: (index: number, updates: Partial<TradeLeg>) => void;
+  onRemoveRow: (index: number) => void;
 }
 ```
 
-### B. Position Side Form Component
-```typescript
-interface PositionSideFormProps {
-  side: PaperTradePositionSide;
-  onChange: (side: PaperTradePositionSide) => void;
-  onRemove?: () => void;
-  broker: string;
-  sideType: 'LEFT' | 'RIGHT';
-  disabled?: boolean;
-}
-```
-
-### C. Exposure Table Component
+### B. Exposure Table Component
 ```typescript
 interface ExposureTableProps {
   data: ExposureRow[];
@@ -206,7 +183,7 @@ interface ExposureTableProps {
 }
 ```
 
-### D. Broker Management Component
+### C. Broker Management Component
 ```typescript
 interface BrokerManagementProps {
   brokers: Broker[];
@@ -222,9 +199,9 @@ interface BrokerManagementProps {
 interface PageState {
   comment: string;
   brokerId: string;
-  positions: {
-    leftSide: PaperTradePositionSide[];
-    rightSide: PaperTradePositionSide[];
+  trades: {
+    legA: TradeLeg[];
+    legB: TradeLeg[];
   };
   exposures: ExposureRow[];
   validation: ValidationState;

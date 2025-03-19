@@ -1,25 +1,56 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { useReferenceData } from '@/hooks/useReferenceData';
+import { BuySell, Product } from '@/types';
+import { PaperParentTrade, PaperTradeLeg, PaperTrade } from '@/types/paper';
+import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PaperTradeHeader } from './paper/PaperTradeHeader';
-import PaperTradeTable from './paper/PaperTradeTable';
-import { PaperExposureTable } from './paper/PaperExposureTable';
-import { useBrokers } from '@/hooks/useBrokers';
-import { PaperParentTrade, PaperTradePositionSide, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
+import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
+import { DatePicker } from '@/components/ui/date-picker';
+import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PricingFormula } from '@/types/pricing';
+import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface PaperTradeFormProps {
   tradeReference: string;
   onSubmit: (trade: any) => void;
   onCancel: () => void;
   isEditMode?: boolean;
-  initialData?: any;
+  initialData?: PaperTrade;
 }
+
+interface PaperLegFormState {
+  buySell: BuySell;
+  product: Product;
+  instrument: string;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  price: number;
+  quantity: number;
+  broker: string;
+  formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
+}
+
+const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
+  buySell: 'buy',
+  product: 'UCOME',
+  instrument: 'Argus UCOME',
+  pricingPeriodStart: new Date(),
+  pricingPeriodEnd: new Date(),
+  price: 0,
+  quantity: 0,
+  broker: broker,
+  formula: createEmptyFormula(),
+  mtmFormula: createEmptyFormula()
+});
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
@@ -28,280 +59,352 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   isEditMode = false,
   initialData 
 }) => {
-  // State for comment and broker
-  const [comment, setComment] = useState<string>(initialData?.comment || '');
-  const [selectedBroker, setSelectedBroker] = useState<string>(initialData?.broker || '');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { counterparties } = useReferenceData();
   
-  // State for trade rows
-  const [rows, setRows] = useState<PaperTradeRowType[]>(() => {
-    if (initialData?.rows && initialData.rows.length > 0) {
-      // Use rows from initialData if available
-      return initialData.rows.map((row: any) => ({
-        ...row,
-        leftSide: row.legA ? {
-          ...row.legA,
-          sideReference: row.legA.legReference
-        } : null,
-        rightSide: row.legB ? {
-          ...row.legB,
-          sideReference: row.legB.legReference
-        } : null,
-        // Remove the old properties since we've migrated them
-        legA: undefined,
-        legB: undefined
-      }));
-    } else if (initialData?.legs && initialData.legs.length > 0) {
-      // Convert from old legacy format with individual legs to rows format
-      const legsByPair: Record<string, PaperTradePositionSide[]> = {};
-      
-      // Group sides by the first part of sideReference (e.g., "TR-001-1A" and "TR-001-1B" go together)
-      initialData.legs.forEach((leg: any) => {
-        const side = {
-          ...leg,
-          sideReference: leg.legReference
-        };
-        const baseRef = side.sideReference.slice(0, -1); // Remove last character (A/B)
-        if (!legsByPair[baseRef]) {
-          legsByPair[baseRef] = [];
-        }
-        legsByPair[baseRef].push(side);
-      });
-      
-      // Convert to rows
-      return Object.values(legsByPair).map((sides) => {
-        const leftSide = sides.find(s => s.sideReference.endsWith('A'));
-        const rightSide = sides.find(s => s.sideReference.endsWith('B'));
-        
-        return {
-          id: crypto.randomUUID(),
-          leftSide: leftSide || null,
-          rightSide: rightSide || null,
-          mtmFormula: initialData.mtmFormula || createEmptyFormula()
-        };
-      });
+  const [counterparty, setCounterparty] = useState<string>(initialData?.counterparty || '');
+  
+  const [legs, setLegs] = useState<PaperLegFormState[]>([
+    initialData ? {
+      buySell: initialData.buySell || 'buy',
+      product: initialData.product || 'UCOME',
+      instrument: initialData.instrument || '',
+      pricingPeriodStart: initialData.pricingPeriodStart || new Date(),
+      pricingPeriodEnd: initialData.pricingPeriodEnd || new Date(),
+      price: initialData.price || 0,
+      quantity: initialData.quantity || 0,
+      broker: initialData.broker || '',
+      formula: initialData.formula || createEmptyFormula(),
+      mtmFormula: initialData.mtmFormula || createEmptyFormula()
+    } : createDefaultLeg()
+  ]);
+
+  const addLeg = () => {
+    setLegs([...legs, createDefaultLeg(legs[0].broker)]);
+  };
+
+  const removeLeg = (index: number) => {
+    if (legs.length > 1) {
+      const newLegs = [...legs];
+      newLegs.splice(index, 1);
+      setLegs(newLegs);
+    }
+  };
+
+  const updateLeg = (index: number, field: keyof PaperLegFormState, value: string | Date | number | PricingFormula) => {
+    const newLegs = [...legs];
+    if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
+      (newLegs[index] as any)[field] = value as Date;
+    } else if (field === 'instrument' || field === 'broker') {
+      (newLegs[index] as any)[field] = value as string;
+    } else if (field === 'buySell') {
+      (newLegs[index] as any)[field] = value as BuySell;
+    } else if (field === 'product') {
+      (newLegs[index] as any)[field] = value as Product;
+    } else if (field === 'formula' || field === 'mtmFormula') {
+      (newLegs[index] as any)[field] = value as PricingFormula;
     } else {
-      // Create a default first row
-      return [{
-        id: crypto.randomUUID(),
-        leftSide: {
-          id: crypto.randomUUID(),
-          sideReference: generateLegReference(tradeReference, 0, 'A'),
-          parentTradeId: initialData?.id || '',
-          buySell: 'buy',
-          product: 'UCOME',
-          instrument: 'Argus UCOME',
-          pricingPeriodStart: new Date(),
-          pricingPeriodEnd: new Date(),
-          price: 0,
-          quantity: 0,
-          broker: selectedBroker,
-          formula: createEmptyFormula(),
-          mtmFormula: createEmptyFormula()
-        },
-        rightSide: null,
-        mtmFormula: createEmptyFormula()
-      }];
+      (newLegs[index] as any)[field] = Number(value);
     }
-  });
-  
-  // Load brokers
-  const { brokers } = useBrokers();
-  
-  // When broker is selected, update all sides to use that broker
-  useEffect(() => {
-    if (selectedBroker) {
-      setRows(prevRows => 
-        prevRows.map(row => ({
-          ...row,
-          leftSide: row.leftSide ? { ...row.leftSide, broker: selectedBroker } : null,
-          rightSide: row.rightSide ? { ...row.rightSide, broker: selectedBroker } : null
-        }))
-      );
-    }
-  }, [selectedBroker]);
-  
-  // Add a new row
-  const addRow = () => {
-    const newRow: PaperTradeRowType = {
-      id: crypto.randomUUID(),
-      leftSide: {
-        id: crypto.randomUUID(),
-        sideReference: generateLegReference(tradeReference, rows.length, 'A'),
-        parentTradeId: initialData?.id || '',
-        buySell: 'buy',
-        product: 'UCOME',
-        instrument: 'Argus UCOME',
-        pricingPeriodStart: new Date(),
-        pricingPeriodEnd: new Date(),
-        price: 0,
-        quantity: 0,
-        broker: selectedBroker,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula()
-      },
-      rightSide: null,
-      mtmFormula: createEmptyFormula()
-    };
-    
-    setRows([...rows, newRow]);
+    setLegs(newLegs);
   };
-  
-  // Remove a row by id
-  const removeRow = (id: string) => {
-    if (rows.length <= 1) {
-      toast.error("Cannot remove the last position");
-      return;
-    }
-    
-    setRows(prevRows => prevRows.filter(row => row.id !== id));
+
+  const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
+    updateLeg(legIndex, 'formula', formula);
   };
-  
-  // Update a row
-  const updateRow = (updatedRow: PaperTradeRowType) => {
-    setRows(prevRows => 
-      prevRows.map(row => 
-        row.id === updatedRow.id ? updatedRow : row
-      )
-    );
+
+  const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
+    updateLeg(legIndex, 'mtmFormula', formula);
   };
-  
-  // Validate the form
-  const validateForm = (): boolean => {
-    if (!selectedBroker) {
-      toast.error("Please select a broker");
-      return false;
-    }
-    
-    if (!comment.trim()) {
-      toast.error("Please enter a comment for this trade");
-      return false;
-    }
-    
-    // Check if each row has at least one side with valid quantity
-    const invalidRow = rows.find(row => 
-      (!row.leftSide || row.leftSide.quantity <= 0) && 
-      (!row.rightSide || row.rightSide.quantity <= 0)
-    );
-    
-    if (invalidRow) {
-      toast.error("All positions must have at least one side with a valid quantity");
-      return false;
-    }
-    
-    return true;
-  };
-  
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || isSubmitting) {
-      return;
-    }
+    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     
-    setIsSubmitting(true);
-    
-    try {
-      // Flatten all sides for DB storage (for backward compatibility with old 'legs' structure)
-      const allSides: PaperTradePositionSide[] = [];
-      rows.forEach(row => {
-        if (row.leftSide) allSides.push({
-          ...row.leftSide,
-          legReference: row.leftSide.sideReference // For backward compatibility
-        } as any);
-        if (row.rightSide) allSides.push({
-          ...row.rightSide,
-          legReference: row.rightSide.sideReference // For backward compatibility
-        } as any);
-      });
+    const legValidations = legs.map((leg, index) => {
+      const legNumber = index + 1;
+      const validations = [
+        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
+        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
+        validateRequiredField(leg.instrument, `Leg ${legNumber} - Instrument`),
+        validateRequiredField(leg.broker, `Leg ${legNumber} - Broker`),
+        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
+        validateDateRange(
+          leg.pricingPeriodStart, 
+          leg.pricingPeriodEnd, 
+          `Leg ${legNumber} - Pricing Period`
+        )
+      ];
       
-      // Create the parent trade object
+      return validateFields(validations);
+    });
+    
+    const areAllLegsValid = legValidations.every(isValid => isValid);
+    
+    if (isCounterpartyValid && areAllLegsValid) {
       const parentTrade: PaperParentTrade = {
         id: initialData?.id || crypto.randomUUID(),
         tradeReference,
         tradeType: 'paper',
-        counterparty: 'Broker', // Paper trades are with broker
-        broker: selectedBroker,
+        counterparty,
         createdAt: initialData?.createdAt || new Date(),
-        updatedAt: new Date(),
-        comment
+        updatedAt: new Date()
       };
-      
-      // Ensure rows are compatible with old format for backward compatibility
-      const compatibleRows = rows.map(row => ({
-        ...row,
-        legA: row.leftSide,
-        legB: row.rightSide
-      }));
-      
-      // Prepare the final object for submission
-      const tradeData = {
+
+      const tradeLegs: PaperTradeLeg[] = legs.map((legForm, index) => {
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                          generateLegReference(tradeReference, index);
+        
+        const legData: PaperTradeLeg = {
+          id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
+          legReference,
+          parentTradeId: parentTrade.id,
+          buySell: legForm.buySell,
+          product: legForm.product,
+          instrument: legForm.instrument,
+          pricingPeriodStart: legForm.pricingPeriodStart,
+          pricingPeriodEnd: legForm.pricingPeriodEnd,
+          price: legForm.price,
+          quantity: legForm.quantity,
+          broker: legForm.broker,
+          formula: legForm.formula,
+          mtmFormula: legForm.mtmFormula
+        };
+        
+        return legData;
+      });
+
+      const tradeData: any = {
         ...parentTrade,
-        // Include first side data for backwards compatibility
-        ...(allSides[0] || {}),
-        legs: allSides,
-        rows: compatibleRows // Include the rows structure for the new UI
+        ...legs[0],
+        legs: tradeLegs
       };
-      
-      // Submit the data
-      await onSubmit(tradeData);
-    } catch (error: any) {
-      console.error('Error preparing trade data:', error);
-      toast.error("Failed to prepare trade data");
-    } finally {
-      setIsSubmitting(false);
+
+      onSubmit(tradeData);
+    } else {
+      toast.error('Please fix the validation errors before submitting', {
+        description: 'Check all required fields and date ranges above.'
+      });
     }
   };
-  
+
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Trade Header - Comment and Broker */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Trade Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PaperTradeHeader
-            comment={comment}
-            setComment={setComment}
-            selectedBroker={selectedBroker}
-            setSelectedBroker={setSelectedBroker}
-            brokers={brokers}
-            disabled={isSubmitting}
-          />
-        </CardContent>
-      </Card>
-      
-      {/* Trade Position Rows */}
-      <PaperTradeTable 
-        rows={rows}
-        onAddRow={addRow}
-        onUpdateRow={updateRow}
-        onRemoveRow={removeRow}
-        broker={selectedBroker}
-        tradeReference={tradeReference}
-        disabled={isSubmitting}
-      />
-      
-      {/* Exposure Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Exposures</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PaperExposureTable rows={rows} />
-        </CardContent>
-      </Card>
-      
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Trade Details</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="counterparty">Counterparty</Label>
+            <Select 
+              value={counterparty} 
+              onValueChange={setCounterparty}
+            >
+              <SelectTrigger id="counterparty">
+                <SelectValue placeholder="Select counterparty" />
+              </SelectTrigger>
+              <SelectContent>
+                {counterparties.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Trade Legs</h3>
+          <Button type="button" variant="outline" onClick={addLeg}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Leg
+          </Button>
+        </div>
+
+        {legs.map((leg, legIndex) => (
+          <Card key={legIndex} className="border border-muted">
+            <CardHeader className="p-4 flex flex-row items-start justify-between">
+              <CardTitle className="text-md">
+                Leg {legIndex + 1} ({generateLegReference(tradeReference, legIndex)})
+              </CardTitle>
+              {legs.length > 1 && (
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => removeLeg(legIndex)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-buy-sell`}>Buy/Sell</Label>
+                  <Select 
+                    value={leg.buySell} 
+                    onValueChange={(value) => updateLeg(legIndex, 'buySell', value as BuySell)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-buy-sell`}>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buy">Buy</SelectItem>
+                      <SelectItem value="sell">Sell</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
+                  <Select 
+                    value={leg.product} 
+                    onValueChange={(value) => updateLeg(legIndex, 'product', value as Product)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-product`}>
+                      <SelectValue placeholder="Select product" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="FAME0">FAME0</SelectItem>
+                      <SelectItem value="RME">RME</SelectItem>
+                      <SelectItem value="UCOME">UCOME</SelectItem>
+                      <SelectItem value="UCOME-5">UCOME-5</SelectItem>
+                      <SelectItem value="RME DC">RME DC</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-instrument`}>Instrument</Label>
+                  <Select 
+                    value={leg.instrument} 
+                    onValueChange={(value) => updateLeg(legIndex, 'instrument', value)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-instrument`}>
+                      <SelectValue placeholder="Select instrument" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
+                      <SelectItem value="Argus RME">Argus RME</SelectItem>
+                      <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                      <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
+                      <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-broker`}>Broker</Label>
+                  <Input 
+                    id={`leg-${legIndex}-broker`} 
+                    value={leg.broker} 
+                    onChange={(e) => updateLeg(legIndex, 'broker', e.target.value)} 
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label>Pricing Period Start</Label>
+                  <DatePicker 
+                    date={leg.pricingPeriodStart}
+                    setDate={(date) => updateLeg(legIndex, 'pricingPeriodStart', date)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Pricing Period End</Label>
+                  <DatePicker 
+                    date={leg.pricingPeriodEnd}
+                    setDate={(date) => updateLeg(legIndex, 'pricingPeriodEnd', date)}
+                  />
+                </div>
+              </div>
+
+              <div className="border rounded-md p-4 bg-gray-50 mb-4">
+                <Tabs defaultValue="price">
+                  <TabsList className="w-full mb-4">
+                    <TabsTrigger value="price">Price Formula</TabsTrigger>
+                    <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="price">
+                    <div className="mb-2">
+                      <Label className="font-medium">Price Formula</Label>
+                    </div>
+                    <FormulaBuilder 
+                      value={leg.formula || createEmptyFormula()} 
+                      onChange={(formula) => handleFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                      buySell={leg.buySell}
+                      selectedProduct={leg.product}
+                      formulaType="price"
+                      otherFormula={leg.mtmFormula || createEmptyFormula()}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="mtm">
+                    <div className="mb-2">
+                      <Label className="font-medium">MTM Pricing Formula</Label>
+                    </div>
+                    <FormulaBuilder 
+                      value={leg.mtmFormula || createEmptyFormula()} 
+                      onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                      buySell={leg.buySell}
+                      selectedProduct={leg.product}
+                      formulaType="mtm"
+                      otherFormula={leg.formula || createEmptyFormula()}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-price`}>Fixed Price (Optional)</Label>
+                  <Input 
+                    id={`leg-${legIndex}-price`} 
+                    type="number" 
+                    value={leg.price} 
+                    onChange={(e) => updateLeg(legIndex, 'price', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-quantity`}>Quantity (MT)</Label>
+                  <Input 
+                    id={`leg-${legIndex}-quantity`} 
+                    type="number" 
+                    value={leg.quantity} 
+                    onChange={(e) => updateLeg(legIndex, 'quantity', e.target.value)} 
+                    onFocus={handleNumberInputFocus}
+                    required 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
       <Separator />
-      
+
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Processing...' : isEditMode ? 'Update Trade' : 'Create Trade'}
+        <Button type="submit">
+          {isEditMode ? 'Update Trade' : 'Create Trade'}
         </Button>
       </div>
     </form>

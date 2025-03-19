@@ -13,7 +13,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { validateDateRange, validateRequiredField } from '@/utils/validationUtils';
+import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
 
 interface PhysicalTradeFormProps {
@@ -161,7 +161,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`),
         validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`),
         validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`),
-        validateRequiredField(leg.quantity.toString(), `Leg ${legNumber} - Quantity`),
+        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
         
         validateDateRange(
           leg.pricingPeriodStart, 
@@ -175,7 +175,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         )
       ];
       
-      return validations.every(result => result);
+      return validateFields(validations);
     });
     
     const areAllLegsValid = legValidations.every(isValid => isValid);

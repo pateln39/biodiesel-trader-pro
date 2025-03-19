@@ -33,7 +33,6 @@ interface FormulaBuilderProps {
   selectedProduct?: string;
   formulaType: 'price' | 'mtm';
   otherFormula?: PricingFormula;
-  disabled?: boolean; // Add disabled prop
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
@@ -43,8 +42,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   buySell = 'buy',
   selectedProduct,
   formulaType,
-  otherFormula,
-  disabled = false // Default to false
+  otherFormula
 }) => {
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
   const [fixedValue, setFixedValue] = useState<string>('0');
@@ -88,7 +86,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType]);
 
   const handleAddInstrument = () => {
-    if (disabled || !canAddTokenType(value.tokens, 'instrument')) return;
+    if (!canAddTokenType(value.tokens, 'instrument')) return;
     const newToken = createInstrumentToken(selectedInstrument);
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -98,7 +96,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleAddFixedValue = () => {
-    if (disabled || !canAddTokenType(value.tokens, 'fixedValue')) return;
+    if (!canAddTokenType(value.tokens, 'fixedValue')) return;
     const newToken = createFixedValueToken(Number(fixedValue) || 0);
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -108,7 +106,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleAddPercentage = () => {
-    if (disabled || !canAddTokenType(value.tokens, 'percentage')) return;
+    if (!canAddTokenType(value.tokens, 'percentage')) return;
     const newToken = createPercentageToken(Number(percentageValue) || 0);
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -118,7 +116,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleAddOpenBracket = () => {
-    if (disabled || !canAddTokenType(value.tokens, 'openBracket')) return;
+    if (!canAddTokenType(value.tokens, 'openBracket')) return;
     const newToken = createOpenBracketToken();
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -128,7 +126,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleAddCloseBracket = () => {
-    if (disabled || !canAddTokenType(value.tokens, 'closeBracket')) return;
+    if (!canAddTokenType(value.tokens, 'closeBracket')) return;
     const newToken = createCloseBracketToken();
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -138,7 +136,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleAddOperator = (operator: string) => {
-    if (disabled || !canAddTokenType(value.tokens, 'operator')) return;
+    if (!canAddTokenType(value.tokens, 'operator')) return;
     const newToken = createOperatorToken(operator);
     const newTokens = [...value.tokens, newToken];
     onChange({
@@ -148,7 +146,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleRemoveToken = (tokenId: string) => {
-    if (disabled) return;
     const newTokens = value.tokens.filter(token => token.id !== tokenId);
     onChange({
       tokens: newTokens,
@@ -157,7 +154,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const resetFormula = () => {
-    if (disabled) return;
     onChange({
       tokens: [],
       exposures: {
@@ -201,7 +197,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           variant="outline" 
           size="sm" 
           onClick={resetFormula}
-          disabled={disabled}
         >
           Reset Formula
         </Button>
@@ -231,7 +226,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                   <button 
                     onClick={() => handleRemoveToken(token.id)}
                     className="hover:text-destructive"
-                    disabled={disabled}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -244,148 +238,141 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </CardContent>
       </Card>
       
-      {!disabled && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 flex-1 min-w-[150px]">
-              <Label>Operators & Brackets</Label>
-              <div className="flex gap-2 flex-wrap">
-                <Button 
-                  type="button" 
-                  onClick={() => handleAddOperator('+')} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'operator')}
-                >
-                  +
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => handleAddOperator('-')} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'operator')}
-                >
-                  -
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => handleAddOperator('*')} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'operator')}
-                >
-                  ×
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={() => handleAddOperator('/')} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'operator')}
-                >
-                  ÷
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleAddOpenBracket} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'openBracket')}
-                >
-                  (
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={handleAddCloseBracket} 
-                  size="sm" 
-                  variant="outline"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'closeBracket')}
-                >
-                  )
-                </Button>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2 flex-1 min-w-[150px]">
+          <Label>Operators & Brackets</Label>
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('+')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              +
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('-')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              -
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('*')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              ×
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('/')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              ÷
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddOpenBracket} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'openBracket')}
+            >
+              (
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddCloseBracket} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'closeBracket')}
+            >
+              )
+            </Button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Add Instrument</Label>
-              <div className="flex gap-2">
-                <Select 
-                  value={selectedInstrument} 
-                  onValueChange={(value) => setSelectedInstrument(value as Instrument)}
-                  disabled={disabled}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select instrument" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                    <SelectItem value="Argus RME">Argus RME</SelectItem>
-                    <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                    <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                    <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button 
-                  type="button" 
-                  onClick={handleAddInstrument} 
-                  size="sm"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'instrument')}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Add Fixed Value</Label>
-              <div className="flex gap-2">
-                <Input 
-                  type="number"
-                  value={fixedValue}
-                  onChange={(e) => setFixedValue(e.target.value)}
-                  className="flex-1"
-                  disabled={disabled}
-                />
-                <Button 
-                  type="button" 
-                  onClick={handleAddFixedValue} 
-                  size="sm"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'fixedValue')}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Add Percentage</Label>
-              <div className="flex gap-2 items-center">
-                <div className="flex-1 flex items-center">
-                  <Input 
-                    type="number"
-                    value={percentageValue}
-                    onChange={(e) => setPercentageValue(e.target.value)}
-                    className="flex-1"
-                    disabled={disabled}
-                  />
-                  <div className="pl-2 pr-1">%</div>
-                </div>
-                <Button 
-                  type="button" 
-                  onClick={handleAddPercentage} 
-                  size="sm"
-                  disabled={disabled || !canAddTokenType(value.tokens, 'percentage')}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label>Add Instrument</Label>
+          <div className="flex gap-2">
+            <Select 
+              value={selectedInstrument} 
+              onValueChange={(value) => setSelectedInstrument(value as Instrument)}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
+                <SelectItem value="Argus RME">Argus RME</SelectItem>
+                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
+                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              type="button" 
+              onClick={handleAddInstrument} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'instrument')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
-        </>
-      )}
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Add Fixed Value</Label>
+          <div className="flex gap-2">
+            <Input 
+              type="number"
+              value={fixedValue}
+              onChange={(e) => setFixedValue(e.target.value)}
+              className="flex-1"
+            />
+            <Button 
+              type="button" 
+              onClick={handleAddFixedValue} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'fixedValue')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Add Percentage</Label>
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 flex items-center">
+              <Input 
+                type="number"
+                value={percentageValue}
+                onChange={(e) => setPercentageValue(e.target.value)}
+                className="flex-1"
+              />
+              <div className="pl-2 pr-1">%</div>
+            </div>
+            <Button 
+              type="button" 
+              onClick={handleAddPercentage} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'percentage')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
       
       <div className="mt-4 space-y-4">
         <div>
