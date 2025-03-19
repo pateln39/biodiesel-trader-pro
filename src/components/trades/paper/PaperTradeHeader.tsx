@@ -13,6 +13,7 @@ interface PaperTradeHeaderProps {
   selectedBroker: string;
   setSelectedBroker: (broker: string) => void;
   brokers: { id: string; name: string }[];
+  disabled?: boolean;
 }
 
 export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
@@ -20,7 +21,8 @@ export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
   setComment,
   selectedBroker,
   setSelectedBroker,
-  brokers
+  brokers,
+  disabled = false
 }) => {
   const { newBroker, setNewBroker, createBroker, isCreating } = useCreateBroker();
   
@@ -40,6 +42,7 @@ export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
           placeholder="Add optional trade comment"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          disabled={disabled}
         />
       </div>
       
@@ -49,6 +52,7 @@ export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
           <Select
             value={selectedBroker}
             onValueChange={setSelectedBroker}
+            disabled={disabled}
           >
             <SelectTrigger id="broker" className="flex-1">
               <SelectValue placeholder="Select broker" />
@@ -68,13 +72,14 @@ export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
               value={newBroker}
               onChange={(e) => setNewBroker(e.target.value)}
               className="w-36"
+              disabled={disabled}
             />
             <Button
               type="button"
               variant="outline"
               size="icon"
               onClick={handleAddBroker}
-              disabled={isCreating || !newBroker.trim()}
+              disabled={isCreating || !newBroker.trim() || disabled}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -84,3 +89,5 @@ export const PaperTradeHeader: React.FC<PaperTradeHeaderProps> = ({
     </div>
   );
 };
+
+export default PaperTradeHeader;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ interface PaperTradeRowProps {
   broker: string;
   tradeReference: string;
   rowIndex: number;
+  disabled?: boolean;
 }
 
 const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
@@ -27,7 +29,8 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
   onRemove,
   broker,
   tradeReference,
-  rowIndex
+  rowIndex,
+  disabled = false
 }) => {
   const { productRelationships } = useProductRelationships();
   const [activeTab, setActiveTab] = useState<'legs' | 'mtm'>('legs');
@@ -112,7 +115,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
   const totalQuantity = (row.legA?.quantity || 0) + (row.legB?.quantity || 0);
   
   return (
-    <Card className="border">
+    <Card className={`border ${disabled ? 'opacity-70' : ''}`}>
       <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -125,6 +128,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
             size="sm" 
             onClick={onRemove}
             className="text-destructive h-8 w-8 p-0"
+            disabled={disabled}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -132,8 +136,8 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
         
         <Tabs defaultValue="legs" value={activeTab} onValueChange={(v) => setActiveTab(v as 'legs' | 'mtm')}>
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="legs">Trade Legs</TabsTrigger>
-            <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
+            <TabsTrigger value="legs" disabled={disabled}>Trade Legs</TabsTrigger>
+            <TabsTrigger value="mtm" disabled={disabled}>MTM Formula</TabsTrigger>
           </TabsList>
           
           <TabsContent value="legs" className="space-y-4">
@@ -143,6 +147,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                 onChange={handleLegAChange}
                 broker={broker}
                 side="A"
+                disabled={disabled}
               />
             )}
             
@@ -153,6 +158,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                 onRemove={removeLegB}
                 broker={broker}
                 side="B"
+                disabled={disabled}
               />
             ) : (
               <div className="flex justify-center">
@@ -162,7 +168,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                   size="sm" 
                   onClick={addLegB}
                   className="flex items-center"
-                  disabled={!row.legA}
+                  disabled={!row.legA || disabled}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Leg B
@@ -182,6 +188,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                 selectedProduct={row.legA?.product || 'UCOME'}
                 formulaType="mtm"
                 otherFormula={row.legA?.formula || createEmptyFormula()}
+                disabled={disabled}
               />
             </div>
           </TabsContent>
