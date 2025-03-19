@@ -28,7 +28,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg">Trade Rows</CardTitle>
+        <CardTitle className="text-lg">Trade Positions</CardTitle>
         <Button 
           type="button" 
           onClick={onAddRow} 
@@ -38,14 +38,14 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
           className="flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Row
+          Add Position
         </Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {rows.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">
-              No trade rows added. Click "Add Row" to create a trade row.
+              No positions added. Click "Add Position" to create a new trade position.
             </div>
           ) : (
             rows.map((row, index) => (

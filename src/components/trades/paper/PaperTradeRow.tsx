@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Plus } from 'lucide-react';
-import { PaperTradeLeg, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
-import PaperTradeLegForm from './PaperTradeLegForm';
+import { PaperTradePositionSide, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
+import PaperTradePositionSideForm from './PaperTradePositionSideForm';
 import FormulaBuilder from '../FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { useProductRelationships } from '@/hooks/useProductRelationships';
@@ -33,93 +33,93 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
   disabled = false
 }) => {
   const { productRelationships } = useProductRelationships();
-  const [activeTab, setActiveTab] = useState<'legs' | 'mtm'>('legs');
+  const [activeTab, setActiveTab] = useState<'sides' | 'mtm'>('sides');
   
-  // Update Leg B when Leg A changes based on product relationships
+  // Update Right Side when Left Side changes based on product relationships
   useEffect(() => {
-    if (!row.legA || !productRelationships || !productRelationships.length) return;
+    if (!row.leftSide || !productRelationships || !productRelationships.length) return;
     
-    // Only auto-update leg B if it doesn't exist yet
-    if (!row.legB) {
+    // Only auto-update right side if it doesn't exist yet
+    if (!row.rightSide) {
       // Find relationship for the selected product
       const relationship = productRelationships.find(
-        rel => rel.product === row.legA?.product
+        rel => rel.product === row.leftSide?.product
       );
       
       if (relationship && relationship.default_opposite) {
-        // Create Leg B with opposite values
-        const legB: PaperTradeLeg = {
+        // Create Right Side with opposite values
+        const rightSide: PaperTradePositionSide = {
           id: crypto.randomUUID(),
-          legReference: `${tradeReference}-${rowIndex}B`,
+          sideReference: `${tradeReference}-${rowIndex}B`,
           parentTradeId: row.id,
-          buySell: row.legA.buySell === 'buy' ? 'sell' : 'buy',
+          buySell: row.leftSide.buySell === 'buy' ? 'sell' : 'buy',
           product: relationship.default_opposite as Product,
           instrument: `Argus ${relationship.default_opposite}`, // Default instrument
-          pricingPeriodStart: row.legA.pricingPeriodStart,
-          pricingPeriodEnd: row.legA.pricingPeriodEnd,
+          pricingPeriodStart: row.leftSide.pricingPeriodStart,
+          pricingPeriodEnd: row.leftSide.pricingPeriodEnd,
           price: 0,
-          quantity: row.legA.quantity,
+          quantity: row.leftSide.quantity,
           broker: broker,
           formula: createEmptyFormula(),
           mtmFormula: createEmptyFormula()
         };
-        onChange({...row, legB});
+        onChange({...row, rightSide});
       }
     }
-  }, [row.legA, productRelationships, broker]);
+  }, [row.leftSide, productRelationships, broker]);
   
-  // Update the MTM formula when either leg changes
+  // Update the MTM formula when either side changes
   useEffect(() => {
-    if (!row.mtmFormula && (row.legA || row.legB)) {
+    if (!row.mtmFormula && (row.leftSide || row.rightSide)) {
       onChange({...row, mtmFormula: createEmptyFormula()});
     }
-  }, [row.legA, row.legB]);
+  }, [row.leftSide, row.rightSide]);
   
-  const handleLegAChange = (updatedLeg: PaperTradeLeg) => {
-    onChange({...row, legA: updatedLeg});
+  const handleLeftSideChange = (updatedSide: PaperTradePositionSide) => {
+    onChange({...row, leftSide: updatedSide});
   };
   
-  const handleLegBChange = (updatedLeg: PaperTradeLeg) => {
-    onChange({...row, legB: updatedLeg});
+  const handleRightSideChange = (updatedSide: PaperTradePositionSide) => {
+    onChange({...row, rightSide: updatedSide});
   };
   
   const handleMtmFormulaChange = (formula: any) => {
     onChange({...row, mtmFormula: formula});
   };
   
-  const addLegB = () => {
-    if (row.legA) {
-      const legB: PaperTradeLeg = {
+  const addRightSide = () => {
+    if (row.leftSide) {
+      const rightSide: PaperTradePositionSide = {
         id: crypto.randomUUID(),
-        legReference: `${tradeReference}-${rowIndex}B`,
+        sideReference: `${tradeReference}-${rowIndex}B`,
         parentTradeId: row.id,
-        buySell: row.legA.buySell === 'buy' ? 'sell' : 'buy',
+        buySell: row.leftSide.buySell === 'buy' ? 'sell' : 'buy',
         product: 'UCOME' as Product,
         instrument: 'Argus UCOME', // Default instrument
-        pricingPeriodStart: row.legA.pricingPeriodStart,
-        pricingPeriodEnd: row.legA.pricingPeriodEnd,
+        pricingPeriodStart: row.leftSide.pricingPeriodStart,
+        pricingPeriodEnd: row.leftSide.pricingPeriodEnd,
         price: 0,
-        quantity: row.legA.quantity,
+        quantity: row.leftSide.quantity,
         broker: broker,
         formula: createEmptyFormula(),
         mtmFormula: createEmptyFormula()
       };
-      onChange({...row, legB});
+      onChange({...row, rightSide});
     }
   };
   
-  const removeLegB = () => {
-    onChange({...row, legB: null});
+  const removeRightSide = () => {
+    onChange({...row, rightSide: null});
   };
   
-  const totalQuantity = (row.legA?.quantity || 0) + (row.legB?.quantity || 0);
+  const totalQuantity = (row.leftSide?.quantity || 0) + (row.rightSide?.quantity || 0);
   
   return (
     <Card className={`border ${disabled ? 'opacity-70' : ''}`}>
       <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Badge variant="success">Row {rowIndex + 1}</Badge>
+            <Badge variant="success">Position {rowIndex + 1}</Badge>
             <span className="text-sm">Total Quantity: {totalQuantity} MT</span>
           </div>
           <Button 
@@ -134,30 +134,30 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
           </Button>
         </div>
         
-        <Tabs defaultValue="legs" value={activeTab} onValueChange={(v) => setActiveTab(v as 'legs' | 'mtm')}>
+        <Tabs defaultValue="sides" value={activeTab} onValueChange={(v) => setActiveTab(v as 'sides' | 'mtm')}>
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="legs" disabled={disabled}>Trade Legs</TabsTrigger>
+            <TabsTrigger value="sides" disabled={disabled}>Position Sides</TabsTrigger>
             <TabsTrigger value="mtm" disabled={disabled}>MTM Formula</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="legs" className="space-y-4">
-            {row.legA && (
-              <PaperTradeLegForm
-                leg={row.legA}
-                onChange={handleLegAChange}
+          <TabsContent value="sides" className="space-y-4">
+            {row.leftSide && (
+              <PaperTradePositionSideForm
+                side={row.leftSide}
+                onChange={handleLeftSideChange}
                 broker={broker}
-                side="A"
+                sideType="LEFT"
                 disabled={disabled}
               />
             )}
             
-            {row.legB ? (
-              <PaperTradeLegForm
-                leg={row.legB}
-                onChange={handleLegBChange}
-                onRemove={removeLegB}
+            {row.rightSide ? (
+              <PaperTradePositionSideForm
+                side={row.rightSide}
+                onChange={handleRightSideChange}
+                onRemove={removeRightSide}
                 broker={broker}
-                side="B"
+                sideType="RIGHT"
                 disabled={disabled}
               />
             ) : (
@@ -166,12 +166,12 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                   type="button" 
                   variant="outline" 
                   size="sm" 
-                  onClick={addLegB}
+                  onClick={addRightSide}
                   className="flex items-center"
-                  disabled={!row.legA || disabled}
+                  disabled={!row.leftSide || disabled}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Leg B
+                  Add Right Side
                 </Button>
               </div>
             )}
@@ -184,10 +184,10 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
                 value={row.mtmFormula || createEmptyFormula()}
                 onChange={handleMtmFormulaChange}
                 tradeQuantity={totalQuantity}
-                buySell={row.legA?.buySell || 'buy'}
-                selectedProduct={row.legA?.product || 'UCOME'}
+                buySell={row.leftSide?.buySell || 'buy'}
+                selectedProduct={row.leftSide?.product || 'UCOME'}
                 formulaType="mtm"
-                otherFormula={row.legA?.formula || createEmptyFormula()}
+                otherFormula={row.leftSide?.formula || createEmptyFormula()}
                 disabled={disabled}
               />
             </div>

@@ -7,7 +7,7 @@ import { PaperTradeHeader } from './paper/PaperTradeHeader';
 import PaperTradeTable from './paper/PaperTradeTable';
 import { PaperExposureTable } from './paper/PaperExposureTable';
 import { useBrokers } from '@/hooks/useBrokers';
-import { PaperParentTrade, PaperTradeLeg, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
+import { PaperParentTrade, PaperTradePositionSide, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
@@ -36,29 +36,46 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [rows, setRows] = useState<PaperTradeRowType[]>(() => {
     if (initialData?.rows && initialData.rows.length > 0) {
       // Use rows from initialData if available
-      return initialData.rows;
+      return initialData.rows.map((row: any) => ({
+        ...row,
+        leftSide: row.legA ? {
+          ...row.legA,
+          sideReference: row.legA.legReference
+        } : null,
+        rightSide: row.legB ? {
+          ...row.legB,
+          sideReference: row.legB.legReference
+        } : null,
+        // Remove the old properties since we've migrated them
+        legA: undefined,
+        legB: undefined
+      }));
     } else if (initialData?.legs && initialData.legs.length > 0) {
       // Convert from old legacy format with individual legs to rows format
-      const legsByPair: Record<string, PaperTradeLeg[]> = {};
+      const legsByPair: Record<string, PaperTradePositionSide[]> = {};
       
-      // Group legs by the first part of legReference (e.g., "TR-001-1A" and "TR-001-1B" go together)
-      initialData.legs.forEach((leg: PaperTradeLeg) => {
-        const baseRef = leg.legReference.slice(0, -1); // Remove last character (A/B)
+      // Group sides by the first part of sideReference (e.g., "TR-001-1A" and "TR-001-1B" go together)
+      initialData.legs.forEach((leg: any) => {
+        const side = {
+          ...leg,
+          sideReference: leg.legReference
+        };
+        const baseRef = side.sideReference.slice(0, -1); // Remove last character (A/B)
         if (!legsByPair[baseRef]) {
           legsByPair[baseRef] = [];
         }
-        legsByPair[baseRef].push(leg);
+        legsByPair[baseRef].push(side);
       });
       
       // Convert to rows
-      return Object.values(legsByPair).map((legs) => {
-        const legA = legs.find(l => l.legReference.endsWith('A'));
-        const legB = legs.find(l => l.legReference.endsWith('B'));
+      return Object.values(legsByPair).map((sides) => {
+        const leftSide = sides.find(s => s.sideReference.endsWith('A'));
+        const rightSide = sides.find(s => s.sideReference.endsWith('B'));
         
         return {
           id: crypto.randomUUID(),
-          legA: legA || null,
-          legB: legB || null,
+          leftSide: leftSide || null,
+          rightSide: rightSide || null,
           mtmFormula: initialData.mtmFormula || createEmptyFormula()
         };
       });
@@ -66,9 +83,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       // Create a default first row
       return [{
         id: crypto.randomUUID(),
-        legA: {
+        leftSide: {
           id: crypto.randomUUID(),
-          legReference: generateLegReference(tradeReference, 0, 'A'),
+          sideReference: generateLegReference(tradeReference, 0, 'A'),
           parentTradeId: initialData?.id || '',
           buySell: 'buy',
           product: 'UCOME',
@@ -81,7 +98,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           formula: createEmptyFormula(),
           mtmFormula: createEmptyFormula()
         },
-        legB: null,
+        rightSide: null,
         mtmFormula: createEmptyFormula()
       }];
     }
@@ -90,14 +107,14 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   // Load brokers
   const { brokers } = useBrokers();
   
-  // When broker is selected, update all legs to use that broker
+  // When broker is selected, update all sides to use that broker
   useEffect(() => {
     if (selectedBroker) {
       setRows(prevRows => 
         prevRows.map(row => ({
           ...row,
-          legA: row.legA ? { ...row.legA, broker: selectedBroker } : null,
-          legB: row.legB ? { ...row.legB, broker: selectedBroker } : null
+          leftSide: row.leftSide ? { ...row.leftSide, broker: selectedBroker } : null,
+          rightSide: row.rightSide ? { ...row.rightSide, broker: selectedBroker } : null
         }))
       );
     }
@@ -107,9 +124,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const addRow = () => {
     const newRow: PaperTradeRowType = {
       id: crypto.randomUUID(),
-      legA: {
+      leftSide: {
         id: crypto.randomUUID(),
-        legReference: generateLegReference(tradeReference, rows.length, 'A'),
+        sideReference: generateLegReference(tradeReference, rows.length, 'A'),
         parentTradeId: initialData?.id || '',
         buySell: 'buy',
         product: 'UCOME',
@@ -122,7 +139,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         formula: createEmptyFormula(),
         mtmFormula: createEmptyFormula()
       },
-      legB: null,
+      rightSide: null,
       mtmFormula: createEmptyFormula()
     };
     
@@ -132,7 +149,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   // Remove a row by id
   const removeRow = (id: string) => {
     if (rows.length <= 1) {
-      toast.error("Cannot remove the last row");
+      toast.error("Cannot remove the last position");
       return;
     }
     
@@ -155,14 +172,14 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return false;
     }
     
-    // Check if each row has at least one leg with valid quantity
+    // Check if each row has at least one side with valid quantity
     const invalidRow = rows.find(row => 
-      (!row.legA || row.legA.quantity <= 0) && 
-      (!row.legB || row.legB.quantity <= 0)
+      (!row.leftSide || row.leftSide.quantity <= 0) && 
+      (!row.rightSide || row.rightSide.quantity <= 0)
     );
     
     if (invalidRow) {
-      toast.error("All rows must have at least one leg with a valid quantity");
+      toast.error("All positions must have at least one side with a valid quantity");
       return false;
     }
     
@@ -180,11 +197,17 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Flatten all legs for DB storage
-      const allLegs: PaperTradeLeg[] = [];
+      // Flatten all sides for DB storage (for backward compatibility with old 'legs' structure)
+      const allSides: PaperTradePositionSide[] = [];
       rows.forEach(row => {
-        if (row.legA) allLegs.push(row.legA);
-        if (row.legB) allLegs.push(row.legB);
+        if (row.leftSide) allSides.push({
+          ...row.leftSide,
+          legReference: row.leftSide.sideReference // For backward compatibility
+        } as any);
+        if (row.rightSide) allSides.push({
+          ...row.rightSide,
+          legReference: row.rightSide.sideReference // For backward compatibility
+        } as any);
       });
       
       // Create the parent trade object
@@ -199,13 +222,20 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         comment
       };
       
+      // Ensure rows are compatible with old format for backward compatibility
+      const compatibleRows = rows.map(row => ({
+        ...row,
+        legA: row.leftSide,
+        legB: row.rightSide
+      }));
+      
       // Prepare the final object for submission
       const tradeData = {
         ...parentTrade,
-        // Include first leg data for backwards compatibility
-        ...(allLegs[0] || {}),
-        legs: allLegs,
-        rows // Include the rows structure for the new UI
+        // Include first side data for backwards compatibility
+        ...(allSides[0] || {}),
+        legs: allSides,
+        rows: compatibleRows // Include the rows structure for the new UI
       };
       
       onSubmit(tradeData);
@@ -236,7 +266,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         </CardContent>
       </Card>
       
-      {/* Trade Rows */}
+      {/* Trade Position Rows */}
       <PaperTradeTable 
         rows={rows}
         onAddRow={addRow}

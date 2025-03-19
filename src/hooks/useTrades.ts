@@ -15,10 +15,12 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingFormula,
-  PaperTradeRow,
-  PaperTradeLeg
+  PricingFormula
 } from '@/types';
+import { 
+  PaperTradeRow, 
+  PaperTradePositionSide 
+} from '@/types/paper';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
@@ -100,10 +102,10 @@ const fetchTrades = async (): Promise<Trade[]> => {
         return physicalTrade;
       } 
       else if (parent.trade_type === 'paper' && firstLeg) {
-        // Extract all legs and organize them into rows by legReference
-        const paperLegs = legs.map(leg => ({
+        // Extract all legs and organize them into rows by sideReference
+        const paperSides = legs.map(leg => ({
           id: leg.id,
-          legReference: leg.leg_reference,
+          sideReference: leg.leg_reference,
           parentTradeId: leg.parent_trade_id,
           buySell: leg.buy_sell as BuySell,
           product: leg.product as Product,
@@ -117,38 +119,38 @@ const fetchTrades = async (): Promise<Trade[]> => {
           mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
         }));
 
-        // Create rows by matching legs with similar references (e.g., TR-001-1A and TR-001-1B)
+        // Create rows by matching sides with similar references (e.g., TR-001-1A and TR-001-1B)
         const rowsMap = new Map<string, PaperTradeRow>();
         
-        paperLegs.forEach(leg => {
+        paperSides.forEach(side => {
           // Extract base reference (remove the last character which should be A or B)
-          const baseRef = leg.legReference.slice(0, -1);
-          const isLegA = leg.legReference.endsWith('A');
+          const baseRef = side.sideReference.slice(0, -1);
+          const isLeftSide = side.sideReference.endsWith('A');
           
           let row = rowsMap.get(baseRef);
           if (!row) {
             row = {
               id: crypto.randomUUID(),
-              legA: null,
-              legB: null,
+              leftSide: null,
+              rightSide: null,
               mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
             };
             rowsMap.set(baseRef, row);
           }
           
-          if (isLegA) {
-            row.legA = leg;
+          if (isLeftSide) {
+            row.leftSide = side;
           } else {
-            row.legB = leg;
+            row.rightSide = side;
           }
         });
         
         // If there are no valid rows (unexpected), create a default one
-        if (rowsMap.size === 0 && paperLegs.length > 0) {
+        if (rowsMap.size === 0 && paperSides.length > 0) {
           rowsMap.set('default', {
             id: crypto.randomUUID(),
-            legA: paperLegs[0],
-            legB: null,
+            leftSide: paperSides[0],
+            rightSide: null,
             mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula)
           });
         }
@@ -174,8 +176,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: paperLegs,
-          rows: paperRows
+          legs: paperSides, // Keep legs for backward compatibility
+          rows: paperRows // Use the new row structure
         };
         return paperTrade;
       }

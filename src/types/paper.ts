@@ -11,10 +11,10 @@ export interface PaperParentTrade extends ParentTrade {
   broker: string;
 }
 
-// Paper trade leg
-export interface PaperTradeLeg {
+// Paper trade position side (previously called PaperTradeLeg)
+export interface PaperTradePositionSide {
   id: string;
-  legReference: string;
+  sideReference: string;
   parentTradeId: string;
   buySell: BuySell;
   product: Product;
@@ -28,11 +28,11 @@ export interface PaperTradeLeg {
   mtmFormula?: PricingFormula;
 }
 
-// Trade row with leg A, optional leg B, and MTM formula
+// Trade row with left side, optional right side, and MTM formula
 export interface PaperTradeRow {
   id: string;
-  legA: PaperTradeLeg | null;
-  legB: PaperTradeLeg | null;
+  leftSide: PaperTradePositionSide | null;
+  rightSide: PaperTradePositionSide | null;
   mtmFormula?: PricingFormula;
 }
 
@@ -49,7 +49,7 @@ export interface PaperTrade extends PaperParentTrade {
   quantity?: number;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  legs?: PaperTradeLeg[];
+  legs?: PaperTradePositionSide[];
 }
 
 // Exposure entry for the exposure table

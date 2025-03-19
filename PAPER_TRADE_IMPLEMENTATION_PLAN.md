@@ -49,8 +49,7 @@ interface PaperTradePage {
   
   // Trade Table Section
   tradeTable: {
-    legA: TradeLeg[];
-    legB: TradeLeg[];
+    positions: TradePosition[];  // Each position has leftSide and rightSide
     mtmFormula: FormulaConfig[];
   }
   
@@ -72,10 +71,10 @@ Broker:  [Marex ▼] [+ Add Broker]
 
 Trade Table:
 -----------
-LEG A                            LEG B                            MTM
-[+]                             [+]
-Product  Qty   Period  Price     Product  Qty   Period  Price    Formula   Period
-[Dynamic Rows with + buttons on both sides]
+[+]
+LEFT SIDE                          RIGHT SIDE                         MTM
+Product  Qty   Period  Price       Product  Qty   Period  Price      Formula   Period
+[Dynamic Rows with + buttons for adding new positions]
 
 Exposure Table:
 --------------
@@ -87,9 +86,10 @@ Exposure Table:
 
 ### A. Trade Table Logic
 
-#### Row Addition Rules
-- Left + button: User fills LEG A, auto-populates LEG B
-- Right + button: User fills LEG B, auto-populates LEG A
+#### Position Row Addition Rules
+- Add button: User creates a new position row
+- Left side completion: User fills LEFT SIDE, auto-populates RIGHT SIDE
+- Right side completion: User fills RIGHT SIDE, auto-populates LEFT SIDE
 - Auto-population based on product relationships
 
 #### Product Rules
@@ -124,8 +124,19 @@ interface ExposureRow {
 }
 ```
 
+#### Trade Position Example
+Example of a paper trade with multiple positions:
+- Position 1: UCOME/LSGO 1000 MT for Apr-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
+- Position 2: UCOME/LSGO 1000 MT for May-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
+- Position 3: UCOME/LSGO 1000 MT for Jun-25 (LEFT: UCOME buy, RIGHT: LSGO sell)
+- Position 4: UCOME/LSGO -1000 MT for Jul-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
+- Position 5: UCOME/LSGO -1000 MT for Aug-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
+- Position 6: UCOME/LSGO -1000 MT for Sep-25 (LEFT: UCOME sell, RIGHT: LSGO buy)
+
+This creates an exposure table showing +3,000 MT UCOME in Q2 and -3,000 MT UCOME in Q3.
+
 #### Update Triggers
-- New row addition
+- New position row addition
 - Product changes
 - Quantity modifications
 - Period adjustments
@@ -148,7 +159,7 @@ interface ExposureRow {
 - Required selection
 - Must be active broker
 
-#### Trade Rows
+#### Trade Position Rows
 - Valid product selections
 - Non-zero quantities
 - Valid period selections
@@ -164,17 +175,29 @@ interface ExposureRow {
 ### A. Trade Table Component
 ```typescript
 interface TradeTableProps {
-  legA: TradeLeg[];
-  legB: TradeLeg[];
-  onAddLegA: () => void;
-  onAddLegB: () => void;
-  onUpdateLegA: (index: number, updates: Partial<TradeLeg>) => void;
-  onUpdateLegB: (index: number, updates: Partial<TradeLeg>) => void;
-  onRemoveRow: (index: number) => void;
+  rows: PaperTradeRow[];
+  onAddRow: () => void;
+  onUpdateRow: (updatedRow: PaperTradeRow) => void;
+  onRemoveRow: (id: string) => void;
+  broker: string;
+  tradeReference: string;
+  disabled?: boolean;
 }
 ```
 
-### B. Exposure Table Component
+### B. Position Side Form Component
+```typescript
+interface PositionSideFormProps {
+  side: PaperTradePositionSide;
+  onChange: (side: PaperTradePositionSide) => void;
+  onRemove?: () => void;
+  broker: string;
+  sideType: 'LEFT' | 'RIGHT';
+  disabled?: boolean;
+}
+```
+
+### C. Exposure Table Component
 ```typescript
 interface ExposureTableProps {
   data: ExposureRow[];
@@ -183,7 +206,7 @@ interface ExposureTableProps {
 }
 ```
 
-### C. Broker Management Component
+### D. Broker Management Component
 ```typescript
 interface BrokerManagementProps {
   brokers: Broker[];
@@ -199,9 +222,9 @@ interface BrokerManagementProps {
 interface PageState {
   comment: string;
   brokerId: string;
-  trades: {
-    legA: TradeLeg[];
-    legB: TradeLeg[];
+  positions: {
+    leftSide: PaperTradePositionSide[];
+    rightSide: PaperTradePositionSide[];
   };
   exposures: ExposureRow[];
   validation: ValidationState;
