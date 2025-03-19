@@ -6,14 +6,8 @@ import { toast } from '@/components/ui/use-toast';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/tradeUtils';
-import { 
-  Trade, 
-  PhysicalTrade, 
-  PaperTrade,
-  PhysicalTradeLeg
-} from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   Table,
   TableHeader,
@@ -64,7 +58,6 @@ interface DeleteItemDetails {
 
 const TradesPage = () => {
   const { trades, loading, error, refetchTrades } = useTrades();
-  const [activeTab, setActiveTab] = useState<"physical" | "paper">("physical");
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
@@ -78,7 +71,6 @@ const TradesPage = () => {
   const [pageError, setPageError] = useState<string | null>(null);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
-  const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
 
   useEffect(() => {
     if (error) {
@@ -215,7 +207,7 @@ const TradesPage = () => {
     }
   };
 
-  const renderFormula = (trade: PhysicalTrade | PaperTrade | PhysicalTradeLeg) => {
+  const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
     if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
       return <span className="text-muted-foreground italic">No formula</span>;
     }
@@ -282,211 +274,106 @@ const TradesPage = () => {
 
         <div className="bg-card rounded-md border shadow-sm">
           <div className="p-4 flex justify-between items-center border-b">
-            <h2 className="font-semibold">All Trades</h2>
+            <h2 className="font-semibold">Physical Trades</h2>
             <Button variant="outline" size="sm">
               <Filter className="mr-2 h-4 w-4" /> Filter
             </Button>
           </div>
           
-          <Tabs defaultValue="physical" value={activeTab} onValueChange={(value) => setActiveTab(value as "physical" | "paper")} className="w-full">
-            <div className="px-4 pt-2">
-              <TabsList>
-                <TabsTrigger value="physical">Physical Trades</TabsTrigger>
-                <TabsTrigger value="paper">Paper Trades</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="physical" className="pt-2">
-              {loading ? (
-                <div className="p-8 flex justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="pt-2">
+            {loading ? (
+              <div className="p-8 flex justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+              <div className="p-8 flex flex-col items-center text-center space-y-4">
+                <AlertCircle className="h-10 w-10 text-destructive" />
+                <div>
+                  <h3 className="font-medium">Failed to load trades</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {error instanceof Error ? error.message : 'Unknown error occurred'}
+                  </p>
                 </div>
-              ) : error ? (
-                <div className="p-8 flex flex-col items-center text-center space-y-4">
-                  <AlertCircle className="h-10 w-10 text-destructive" />
-                  <div>
-                    <h3 className="font-medium">Failed to load trades</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {error instanceof Error ? error.message : 'Unknown error occurred'}
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
-                    Try Again
-                  </Button>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Buy/Sell</TableHead>
-                      <TableHead>INCO</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Counterparty</TableHead>
-                      <TableHead>Price Formula</TableHead>
-                      <TableHead>Comments</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {physicalTrades.length > 0 ? (
-                      physicalTrades.flatMap((trade) => {
-                        const hasMultipleLegs = isMultiLegTrade(trade);
-                        // Add safety check to ensure legs is an array
-                        const legs = trade.legs || [];
-                        
-                        return legs.map((leg, legIndex) => (
-                          <TableRow 
-                            key={leg.id}
-                            className={legIndex > 0 ? "border-t-0" : undefined}
-                          >
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                                  {trade.physicalType === 'term' ? 
-                                    `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
-                                    trade.tradeReference
-                                  }
-                                </Link>
-                                {hasMultipleLegs && trade.physicalType === 'term' && (
-                                  <Badge variant="outline" className="h-5 text-xs">
-                                    <Link2 className="mr-1 h-3 w-3" />
-                                    {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
-                                  </Badge>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="capitalize">{leg.buySell}</TableCell>
-                            <TableCell>{leg.incoTerm}</TableCell>
-                            <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
-                            <TableCell>{leg.product}</TableCell>
-                            <TableCell>{trade.counterparty}</TableCell>
-                            <TableCell>{renderFormula(leg)}</TableCell>
-                            <TableCell>
-                              <div className="relative">
-                                <Textarea 
-                                  placeholder="Add comments..."
-                                  value={comments[leg.id] || ''}
-                                  onChange={(e) => handleCommentChange(leg.id, e.target.value)}
-                                  onBlur={() => handleCommentBlur(leg.id)}
-                                  className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                                  rows={1}
-                                />
-                                {savingComments[leg.id] && (
-                                  <div className="absolute top-1 right-1">
-                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">Actions</Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <Link to={`/trades/edit/${trade.id}`}>
-                                    <DropdownMenuItem>Edit Trade</DropdownMenuItem>
-                                  </Link>
-                                  {trade.physicalType === 'spot' && legIndex === 0 && (
-                                    <DropdownMenuItem 
-                                      className="text-red-600 focus:text-red-600" 
-                                      onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference)}
-                                    >
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      Delete Trade
-                                    </DropdownMenuItem>
-                                  )}
-                                  {trade.physicalType === 'term' && (
-                                    <DropdownMenuItem 
-                                      className="text-red-600 focus:text-red-600" 
-                                      onClick={() => handleDeleteLegClick(
-                                        leg.id, 
-                                        trade.id, 
-                                        `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
-                                        legIndex + 1
-                                      )}
-                                    >
-                                      <Trash className="mr-2 h-4 w-4" />
-                                      Delete Leg
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ));
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
-                          No physical trades found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </TabsContent>
-
-            <TabsContent value="paper" className="pt-2">
-              <div className="overflow-x-auto">
-                {loading ? (
-                  <div className="p-8 flex justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : error ? (
-                  <div className="p-8 flex flex-col items-center text-center space-y-4">
-                    <AlertCircle className="h-10 w-10 text-destructive" />
-                    <div>
-                      <h3 className="font-medium">Failed to load trades</h3>
-                      <p className="text-muted-foreground text-sm">
-                        {error instanceof Error ? error.message : 'Unknown error occurred'}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
-                      Try Again
-                    </Button>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Broker</TableHead>
-                        <TableHead>Instrument</TableHead>
-                        <TableHead className="text-right">Price</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead>Price Formula</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paperTrades.length > 0 ? (
-                        paperTrades.map((trade) => (
-                          <TableRow key={trade.id}>
-                            <TableCell>
+                <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
+                  Try Again
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Reference</TableHead>
+                    <TableHead>Buy/Sell</TableHead>
+                    <TableHead>INCO</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Counterparty</TableHead>
+                    <TableHead>Price Formula</TableHead>
+                    <TableHead>Comments</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {physicalTrades.length > 0 ? (
+                    physicalTrades.flatMap((trade) => {
+                      const hasMultipleLegs = isMultiLegTrade(trade);
+                      // Add safety check to ensure legs is an array
+                      const legs = trade.legs || [];
+                      
+                      return legs.map((leg, legIndex) => (
+                        <TableRow 
+                          key={leg.id}
+                          className={legIndex > 0 ? "border-t-0" : undefined}
+                        >
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
                               <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                                {trade.tradeReference}
+                                {trade.physicalType === 'term' ? 
+                                  `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
+                                  trade.tradeReference
+                                }
                               </Link>
-                            </TableCell>
-                            <TableCell>{trade.broker}</TableCell>
-                            <TableCell>{trade.instrument}</TableCell>
-                            <TableCell className="text-right">{trade.price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">{trade.quantity} MT</TableCell>
-                            <TableCell>{renderFormula(trade)}</TableCell>
-                            <TableCell>{formatDate(trade.createdAt)}</TableCell>
-                            <TableCell className="text-center">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">Actions</Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <Link to={`/trades/edit/${trade.id}`}>
-                                    <DropdownMenuItem>Edit Trade</DropdownMenuItem>
-                                  </Link>
+                              {hasMultipleLegs && trade.physicalType === 'term' && (
+                                <Badge variant="outline" className="h-5 text-xs">
+                                  <Link2 className="mr-1 h-3 w-3" />
+                                  {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="capitalize">{leg.buySell}</TableCell>
+                          <TableCell>{leg.incoTerm}</TableCell>
+                          <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
+                          <TableCell>{leg.product}</TableCell>
+                          <TableCell>{trade.counterparty}</TableCell>
+                          <TableCell>{renderFormula(leg)}</TableCell>
+                          <TableCell>
+                            <div className="relative">
+                              <Textarea 
+                                placeholder="Add comments..."
+                                value={comments[leg.id] || ''}
+                                onChange={(e) => handleCommentChange(leg.id, e.target.value)}
+                                onBlur={() => handleCommentBlur(leg.id)}
+                                className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
+                                rows={1}
+                              />
+                              {savingComments[leg.id] && (
+                                <div className="absolute top-1 right-1">
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">Actions</Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <Link to={`/trades/edit/${trade.id}`}>
+                                  <DropdownMenuItem>Edit Trade</DropdownMenuItem>
+                                </Link>
+                                {trade.physicalType === 'spot' && legIndex === 0 && (
                                   <DropdownMenuItem 
                                     className="text-red-600 focus:text-red-600" 
                                     onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference)}
@@ -494,24 +381,38 @@ const TradesPage = () => {
                                     <Trash className="mr-2 h-4 w-4" />
                                     Delete Trade
                                   </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
-                            No paper trades found.
+                                )}
+                                {trade.physicalType === 'term' && (
+                                  <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600" 
+                                    onClick={() => handleDeleteLegClick(
+                                      leg.id, 
+                                      trade.id, 
+                                      `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
+                                      legIndex + 1
+                                    )}
+                                  >
+                                    <Trash className="mr-2 h-4 w-4" />
+                                    Delete Leg
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
+                      ));
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                        No physical trades found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </div>
       </div>
 

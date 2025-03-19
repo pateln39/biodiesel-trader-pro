@@ -1,26 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
-import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
+import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { useTrades } from '@/hooks/useTrades';
 import { useQueryClient } from '@tanstack/react-query';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{id: string}>();
   const [isLoading, setIsLoading] = useState(true);
-  const [tradeData, setTradeData] = useState<PhysicalTrade | PaperTrade | null>(null);
-  const [tradeType, setTradeType] = useState<'physical' | 'paper'>('physical');
+  const [tradeData, setTradeData] = useState<PhysicalTrade | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -42,6 +39,11 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
+        // Only handle physical trades
+        if (parentTrade.trade_type !== 'physical') {
+          throw new Error("Only physical trades are supported");
+        }
+
         // Fetch trade legs
         const { data: tradeLegs, error: legsError } = await supabase
           .from('trade_legs')
@@ -52,9 +54,6 @@ const TradeEditPage = () => {
         if (legsError) {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
-
-        // Set trade type based on parent trade
-        setTradeType(parentTrade.trade_type as 'physical' | 'paper');
 
         // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
@@ -103,45 +102,7 @@ const TradeEditPage = () => {
             }))
           };
           setTradeData(physicalTrade);
-        } 
-        else if (parentTrade.trade_type === 'paper' && tradeLegs.length > 0) {
-          const firstLeg = tradeLegs[0];
-          const paperTrade: PaperTrade = {
-            id: parentTrade.id,
-            tradeReference: parentTrade.trade_reference,
-            tradeType: 'paper',
-            createdAt: new Date(parentTrade.created_at),
-            updatedAt: new Date(parentTrade.updated_at),
-            counterparty: parentTrade.counterparty,
-            buySell: firstLeg.buy_sell as BuySell,
-            product: firstLeg.product as Product,
-            broker: firstLeg.broker || '',
-            instrument: firstLeg.instrument || '',
-            price: firstLeg.price || 0,
-            quantity: firstLeg.quantity,
-            pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-            formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-            legs: tradeLegs.map(leg => ({
-              id: leg.id,
-              legReference: leg.leg_reference,
-              parentTradeId: leg.parent_trade_id,
-              buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
-              instrument: leg.instrument || '',
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              price: leg.price || 0,
-              quantity: leg.quantity,
-              broker: leg.broker || '',
-              formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-            }))
-          };
-          setTradeData(paperTrade);
-        } 
-        else {
+        } else {
           throw new Error("Invalid trade data");
         }
 
@@ -180,66 +141,36 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
-      // Handle the updates for trade legs based on trade type
-      if (updatedTradeData.tradeType === 'physical') {
-        // For physical trades, we need to update all legs
-        for (const leg of updatedTradeData.legs) {
-          const legData = {
-            parent_trade_id: id,
-            buy_sell: leg.buySell,
-            product: leg.product,
-            sustainability: leg.sustainability,
-            inco_term: leg.incoTerm,
-            quantity: leg.quantity,
-            tolerance: leg.tolerance,
-            loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
-            loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
-            pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
-            pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
-            unit: leg.unit,
-            payment_term: leg.paymentTerm,
-            credit_status: leg.creditStatus,
-            pricing_formula: leg.formula,
-            mtm_formula: leg.mtmFormula,
-            updated_at: new Date().toISOString()
-          };
+      // For physical trades, we need to update all legs
+      for (const leg of updatedTradeData.legs) {
+        const legData = {
+          parent_trade_id: id,
+          buy_sell: leg.buySell,
+          product: leg.product,
+          sustainability: leg.sustainability,
+          inco_term: leg.incoTerm,
+          quantity: leg.quantity,
+          tolerance: leg.tolerance,
+          loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
+          loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
+          pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
+          pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
+          unit: leg.unit,
+          payment_term: leg.paymentTerm,
+          credit_status: leg.creditStatus,
+          pricing_formula: leg.formula,
+          mtm_formula: leg.mtmFormula,
+          updated_at: new Date().toISOString()
+        };
 
-          // Update the existing leg
-          const { error: legUpdateError } = await supabase
-            .from('trade_legs')
-            .update(legData)
-            .eq('id', leg.id);
-            
-          if (legUpdateError) {
-            throw new Error(`Error updating trade leg: ${legUpdateError.message}`);
-          }
-        }
-      } else if (updatedTradeData.tradeType === 'paper') {
-        // For paper trades, update all legs
-        for (const leg of updatedTradeData.legs) {
-          const legData = {
-            buy_sell: leg.buySell,
-            broker: leg.broker,
-            product: leg.product,
-            instrument: leg.instrument,
-            pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
-            pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
-            price: leg.price,
-            quantity: leg.quantity,
-            pricing_formula: leg.formula,
-            mtm_formula: leg.mtmFormula,
-            updated_at: new Date().toISOString()
-          };
-
-          // Update the existing leg
-          const { error: legUpdateError } = await supabase
-            .from('trade_legs')
-            .update(legData)
-            .eq('id', leg.id);
-            
-          if (legUpdateError) {
-            throw new Error(`Error updating paper trade leg: ${legUpdateError.message}`);
-          }
+        // Update the existing leg
+        const { error: legUpdateError } = await supabase
+          .from('trade_legs')
+          .update(legData)
+          .eq('id', leg.id);
+          
+        if (legUpdateError) {
+          throw new Error(`Error updating trade leg: ${legUpdateError.message}`);
         }
       }
 
@@ -307,40 +238,13 @@ const TradeEditPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs
-              defaultValue={tradeType}
-              value={tradeType}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="physical" disabled>Physical Trade</TabsTrigger>
-                <TabsTrigger value="paper" disabled>Paper Trade</TabsTrigger>
-              </TabsList>
-              
-              {tradeType === 'physical' && (
-                <TabsContent value="physical">
-                  <PhysicalTradeForm 
-                    tradeReference={tradeData.tradeReference} 
-                    onSubmit={handleSubmit} 
-                    onCancel={handleCancel} 
-                    isEditMode={true}
-                    initialData={tradeData as PhysicalTrade}
-                  />
-                </TabsContent>
-              )}
-              
-              {tradeType === 'paper' && (
-                <TabsContent value="paper">
-                  <PaperTradeForm 
-                    tradeReference={tradeData.tradeReference} 
-                    onSubmit={handleSubmit} 
-                    onCancel={handleCancel} 
-                    isEditMode={true}
-                    initialData={tradeData as PaperTrade}
-                  />
-                </TabsContent>
-              )}
-            </Tabs>
+            <PhysicalTradeForm 
+              tradeReference={tradeData.tradeReference} 
+              onSubmit={handleSubmit} 
+              onCancel={handleCancel} 
+              isEditMode={true}
+              initialData={tradeData}
+            />
           </CardContent>
         </Card>
       </div>
