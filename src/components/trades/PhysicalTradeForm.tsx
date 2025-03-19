@@ -161,7 +161,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`),
         validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`),
         validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
+        validateRequiredField(leg.quantity.toString(), `Leg ${legNumber} - Quantity`),
         
         validateDateRange(
           leg.pricingPeriodStart, 

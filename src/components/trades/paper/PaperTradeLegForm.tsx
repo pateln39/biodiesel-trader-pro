@@ -1,70 +1,71 @@
-
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
-import { PaperTradeLeg } from '@/types/paper';
-import FormulaBuilder from '../FormulaBuilder';
+import { useReferenceData } from '@/hooks/useReferenceData';
+import { BuySell, Product } from '@/types/trade';
+import { PaperTradePositionSide } from '@/types/paper';
+import FormulaBuilder from '@/components/trades/FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
-import { Product, BuySell } from '@/types/trade';
-import { Badge } from '@/components/ui/badge';
+import { PricingFormula } from '@/types/pricing';
 
 interface PaperTradeLegFormProps {
-  leg: PaperTradeLeg;
-  onChange: (leg: PaperTradeLeg) => void;
-  onRemove?: () => void;
-  broker: string;
-  side: 'A' | 'B';
-  disabled?: boolean;
+  side: PaperTradePositionSide;
+  onChange: (newSide: PaperTradePositionSide) => void;
+  products: string[];
+  instruments: string[];
+  sideReference: string;
 }
 
-const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
-  leg,
-  onChange,
-  onRemove,
-  broker,
-  side,
-  disabled = false
-}) => {
-  const updateField = <K extends keyof PaperTradeLeg>(field: K, value: PaperTradeLeg[K]) => {
-    onChange({ ...leg, [field]: value });
+const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({ side, onChange, products, instruments, sideReference }) => {
+  const { counterparties } = useReferenceData();
+
+  const updateSide = (field: keyof PaperTradePositionSide, value: string | number | Date | PricingFormula | undefined) => {
+    const newSide = { ...side };
+    if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
+      (newSide as any)[field] = value as Date;
+    } else if (field === 'buySell') {
+      (newSide as any)[field] = value as BuySell;
+    } else if (field === 'product') {
+      (newSide as any)[field] = value as Product;
+    } else if (field === 'instrument') {
+      (newSide as any)[field] = value as string;
+    }
+     else if (field === 'formula' || field === 'mtmFormula') {
+      (newSide as any)[field] = value as PricingFormula;
+    }
+    else if (typeof value === 'number') {
+       (newSide as any)[field] = value as number;
+    }
+    else {
+      (newSide as any)[field] = value as string;
+    }
+    
+    onChange(newSide);
   };
-  
+
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   return (
-    <Card className={`border ${disabled ? 'opacity-70' : ''}`}>
-      <CardContent className="p-4 space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Badge variant={side === 'A' ? 'default' : 'secondary'}>Leg {side}</Badge>
-            <div className="text-sm font-medium">{leg.legReference}</div>
-          </div>
-          {onRemove && (
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm" 
-              onClick={onRemove}
-              className="text-destructive h-8 w-8 p-0"
-              disabled={disabled}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+    <Card className="border border-muted">
+      <CardHeader className="p-4 flex flex-row items-start justify-between">
+        <CardTitle className="text-md">
+          Side Details ({sideReference})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="space-y-2">
-            <Label htmlFor={`buySell-${leg.id}`}>Buy/Sell</Label>
-            <Select 
-              value={leg.buySell} 
-              onValueChange={(value) => updateField('buySell', value as BuySell)}
-              disabled={disabled}
+            <Label htmlFor={`side-${sideReference}-buy-sell`}>Buy/Sell</Label>
+            <Select
+              value={side.buySell}
+              onValueChange={(value) => updateSide('buySell', value as BuySell)}
             >
-              <SelectTrigger id={`buySell-${leg.id}`}>
+              <SelectTrigger id={`side-${sideReference}-buy-sell`}>
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
@@ -73,108 +74,136 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
-            <Label htmlFor={`product-${leg.id}`}>Product</Label>
-            <Select 
-              value={leg.product} 
-              onValueChange={(value) => updateField('product', value as Product)}
-              disabled={disabled}
+            <Label htmlFor={`side-${sideReference}-product`}>Product</Label>
+            <Select
+              value={side.product}
+              onValueChange={(value) => updateSide('product', value as Product)}
             >
-              <SelectTrigger id={`product-${leg.id}`}>
-                <SelectValue placeholder="Select" />
+              <SelectTrigger id={`side-${sideReference}-product`}>
+                <SelectValue placeholder="Select product" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="UCOME">UCOME</SelectItem>
-                <SelectItem value="FAME0">FAME0</SelectItem>
-                <SelectItem value="RME">RME</SelectItem>
-                <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                <SelectItem value="RME DC">RME DC</SelectItem>
-                <SelectItem value="LSGO">LSGO</SelectItem>
-                <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
+                {products.map((product) => (
+                  <SelectItem key={product} value={product}>
+                    {product}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor={`instrument-${leg.id}`}>Instrument</Label>
-          <Select 
-            value={leg.instrument} 
-            onValueChange={(value) => updateField('instrument', value)}
-            disabled={disabled}
-          >
-            <SelectTrigger id={`instrument-${leg.id}`}>
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-              <SelectItem value="Argus RME">Argus RME</SelectItem>
-              <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-              <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-              <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="space-y-2">
-            <Label>Period Start</Label>
-            <DatePicker 
-              date={new Date(leg.pricingPeriodStart)} 
-              setDate={(date) => updateField('pricingPeriodStart', date)}
-              disabled={disabled}
-            />
+            <Label htmlFor={`side-${sideReference}-instrument`}>Instrument</Label>
+            <Select
+              value={side.instrument}
+              onValueChange={(value) => updateSide('instrument', value)}
+            >
+              <SelectTrigger id={`side-${sideReference}-instrument`}>
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                {instruments.map((instrument) => (
+                  <SelectItem key={instrument} value={instrument}>
+                    {instrument}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
+
           <div className="space-y-2">
-            <Label>Period End</Label>
-            <DatePicker 
-              date={new Date(leg.pricingPeriodEnd)} 
-              setDate={(date) => updateField('pricingPeriodEnd', date)}
-              disabled={disabled}
+            <Label htmlFor={`side-${sideReference}-quantity`}>Quantity</Label>
+            <Input
+              id={`side-${sideReference}-quantity`}
+              type="number"
+              value={side.quantity}
+              onChange={(e) => updateSide('quantity', Number(e.target.value))}
+              onFocus={handleNumberInputFocus}
+              required
             />
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="space-y-2">
-            <Label htmlFor={`quantity-${leg.id}`}>Quantity (MT)</Label>
-            <Input 
-              id={`quantity-${leg.id}`} 
-              type="number" 
-              value={leg.quantity} 
-              onChange={(e) => updateField('quantity', Number(e.target.value))}
-              disabled={disabled}
+            <Label htmlFor={`side-${sideReference}-price`}>Price</Label>
+            <Input
+              id={`side-${sideReference}-price`}
+              type="number"
+              value={side.price}
+              onChange={(e) => updateSide('price', Number(e.target.value))}
+              onFocus={handleNumberInputFocus}
+              required
             />
           </div>
-          
+
           <div className="space-y-2">
-            <Label htmlFor={`price-${leg.id}`}>Fixed Price (Optional)</Label>
-            <Input 
-              id={`price-${leg.id}`} 
-              type="number" 
-              value={leg.price} 
-              onChange={(e) => updateField('price', Number(e.target.value))}
-              disabled={disabled}
+            <Label htmlFor={`side-${sideReference}-broker`}>Broker</Label>
+            <Select
+              value={side.broker}
+              onValueChange={(value) => updateSide('broker', value)}
+            >
+              <SelectTrigger id={`side-${sideReference}-broker`}>
+                <SelectValue placeholder="Select broker" />
+              </SelectTrigger>
+              <SelectContent>
+                {counterparties.map((counterparty) => (
+                  <SelectItem key={counterparty} value={counterparty}>
+                    {counterparty}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="space-y-2">
+            <Label>Pricing Period Start</Label>
+            <DatePicker
+              date={side.pricingPeriodStart}
+              setDate={(date) => updateSide('pricingPeriodStart', date)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Pricing Period End</Label>
+            <DatePicker
+              date={side.pricingPeriodEnd}
+              setDate={(date) => updateSide('pricingPeriodEnd', date)}
             />
           </div>
         </div>
-        
-        <div className="space-y-2">
-          <Label>Price Formula</Label>
-          <div className="border rounded-md p-3 bg-gray-50">
-            <FormulaBuilder
-              value={leg.formula || createEmptyFormula()}
-              onChange={(formula) => updateField('formula', formula)}
-              tradeQuantity={leg.quantity || 0}
-              buySell={leg.buySell}
-              selectedProduct={leg.product}
-              formulaType="price"
-              otherFormula={leg.mtmFormula || createEmptyFormula()}
-              disabled={disabled}
-            />
-          </div>
+
+        {/* Formula Builder */}
+        <div className="mb-4">
+          <Label className="font-medium">Pricing Formula</Label>
+          <FormulaBuilder
+            value={side.formula || createEmptyFormula()}
+            onChange={(formula) => updateSide('formula', formula)}
+            tradeQuantity={side.quantity || 0}
+            buySell={side.buySell}
+            selectedProduct={side.product}
+            formulaType="price"
+            otherFormula={side.mtmFormula || createEmptyFormula()}
+          />
+        </div>
+
+        {/* MTM Formula Builder */}
+         <div className="mb-4">
+          <Label className="font-medium">MTM Pricing Formula</Label>
+          <FormulaBuilder
+            value={side.mtmFormula || createEmptyFormula()}
+            onChange={(formula) => updateSide('mtmFormula', formula)}
+            tradeQuantity={side.quantity || 0}
+            buySell={side.buySell}
+            selectedProduct={side.product}
+            formulaType="mtm"
+            otherFormula={side.formula || createEmptyFormula()}
+          />
         </div>
       </CardContent>
     </Card>
