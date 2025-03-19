@@ -8,11 +8,11 @@ import { PaperExposureTable } from './paper/PaperExposureTable';
 import { useProductRelationships } from '@/hooks/useProductRelationships';
 import { useBrokers } from '@/hooks/useBrokers';
 import { BuySell, Product } from '@/types';
-import { PaperParentTrade, PaperTradeLeg, PaperTradeRow } from '@/types/paper';
+import { PaperParentTrade, PaperTradeLeg, PaperTradeRow as PaperTradeRowType } from '@/types/paper';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
-import PaperTradeRow as PaperTradeRowComponent from './paper/PaperTradeRow';
+import PaperTradeRowComponent from './paper/PaperTradeRow';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -34,7 +34,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [selectedBroker, setSelectedBroker] = useState<string>(initialData?.broker || '');
   
   // State for trade rows (replacing the old legs state)
-  const [rows, setRows] = useState<PaperTradeRow[]>(() => {
+  const [rows, setRows] = useState<PaperTradeRowType[]>(() => {
     if (initialData?.rows) {
       // Use rows from initialData if available
       return initialData.rows;
@@ -135,7 +135,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   // Add a new row
   const addRow = () => {
-    const newRow: PaperTradeRow = {
+    const newRow: PaperTradeRowType = {
       id: crypto.randomUUID(),
       legA: {
         id: crypto.randomUUID(),
@@ -170,7 +170,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   };
   
   // Update a row
-  const updateRow = (updatedRow: PaperTradeRow) => {
+  const updateRow = (updatedRow: PaperTradeRowType) => {
     setRows(prevRows => 
       prevRows.map(row => 
         row.id === updatedRow.id ? updatedRow : row
