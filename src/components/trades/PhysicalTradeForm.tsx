@@ -13,7 +13,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
+import { validateDateRange, validateRequiredField } from '@/utils/validationUtils';
 import { toast } from 'sonner';
 
 interface PhysicalTradeFormProps {
@@ -149,35 +149,33 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty', 'Please select a counterparty');
+    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     
     const legValidations = legs.map((leg, index) => {
       const legNumber = index + 1;
       const validations = [
-        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`, 'Please select buy or sell'),
-        validateRequiredField(leg.product, `Leg ${legNumber} - Product`, 'Please select a product'),
-        validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`, 'Please select sustainability'),
-        validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`, 'Please select an incoterm'),
-        validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`, 'Please select a unit'),
-        validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`, 'Please select a payment term'),
-        validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`, 'Please select a credit status'),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`, 'Please enter a quantity'),
+        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
+        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
+        validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`),
+        validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`),
+        validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`),
+        validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`),
+        validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`),
+        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
         
         validateDateRange(
           leg.pricingPeriodStart, 
           leg.pricingPeriodEnd, 
-          `Leg ${legNumber} - Pricing Period`,
-          'End date must be after start date'
+          `Leg ${legNumber} - Pricing Period`
         ),
         validateDateRange(
           leg.loadingPeriodStart, 
           leg.loadingPeriodEnd, 
-          `Leg ${legNumber} - Loading Period`,
-          'End date must be after start date'
+          `Leg ${legNumber} - Loading Period`
         )
       ];
       
-      return validateFields(validations);
+      return validations.every(result => result);
     });
     
     const areAllLegsValid = legValidations.every(isValid => isValid);

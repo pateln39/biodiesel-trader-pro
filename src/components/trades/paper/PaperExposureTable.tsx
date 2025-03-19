@@ -26,16 +26,16 @@ export const PaperExposureTable: React.FC<PaperExposureTableProps> = ({ rows }) 
     
     // Process each row
     rows.forEach(row => {
-      // Process Leg A if exists
-      if (row.legA) {
-        const startMonth = format(new Date(row.legA.pricingPeriodStart), 'MMM');
-        const product = row.legA.product;
+      // Process Left Side if exists
+      if (row.leftSide) {
+        const startMonth = format(new Date(row.leftSide.pricingPeriodStart), 'MMM');
+        const product = row.leftSide.product;
         
         // Only process if the product is in our defined list
         if (products.includes(product)) {
           const monthKey = startMonth.slice(0, 3);
-          const quantity = row.legA.quantity;
-          const sign = row.legA.buySell === 'buy' ? 1 : -1;
+          const quantity = row.leftSide.quantity;
+          const sign = row.leftSide.buySell === 'buy' ? 1 : -1;
           
           // Add to existing exposure
           if (initialExposures[monthKey] && initialExposures[monthKey][product] !== undefined) {
@@ -44,16 +44,16 @@ export const PaperExposureTable: React.FC<PaperExposureTableProps> = ({ rows }) 
         }
       }
       
-      // Process Leg B if exists
-      if (row.legB) {
-        const startMonth = format(new Date(row.legB.pricingPeriodStart), 'MMM');
-        const product = row.legB.product;
+      // Process Right Side if exists
+      if (row.rightSide) {
+        const startMonth = format(new Date(row.rightSide.pricingPeriodStart), 'MMM');
+        const product = row.rightSide.product;
         
         // Only process if the product is in our defined list
         if (products.includes(product)) {
           const monthKey = startMonth.slice(0, 3);
-          const quantity = row.legB.quantity;
-          const sign = row.legB.buySell === 'buy' ? 1 : -1;
+          const quantity = row.rightSide.quantity;
+          const sign = row.rightSide.buySell === 'buy' ? 1 : -1;
           
           // Add to existing exposure
           if (initialExposures[monthKey] && initialExposures[monthKey][product] !== undefined) {
