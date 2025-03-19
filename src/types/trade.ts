@@ -7,6 +7,7 @@ export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
+export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 
 // Paper trade interface
 export interface PaperTrade {
@@ -31,7 +32,7 @@ export interface PaperTradeLeg {
   period: string;
   price: number;
   broker: string;
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
+  relationshipType: PaperRelationshipType;
   rightSide?: {
     product: string;
     quantity: number;
@@ -50,7 +51,7 @@ export interface PaperTradeTableRow {
   quantity: number;
   period: string;
   price: number;
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
+  relationshipType: PaperRelationshipType;
   rightSide?: {
     product: string;
     quantity: number;
@@ -59,4 +60,14 @@ export interface PaperTradeTableRow {
   };
   formula?: any;
   mtmFormula?: any;
+}
+
+// Product relationship interface for the UI
+export interface ProductRelationship {
+  id: string;
+  product: string;
+  relationship_type: PaperRelationshipType;
+  paired_product: string | null;
+  default_opposite: string | null;
+  created_at?: string;
 }

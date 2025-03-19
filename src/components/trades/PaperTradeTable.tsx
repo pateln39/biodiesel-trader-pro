@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,18 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
+import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
 
 interface PaperTradeTableProps {
   legs: any[];
   onLegsChange: (legs: any[]) => void;
-}
-
-interface ProductRelationship {
-  id: string;
-  product: string;
-  relationship_type: 'FP' | 'DIFF' | 'SPREAD';
-  paired_product: string | null;
-  default_opposite: string | null;
 }
 
 const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange }) => {
@@ -47,7 +39,13 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         return;
       }
       
-      setProductRelationships(data || []);
+      // Cast the relationship_type field to ensure it's one of our allowed types
+      const typedData = data?.map(item => ({
+        ...item,
+        relationship_type: item.relationship_type as PaperRelationshipType
+      })) as ProductRelationship[];
+      
+      setProductRelationships(typedData || []);
     };
     
     fetchProductRelationships();
@@ -58,11 +56,11 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     const newLeg = {
       id: crypto.randomUUID(),
       product: '',
-      buySell: 'buy',
+      buySell: 'buy' as BuySell,
       quantity: 0,
       period: '',
       price: 0,
-      relationshipType: '',
+      relationshipType: 'FP' as PaperRelationshipType,
       rightSide: null,
       formula: createEmptyFormula(),
       mtmFormula: createEmptyFormula()
@@ -97,7 +95,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       updatedLeg = {
         ...updatedLeg,
         product: selectedProduct,
-        relationshipType: 'FP',
+        relationshipType: 'FP' as PaperRelationshipType,
         rightSide: null // No right side for FP
       };
     } else if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {

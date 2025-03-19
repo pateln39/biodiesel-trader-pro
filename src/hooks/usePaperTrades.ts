@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { PaperTrade, PaperTradeLeg } from '@/types';
+import { PaperTrade, PaperTradeLeg, PaperRelationshipType, BuySell } from '@/types/trade';
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
@@ -51,21 +51,26 @@ export const usePaperTrades = () => {
             updatedAt: new Date(parentTrade.updated_at),
             comment: parentTrade.comment,
             broker: legs && legs[0] ? legs[0].broker : '',
-            legs: (legs || []).map((leg) => ({
-              id: leg.id,
-              parentTradeId: leg.parent_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell,
-              product: leg.product,
-              quantity: leg.quantity,
-              period: leg.pricing_period_start ? new Date(leg.pricing_period_start).toLocaleDateString() : '',
-              price: leg.price || 0,
-              broker: leg.broker,
-              relationshipType: leg.relationship_type || 'FP',
-              rightSide: leg.right_side,
-              formula: leg.pricing_formula,
-              mtmFormula: leg.mtm_formula
-            }))
+            legs: (legs || []).map((leg) => {
+              // Parse the relationship_type from trading_period if available
+              const relationshipType = leg.trading_period as PaperRelationshipType || 'FP';
+              
+              return {
+                id: leg.id,
+                parentTradeId: leg.parent_trade_id,
+                legReference: leg.leg_reference,
+                buySell: leg.buy_sell as BuySell,
+                product: leg.product,
+                quantity: leg.quantity,
+                period: leg.pricing_period_start ? new Date(leg.pricing_period_start).toLocaleDateString() : '',
+                price: leg.price || 0,
+                broker: leg.broker,
+                relationshipType,
+                rightSide: leg.mtm_formula ? leg.mtm_formula.rightSide : undefined,
+                formula: leg.pricing_formula,
+                mtmFormula: leg.mtm_formula
+              };
+            })
           };
         })
       );
@@ -93,29 +98,36 @@ export const usePaperTrades = () => {
         throw new Error(`Error creating paper trade: ${parentError.message}`);
       }
       
-      // Insert trade legs
-      const legs = (trade.legs || []).map((leg) => ({
-        leg_reference: leg.legReference,
-        parent_trade_id: parentTrade.id,
-        buy_sell: leg.buySell,
-        product: leg.product,
-        quantity: leg.quantity,
-        price: leg.price,
-        broker: trade.broker,
-        relationship_type: leg.relationshipType,
-        right_side: leg.rightSide,
-        pricing_formula: leg.formula,
-        mtm_formula: leg.mtmFormula,
-        pricing_period_start: leg.period ? new Date(leg.period) : null,
-        pricing_period_end: leg.period ? new Date(leg.period) : null
-      }));
-      
-      const { error: legsError } = await supabase
-        .from('trade_legs')
-        .insert(legs);
-        
-      if (legsError) {
-        throw new Error(`Error creating trade legs: ${legsError.message}`);
+      // Prepare legs for insertion
+      if (trade.legs && trade.legs.length > 0) {
+        // Insert trade legs one by one to ensure proper typing
+        for (const leg of trade.legs) {
+          const legData = {
+            leg_reference: leg.legReference,
+            parent_trade_id: parentTrade.id,
+            buy_sell: leg.buySell,
+            product: leg.product,
+            quantity: leg.quantity,
+            price: leg.price,
+            broker: trade.broker,
+            trading_period: leg.relationshipType, // Store relationship type in trading_period field
+            pricing_formula: leg.formula,
+            mtm_formula: {
+              ...leg.mtmFormula,
+              rightSide: leg.rightSide
+            },
+            pricing_period_start: leg.period ? new Date(leg.period).toISOString() : null,
+            pricing_period_end: leg.period ? new Date(leg.period).toISOString() : null
+          };
+          
+          const { error: legError } = await supabase
+            .from('trade_legs')
+            .insert(legData);
+            
+          if (legError) {
+            throw new Error(`Error creating trade leg: ${legError.message}`);
+          }
+        }
       }
       
       return { ...trade, id: parentTrade.id };
