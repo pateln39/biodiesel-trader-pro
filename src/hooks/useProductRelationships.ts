@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface ProductRelationship {
+export interface ProductRelationship {
   id: string;
   product: string;
   relationship_type: 'DIFF' | 'SPREAD' | 'FP';
@@ -25,7 +25,13 @@ export const useProductRelationships = () => {
         
       if (error) throw error;
       
-      setProductRelationships(data || []);
+      // Convert the response data to the correct type
+      const typedData = data?.map(item => ({
+        ...item,
+        relationship_type: item.relationship_type as 'DIFF' | 'SPREAD' | 'FP'
+      })) || [];
+      
+      setProductRelationships(typedData);
       setError(null);
     } catch (err: any) {
       console.error('Error fetching product relationships:', err);
