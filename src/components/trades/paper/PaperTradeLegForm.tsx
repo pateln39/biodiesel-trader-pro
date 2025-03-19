@@ -11,43 +11,49 @@ import { PaperTradeLeg } from '@/types/paper';
 import FormulaBuilder from '../FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Product, BuySell } from '@/types/trade';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 interface PaperTradeLegFormProps {
   leg: PaperTradeLeg;
   onChange: (leg: PaperTradeLeg) => void;
-  onRemove: () => void;
+  onRemove?: () => void;
   broker: string;
+  side: 'A' | 'B';
+  disabled?: boolean;
 }
 
 const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
   leg,
   onChange,
   onRemove,
-  broker
+  broker,
+  side,
+  disabled = false
 }) => {
   const updateField = <K extends keyof PaperTradeLeg>(field: K, value: PaperTradeLeg[K]) => {
     onChange({ ...leg, [field]: value });
   };
   
-  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.select();
-  };
-  
   return (
-    <Card className="border">
+    <Card className={`border ${disabled ? 'opacity-70' : ''}`}>
       <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-center">
-          <div className="text-sm font-medium">{leg.legReference}</div>
-          <Button 
-            type="button" 
-            variant="ghost" 
-            size="sm" 
-            onClick={onRemove}
-            className="text-destructive h-8 w-8 p-0"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Badge variant={side === 'A' ? 'default' : 'secondary'}>Leg {side}</Badge>
+            <div className="text-sm font-medium">{leg.legReference}</div>
+          </div>
+          {onRemove && (
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm" 
+              onClick={onRemove}
+              className="text-destructive h-8 w-8 p-0"
+              disabled={disabled}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         
         <div className="grid grid-cols-2 gap-4">
@@ -56,6 +62,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Select 
               value={leg.buySell} 
               onValueChange={(value) => updateField('buySell', value as BuySell)}
+              disabled={disabled}
             >
               <SelectTrigger id={`buySell-${leg.id}`}>
                 <SelectValue placeholder="Select" />
@@ -72,6 +79,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Select 
               value={leg.product} 
               onValueChange={(value) => updateField('product', value as Product)}
+              disabled={disabled}
             >
               <SelectTrigger id={`product-${leg.id}`}>
                 <SelectValue placeholder="Select" />
@@ -94,6 +102,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
           <Select 
             value={leg.instrument} 
             onValueChange={(value) => updateField('instrument', value)}
+            disabled={disabled}
           >
             <SelectTrigger id={`instrument-${leg.id}`}>
               <SelectValue placeholder="Select" />
@@ -113,7 +122,8 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Label>Period Start</Label>
             <DatePicker 
               date={new Date(leg.pricingPeriodStart)} 
-              setDate={(date) => updateField('pricingPeriodStart', date)} 
+              setDate={(date) => updateField('pricingPeriodStart', date)}
+              disabled={disabled}
             />
           </div>
           
@@ -121,7 +131,8 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Label>Period End</Label>
             <DatePicker 
               date={new Date(leg.pricingPeriodEnd)} 
-              setDate={(date) => updateField('pricingPeriodEnd', date)} 
+              setDate={(date) => updateField('pricingPeriodEnd', date)}
+              disabled={disabled}
             />
           </div>
         </div>
@@ -134,7 +145,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
               type="number" 
               value={leg.quantity} 
               onChange={(e) => updateField('quantity', Number(e.target.value))}
-              onFocus={handleNumberInputFocus}
+              disabled={disabled}
             />
           </div>
           
@@ -145,46 +156,25 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
               type="number" 
               value={leg.price} 
               onChange={(e) => updateField('price', Number(e.target.value))}
-              onFocus={handleNumberInputFocus}
+              disabled={disabled}
             />
           </div>
         </div>
         
         <div className="space-y-2">
-          <Tabs defaultValue="price">
-            <TabsList className="w-full mb-4">
-              <TabsTrigger value="price">Price Formula</TabsTrigger>
-              <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="price">
-              <div className="border rounded-md p-3 bg-gray-50">
-                <FormulaBuilder
-                  value={leg.formula || createEmptyFormula()}
-                  onChange={(formula) => updateField('formula', formula)}
-                  tradeQuantity={leg.quantity || 0}
-                  buySell={leg.buySell}
-                  selectedProduct={leg.product}
-                  formulaType="price"
-                  otherFormula={leg.mtmFormula || createEmptyFormula()}
-                />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="mtm">
-              <div className="border rounded-md p-3 bg-gray-50">
-                <FormulaBuilder
-                  value={leg.mtmFormula || createEmptyFormula()}
-                  onChange={(formula) => updateField('mtmFormula', formula)}
-                  tradeQuantity={leg.quantity || 0}
-                  buySell={leg.buySell}
-                  selectedProduct={leg.product}
-                  formulaType="mtm"
-                  otherFormula={leg.formula || createEmptyFormula()}
-                />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <Label>Price Formula</Label>
+          <div className="border rounded-md p-3 bg-gray-50">
+            <FormulaBuilder
+              value={leg.formula || createEmptyFormula()}
+              onChange={(formula) => updateField('formula', formula)}
+              tradeQuantity={leg.quantity || 0}
+              buySell={leg.buySell}
+              selectedProduct={leg.product}
+              formulaType="price"
+              otherFormula={leg.mtmFormula || createEmptyFormula()}
+              disabled={disabled}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

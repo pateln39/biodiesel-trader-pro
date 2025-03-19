@@ -11,9 +11,8 @@ import { BuySell, Product } from '@/types';
 import { PaperParentTrade, PaperTradeLeg, PaperTradeRow } from '@/types/paper';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { createEmptyFormula } from '@/utils/formulaUtils';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import PaperTradeLegForm from './paper/PaperTradeLegForm';
+import PaperTradeRow as PaperTradeRowComponent from './paper/PaperTradeRow';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -34,52 +33,87 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [comment, setComment] = useState<string>(initialData?.comment || '');
   const [selectedBroker, setSelectedBroker] = useState<string>(initialData?.broker || '');
   
-  // State for trade legs - either from initialData or with a default leg
-  const [legs, setLegs] = useState<PaperTradeLeg[]>(
-    initialData?.legs || [
-      {
+  // State for trade rows (replacing the old legs state)
+  const [rows, setRows] = useState<PaperTradeRow[]>(() => {
+    if (initialData?.rows) {
+      // Use rows from initialData if available
+      return initialData.rows;
+    } else if (initialData?.legs && initialData.legs.length > 0) {
+      // Convert from old legacy format with individual legs to rows
+      const legsByPair: Record<string, PaperTradeLeg[]> = {};
+      
+      // Group legs by the first part of legReference (e.g., "TR-001-1A" and "TR-001-1B" go together)
+      initialData.legs.forEach((leg: PaperTradeLeg) => {
+        const baseRef = leg.legReference.slice(0, -1); // Remove last character (A/B)
+        if (!legsByPair[baseRef]) {
+          legsByPair[baseRef] = [];
+        }
+        legsByPair[baseRef].push(leg);
+      });
+      
+      // Convert to rows
+      return Object.values(legsByPair).map((legs) => {
+        const legA = legs.find(l => l.legReference.endsWith('A'));
+        const legB = legs.find(l => l.legReference.endsWith('B'));
+        
+        return {
+          id: crypto.randomUUID(),
+          legA: legA || null,
+          legB: legB || null,
+          mtmFormula: initialData.mtmFormula || createEmptyFormula()
+        };
+      });
+    } else {
+      // Create a default row
+      return [{
         id: crypto.randomUUID(),
-        legReference: generateLegReference(tradeReference, 0),
-        parentTradeId: initialData?.id || '',
-        buySell: 'buy',
-        product: 'UCOME',
-        instrument: 'Argus UCOME',
-        pricingPeriodStart: new Date(),
-        pricingPeriodEnd: new Date(),
-        price: 0,
-        quantity: 0,
-        broker: selectedBroker,
-        formula: createEmptyFormula(),
+        legA: {
+          id: crypto.randomUUID(),
+          legReference: `${tradeReference}-0A`,
+          parentTradeId: initialData?.id || '',
+          buySell: 'buy',
+          product: 'UCOME',
+          instrument: 'Argus UCOME',
+          pricingPeriodStart: new Date(),
+          pricingPeriodEnd: new Date(),
+          price: 0,
+          quantity: 0,
+          broker: selectedBroker,
+          formula: createEmptyFormula(),
+          mtmFormula: createEmptyFormula()
+        },
+        legB: null,
         mtmFormula: createEmptyFormula()
-      }
-    ]
-  );
+      }];
+    }
+  });
   
   // Load product relationships and brokers
   const { productRelationships } = useProductRelationships();
   const { brokers } = useBrokers();
   
-  // State for exposure data (will be calculated from legs)
+  // State for exposure data (will be calculated from rows)
   const [exposures, setExposures] = useState<Record<string, Record<string, number>>>({});
   
-  // Update exposures whenever legs change
+  // Update exposures whenever rows change
   useEffect(() => {
     calculateExposures();
-  }, [legs]);
+  }, [rows]);
   
   // When broker is selected, update all legs to use that broker
   useEffect(() => {
     if (selectedBroker) {
-      setLegs(prevLegs => 
-        prevLegs.map(leg => ({
-          ...leg,
-          broker: selectedBroker
+      setRows(prevRows => 
+        prevRows.map(row => ({
+          ...row,
+          legA: row.legA ? { ...row.legA, broker: selectedBroker } : null,
+          legB: row.legB ? { ...row.legB, broker: selectedBroker } : null
         }))
       );
     }
   }, [selectedBroker]);
   
-  // Calculate exposures from legs
+  // Calculate exposures from rows
   const calculateExposures = () => {
     // Dummy data for now - this would be calculated based on legs
     const dummyExposures: Record<string, Record<string, number>> = {
@@ -99,42 +133,47 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setExposures(dummyExposures);
   };
   
-  // Add a new leg
-  const addLeg = () => {
-    const newLeg: PaperTradeLeg = {
+  // Add a new row
+  const addRow = () => {
+    const newRow: PaperTradeRow = {
       id: crypto.randomUUID(),
-      legReference: generateLegReference(tradeReference, legs.length),
-      parentTradeId: initialData?.id || '',
-      buySell: 'buy',
-      product: 'UCOME',
-      instrument: 'Argus UCOME',
-      pricingPeriodStart: new Date(),
-      pricingPeriodEnd: new Date(),
-      price: 0,
-      quantity: 0,
-      broker: selectedBroker,
-      formula: createEmptyFormula(),
+      legA: {
+        id: crypto.randomUUID(),
+        legReference: `${tradeReference}-${rows.length}A`,
+        parentTradeId: initialData?.id || '',
+        buySell: 'buy',
+        product: 'UCOME',
+        instrument: 'Argus UCOME',
+        pricingPeriodStart: new Date(),
+        pricingPeriodEnd: new Date(),
+        price: 0,
+        quantity: 0,
+        broker: selectedBroker,
+        formula: createEmptyFormula(),
+        mtmFormula: createEmptyFormula()
+      },
+      legB: null,
       mtmFormula: createEmptyFormula()
     };
     
-    setLegs([...legs, newLeg]);
+    setRows([...rows, newRow]);
   };
   
-  // Remove a leg by id
-  const removeLeg = (id: string) => {
-    if (legs.length <= 1) {
-      toast.error("Cannot remove the last leg");
+  // Remove a row by id
+  const removeRow = (id: string) => {
+    if (rows.length <= 1) {
+      toast.error("Cannot remove the last row");
       return;
     }
     
-    setLegs(prevLegs => prevLegs.filter(leg => leg.id !== id));
+    setRows(prevRows => prevRows.filter(row => row.id !== id));
   };
   
-  // Update a leg
-  const updateLeg = (updatedLeg: PaperTradeLeg) => {
-    setLegs(prevLegs => 
-      prevLegs.map(leg => 
-        leg.id === updatedLeg.id ? updatedLeg : leg
+  // Update a row
+  const updateRow = (updatedRow: PaperTradeRow) => {
+    setRows(prevRows => 
+      prevRows.map(row => 
+        row.id === updatedRow.id ? updatedRow : row
       )
     );
   };
@@ -148,10 +187,18 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return;
     }
     
-    if (legs.some(leg => !leg.quantity || leg.quantity <= 0)) {
-      toast.error("All legs must have a valid quantity");
+    // Check if each row has at least one leg with valid quantity
+    if (rows.some(row => (!row.legA || row.legA.quantity <= 0) && (!row.legB || row.legB.quantity <= 0))) {
+      toast.error("All rows must have at least one leg with a valid quantity");
       return;
     }
+    
+    // Flatten all legs for DB storage
+    const allLegs: PaperTradeLeg[] = [];
+    rows.forEach(row => {
+      if (row.legA) allLegs.push(row.legA);
+      if (row.legB) allLegs.push(row.legB);
+    });
     
     // Create the parent trade object
     const parentTrade: PaperParentTrade = {
@@ -169,8 +216,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       ...parentTrade,
       broker: selectedBroker,
       // Include first leg data for backwards compatibility
-      ...legs[0],
-      legs
+      ...allLegs[0],
+      legs: allLegs,
+      rows // Include the rows structure for the new UI
     };
     
     onSubmit(tradeData);
@@ -194,23 +242,25 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         </CardContent>
       </Card>
       
-      {/* Trade Legs */}
+      {/* Trade Rows */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Trade Legs</CardTitle>
-          <Button type="button" onClick={addLeg} variant="outline" size="sm">
-            Add Leg
+          <CardTitle className="text-lg">Trade Rows</CardTitle>
+          <Button type="button" onClick={addRow} variant="outline" size="sm">
+            Add Row
           </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {legs.map(leg => (
-              <PaperTradeLegForm
-                key={leg.id}
-                leg={leg}
-                onChange={updateLeg}
-                onRemove={() => removeLeg(leg.id)}
+            {rows.map((row, index) => (
+              <PaperTradeRowComponent
+                key={row.id}
+                row={row}
+                onChange={updateRow}
+                onRemove={() => removeRow(row.id)}
                 broker={selectedBroker}
+                tradeReference={tradeReference}
+                rowIndex={index}
               />
             ))}
           </div>
