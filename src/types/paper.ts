@@ -7,6 +7,7 @@ import { PricingFormula } from './pricing';
 // Paper parent trade
 export interface PaperParentTrade extends ParentTrade {
   tradeType: "paper";
+  comment?: string;
 }
 
 // Paper trade leg
@@ -26,9 +27,17 @@ export interface PaperTradeLeg {
   mtmFormula?: PricingFormula;
 }
 
+export interface PaperTradeRow {
+  id: string;
+  legA: PaperTradeLeg | null;
+  legB: PaperTradeLeg | null;
+  mtmFormula?: PricingFormula;
+}
+
 // For backward compatibility
 export interface PaperTrade extends ParentTrade {
   tradeType: "paper";
+  comment?: string;
   buySell: BuySell;
   product: Product;
   instrument: Instrument;
@@ -40,4 +49,5 @@ export interface PaperTrade extends ParentTrade {
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   legs?: PaperTradeLeg[];
+  rows?: PaperTradeRow[];
 }

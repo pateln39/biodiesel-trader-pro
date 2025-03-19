@@ -3,11 +3,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
-import PaperTradeForm from '@/components/trades/PaperTradeForm';
+import PaperTradeFormNew from '@/components/trades/PaperTradeFormNew';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { generateTradeReference } from '@/utils/tradeUtils';
@@ -27,6 +26,7 @@ const TradeEntryPage = () => {
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
         counterparty: tradeData.counterparty,
+        comment: tradeData.comment,
       };
       
       // Insert parent trade
@@ -74,29 +74,9 @@ const TradeEntryPage = () => {
           throw new Error(`Error inserting trade legs: ${legsError.message}`);
         }
       } else {
-        // For paper trades, extract and save both pricing and MTM formulas
-        const legData = {
-          leg_reference: generateTradeReference() + '-a',
-          parent_trade_id: parentTradeId,
-          buy_sell: tradeData.buySell,
-          product: tradeData.product,
-          instrument: tradeData.instrument,
-          pricing_period_start: tradeData.pricingPeriodStart,
-          pricing_period_end: tradeData.pricingPeriodEnd,
-          price: tradeData.price,
-          quantity: tradeData.quantity,
-          broker: tradeData.broker,
-          pricing_formula: tradeData.formula,
-          mtm_formula: tradeData.mtmFormula, // Save the MTM formula
-        };
-        
-        const { error: legError } = await supabase
-          .from('trade_legs')
-          .insert(legData);
-          
-        if (legError) {
-          throw new Error(`Error inserting paper trade leg: ${legError.message}`);
-        }
+        // For paper trades, the PaperTradeFormNew component handles 
+        // the database inserts directly, so we don't need to do it here
+        // This is explicitly handled in the form component
       }
       
       // Force invalidate the trades query cache
@@ -159,7 +139,7 @@ const TradeEntryPage = () => {
               </TabsContent>
               
               <TabsContent value="paper">
-                <PaperTradeForm 
+                <PaperTradeFormNew 
                   tradeReference={tradeReference} 
                   onSubmit={handleSubmit} 
                   onCancel={handleCancel} 
