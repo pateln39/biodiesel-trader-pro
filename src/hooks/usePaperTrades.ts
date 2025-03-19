@@ -55,6 +55,14 @@ export const usePaperTrades = () => {
               // Parse the relationship_type from trading_period if available
               const relationshipType = leg.trading_period as PaperRelationshipType || 'FP';
               
+              // Safely extract rightSide from mtm_formula if it exists
+              let rightSide;
+              if (leg.mtm_formula && 
+                 typeof leg.mtm_formula === 'object' && 
+                 'rightSide' in leg.mtm_formula) {
+                rightSide = leg.mtm_formula.rightSide;
+              }
+              
               return {
                 id: leg.id,
                 parentTradeId: leg.parent_trade_id,
@@ -66,7 +74,7 @@ export const usePaperTrades = () => {
                 price: leg.price || 0,
                 broker: leg.broker,
                 relationshipType,
-                rightSide: leg.mtm_formula ? leg.mtm_formula.rightSide : undefined,
+                rightSide: rightSide,
                 formula: leg.pricing_formula,
                 mtmFormula: leg.mtm_formula
               };
@@ -109,7 +117,7 @@ export const usePaperTrades = () => {
             product: leg.product,
             quantity: leg.quantity,
             price: leg.price,
-            broker: trade.broker,
+            broker: leg.broker || trade.broker,
             trading_period: leg.relationshipType, // Store relationship type in trading_period field
             pricing_formula: leg.formula,
             mtm_formula: {
