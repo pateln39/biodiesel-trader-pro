@@ -16,16 +16,8 @@ export interface PaperTrade {
   createdAt: Date;
   updatedAt: Date;
   counterparty: string;
-  buySell: BuySell;
-  product: Product;
+  comment?: string;
   broker: string;
-  instrument: string;
-  price: number;
-  quantity: number;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  formula: any;
-  mtmFormula: any;
   legs: PaperTradeLeg[];
 }
 
@@ -35,12 +27,36 @@ export interface PaperTradeLeg {
   legReference: string;
   buySell: BuySell;
   product: Product;
-  instrument: string;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  price: number;
   quantity: number;
+  period: string;
+  price: number;
   broker: string;
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
+  rightSide?: {
+    product: string;
+    quantity: number;
+    period: string;
+    price: number;
+  };
   formula: any;
   mtmFormula: any;
+}
+
+// Paper trade table row interface for the UI
+export interface PaperTradeTableRow {
+  id: string;
+  product: string;
+  buySell: BuySell;
+  quantity: number;
+  period: string;
+  price: number;
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
+  rightSide?: {
+    product: string;
+    quantity: number;
+    period: string;
+    price: number;
+  };
+  formula?: any;
+  mtmFormula?: any;
 }

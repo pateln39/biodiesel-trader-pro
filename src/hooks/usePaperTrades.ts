@@ -1,0 +1,141 @@
+
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { PaperTrade, PaperTradeLeg } from '@/types';
+
+export const usePaperTrades = () => {
+  const queryClient = useQueryClient();
+  
+  // Fetch paper trades
+  const { data: paperTrades, isLoading, error } = useQuery({
+    queryKey: ['paper-trades'],
+    queryFn: async () => {
+      // Fetch parent trades of type 'paper'
+      const { data: parentTrades, error: parentError } = await supabase
+        .from('parent_trades')
+        .select(`
+          id,
+          trade_reference,
+          counterparty,
+          created_at,
+          updated_at,
+          comment
+        `)
+        .eq('trade_type', 'paper')
+        .order('created_at', { ascending: false });
+        
+      if (parentError) {
+        throw new Error(`Error fetching paper trades: ${parentError.message}`);
+      }
+      
+      // For each parent trade, fetch its legs
+      const tradesWithLegs = await Promise.all(
+        (parentTrades || []).map(async (parentTrade) => {
+          const { data: legs, error: legsError } = await supabase
+            .from('trade_legs')
+            .select('*')
+            .eq('parent_trade_id', parentTrade.id);
+            
+          if (legsError) {
+            throw new Error(`Error fetching trade legs: ${legsError.message}`);
+          }
+          
+          return {
+            id: parentTrade.id,
+            tradeReference: parentTrade.trade_reference,
+            tradeType: 'paper' as const,
+            counterparty: parentTrade.counterparty,
+            createdAt: new Date(parentTrade.created_at),
+            updatedAt: new Date(parentTrade.updated_at),
+            comment: parentTrade.comment,
+            broker: legs && legs[0] ? legs[0].broker : '',
+            legs: (legs || []).map((leg) => ({
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell,
+              product: leg.product,
+              quantity: leg.quantity,
+              period: leg.pricing_period_start ? new Date(leg.pricing_period_start).toLocaleDateString() : '',
+              price: leg.price || 0,
+              broker: leg.broker,
+              relationshipType: leg.relationship_type || 'FP',
+              rightSide: leg.right_side,
+              formula: leg.pricing_formula,
+              mtmFormula: leg.mtm_formula
+            }))
+          };
+        })
+      );
+      
+      return tradesWithLegs as PaperTrade[];
+    }
+  });
+  
+  // Create paper trade mutation
+  const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
+    mutationFn: async (trade: Partial<PaperTrade>) => {
+      // Insert parent trade
+      const { data: parentTrade, error: parentError } = await supabase
+        .from('parent_trades')
+        .insert({
+          trade_reference: trade.tradeReference,
+          trade_type: 'paper',
+          counterparty: trade.counterparty,
+          comment: trade.comment
+        })
+        .select('id')
+        .single();
+        
+      if (parentError) {
+        throw new Error(`Error creating paper trade: ${parentError.message}`);
+      }
+      
+      // Insert trade legs
+      const legs = (trade.legs || []).map((leg) => ({
+        leg_reference: leg.legReference,
+        parent_trade_id: parentTrade.id,
+        buy_sell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        price: leg.price,
+        broker: trade.broker,
+        relationship_type: leg.relationshipType,
+        right_side: leg.rightSide,
+        pricing_formula: leg.formula,
+        mtm_formula: leg.mtmFormula,
+        pricing_period_start: leg.period ? new Date(leg.period) : null,
+        pricing_period_end: leg.period ? new Date(leg.period) : null
+      }));
+      
+      const { error: legsError } = await supabase
+        .from('trade_legs')
+        .insert(legs);
+        
+      if (legsError) {
+        throw new Error(`Error creating trade legs: ${legsError.message}`);
+      }
+      
+      return { ...trade, id: parentTrade.id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+      toast.success('Paper trade created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to create paper trade', {
+        description: error.message
+      });
+    }
+  });
+  
+  return {
+    paperTrades,
+    isLoading,
+    error,
+    createPaperTrade,
+    isCreating
+  };
+};
