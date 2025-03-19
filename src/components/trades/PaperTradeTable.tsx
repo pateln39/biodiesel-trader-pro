@@ -2,60 +2,52 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Plus, Trash2 } from 'lucide-react';
-import { BuySell, Product } from '@/types/trade';
+import { v4 as uuidv4 } from 'uuid';
+import { BuySell } from '@/types/trade';
 
 export interface TradeLeg {
   id: string;
-  side: 'A' | 'B';
+  legReference: string;
   buySell: BuySell;
-  product: Product;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
+  product: string;
+  instrument?: string;
+  tradingPeriod: string;
+  periodStart?: Date;
+  periodEnd?: Date;
   price: number;
   quantity: number;
+  broker: string;
 }
 
-export interface MTMFormula {
-  id: string;
-  formula: string;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-}
-
-interface PaperTradeTableProps {
-  tradeLegs: TradeLeg[];
-  mtmFormulas: MTMFormula[];
+export interface PaperTradeTableProps {
+  tradeLegs: {
+    legA: TradeLeg[];
+    legB: TradeLeg[];
+  };
+  tradingPeriods: { periodCode: string; periodType: string }[];
+  paperProducts: { productCode: string; displayName: string; category: string }[];
   onAddLegA: () => void;
   onAddLegB: () => void;
-  onAddMTMFormula: () => void;
-  onRemoveLeg: (id: string) => void;
-  onRemoveMTMFormula: (id: string) => void;
-  onUpdateLeg: (id: string, field: keyof TradeLeg, value: any) => void;
-  onUpdateMTMFormula: (id: string, field: keyof MTMFormula, value: any) => void;
+  onUpdateLeg: (side: 'A' | 'B', index: number, field: keyof TradeLeg, value: any) => void;
+  onRemoveLeg: (side: 'A' | 'B', index: number) => void;
+  isLoading: boolean;
 }
 
 const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
   tradeLegs,
-  mtmFormulas,
+  tradingPeriods,
+  paperProducts,
   onAddLegA,
   onAddLegB,
-  onAddMTMFormula,
-  onRemoveLeg,
-  onRemoveMTMFormula,
   onUpdateLeg,
-  onUpdateMTMFormula
+  onRemoveLeg,
+  isLoading
 }) => {
-  // Filter legs by side
-  const legsA = tradeLegs.filter(leg => leg.side === 'A');
-  const legsB = tradeLegs.filter(leg => leg.side === 'B');
-  
   // Get the max number of rows needed for the table
-  const maxRows = Math.max(legsA.length, legsB.length, mtmFormulas.length);
+  const maxRows = Math.max(tradeLegs.legA.length, tradeLegs.legB.length);
   
   return (
     <div className="space-y-4">
@@ -67,6 +59,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
             variant="outline" 
             size="sm" 
             onClick={onAddLegA}
+            disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Leg A
@@ -76,18 +69,10 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
             variant="outline" 
             size="sm" 
             onClick={onAddLegB}
+            disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Leg B
-          </Button>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={onAddMTMFormula}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add MTM Formula
           </Button>
         </div>
       </div>
@@ -96,32 +81,30 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead colSpan={4} className="text-center border-r">LEG A</TableHead>
-              <TableHead colSpan={4} className="text-center border-r">LEG B</TableHead>
-              <TableHead colSpan={2} className="text-center">MTM</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead colSpan={5} className="text-center border-r">LEG A</TableHead>
+              <TableHead colSpan={5} className="text-center">LEG B</TableHead>
+              <TableHead className="w-[50px]"></TableHead> {/* Actions column */}
             </TableRow>
             <TableRow>
-              <TableHead className="w-[120px]">Product</TableHead>
+              <TableHead className="w-[100px]">Product</TableHead>
               <TableHead className="w-[80px]">Buy/Sell</TableHead>
-              <TableHead className="w-[120px]">Quantity</TableHead>
-              <TableHead className="w-[150px] border-r">Period</TableHead>
+              <TableHead className="w-[100px]">Quantity</TableHead>
+              <TableHead className="w-[100px]">Period</TableHead>
+              <TableHead className="w-[80px] border-r">Price</TableHead>
               
-              <TableHead className="w-[120px]">Product</TableHead>
+              <TableHead className="w-[100px]">Product</TableHead>
               <TableHead className="w-[80px]">Buy/Sell</TableHead>
-              <TableHead className="w-[120px]">Quantity</TableHead>
-              <TableHead className="w-[150px] border-r">Period</TableHead>
+              <TableHead className="w-[100px]">Quantity</TableHead>
+              <TableHead className="w-[100px]">Period</TableHead>
+              <TableHead className="w-[80px]">Price</TableHead>
               
-              <TableHead className="w-[150px]">Formula</TableHead>
-              <TableHead className="w-[150px]">Period</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {Array.from({ length: maxRows }).map((_, rowIndex) => {
-              const legA = legsA[rowIndex];
-              const legB = legsB[rowIndex];
-              const mtmFormula = mtmFormulas[rowIndex];
+              const legA = tradeLegs.legA[rowIndex];
+              const legB = tradeLegs.legB[rowIndex];
               
               return (
                 <TableRow key={rowIndex}>
@@ -131,25 +114,26 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                       <TableCell>
                         <Select 
                           value={legA.product} 
-                          onValueChange={(value) => onUpdateLeg(legA.id, 'product', value as Product)}
+                          onValueChange={(value) => onUpdateLeg('A', rowIndex, 'product', value)}
+                          disabled={isLoading}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Product" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="FAME0">FAME0</SelectItem>
-                            <SelectItem value="RME">RME</SelectItem>
-                            <SelectItem value="UCOME">UCOME</SelectItem>
-                            <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                            <SelectItem value="RME DC">RME DC</SelectItem>
-                            <SelectItem value="HVO">HVO</SelectItem>
+                            {paperProducts.map(product => (
+                              <SelectItem key={product.productCode} value={product.productCode}>
+                                {product.displayName}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
                       <TableCell>
                         <Select 
                           value={legA.buySell} 
-                          onValueChange={(value) => onUpdateLeg(legA.id, 'buySell', value as BuySell)}
+                          onValueChange={(value) => onUpdateLeg('A', rowIndex, 'buySell', value as BuySell)}
+                          disabled={isLoading}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Buy/Sell" />
@@ -164,31 +148,63 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                         <Input 
                           type="number" 
                           value={legA.quantity || ''} 
-                          onChange={(e) => onUpdateLeg(legA.id, 'quantity', Number(e.target.value))} 
+                          onChange={(e) => onUpdateLeg('A', rowIndex, 'quantity', Number(e.target.value))} 
+                          disabled={isLoading}
                         />
                       </TableCell>
+                      <TableCell>
+                        <Select 
+                          value={legA.tradingPeriod} 
+                          onValueChange={(value) => onUpdateLeg('A', rowIndex, 'tradingPeriod', value)}
+                          disabled={isLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* Monthly periods */}
+                            <SelectItem value="monthly-header" disabled className="font-semibold text-primary">
+                              Monthly
+                            </SelectItem>
+                            {tradingPeriods
+                              .filter(p => p.periodType === 'MONTH')
+                              .map((period) => (
+                                <SelectItem key={period.periodCode} value={period.periodCode}>
+                                  {period.periodCode}
+                                </SelectItem>
+                              ))}
+                            
+                            {/* Quarterly periods */}
+                            <SelectItem value="quarterly-header" disabled className="font-semibold text-primary mt-2">
+                              Quarterly
+                            </SelectItem>
+                            {tradingPeriods
+                              .filter(p => p.periodType === 'QUARTER')
+                              .map((period) => (
+                                <SelectItem key={period.periodCode} value={period.periodCode}>
+                                  {period.periodCode}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell className="border-r">
-                        <div className="flex flex-col space-y-2">
-                          <Label className="text-xs">Start</Label>
-                          <DatePicker 
-                            date={legA.pricingPeriodStart}
-                            setDate={(date) => onUpdateLeg(legA.id, 'pricingPeriodStart', date)}
-                          />
-                          <Label className="text-xs">End</Label>
-                          <DatePicker 
-                            date={legA.pricingPeriodEnd}
-                            setDate={(date) => onUpdateLeg(legA.id, 'pricingPeriodEnd', date)}
-                          />
-                        </div>
+                        <Input 
+                          type="number" 
+                          value={legA.price || ''} 
+                          onChange={(e) => onUpdateLeg('A', rowIndex, 'price', Number(e.target.value))} 
+                          disabled={isLoading}
+                        />
                       </TableCell>
                     </>
                   ) : (
-                    <TableCell colSpan={4} className="border-r text-center">
+                    <TableCell colSpan={5} className="border-r text-center">
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={onAddLegA}
                         className="h-20 w-full"
+                        disabled={isLoading}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Leg A
@@ -202,25 +218,26 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                       <TableCell>
                         <Select 
                           value={legB.product} 
-                          onValueChange={(value) => onUpdateLeg(legB.id, 'product', value as Product)}
+                          onValueChange={(value) => onUpdateLeg('B', rowIndex, 'product', value)}
+                          disabled={isLoading}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Product" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="FAME0">FAME0</SelectItem>
-                            <SelectItem value="RME">RME</SelectItem>
-                            <SelectItem value="UCOME">UCOME</SelectItem>
-                            <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                            <SelectItem value="RME DC">RME DC</SelectItem>
-                            <SelectItem value="HVO">HVO</SelectItem>
+                            {paperProducts.map(product => (
+                              <SelectItem key={product.productCode} value={product.productCode}>
+                                {product.displayName}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
                       <TableCell>
                         <Select 
                           value={legB.buySell} 
-                          onValueChange={(value) => onUpdateLeg(legB.id, 'buySell', value as BuySell)}
+                          onValueChange={(value) => onUpdateLeg('B', rowIndex, 'buySell', value as BuySell)}
+                          disabled={isLoading}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Buy/Sell" />
@@ -235,88 +252,87 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                         <Input 
                           type="number" 
                           value={legB.quantity || ''} 
-                          onChange={(e) => onUpdateLeg(legB.id, 'quantity', Number(e.target.value))} 
+                          onChange={(e) => onUpdateLeg('B', rowIndex, 'quantity', Number(e.target.value))} 
+                          disabled={isLoading}
                         />
                       </TableCell>
-                      <TableCell className="border-r">
-                        <div className="flex flex-col space-y-2">
-                          <Label className="text-xs">Start</Label>
-                          <DatePicker 
-                            date={legB.pricingPeriodStart}
-                            setDate={(date) => onUpdateLeg(legB.id, 'pricingPeriodStart', date)}
-                          />
-                          <Label className="text-xs">End</Label>
-                          <DatePicker 
-                            date={legB.pricingPeriodEnd}
-                            setDate={(date) => onUpdateLeg(legB.id, 'pricingPeriodEnd', date)}
-                          />
-                        </div>
+                      <TableCell>
+                        <Select 
+                          value={legB.tradingPeriod} 
+                          onValueChange={(value) => onUpdateLeg('B', rowIndex, 'tradingPeriod', value)}
+                          disabled={isLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* Monthly periods */}
+                            <SelectItem value="monthly-header" disabled className="font-semibold text-primary">
+                              Monthly
+                            </SelectItem>
+                            {tradingPeriods
+                              .filter(p => p.periodType === 'MONTH')
+                              .map((period) => (
+                                <SelectItem key={period.periodCode} value={period.periodCode}>
+                                  {period.periodCode}
+                                </SelectItem>
+                              ))}
+                            
+                            {/* Quarterly periods */}
+                            <SelectItem value="quarterly-header" disabled className="font-semibold text-primary mt-2">
+                              Quarterly
+                            </SelectItem>
+                            {tradingPeriods
+                              .filter(p => p.periodType === 'QUARTER')
+                              .map((period) => (
+                                <SelectItem key={period.periodCode} value={period.periodCode}>
+                                  {period.periodCode}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          value={legB.price || ''} 
+                          onChange={(e) => onUpdateLeg('B', rowIndex, 'price', Number(e.target.value))} 
+                          disabled={isLoading}
+                        />
                       </TableCell>
                     </>
                   ) : (
-                    <TableCell colSpan={4} className="border-r text-center">
+                    <TableCell colSpan={5} className="text-center">
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={onAddLegB}
                         className="h-20 w-full"
+                        disabled={isLoading}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Leg B
                       </Button>
                     </TableCell>
                   )}
-                  
-                  {/* MTM Formula */}
-                  {mtmFormula ? (
-                    <>
-                      <TableCell>
-                        <Input 
-                          value={mtmFormula.formula} 
-                          onChange={(e) => onUpdateMTMFormula(mtmFormula.id, 'formula', e.target.value)} 
-                          placeholder="MTM Formula"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col space-y-2">
-                          <Label className="text-xs">Start</Label>
-                          <DatePicker 
-                            date={mtmFormula.pricingPeriodStart}
-                            setDate={(date) => onUpdateMTMFormula(mtmFormula.id, 'pricingPeriodStart', date)}
-                          />
-                          <Label className="text-xs">End</Label>
-                          <DatePicker 
-                            date={mtmFormula.pricingPeriodEnd}
-                            setDate={(date) => onUpdateMTMFormula(mtmFormula.id, 'pricingPeriodEnd', date)}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onRemoveMTMFormula(mtmFormula.id)}
-                          className="h-9 w-9"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <TableCell colSpan={3} className="text-center">
-                      {!mtmFormulas.length && rowIndex === 0 && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={onAddMTMFormula}
-                          className="h-20 w-full"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add MTM Formula
-                        </Button>
-                      )}
-                    </TableCell>
-                  )}
+
+                  {/* Actions column */}
+                  <TableCell>
+                    {(legA || legB) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          if (legA) onRemoveLeg('A', rowIndex);
+                          else if (legB) onRemoveLeg('B', rowIndex);
+                        }}
+                        disabled={isLoading}
+                        className="h-9 w-9"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               );
             })}

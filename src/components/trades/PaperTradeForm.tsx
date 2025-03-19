@@ -1,43 +1,21 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useProductRelationships } from '@/hooks/useProductRelationships';
-import { generateLegReference } from '@/utils/tradeUtils';
-import { Plus, Trash2, PlusCircle } from 'lucide-react';
-import { validateRequiredField, validateFields } from '@/utils/validationUtils';
-import { toast } from 'sonner';
-import { BuySell } from '@/types/trade';
-import { PaperTradeLeg } from '@/types/paper';
-import { PricingFormula } from '@/types/pricing';
-import { createEmptyFormula } from '@/utils/formulaUtils';
-import FormulaBuilder from './FormulaBuilder';
-import ExposureTable from './ExposureTable';
-import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { PlusCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { generateLegReference } from '@/utils/tradeUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { useTradingPeriods } from '@/hooks/useTradingPeriods';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Broker } from '@/types/brokers';
+import { useProductRelationships } from '@/hooks/useProductRelationships';
+import { BuySell } from '@/types/trade';
+import PaperTradeTable, { TradeLeg } from './PaperTradeTable';
+import ExposureTable from './ExposureTable';
 
-interface TradeLegForm {
-  id: string;
-  legReference: string;
-  buySell: BuySell;
-  product: string;
-  instrument: string;
-  tradingPeriod: string;
-  price: number;
-  quantity: number;
-  broker: string;
-  formula: PricingFormula;
-  mtmFormula: PricingFormula;
-}
-
+// Interface for exposure row data
 interface ExposureRow {
   month: string;
   UCOME: number;
@@ -48,43 +26,54 @@ interface ExposureRow {
   ICE_GASOIL_FUTURES: number;
 }
 
+// Interface for broker data
+interface Broker {
+  id: string;
+  name: string;
+  is_active?: boolean;
+}
+
 interface PaperTradeFormProps {
   tradeReference: string;
   onSubmit: (trade: any) => void;
   onCancel: () => void;
-  isEditMode?: boolean;
-  initialData?: any;
 }
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
-  onCancel,
-  isEditMode = false,
-  initialData
+  onCancel
 }) => {
-  const [comment, setComment] = useState<string>(initialData?.comment || '');
+  // State for form inputs
+  const [comment, setComment] = useState<string>('');
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [selectedBroker, setSelectedBroker] = useState<string>('');
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
-  const [loadingBrokers, setLoadingBrokers] = useState<boolean>(true);
-  const [dataReady, setDataReady] = useState<boolean>(false);
   
-  const { paperProducts, isLoading: isProductsLoading } = useProductRelationships();
+  // Get paper products and trading periods
+  const { paperProducts, isLoading: isProductsLoading, getPaperProductRule, getAutoPopulatedPaperLeg } = useProductRelationships();
   const { periods, isLoading: isPeriodsLoading } = useTradingPeriods();
   
-  const createId = () => crypto.randomUUID();
+  // State for legs
+  const [tradeLegs, setTradeLegs] = useState<{
+    legA: TradeLeg[];
+    legB: TradeLeg[];
+  }>({
+    legA: [],
+    legB: []
+  });
   
-  const [legs, setLegs] = useState<TradeLegForm[]>([]);
-  
+  // State for exposure calculations
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
   const [highlightedProduct, setHighlightedProduct] = useState<string>('');
+  
+  // Loading state
+  const isLoading = isProductsLoading || isPeriodsLoading;
 
   // Fetch brokers on mount
   useEffect(() => {
     const fetchBrokers = async () => {
-      setLoadingBrokers(true);
       try {
         const { data, error } = await supabase
           .from('brokers')
@@ -92,10 +81,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           .order('name');
           
         if (error) {
-          toast.error('Failed to fetch brokers', {
-            description: error.message
-          });
-          return;
+          throw error;
         }
         
         setBrokers(data || []);
@@ -105,122 +91,156 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         }
       } catch (error: any) {
         console.error('Error loading brokers:', error);
-      } finally {
-        setLoadingBrokers(false);
+        toast.error('Failed to fetch brokers', {
+          description: error.message
+        });
       }
     };
     
     fetchBrokers();
   }, []);
-
-  // Set dataReady once all data is loaded
-  useEffect(() => {
-    setDataReady(!isProductsLoading && !isPeriodsLoading && !loadingBrokers);
-  }, [isProductsLoading, isPeriodsLoading, loadingBrokers]);
-
-  // Initialize legs after data is ready
-  useEffect(() => {
-    if (dataReady && paperProducts.length > 0 && periods.length > 0 && brokers.length > 0 && legs.length === 0) {
-      const defaultProductCode = paperProducts[0]?.productCode || '';
-      const instrumentOptions = getInstrumentOptions(defaultProductCode);
-      const defaultInstrument = instrumentOptions[0] || '';
-      
-      const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
-      
-      setLegs([{
-        id: createId(),
-        legReference: generateLegReference(tradeReference, 0),
-        buySell: 'buy',
-        product: defaultProductCode,
-        instrument: defaultInstrument,
-        tradingPeriod: '',
-        price: 0,
-        quantity: 0,
-        broker: defaultBroker,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
-      }]);
-    }
-  }, [dataReady, paperProducts, periods, brokers, selectedBroker, tradeReference, legs.length]);
   
+  // Add a leg to side A
+  const addLegA = () => {
+    const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+    const legIndex = tradeLegs.legA.length;
+    
+    // Get default product for new leg
+    const defaultProduct = paperProducts.length > 0 ? paperProducts[0].productCode : '';
+    
+    const newLeg: TradeLeg = {
+      id: crypto.randomUUID(),
+      legReference: generateLegReference(tradeReference, legIndex),
+      buySell: 'buy',
+      product: defaultProduct,
+      tradingPeriod: '',
+      price: 0,
+      quantity: 0,
+      broker: defaultBroker
+    };
+    
+    setTradeLegs(prev => ({
+      ...prev,
+      legA: [...prev.legA, newLeg]
+    }));
+  };
+  
+  // Add a leg to side B
+  const addLegB = () => {
+    const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+    const legIndex = tradeLegs.legB.length;
+    
+    // Get default product for new leg
+    const defaultProduct = paperProducts.length > 0 ? paperProducts[0].productCode : '';
+    
+    const newLeg: TradeLeg = {
+      id: crypto.randomUUID(),
+      legReference: generateLegReference(tradeReference, legIndex),
+      buySell: 'sell',
+      product: defaultProduct,
+      tradingPeriod: '',
+      price: 0,
+      quantity: 0,
+      broker: defaultBroker
+    };
+    
+    setTradeLegs(prev => ({
+      ...prev,
+      legB: [...prev.legB, newLeg]
+    }));
+  };
+  
+  // Update a leg
+  const updateLeg = (side: 'A' | 'B', index: number, field: keyof TradeLeg, value: any) => {
+    setTradeLegs(prev => {
+      const legsArray = side === 'A' ? [...prev.legA] : [...prev.legB];
+      const otherSideArray = side === 'A' ? [...prev.legB] : [...prev.legA];
+      
+      // Update the specified field
+      const updatedLeg = { ...legsArray[index], [field]: value };
+      legsArray[index] = updatedLeg;
+      
+      // Apply product rules if product or quantity changed
+      if ((field === 'product' || field === 'quantity' || field === 'buySell') && 
+          updatedLeg.product && 
+          updatedLeg.quantity) {
+        
+        // Check if we should auto-populate a leg on the other side
+        const populatedLeg = getAutoPopulatedPaperLeg(
+          updatedLeg.product,
+          updatedLeg.buySell as BuySell,
+          updatedLeg.quantity
+        );
+        
+        if (populatedLeg) {
+          // If we have same index on other side, update it
+          if (otherSideArray[index]) {
+            otherSideArray[index] = {
+              ...otherSideArray[index],
+              product: populatedLeg.productCode,
+              buySell: populatedLeg.buySell,
+              quantity: populatedLeg.quantity
+            };
+          } else {
+            // Otherwise add a new leg to other side
+            const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+            
+            otherSideArray.push({
+              id: crypto.randomUUID(),
+              legReference: generateLegReference(tradeReference, otherSideArray.length),
+              product: populatedLeg.productCode,
+              buySell: populatedLeg.buySell,
+              quantity: populatedLeg.quantity,
+              tradingPeriod: updatedLeg.tradingPeriod,
+              price: 0,
+              broker: defaultBroker
+            });
+          }
+        }
+      }
+      
+      // Update trading period dates if period changed
+      if (field === 'tradingPeriod') {
+        const period = periods.find(p => p.periodCode === value);
+        
+        if (period) {
+          updatedLeg.periodStart = period.startDate;
+          updatedLeg.periodEnd = period.endDate;
+        }
+      }
+      
+      return side === 'A' 
+        ? { legA: legsArray, legB: otherSideArray }
+        : { legA: otherSideArray, legB: legsArray };
+    });
+  };
+  
+  // Remove a leg
+  const removeLeg = (side: 'A' | 'B', index: number) => {
+    setTradeLegs(prev => {
+      const legsArray = side === 'A' ? [...prev.legA] : [...prev.legB];
+      legsArray.splice(index, 1);
+      
+      return side === 'A'
+        ? { ...prev, legA: legsArray }
+        : { ...prev, legB: legsArray };
+    });
+  };
+  
+  // Calculate exposure whenever legs change
   useEffect(() => {
     calculateExposure();
-  }, [legs]);
+  }, [tradeLegs]);
   
-  const getInstrumentOptions = (productCode: string) => {
-    const paperProduct = paperProducts.find(p => p.productCode === productCode);
-    
-    if (!paperProduct) return [''];
-    
-    switch (paperProduct.category) {
-      case 'FP':
-        return [`Argus ${paperProduct.baseProduct}`];
-      case 'DIFF':
-        return [`Argus ${paperProduct.baseProduct} vs Platts ${paperProduct.pairedProduct}`];
-      case 'SPREAD':
-        return [`Argus ${paperProduct.baseProduct} vs Argus ${paperProduct.pairedProduct}`];
-      default:
-        return [''];
-    }
-  };
-  
-  const addLeg = () => {
-    const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
-    const legIndex = legs.length;
-    
-    const defaultProductCode = paperProducts.length > 0 ? paperProducts[0].productCode : '';
-    const instrumentOptions = getInstrumentOptions(defaultProductCode);
-    const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
-    
-    setLegs(prev => [
-      ...prev, 
-      {
-        id: createId(),
-        legReference: generateLegReference(tradeReference, legIndex),
-        buySell: 'buy',
-        product: defaultProductCode,
-        instrument: defaultInstrument,
-        tradingPeriod: '',
-        price: 0,
-        quantity: 0,
-        broker: defaultBroker,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
-      }
-    ]);
-  };
-  
-  const removeLeg = (id: string) => {
-    if (legs.length <= 1) {
-      toast.error('Cannot remove the last trade leg');
-      return;
-    }
-    
-    setLegs(prev => prev.filter(leg => leg.id !== id));
-  };
-  
-  const updateLeg = (id: string, field: keyof TradeLegForm, value: any) => {
-    setLegs(prev => 
-      prev.map(leg => {
-        if (leg.id !== id) return leg;
-        
-        const updatedLeg = { ...leg, [field]: value };
-        
-        // Auto-update instrument when product changes
-        if (field === 'product') {
-          const instruments = getInstrumentOptions(value);
-          updatedLeg.instrument = instruments[0] || '';
-        }
-        
-        return updatedLeg;
-      })
-    );
-  };
-  
+  // Calculate exposure based on current legs
   const calculateExposure = () => {
+    // Create a map to hold exposure by month
     const exposureMap = new Map<string, Record<string, number>>();
     
-    legs.forEach(leg => {
+    // Process all legs
+    const allLegs = [...tradeLegs.legA, ...tradeLegs.legB];
+    
+    allLegs.forEach(leg => {
       const { buySell, product, quantity, tradingPeriod } = leg;
       
       if (!quantity || !tradingPeriod) return;
@@ -228,8 +248,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       const period = periods.find(p => p.periodCode === tradingPeriod);
       if (!period) return;
       
+      // Use period code as the month key
       const month = period.periodCode;
       
+      // Initialize month record if it doesn't exist
       if (!exposureMap.has(month)) {
         exposureMap.set(month, {
           UCOME: 0,
@@ -277,6 +299,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       exposureMap.set(month, monthExposure);
     });
     
+    // Convert map to array and sort
     const exposureRows: ExposureRow[] = [];
     exposureMap.forEach((exposure, month) => {
       exposureRows.push({
@@ -295,6 +318,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setExposure(exposureRows);
   };
   
+  // Add a new broker
   const addBroker = async () => {
     if (!newBrokerName.trim()) {
       toast.error('Broker name cannot be empty');
@@ -325,409 +349,185 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
+  // Submit the form
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const isCommentValid = validateRequiredField(comment, 'Comment');
-    
-    const legValidations = legs.map((leg, index) => {
-      const legNumber = index + 1;
-      return validateFields([
-        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
-        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
-        validateRequiredField(leg.instrument, `Leg ${legNumber} - Instrument`),
-        validateRequiredField(leg.tradingPeriod, `Leg ${legNumber} - Trading Period`),
-        validateRequiredField(leg.broker, `Leg ${legNumber} - Broker`),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`)
-      ]);
-    });
-    
-    const areAllLegsValid = legValidations.every(isValid => isValid);
-    
-    if (isCommentValid && areAllLegsValid) {
-      // Prepare the leg data with trading period dates
-      const tradeLegs: PaperTradeLeg[] = legs.map(leg => {
-        const period = periods.find(p => p.periodCode === leg.tradingPeriod);
-        return {
-          id: leg.id,
-          legReference: leg.legReference,
-          parentTradeId: initialData?.id || '',
-          buySell: leg.buySell,
-          product: leg.product,
-          instrument: leg.instrument,
-          tradingPeriod: leg.tradingPeriod,
-          periodStart: period?.startDate,
-          periodEnd: period?.endDate,
-          price: leg.price,
-          quantity: leg.quantity,
-          broker: leg.broker,
-          formula: leg.formula,
-          mtmFormula: leg.mtmFormula
-        };
-      });
-      
-      onSubmit({
-        id: initialData?.id,
-        tradeReference,
-        tradeType: 'paper',
-        comment,
-        legs: tradeLegs
-      });
-    } else {
-      toast.error('Please fix all validation errors before submitting');
+    // Validation
+    if (!comment.trim()) {
+      toast.error('Comment is required');
+      return;
     }
+    
+    // Collect all legs
+    const allLegs = [...tradeLegs.legA, ...tradeLegs.legB];
+    
+    if (allLegs.length === 0) {
+      toast.error('At least one trade leg is required');
+      return;
+    }
+    
+    // Validate each leg
+    const invalidLegs = allLegs.filter(leg => 
+      !leg.buySell || 
+      !leg.product || 
+      !leg.tradingPeriod || 
+      !leg.quantity ||
+      !leg.broker
+    );
+    
+    if (invalidLegs.length > 0) {
+      toast.error(`There are ${invalidLegs.length} incomplete legs. Please fill all required fields.`);
+      return;
+    }
+    
+    // All validation passed, submit the form
+    const submitData = {
+      tradeReference,
+      tradeType: 'paper',
+      comment,
+      counterparty: 'Internal', // Default for paper trades
+      legs: allLegs.map((leg, index) => ({
+        legReference: leg.legReference || generateLegReference(tradeReference, index),
+        buySell: leg.buySell,
+        product: leg.product,
+        instrument: leg.instrument || `Argus ${leg.product}`,
+        tradingPeriod: leg.tradingPeriod,
+        periodStart: leg.periodStart,
+        periodEnd: leg.periodEnd,
+        price: leg.price,
+        quantity: leg.quantity,
+        broker: leg.broker,
+        formula: {}, // Empty formula object
+        mtmFormula: {} // Empty MTM formula object
+      }))
+    };
+    
+    onSubmit(submitData);
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setComment('');
+    setTradeLegs({ legA: [], legB: [] });
+    setExposure([]);
   };
   
-  const resetForm = useCallback(() => {
-    setComment(initialData?.comment || '');
-    
-    if (initialData?.legs) {
-      setLegs(initialData.legs.map((leg: any) => ({
-        id: leg.id || createId(),
-        legReference: leg.legReference || generateLegReference(tradeReference, 0),
-        buySell: leg.buySell || 'buy',
-        product: leg.product || '',
-        instrument: leg.instrument || '',
-        tradingPeriod: leg.tradingPeriod || '',
-        price: leg.price || 0,
-        quantity: leg.quantity || 0,
-        broker: leg.broker || '',
-        formula: leg.formula || createEmptyFormula(),
-        mtmFormula: leg.mtmFormula || createEmptyFormula(),
-      })));
-    } else if (paperProducts.length > 0) {
-      const defaultProductCode = paperProducts[0].productCode;
-      const instrumentOptions = getInstrumentOptions(defaultProductCode);
-      const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
-      
-      setLegs([{
-        id: createId(),
-        legReference: generateLegReference(tradeReference, 0),
-        buySell: 'buy',
-        product: defaultProductCode,
-        instrument: defaultInstrument,
-        tradingPeriod: '',
-        price: 0,
-        quantity: 0,
-        broker: brokers.find(b => b.id === selectedBroker)?.name || '',
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
-      }]);
+  // Initialize with an empty leg if none exist and data is loaded
+  useEffect(() => {
+    if (!isLoading && 
+        paperProducts.length > 0 && 
+        brokers.length > 0 && 
+        selectedBroker && 
+        tradeLegs.legA.length === 0 && 
+        tradeLegs.legB.length === 0) {
+      addLegA();
     }
-  }, [initialData, selectedBroker, brokers, paperProducts, periods, tradeReference]);
-  
-  const isLoading = isProductsLoading || isPeriodsLoading || loadingBrokers;
-  
-  if (isLoading) {
-    return <div className="flex justify-center p-8">Loading trade data...</div>;
-  }
+  }, [isLoading, paperProducts, brokers, selectedBroker, tradeLegs]);
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="comment">Comment</Label>
-            <Input
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Enter trade comment"
-            />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="comment">Comment</Label>
+          <Input
+            id="comment"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Enter trade comment"
+            disabled={isLoading}
+          />
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="broker" className="min-w-24">Default Broker</Label>
+          <div className="flex-1">
+            <Select 
+              value={selectedBroker} 
+              onValueChange={setSelectedBroker}
+              disabled={isLoading || brokers.length === 0}
+            >
+              <SelectTrigger id="broker">
+                <SelectValue placeholder={isLoading ? "Loading brokers..." : "Select broker"} />
+              </SelectTrigger>
+              <SelectContent>
+                {brokers.filter(b => b.is_active !== false).map((broker) => (
+                  <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="broker" className="min-w-24">Default Broker</Label>
-            <div className="flex-1">
-              <Select 
-                value={selectedBroker} 
-                onValueChange={setSelectedBroker}
-              >
-                <SelectTrigger id="broker">
-                  <SelectValue placeholder="Select broker" />
-                </SelectTrigger>
-                <SelectContent>
-                  {brokers.filter(b => b.is_active !== false).map((broker) => (
-                    <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Dialog open={isBrokerDialogOpen} onOpenChange={setIsBrokerDialogOpen}>
-              <DialogTrigger asChild>
-                <Button type="button" variant="outline" size="sm">
-                  <PlusCircle className="h-4 w-4 mr-1" />
-                  Add Broker
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Broker</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newBrokerName">Broker Name</Label>
-                    <Input
-                      id="newBrokerName"
-                      value={newBrokerName}
-                      onChange={(e) => setNewBrokerName(e.target.value)}
-                      placeholder="Enter broker name"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <DialogClose asChild>
-                      <Button type="button" variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button type="button" onClick={addBroker}>Add Broker</Button>
-                  </div>
+          <Dialog open={isBrokerDialogOpen} onOpenChange={setIsBrokerDialogOpen}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="outline" size="sm" disabled={isLoading}>
+                <PlusCircle className="h-4 w-4 mr-1" />
+                Add Broker
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Broker</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newBrokerName">Broker Name</Label>
+                  <Input
+                    id="newBrokerName"
+                    value={newBrokerName}
+                    onChange={(e) => setNewBrokerName(e.target.value)}
+                    placeholder="Enter broker name"
+                  />
                 </div>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <div className="flex justify-end space-x-2">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button type="button" onClick={addBroker}>Add Broker</Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
       
       <Separator />
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Trade Legs</h3>
-          <Button type="button" variant="outline" onClick={addLeg}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Leg
-          </Button>
-        </div>
-        
-        <div className="border rounded-md overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/50 sticky top-0">
-              <TableRow>
-                <TableHead className="w-[80px]">Action</TableHead>
-                <TableHead className="w-[100px]">Buy/Sell</TableHead>
-                <TableHead className="w-[140px]">Product</TableHead>
-                <TableHead className="w-[120px]">Period</TableHead>
-                <TableHead className="w-[100px]">Quantity</TableHead>
-                <TableHead className="w-[100px]">Price</TableHead>
-                <TableHead className="w-[120px]">Broker</TableHead>
-                <TableHead className="w-[100px]">Formula</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {legs.map((leg, index) => (
-                <TableRow key={leg.id}>
-                  <TableCell>
-                    {legs.length > 1 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeLeg(leg.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={leg.buySell} 
-                      onValueChange={(value) => updateLeg(leg.id, 'buySell', value as BuySell)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="buy">Buy</SelectItem>
-                        <SelectItem value="sell">Sell</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={leg.product} 
-                      onValueChange={(value) => updateLeg(leg.id, 'product', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {paperProducts.map((product) => (
-                          <SelectItem key={product.id} value={product.productCode}>
-                            {product.displayName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={leg.tradingPeriod} 
-                      onValueChange={(value) => updateLeg(leg.id, 'tradingPeriod', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select period" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* Monthly periods */}
-                        <SelectItem value="monthly-header" disabled className="font-semibold text-primary">
-                          Monthly
-                        </SelectItem>
-                        {periods
-                          .filter(p => p.periodType === 'MONTH')
-                          .map((period) => (
-                            <SelectItem key={period.id} value={period.periodCode}>
-                              {period.periodCode}
-                            </SelectItem>
-                          ))}
-                        
-                        {/* Quarterly periods */}
-                        <SelectItem value="quarterly-header" disabled className="font-semibold text-primary mt-2">
-                          Quarterly
-                        </SelectItem>
-                        {periods
-                          .filter(p => p.periodType === 'QUARTER')
-                          .map((period) => (
-                            <SelectItem key={period.id} value={period.periodCode}>
-                              {period.periodCode}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Input 
-                      type="number" 
-                      value={leg.quantity || ''} 
-                      onChange={(e) => updateLeg(leg.id, 'quantity', Number(e.target.value))} 
-                      placeholder="Qty"
-                      required 
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input 
-                      type="number" 
-                      value={leg.price || ''} 
-                      onChange={(e) => updateLeg(leg.id, 'price', Number(e.target.value))} 
-                      placeholder="Price"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input 
-                      value={leg.broker} 
-                      onChange={(e) => updateLeg(leg.id, 'broker', e.target.value)} 
-                      placeholder="Broker"
-                      required 
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        // Show formula dialog or expand row for formula editing
-                        toast.info(`Formula editing for ${leg.legReference}`, {
-                          description: "Formula editing is available in the details section below"
-                        });
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        
-        {/* Formula editing sections */}
-        {legs.map((leg, index) => (
-          <Card key={`formula-${leg.id}`} className="border border-muted">
-            <CardHeader className="p-4">
-              <CardTitle className="text-md">
-                Formula Details: {leg.legReference} - {paperProducts.find(p => p.productCode === leg.product)?.displayName || leg.product}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 mb-4">
-                <div className="space-y-2">
-                  <Label>Product</Label>
-                  <div className="p-2 bg-muted rounded">
-                    {paperProducts.find(p => p.productCode === leg.product)?.displayName || leg.product}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Instrument</Label>
-                  <div className="p-2 bg-muted rounded">
-                    {leg.instrument || 'Not specified'}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border rounded-md p-4 bg-gray-50 mb-4">
-                <Tabs defaultValue="price">
-                  <TabsList className="w-full mb-4">
-                    <TabsTrigger value="price">Price Formula</TabsTrigger>
-                    <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="price">
-                    <div className="mb-2">
-                      <Label className="font-medium">Price Formula</Label>
-                    </div>
-                    <FormulaBuilder 
-                      value={leg.formula || createEmptyFormula()} 
-                      onChange={(formula) => updateLeg(leg.id, 'formula', formula)}
-                      tradeQuantity={leg.quantity || 0}
-                      buySell={leg.buySell}
-                      selectedProduct={paperProducts.find(p => p.productCode === leg.product)?.baseProduct || ''}
-                      formulaType="price"
-                      otherFormula={leg.mtmFormula || createEmptyFormula()}
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="mtm">
-                    <div className="mb-2">
-                      <Label className="font-medium">MTM Pricing Formula</Label>
-                    </div>
-                    <FormulaBuilder 
-                      value={leg.mtmFormula || createEmptyFormula()} 
-                      onChange={(formula) => updateLeg(leg.id, 'mtmFormula', formula)}
-                      tradeQuantity={leg.quantity || 0}
-                      buySell={leg.buySell}
-                      selectedProduct={paperProducts.find(p => p.productCode === leg.product)?.baseProduct || ''}
-                      formulaType="mtm"
-                      otherFormula={leg.formula || createEmptyFormula()}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Trade Table Section */}
+      <PaperTradeTable
+        tradeLegs={tradeLegs}
+        tradingPeriods={periods}
+        paperProducts={paperProducts}
+        onAddLegA={addLegA}
+        onAddLegB={addLegB}
+        onUpdateLeg={updateLeg}
+        onRemoveLeg={removeLeg}
+        isLoading={isLoading}
+      />
       
       <Separator />
       
+      {/* Exposure Table Section */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Exposure Table</h3>
         <ExposureTable 
           exposures={exposure} 
           highlightedProduct={highlightedProduct}
+          onExposureClick={(month, product) => setHighlightedProduct(product)}
         />
       </div>
       
       <Separator />
       
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
           Cancel
         </Button>
-        <Button type="button" variant="outline" onClick={resetForm}>
+        <Button type="button" variant="outline" onClick={resetForm} disabled={isLoading}>
           Reset
         </Button>
-        <Button type="submit">
-          {isEditMode ? 'Update Trade' : 'Create Trade'}
+        <Button type="submit" disabled={isLoading}>
+          Create Trade
         </Button>
       </div>
     </form>
