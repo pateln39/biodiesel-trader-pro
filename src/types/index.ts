@@ -6,4 +6,4 @@ export * from './pricing';
 export * from './physical';
 
 // Add TradeType here to resolve circular dependency
-export type TradeType = "physical";
+export type TradeType = "physical" | "paper";

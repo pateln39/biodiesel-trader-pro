@@ -16,4 +16,3 @@ export const mockTrades: Trade[] = [];
 export const mockMovements: Movement[] = [];
 export const mockAuditLogs: AuditLog[] = [];
 export const mockExposureReport: ExposureReportItem[] = [];
-

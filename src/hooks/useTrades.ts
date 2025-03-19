@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +14,6 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingFormula
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
@@ -97,45 +95,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
         };
         return physicalTrade;
       } 
-      else if (parent.trade_type === 'paper' && firstLeg) {
-        // For paper trades, safely extract and type the required properties from leg
-        const paperTrade: PaperTrade = {
-          id: parent.id,
-          tradeReference: parent.trade_reference,
-          tradeType: 'paper',
-          createdAt: new Date(parent.created_at),
-          updatedAt: new Date(parent.updated_at),
-          counterparty: parent.counterparty,
-          buySell: firstLeg.buy_sell as BuySell,
-          product: firstLeg.product as Product,
-          broker: firstLeg.broker || '',
-          instrument: firstLeg.instrument || '',
-          price: firstLeg.price || 0,
-          quantity: firstLeg.quantity,
-          pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
-          pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
-          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: tradeLegs
-            .filter(leg => leg.parent_trade_id === parent.id)
-            .map(leg => ({
-              id: leg.id,
-              legReference: leg.leg_reference,
-              parentTradeId: leg.parent_trade_id,
-              buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
-              instrument: leg.instrument || '',
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              price: leg.price || 0,
-              quantity: leg.quantity,
-              broker: leg.broker || '',
-              formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-            }))
-        };
-        return paperTrade;
-      }
       
       // Fallback with minimal data if there are no legs or unknown type
       return {
@@ -145,7 +104,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
         counterparty: parent.counterparty,
-        // Add missing required properties for PaperTrade
+        // Add missing required properties for Trade
         buySell: 'buy' as BuySell,
         product: 'UCOME' as Product,
         legs: []
