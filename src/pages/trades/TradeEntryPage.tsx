@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
-import PaperTradeFormNew from '@/components/trades/PaperTradeFormNew';
+import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { generateTradeReference } from '@/utils/tradeUtils';
@@ -80,7 +80,7 @@ const TradeEntryPage = () => {
               </TabsContent>
               
               <TabsContent value="paper">
-                <PaperTradeFormNew 
+                <PaperTradeForm 
                   tradeReference={tradeReference} 
                   onSubmit={handleSubmit} 
                   onCancel={handleCancel} 
