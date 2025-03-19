@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
@@ -27,6 +26,7 @@ const TradeEntryPage = () => {
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
         counterparty: tradeData.counterparty,
+        comment: tradeData.comment
       };
       
       // Insert parent trade
@@ -74,28 +74,28 @@ const TradeEntryPage = () => {
           throw new Error(`Error inserting trade legs: ${legsError.message}`);
         }
       } else {
-        // For paper trades, extract and save both pricing and MTM formulas
-        const legData = {
-          leg_reference: generateTradeReference() + '-a',
+        // For paper trades, insert all legs
+        const legs = tradeData.legs.map((leg: any) => ({
+          leg_reference: leg.legReference,
           parent_trade_id: parentTradeId,
-          buy_sell: tradeData.buySell,
-          product: tradeData.product,
-          instrument: tradeData.instrument,
-          pricing_period_start: tradeData.pricingPeriodStart,
-          pricing_period_end: tradeData.pricingPeriodEnd,
-          price: tradeData.price,
-          quantity: tradeData.quantity,
-          broker: tradeData.broker,
-          pricing_formula: tradeData.formula,
-          mtm_formula: tradeData.mtmFormula, // Save the MTM formula
-        };
+          buy_sell: leg.buySell,
+          product: leg.product,
+          instrument: leg.instrument,
+          pricing_period_start: leg.periodStart,
+          pricing_period_end: leg.periodEnd,
+          price: leg.price,
+          quantity: leg.quantity,
+          broker: leg.broker,
+          pricing_formula: leg.formula,
+          mtm_formula: leg.mtmFormula
+        }));
         
-        const { error: legError } = await supabase
+        const { error: legsError } = await supabase
           .from('trade_legs')
-          .insert(legData);
+          .insert(legs);
           
-        if (legError) {
-          throw new Error(`Error inserting paper trade leg: ${legError.message}`);
+        if (legsError) {
+          throw new Error(`Error inserting paper trade legs: ${legsError.message}`);
         }
       }
       

@@ -21,7 +21,6 @@ const PaperTradeEntryPage = () => {
       const parentTrade = {
         trade_reference: tradeData.tradeReference,
         trade_type: 'paper',
-        counterparty: tradeData.counterparty,
         comment: tradeData.comment
       };
       
@@ -46,8 +45,8 @@ const PaperTradeEntryPage = () => {
         buy_sell: leg.buySell,
         product: leg.product,
         instrument: leg.instrument,
-        pricing_period_start: leg.pricingPeriodStart,
-        pricing_period_end: leg.pricingPeriodEnd,
+        pricing_period_start: leg.periodStart,
+        pricing_period_end: leg.periodEnd,
         price: leg.price,
         quantity: leg.quantity,
         broker: leg.broker,

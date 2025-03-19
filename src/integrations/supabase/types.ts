@@ -154,6 +154,39 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_trade_products: {
+        Row: {
+          base_product: string | null
+          category: string
+          created_at: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          paired_product: string | null
+          product_code: string
+        }
+        Insert: {
+          base_product?: string | null
+          category: string
+          created_at?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          paired_product?: string | null
+          product_code: string
+        }
+        Update: {
+          base_product?: string | null
+          category?: string
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          paired_product?: string | null
+          product_code?: string
+        }
+        Relationships: []
+      }
       parent_trades: {
         Row: {
           counterparty: string
@@ -395,6 +428,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      trading_periods: {
+        Row: {
+          created_at: string | null
+          end_date: string
+          id: string
+          is_active: boolean | null
+          period_code: string
+          period_type: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          period_code: string
+          period_type: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          period_code?: string
+          period_type?: string
+          start_date?: string
+        }
+        Relationships: []
       }
     }
     Views: {

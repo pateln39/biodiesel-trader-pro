@@ -4,9 +4,33 @@ import { Instrument } from './common';
 import { ParentTrade } from './common';
 import { PricingFormula } from './pricing';
 
+// Paper trade product types
+export type PaperProductCategory = 'FP' | 'DIFF' | 'SPREAD';
+
+export interface PaperTradeProduct {
+  id: string;
+  productCode: string;
+  displayName: string;
+  category: PaperProductCategory;
+  baseProduct: string | null;
+  pairedProduct: string | null;
+}
+
+// Trading period
+export type PeriodType = 'MONTH' | 'QUARTER';
+
+export interface TradingPeriod {
+  id: string;
+  periodCode: string;
+  periodType: PeriodType;
+  startDate: Date;
+  endDate: Date;
+}
+
 // Paper parent trade
 export interface PaperParentTrade extends ParentTrade {
   tradeType: "paper";
+  comment: string;
 }
 
 // Paper trade leg
@@ -15,10 +39,11 @@ export interface PaperTradeLeg {
   legReference: string;
   parentTradeId: string;
   buySell: BuySell;
-  product: Product;
-  instrument: Instrument;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
+  product: string;
+  instrument: string;
+  tradingPeriod: string;
+  periodStart?: Date;
+  periodEnd?: Date;
   price: number;
   quantity: number;
   broker: string;
@@ -26,17 +51,19 @@ export interface PaperTradeLeg {
   mtmFormula?: PricingFormula;
 }
 
-// For backward compatibility
+// Complete paper trade (for backward compatibility)
 export interface PaperTrade extends ParentTrade {
   tradeType: "paper";
-  buySell: BuySell;
-  product: Product;
-  instrument: Instrument;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  price: number;
-  quantity: number;
-  broker: string;
+  comment: string;
+  buySell?: BuySell;
+  product?: string;
+  instrument?: string;
+  tradingPeriod?: string;
+  pricingPeriodStart?: Date;
+  pricingPeriodEnd?: Date;
+  price?: number;
+  quantity?: number;
+  broker?: string;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   legs?: PaperTradeLeg[];

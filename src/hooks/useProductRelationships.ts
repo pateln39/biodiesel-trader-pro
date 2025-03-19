@@ -11,6 +11,15 @@ export interface ProductRelationship {
   defaultOpposite: string | null;
 }
 
+export interface PaperTradeProduct {
+  id: string;
+  productCode: string;
+  displayName: string;
+  category: 'FP' | 'DIFF' | 'SPREAD';
+  baseProduct: string | null;
+  pairedProduct: string | null;
+}
+
 interface ProductRule {
   autoPopulate: string | false;
   quantityBehavior: 'same' | 'opposite';
@@ -19,21 +28,23 @@ interface ProductRule {
 
 export const useProductRelationships = () => {
   const [relationships, setRelationships] = useState<ProductRelationship[]>([]);
+  const [paperProducts, setPaperProducts] = useState<PaperTradeProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const fetchRelationships = async () => {
+    const fetchProductData = async () => {
       try {
-        const { data, error } = await supabase
+        // Fetch traditional product relationships
+        const { data: relationshipData, error: relError } = await supabase
           .from('product_relationships')
           .select('*');
 
-        if (error) {
-          throw new Error(error.message);
+        if (relError) {
+          throw new Error(relError.message);
         }
 
-        const mappedData = data.map(item => ({
+        const mappedRelationships = relationshipData.map(item => ({
           id: item.id,
           product: item.product,
           relationshipType: item.relationship_type as 'DIFF' | 'SPREAD' | 'FP',
@@ -41,16 +52,37 @@ export const useProductRelationships = () => {
           defaultOpposite: item.default_opposite
         }));
 
-        setRelationships(mappedData);
+        setRelationships(mappedRelationships);
+
+        // Fetch paper trade products
+        const { data: paperProductData, error: paperError } = await supabase
+          .from('paper_trade_products')
+          .select('*')
+          .eq('is_active', true);
+
+        if (paperError) {
+          throw new Error(paperError.message);
+        }
+
+        const mappedPaperProducts = paperProductData.map(item => ({
+          id: item.id,
+          productCode: item.product_code,
+          displayName: item.display_name,
+          category: item.category as 'FP' | 'DIFF' | 'SPREAD',
+          baseProduct: item.base_product,
+          pairedProduct: item.paired_product
+        }));
+
+        setPaperProducts(mappedPaperProducts);
       } catch (err: any) {
         setError(err);
-        console.error('Error fetching product relationships:', err);
+        console.error('Error fetching product data:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRelationships();
+    fetchProductData();
   }, []);
 
   // Get product rule based on product
@@ -90,6 +122,43 @@ export const useProductRelationships = () => {
     }
   };
 
+  // Get product rule based on paper product code
+  const getPaperProductRule = (productCode: string): ProductRule => {
+    const paperProduct = paperProducts.find(p => p.productCode === productCode);
+
+    if (!paperProduct) {
+      // Default rule if no product is found
+      return {
+        autoPopulate: false,
+        quantityBehavior: 'same'
+      };
+    }
+
+    switch (paperProduct.category) {
+      case 'DIFF':
+        return {
+          autoPopulate: paperProduct.pairedProduct || false,
+          quantityBehavior: 'opposite'
+        };
+      case 'SPREAD':
+        return {
+          usesPairedProduct: true,
+          autoPopulate: paperProduct.pairedProduct || false,
+          quantityBehavior: 'opposite'
+        };
+      case 'FP':
+        return {
+          autoPopulate: false,
+          quantityBehavior: 'same'
+        };
+      default:
+        return {
+          autoPopulate: false,
+          quantityBehavior: 'same'
+        };
+    }
+  };
+
   // Helper to get opposite buy/sell
   const getOppositeBuySell = (buySell: BuySell): BuySell => {
     return buySell === 'buy' ? 'sell' : 'buy';
@@ -112,12 +181,41 @@ export const useProductRelationships = () => {
     return populatedLeg;
   };
 
+  // Helper to get auto-populated leg info based on a filled paper leg
+  const getAutoPopulatedPaperLeg = (
+    productCode: string,
+    buySell: BuySell,
+    quantity: number
+  ) => {
+    const rule = getPaperProductRule(productCode);
+    const paperProduct = paperProducts.find(p => p.productCode === productCode);
+    
+    if (!paperProduct || !rule.autoPopulate) {
+      return null;
+    }
+    
+    const pairedProductCode = paperProducts.find(
+      p => p.baseProduct === rule.autoPopulate
+    )?.productCode || '';
+    
+    const populatedLeg = {
+      productCode: pairedProductCode || productCode,
+      buySell: rule.quantityBehavior === 'opposite' ? getOppositeBuySell(buySell) : buySell,
+      quantity: rule.quantityBehavior === 'opposite' ? -quantity : quantity
+    };
+
+    return populatedLeg;
+  };
+
   return {
     relationships,
+    paperProducts,
     isLoading,
     error,
     getProductRule,
+    getPaperProductRule,
     getOppositeBuySell,
-    getAutoPopulatedLeg
+    getAutoPopulatedLeg,
+    getAutoPopulatedPaperLeg
   };
 };
