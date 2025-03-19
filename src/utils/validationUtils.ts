@@ -45,9 +45,10 @@ export const validateRequiredField = (
     return false;
   }
   
-  if (typeof value === 'number' && value <= 0) {
+  // Allow zero for price fields but not for other numeric fields
+  if (typeof value === 'number' && value < 0) {
     toast.error(`Invalid ${fieldName}`, {
-      description: `${fieldName} must be greater than zero.`
+      description: `${fieldName} must be zero or greater.`
     });
     return false;
   }

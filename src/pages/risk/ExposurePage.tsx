@@ -16,6 +16,18 @@ const ExposurePage = () => {
     return acc;
   }, {} as Record<string, typeof mockExposureReport>);
 
+  // Function to get color class based on value
+  const getValueColorClass = (value: number) => {
+    if (value > 0) return 'text-green-600';
+    if (value < 0) return 'text-red-600';
+    return 'text-muted-foreground';
+  };
+
+  // Function to format values with sign
+  const formatValue = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
+  };
+
   return (
     <Layout>
       <Helmet>
@@ -57,17 +69,17 @@ const ExposurePage = () => {
                     {items.map((item, index) => (
                       <tr key={index} className="border-t hover:bg-muted/50">
                         <td className="p-3 font-medium">{item.grade}</td>
-                        <td className={`p-3 text-right ${item.physical >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.physical >= 0 ? '+' : ''}{item.physical.toLocaleString()}
+                        <td className={`p-3 text-right ${getValueColorClass(item.physical)}`}>
+                          {formatValue(item.physical)}
                         </td>
-                        <td className={`p-3 text-right ${item.pricing >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.pricing >= 0 ? '+' : ''}{item.pricing.toLocaleString()}
+                        <td className={`p-3 text-right ${getValueColorClass(item.pricing)}`}>
+                          {formatValue(item.pricing)}
                         </td>
-                        <td className={`p-3 text-right ${item.paper >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.paper >= 0 ? '+' : ''}{item.paper.toLocaleString()}
+                        <td className={`p-3 text-right ${getValueColorClass(item.paper)}`}>
+                          {formatValue(item.paper)}
                         </td>
-                        <td className={`p-3 text-right font-medium ${item.netExposure >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.netExposure >= 0 ? '+' : ''}{item.netExposure.toLocaleString()}
+                        <td className={`p-3 text-right font-medium ${getValueColorClass(item.netExposure)}`}>
+                          {formatValue(item.netExposure)}
                         </td>
                       </tr>
                     ))}
@@ -75,17 +87,17 @@ const ExposurePage = () => {
                   <tfoot>
                     <tr className="border-t bg-muted/30">
                       <td className="p-3 font-medium">Total</td>
-                      <td className="p-3 text-right font-medium">
-                        {items.reduce((sum, item) => sum + item.physical, 0).toLocaleString()}
+                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.physical, 0))}`}>
+                        {formatValue(items.reduce((sum, item) => sum + item.physical, 0))}
                       </td>
-                      <td className="p-3 text-right font-medium">
-                        {items.reduce((sum, item) => sum + item.pricing, 0).toLocaleString()}
+                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.pricing, 0))}`}>
+                        {formatValue(items.reduce((sum, item) => sum + item.pricing, 0))}
                       </td>
-                      <td className="p-3 text-right font-medium">
-                        {items.reduce((sum, item) => sum + item.paper, 0).toLocaleString()}
+                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.paper, 0))}`}>
+                        {formatValue(items.reduce((sum, item) => sum + item.paper, 0))}
                       </td>
-                      <td className="p-3 text-right font-medium">
-                        {items.reduce((sum, item) => sum + item.netExposure, 0).toLocaleString()}
+                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.netExposure, 0))}`}>
+                        {formatValue(items.reduce((sum, item) => sum + item.netExposure, 0))}
                       </td>
                     </tr>
                   </tfoot>

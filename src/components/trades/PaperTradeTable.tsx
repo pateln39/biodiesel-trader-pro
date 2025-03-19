@@ -276,8 +276,9 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                   <td className="px-4 py-3">
                     <Input 
                       type="number" 
-                      value={leg.price || ''} 
-                      onChange={(e) => updateLeftSide(index, 'price', Number(e.target.value))}
+                      value={leg.price !== undefined ? leg.price : ''}
+                      min="0"
+                      onChange={(e) => updateLeftSide(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
                       className="w-24"
                     />
                   </td>
@@ -311,9 +312,10 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       </td>
                       <td className="px-4 py-3">
                         <Input 
-                          type="number" 
-                          value={leg.rightSide.price || ''} 
-                          onChange={(e) => updateRightSide(index, 'price', Number(e.target.value))}
+                          type="number"
+                          min="0"
+                          value={leg.rightSide.price !== undefined ? leg.rightSide.price : ''}
+                          onChange={(e) => updateRightSide(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
                           className="w-24"
                         />
                       </td>

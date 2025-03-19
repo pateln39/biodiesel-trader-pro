@@ -186,6 +186,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     return Math.round(value).toLocaleString('en-US');
   };
 
+  const getExposureColorClass = (value: number): string => {
+    if (value > 0) return 'text-green-600 border-green-200 bg-green-50';
+    if (value < 0) return 'text-red-600 border-red-200 bg-red-50';
+    return '';
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -385,7 +391,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <Badge 
                   key={instrument} 
                   variant="outline" 
-                  className={`text-sm py-1 px-3 ${exposure > 0 ? 'text-green-600' : 'text-red-600'}`}
+                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
                 >
                   {instrument}: {formatExposure(exposure)} MT
                 </Badge>
@@ -408,7 +414,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <Badge 
                   key={instrument} 
                   variant="outline" 
-                  className={`text-sm py-1 px-3 ${exposure > 0 ? 'text-green-600' : 'text-red-600'}`}
+                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
                 >
                   {instrument}: {formatExposure(exposure)} MT
                 </Badge>
