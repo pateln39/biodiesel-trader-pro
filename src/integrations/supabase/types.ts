@@ -189,6 +189,7 @@ export type Database = {
       }
       parent_trades: {
         Row: {
+          comment: string | null
           counterparty: string
           created_at: string
           id: string
@@ -198,6 +199,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          comment?: string | null
           counterparty: string
           created_at?: string
           id?: string
@@ -207,6 +209,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          comment?: string | null
           counterparty?: string
           created_at?: string
           id?: string
@@ -358,6 +361,7 @@ export type Database = {
           quantity: number
           sustainability: string | null
           tolerance: number | null
+          trading_period: string | null
           unit: string | null
           updated_at: string
         }
@@ -387,6 +391,7 @@ export type Database = {
           quantity: number
           sustainability?: string | null
           tolerance?: number | null
+          trading_period?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -416,6 +421,7 @@ export type Database = {
           quantity?: number
           sustainability?: string | null
           tolerance?: number | null
+          trading_period?: string | null
           unit?: string | null
           updated_at?: string
         }

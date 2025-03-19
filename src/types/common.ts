@@ -1,4 +1,3 @@
-
 export type Instrument = string;
 export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
 
@@ -10,6 +9,7 @@ export interface DbParentTrade {
   counterparty: string;
   created_at: string;
   updated_at: string;
+  comment: string | null;
 }
 
 export interface DbTradeLeg {
@@ -35,9 +35,10 @@ export interface DbTradeLeg {
   broker?: string;
   instrument?: string;
   price?: number;
+  trading_period?: string;
+  mtm_formula?: any;
 }
 
-// Base trade interface (parent trade)
 export interface ParentTrade {
   id: string;
   tradeReference: string;
@@ -47,7 +48,6 @@ export interface ParentTrade {
   updatedAt: Date;
 }
 
-// For backward compatibility
 export interface Trade {
   id: string;
   tradeReference: string;

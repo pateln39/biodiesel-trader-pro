@@ -113,7 +113,7 @@ const TradeEditPage = () => {
             createdAt: new Date(parentTrade.created_at),
             updatedAt: new Date(parentTrade.updated_at),
             counterparty: parentTrade.counterparty,
-            comment: parentTrade.comment,
+            comment: parentTrade.comment || '',
             buySell: firstLeg.buy_sell as BuySell,
             product: firstLeg.product as Product,
             broker: firstLeg.broker || '',
@@ -171,6 +171,7 @@ const TradeEditPage = () => {
         trade_reference: updatedTradeData.tradeReference,
         physical_type: updatedTradeData.physicalType,
         counterparty: updatedTradeData.counterparty,
+        comment: updatedTradeData.comment,
         updated_at: new Date().toISOString()
       };
       

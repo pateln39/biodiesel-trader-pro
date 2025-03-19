@@ -106,7 +106,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
           counterparty: parent.counterparty,
-          comment: parent.comment,
+          comment: parent.comment || '',
           buySell: firstLeg.buy_sell as BuySell,
           product: firstLeg.product as Product,
           broker: firstLeg.broker || '',
