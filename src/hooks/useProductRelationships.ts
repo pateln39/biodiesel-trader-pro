@@ -9,6 +9,7 @@ export interface ProductRelationship {
   relationship_type: 'DIFF' | 'SPREAD' | 'FP';
   paired_product: string | null;
   default_opposite: string | null;
+  created_at?: Date;
 }
 
 export const useProductRelationships = () => {
@@ -28,7 +29,8 @@ export const useProductRelationships = () => {
       // Convert the response data to the correct type
       const typedData = data?.map(item => ({
         ...item,
-        relationship_type: item.relationship_type as 'DIFF' | 'SPREAD' | 'FP'
+        relationship_type: item.relationship_type as 'DIFF' | 'SPREAD' | 'FP',
+        created_at: item.created_at ? new Date(item.created_at) : undefined
       })) || [];
       
       setProductRelationships(typedData);

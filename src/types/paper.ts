@@ -16,7 +16,7 @@ export interface PaperTradeLeg {
   legReference: string;
   parentTradeId: string;
   buySell: BuySell;
-  product: Product; // Now using the updated Product type that includes LSGO and ICE GASOIL FUTURES
+  product: Product; // Using the updated Product type
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -39,7 +39,7 @@ export interface PaperTrade extends ParentTrade {
   tradeType: "paper";
   comment?: string;
   buySell: BuySell;
-  product: Product; // Now using the updated Product type
+  product: Product;
   instrument: Instrument;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;

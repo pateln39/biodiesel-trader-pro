@@ -1,7 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -47,7 +46,7 @@ const PaperTradeFormNew: React.FC<PaperTradeFormNewProps> = ({
       return [{
         id: uuidv4(),
         legA: initialData.legs[0] || null,
-        legB: null,
+        legB: initialData.legs.length > 1 ? initialData.legs[1] : null,
         mtmFormula: initialData.mtmFormula
       }];
     } else {
@@ -116,14 +115,14 @@ const PaperTradeFormNew: React.FC<PaperTradeFormNewProps> = ({
     }));
   };
   
-  // Update the exposures based on trade rows
+  // Calculate and update the exposures based on trade rows
   useEffect(() => {
     // Calculate exposures based on tradeRows
     const calculatedExposures: Record<string, Record<string, number>> = {};
     
     // Initialize the structure with empty values
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const products = ["UCOME", "FAME0", "RME", "HVO", "LSGO", "ICE GASOIL FUTURES"];
+    const products = ["UCOME", "FAME0", "RME", "UCOME-5", "RME DC", "LSGO", "ICE GASOIL FUTURES"];
     
     months.forEach(month => {
       calculatedExposures[month] = {};
@@ -161,22 +160,56 @@ const PaperTradeFormNew: React.FC<PaperTradeFormNewProps> = ({
     
     setExposures(calculatedExposures);
   }, [tradeRows]);
+
+  // Validate the form before submission
+  const validateForm = () => {
+    // Basic validation
+    if (!selectedBroker) {
+      toast.error("Please select a broker");
+      return false;
+    }
+    
+    // Check if at least one leg is defined
+    const hasValidLeg = tradeRows.some(row => row.legA !== null || row.legB !== null);
+    if (!hasValidLeg) {
+      toast.error("At least one trade leg must be defined");
+      return false;
+    }
+    
+    // Validate relationship rules
+    let isValid = true;
+    
+    tradeRows.forEach((row, index) => {
+      if (row.legA && !row.legB) {
+        // For single-leg trades, check if the product allows it
+        const relationship = productRelationships.find(r => r.product === row.legA?.product);
+        if (relationship && 
+           (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD')) {
+          toast.error(`Row ${index + 1}: Products with DIFF or SPREAD relationships require both legs`);
+          isValid = false;
+        }
+      } 
+      else if (!row.legA && row.legB) {
+        // Similar check for leg B
+        const relationship = productRelationships.find(r => r.default_opposite === row.legB?.product);
+        if (relationship && 
+           (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD')) {
+          toast.error(`Row ${index + 1}: Products with DIFF or SPREAD relationships require both legs`);
+          isValid = false;
+        }
+      }
+    });
+    
+    return isValid;
+  };
   
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
-      // Basic validation
-      if (!selectedBroker) {
-        toast.error("Please select a broker");
-        return;
-      }
-      
-      // Check if at least one leg is defined
-      const hasValidLeg = tradeRows.some(row => row.legA !== null || row.legB !== null);
-      if (!hasValidLeg) {
-        toast.error("At least one trade leg must be defined");
+      // Validate the form
+      if (!validateForm()) {
         return;
       }
       

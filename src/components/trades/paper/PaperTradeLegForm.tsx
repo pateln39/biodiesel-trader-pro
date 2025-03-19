@@ -10,6 +10,7 @@ import { Trash2 } from 'lucide-react';
 import { PaperTradeLeg } from '@/types/paper';
 import FormulaBuilder from '../FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
+import { Product } from '@/types/trade';
 
 interface PaperTradeLegFormProps {
   leg: PaperTradeLeg;
@@ -65,7 +66,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Label htmlFor={`product-${leg.id}`}>Product</Label>
             <Select 
               value={leg.product} 
-              onValueChange={(value) => updateField('product', value)}
+              onValueChange={(value) => updateField('product', value as Product)}
             >
               <SelectTrigger id={`product-${leg.id}`}>
                 <SelectValue placeholder="Select" />

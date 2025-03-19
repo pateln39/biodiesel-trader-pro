@@ -20,68 +20,9 @@ const TradeEntryPage = () => {
   
   const handleSubmit = async (tradeData: any) => {
     try {
-      // Extract parent trade data
-      const parentTrade = {
-        trade_reference: tradeData.tradeReference,
-        trade_type: tradeData.tradeType,
-        physical_type: tradeData.physicalType,
-        counterparty: tradeData.counterparty,
-        comment: tradeData.comment,
-      };
-      
-      // Insert parent trade
-      const { data: parentTradeData, error: parentTradeError } = await supabase
-        .from('parent_trades')
-        .insert(parentTrade)
-        .select('id')
-        .single();
-        
-      if (parentTradeError) {
-        throw new Error(`Error inserting parent trade: ${parentTradeError.message}`);
-      }
-      
-      // Get the parent trade ID
-      const parentTradeId = parentTradeData.id;
-      
-      // Insert trade legs
-      if (tradeData.tradeType === 'physical') {
-        // For physical trades, insert all legs
-        const legs = tradeData.legs.map((leg: any) => ({
-          leg_reference: leg.legReference,
-          parent_trade_id: parentTradeId,
-          buy_sell: leg.buySell,
-          product: leg.product,
-          sustainability: leg.sustainability,
-          inco_term: leg.incoTerm,
-          quantity: leg.quantity,
-          tolerance: leg.tolerance,
-          loading_period_start: leg.loadingPeriodStart,
-          loading_period_end: leg.loadingPeriodEnd,
-          pricing_period_start: leg.pricingPeriodStart,
-          pricing_period_end: leg.pricingPeriodEnd,
-          unit: leg.unit,
-          payment_term: leg.paymentTerm,
-          credit_status: leg.creditStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula, // Save the MTM formula
-        }));
-        
-        const { error: legsError } = await supabase
-          .from('trade_legs')
-          .insert(legs);
-          
-        if (legsError) {
-          throw new Error(`Error inserting trade legs: ${legsError.message}`);
-        }
-      } else {
-        // For paper trades, the PaperTradeFormNew component handles 
-        // the database inserts directly, so we don't need to do it here
-        // This is explicitly handled in the form component
-      }
-      
-      // Force invalidate the trades query cache
+      // Force invalidate the trades query cache to ensure we get the latest data
       queryClient.invalidateQueries({ queryKey: ['trades'] });
-
+      
       toast.success('Trade created successfully', {
         description: `Trade reference: ${tradeData.tradeReference}`
       });
