@@ -9,14 +9,23 @@ import { toast } from "sonner";
  */
 export const validatePaperTradeField = (
   value: string | number | undefined | null,
-  fieldName: string
+  fieldName: string,
+  isRequired: boolean = true
 ): boolean => {
+  // If field is not required and value is empty, it's valid
+  if (!isRequired && (value === undefined || value === null || value === '')) {
+    return true;
+  }
+  
   // Check for empty strings, undefined, null values
   if (value === undefined || value === null || value === '') {
-    toast.error(`${fieldName} required`, {
-      description: `Please select or enter a value for ${fieldName}.`
-    });
-    return false;
+    if (isRequired) {
+      toast.error(`${fieldName} required`, {
+        description: `Please select or enter a value for ${fieldName}.`
+      });
+      return false;
+    }
+    return true;
   }
   
   if (typeof value === 'number' && value <= 0 && fieldName.includes('Quantity')) {
@@ -48,6 +57,9 @@ export const validatePaperTradeLeg = (
     validatePaperTradeField(leg.product, `Leg ${legNumber} - Product`),
     validatePaperTradeField(leg.instrument, `Leg ${legNumber} - Instrument`),
     validatePaperTradeField(leg.quantity, `Leg ${legNumber} - Quantity`)
+    // trading period is optional
+    // broker is optional
+    // price is optional
   ];
   
   return validatePaperTradeForm(validations);

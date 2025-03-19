@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TradingPeriod, PeriodType } from '@/types/paper';
+import { useTradingPeriods } from '@/hooks/useTradingPeriods';
 
 interface TradeLegForm {
   id: string;
@@ -71,8 +72,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [selectedBroker, setSelectedBroker] = useState<string>('');
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
-  const [tradingPeriods, setTradingPeriods] = useState<TradingPeriod[]>([]);
-  const [isLoadingPeriods, setIsLoadingPeriods] = useState<boolean>(true);
+  const { periods: tradingPeriods, isLoading: isLoadingPeriods } = useTradingPeriods();
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
   
   // Initialize legs from initialData or create default leg
@@ -102,42 +102,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       broker: '',
     }]
   );
-
-  // Fetch trading periods
-  useEffect(() => {
-    const fetchTradingPeriods = async () => {
-      setIsLoadingPeriods(true);
-      try {
-        const { data, error } = await supabase
-          .from('trading_periods')
-          .select('*')
-          .eq('is_active', true)
-          .order('start_date', { ascending: true });
-          
-        if (error) {
-          throw error;
-        }
-        
-        const mappedPeriods = data.map(period => ({
-          id: period.id,
-          periodCode: period.period_code,
-          periodType: period.period_type as PeriodType,
-          startDate: new Date(period.start_date),
-          endDate: new Date(period.end_date)
-        }));
-        
-        setTradingPeriods(mappedPeriods);
-      } catch (error: any) {
-        toast.error('Failed to fetch trading periods', {
-          description: error.message
-        });
-      } finally {
-        setIsLoadingPeriods(false);
-      }
-    };
-    
-    fetchTradingPeriods();
-  }, []);
 
   // Fetch brokers
   useEffect(() => {
@@ -351,7 +315,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     
     // Validate main form fields
     const isCounterpartyValid = validatePaperTradeField(counterparty, 'Counterparty');
-    const isCommentValid = validatePaperTradeField(comment, 'Comment');
+    const isCommentValid = validatePaperTradeField(comment, 'Comment', false); // Comment is optional
     
     // Validate each leg
     const legValidations = legs.map((leg, index) => 
@@ -577,7 +541,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                         <SelectValue placeholder={isLoadingPeriods ? "Loading..." : "Select period"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="" disabled>Select period</SelectItem>
                         {/* Monthly periods */}
                         <SelectItem value="" disabled className="font-semibold">Monthly</SelectItem>
                         {tradingPeriods
