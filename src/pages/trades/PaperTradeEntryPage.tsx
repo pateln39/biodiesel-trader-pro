@@ -1,14 +1,12 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import { PaperParentTrade, PaperTradeLeg } from '@/types/paper';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,6 +22,7 @@ const PaperTradeEntryPage = () => {
         trade_reference: tradeData.tradeReference,
         trade_type: 'paper',
         counterparty: tradeData.counterparty,
+        comment: tradeData.comment
       };
       
       // Insert parent trade
