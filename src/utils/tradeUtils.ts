@@ -28,8 +28,9 @@ export const calculateOpenQuantity = (
 };
 
 // Format a date to a standard display format
-export const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', {
+export const formatDate = (date: Date | string): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  return dateObj.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

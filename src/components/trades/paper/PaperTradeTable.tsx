@@ -1,117 +1,75 @@
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Plus, Trash } from 'lucide-react';
-import { PaperTradeLeg } from '@/types/paper';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/utils/dateParsingUtils';
+import { PaperTrade } from '@/types/paper';
+import { Button } from '@/components/ui/button';
+import { Edit, Trash } from 'lucide-react';
+import { formatDate } from '@/utils/tradeUtils';
 
 interface PaperTradeTableProps {
-  legs: PaperTradeLeg[];
-  onAddLeg: () => void;
-  onRemoveLeg: (id: string) => void;
-  onEditLeg: (id: string) => void;
+  trades: PaperTrade[];
+  onEdit: (trade: PaperTrade) => void;
+  onDelete: (tradeId: string) => void;
 }
 
-export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
-  legs,
-  onAddLeg,
-  onRemoveLeg,
-  onEditLeg
-}) => {
-  // Format number with thousands separator
-  const formatNumber = (value: number): string => {
-    return Math.round(value).toLocaleString('en-US');
-  };
-  
-  // Format price to 2 decimal places
-  const formatPrice = (value: number): string => {
-    return value.toFixed(2);
-  };
-  
+const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ trades, onEdit, onDelete }) => {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={onAddLeg} size="sm" variant="outline">
-          <Plus className="h-4 w-4 mr-1" /> Add Leg
-        </Button>
-      </div>
-      
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Trade Ref</TableHead>
+            <TableHead>Broker</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Product</TableHead>
+            <TableHead>Quantity</TableHead>
+            <TableHead>B/S</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {trades.length === 0 ? (
             <TableRow>
-              <TableHead className="w-[80px]">Reference</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Buy/Sell</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                No paper trades found
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {legs.map((leg) => (
-              <TableRow key={leg.id}>
-                <TableCell className="font-medium">{leg.legReference}</TableCell>
+          ) : (
+            trades.map((trade) => (
+              <TableRow key={trade.id}>
+                <TableCell className="font-medium">{trade.tradeReference}</TableCell>
+                <TableCell>{trade.broker}</TableCell>
+                <TableCell>{formatDate(trade.createdAt)}</TableCell>
                 <TableCell>
-                  <div className="flex flex-col">
-                    <span>{leg.product}</span>
-                    <span className="text-xs text-muted-foreground">{leg.instrument}</span>
-                  </div>
+                  <Badge variant="outline">{trade.product}</Badge>
                 </TableCell>
+                <TableCell>{trade.quantity} MT</TableCell>
                 <TableCell>
-                  <Badge variant={leg.buySell === 'buy' ? 'default' : 'destructive'}>
-                    {leg.buySell.toUpperCase()}
+                  <Badge variant={trade.buySell === 'buy' ? 'success' : 'destructive'}>
+                    {trade.buySell === 'buy' ? 'Buy' : 'Sell'}
                   </Badge>
                 </TableCell>
-                <TableCell>{formatNumber(leg.quantity)}</TableCell>
-                <TableCell>
-                  {leg.price ? (
-                    formatPrice(leg.price)
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Formula</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col text-xs">
-                    <span>{formatDate(leg.pricingPeriodStart)} - </span>
-                    <span>{formatDate(leg.pricingPeriodEnd)}</span>
-                  </div>
-                </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEditLeg(leg.id)}
-                      className="h-8 w-8"
-                    >
-                      <span className="sr-only">Edit</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                        <path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-5.5" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <path d="M10.42 12.61a2.1 2.1 0 1 1 2.97 2.97L7.95 21 4 22l.99-3.95 5.43-5.44Z" />
-                      </svg>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => onEdit(trade)}>
+                      <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onRemoveLeg(leg.id)}
-                      className="h-8 w-8 text-destructive"
-                      disabled={legs.length <= 1}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => onDelete(trade.id)}
+                      className="text-destructive"
                     >
-                      <span className="sr-only">Remove</span>
                       <Trash className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };

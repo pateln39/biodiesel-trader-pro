@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { useProductRelationships } from '@/hooks/useProductRelationships';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Product } from '@/types';
 
 interface PaperTradeRowProps {
   row: PaperTradeRowType;
@@ -50,7 +50,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
           legReference: `${tradeReference}-${rowIndex}B`,
           parentTradeId: row.id,
           buySell: row.legA.buySell === 'buy' ? 'sell' : 'buy',
-          product: relationship.default_opposite,
+          product: relationship.default_opposite as Product,
           instrument: `Argus ${relationship.default_opposite}`, // Default instrument
           pricingPeriodStart: row.legA.pricingPeriodStart,
           pricingPeriodEnd: row.legA.pricingPeriodEnd,
@@ -91,7 +91,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
         legReference: `${tradeReference}-${rowIndex}B`,
         parentTradeId: row.id,
         buySell: row.legA.buySell === 'buy' ? 'sell' : 'buy',
-        product: 'UCOME', // Default product
+        product: 'UCOME' as Product,
         instrument: 'Argus UCOME', // Default instrument
         pricingPeriodStart: row.legA.pricingPeriodStart,
         pricingPeriodEnd: row.legA.pricingPeriodEnd,
