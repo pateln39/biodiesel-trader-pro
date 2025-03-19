@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,7 +8,6 @@ import { Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
-import { DatePicker } from '@/components/ui/date-picker';
 import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
 
 interface PaperTradeTableProps {
@@ -78,6 +78,11 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   
   // Handle selection of a paper product (FP, DIFF, SPREAD)
   const handleProductSelect = (index: number, selectedProduct: string) => {
+    // If no product selected, do nothing
+    if (!selectedProduct) {
+      return;
+    }
+    
     // Find the product relationship for the selected product
     const relationship = productRelationships.find(pr => pr.product === selectedProduct);
     
@@ -166,6 +171,18 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     return value;
   };
   
+  // Get display text for relationship selection
+  const getRelationshipDisplayText = (leg: any) => {
+    if (!leg.relationshipType) return "Select product";
+    
+    const relationship = productRelationships.find(pr => 
+      pr.relationship_type === leg.relationshipType && 
+      pr.paired_product === leg.product
+    );
+    
+    return relationship?.product || "Select product";
+  };
+  
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -216,17 +233,13 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                   {/* LEFT SIDE */}
                   <td className="px-4 py-3">
                     <Select 
-                      value={leg.relationshipType ? productRelationships.find(pr => 
-                        pr.relationship_type === leg.relationshipType && 
-                        pr.paired_product === leg.product)?.product || ''
-                      : ''}
+                      value={getRelationshipDisplayText(leg)}
                       onValueChange={(value) => handleProductSelect(index, value)}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select product" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Select product</SelectItem>
                         {productRelationships.map((pr) => (
                           <SelectItem key={pr.id} value={pr.product}>
                             {pr.product}

@@ -46,7 +46,7 @@ export const usePaperTrades = () => {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
             tradeType: 'paper' as const,
-            counterparty: parentTrade.counterparty,
+            counterparty: parentTrade.counterparty || '',
             createdAt: new Date(parentTrade.created_at),
             updatedAt: new Date(parentTrade.updated_at),
             comment: parentTrade.comment,
@@ -96,8 +96,10 @@ export const usePaperTrades = () => {
         .insert({
           trade_reference: trade.tradeReference,
           trade_type: 'paper',
-          counterparty: trade.counterparty,
-          comment: trade.comment
+          comment: trade.comment,
+          // Note: counterparty is not required for paper trades but the DB may require it
+          // We'll use the broker name as a placeholder if needed
+          counterparty: trade.broker || 'Paper Trade'
         })
         .select('id')
         .single();

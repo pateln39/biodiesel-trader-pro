@@ -4,16 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2 } from 'lucide-react';
-import { DatePicker } from '@/components/ui/date-picker';
 import { toast } from 'sonner';
 import { generateLegReference } from '@/utils/tradeUtils';
 import PaperTradeTable from './PaperTradeTable';
 import { createEmptyFormula } from '@/utils/formulaUtils';
-import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
+import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PaperTradeFormProps {
@@ -36,8 +34,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   isEditMode = false,
   initialData
 }) => {
-  const { counterparties } = useReferenceData();
-  const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
   const [comment, setComment] = useState(initialData?.comment || '');
   const [selectedBroker, setSelectedBroker] = useState('');
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
@@ -144,66 +140,42 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
-    const isBrokerValid = validateRequiredField(selectedBroker, 'Broker');
+    // Find selected broker name
+    const broker = brokers.find(b => b.id === selectedBroker);
+    const brokerName = broker?.name || '';
     
-    if (!tradeLegs.length) {
-      toast.error('Please add at least one trade leg');
+    // Validate form using the new paper trade specific validation
+    if (!validatePaperTradeForm(brokerName, tradeLegs)) {
       return;
     }
     
-    // Validate legs
-    const legValidations = tradeLegs.map((leg, index) => {
-      const legNumber = index + 1;
-      return validateFields([
-        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
-        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
-        validateRequiredField(leg.period, `Leg ${legNumber} - Period`),
-        leg.rightSide && validateRequiredField(leg.rightSide.product, `Leg ${legNumber} - Right Side Product`)
-      ]);
-    });
+    // Prepare trade data for submission
+    const tradeData = {
+      tradeReference,
+      tradeType: 'paper',
+      comment,
+      broker: brokerName,
+      legs: tradeLegs.map((leg, index) => {
+        // Create full leg with references
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                            generateLegReference(tradeReference, index);
+                            
+        return {
+          ...leg,
+          legReference,
+          broker: brokerName,
+          mtmFormula: leg.mtmFormula || createEmptyFormula(),
+          formula: leg.formula || createEmptyFormula(),
+        };
+      })
+    };
     
-    const areAllLegsValid = legValidations.every(isValid => isValid);
-    
-    if (isCounterpartyValid && isBrokerValid && areAllLegsValid) {
-      // Find selected broker name
-      const broker = brokers.find(b => b.id === selectedBroker);
-      
-      // Prepare trade data for submission
-      const tradeData = {
-        tradeReference,
-        tradeType: 'paper',
-        counterparty,
-        comment,
-        broker: broker?.name || '',
-        legs: tradeLegs.map((leg, index) => {
-          // Create full leg with references
-          const legReference = initialData?.legs?.[index]?.legReference || 
-                              generateLegReference(tradeReference, index);
-                              
-          return {
-            ...leg,
-            legReference,
-            broker: broker?.name || '',
-            mtmFormula: leg.mtmFormula || createEmptyFormula(),
-            formula: leg.formula || createEmptyFormula(),
-          };
-        })
-      };
-      
-      onSubmit(tradeData);
-    } else {
-      toast.error('Please fix the validation errors before submitting', {
-        description: 'Check all required fields above.'
-      });
-    }
+    onSubmit(tradeData);
   };
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
           <Label htmlFor="comment">Comment</Label>
           <Input
@@ -212,25 +184,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
             onChange={(e) => setComment(e.target.value)}
             placeholder="Enter optional comment"
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="counterparty">Counterparty</Label>
-          <Select 
-            value={counterparty} 
-            onValueChange={setCounterparty}
-          >
-            <SelectTrigger id="counterparty">
-              <SelectValue placeholder="Select counterparty" />
-            </SelectTrigger>
-            <SelectContent>
-              {counterparties.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
       

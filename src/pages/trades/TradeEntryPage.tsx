@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,17 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { TradeType } from '@/types';
+import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { toast } from 'sonner';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
   const tradeReference = generateTradeReference();
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
+  const { createPaperTrade } = usePaperTrades();
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -62,7 +62,7 @@ const TradeEntryPage = () => {
         payment_term: leg.paymentTerm,
         credit_status: leg.creditStatus,
         pricing_formula: leg.formula,
-        mtm_formula: leg.mtmFormula, // Save the MTM formula
+        mtm_formula: leg.mtmFormula,
       }));
       
       const { error: legsError } = await supabase
@@ -91,58 +91,12 @@ const TradeEntryPage = () => {
   
   const handlePaperSubmit = async (tradeData: any) => {
     try {
-      // Extract parent trade data
-      const parentTrade = {
-        trade_reference: tradeData.tradeReference,
-        trade_type: 'paper',
-        counterparty: tradeData.counterparty,
-      };
-      
-      // Insert parent trade
-      const { data: parentTradeData, error: parentTradeError } = await supabase
-        .from('parent_trades')
-        .insert(parentTrade)
-        .select('id')
-        .single();
-        
-      if (parentTradeError) {
-        throw new Error(`Error inserting parent trade: ${parentTradeError.message}`);
-      }
-      
-      // Get the parent trade ID
-      const parentTradeId = parentTradeData.id;
-      
-      // For paper trades, insert all legs
-      const legs = tradeData.legs.map((leg: any) => ({
-        leg_reference: leg.legReference,
-        parent_trade_id: parentTradeId,
-        buy_sell: leg.buySell,
-        product: leg.product,
-        broker: leg.broker,
-        quantity: leg.quantity,
-        price: leg.price,
-        pricing_period_start: leg.pricingPeriodStart,
-        pricing_period_end: leg.pricingPeriodEnd,
-        pricing_formula: leg.formula,
-        mtm_formula: leg.mtmFormula,
-      }));
-      
-      const { error: legsError } = await supabase
-        .from('trade_legs')
-        .insert(legs);
-        
-      if (legsError) {
-        throw new Error(`Error inserting trade legs: ${legsError.message}`);
-      }
-      
-      // Force invalidate the trades query cache
-      queryClient.invalidateQueries({ queryKey: ['trades'] });
-
-      toast.success('Paper trade created successfully', {
-        description: `Trade reference: ${tradeData.tradeReference}`
+      // Use the createPaperTrade from usePaperTrades hook
+      createPaperTrade(tradeData, {
+        onSuccess: () => {
+          navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });
+        }
       });
-      
-      navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });
     } catch (error: any) {
       toast.error('Failed to create paper trade', {
         description: error.message
