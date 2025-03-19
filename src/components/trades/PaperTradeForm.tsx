@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PricingFormula } from '@/types/pricing';
 import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
+import { Broker } from '@/types/brokers';
+import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { PlusCircle } from 'lucide-react';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -52,6 +57,16 @@ const createDefaultLeg = (broker: string = ''): PaperLegFormState => ({
   mtmFormula: createEmptyFormula()
 });
 
+interface ExposureRow {
+  month: string;
+  UCOME: number;
+  FAME0: number;
+  RME: number;
+  HVO: number;
+  LSGO: number;
+  ICE_GASOIL_FUTURES: number;
+}
+
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
@@ -60,8 +75,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   initialData 
 }) => {
   const { counterparties } = useReferenceData();
-  
   const [counterparty, setCounterparty] = useState<string>(initialData?.counterparty || '');
+  const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [selectedBroker, setSelectedBroker] = useState<string>('');
+  const [newBrokerName, setNewBrokerName] = useState<string>('');
+  const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
+  const [exposure, setExposure] = useState<ExposureRow[]>([]);
   
   const [legs, setLegs] = useState<PaperLegFormState[]>([
     initialData ? {
@@ -78,8 +97,51 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     } : createDefaultLeg()
   ]);
 
+  // Fetch brokers on component mount
+  useEffect(() => {
+    const fetchBrokers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('id, name, is_active, created_at');
+          
+        if (error) {
+          throw error;
+        }
+        
+        setBrokers(data || []);
+        
+        // Set default broker if available
+        if (data && data.length > 0 && !selectedBroker) {
+          setSelectedBroker(data[0].id);
+          
+          // Set default broker for all legs
+          setLegs(prevLegs => 
+            prevLegs.map(leg => ({
+              ...leg,
+              broker: data[0].name
+            }))
+          );
+        }
+      } catch (error: any) {
+        console.error('Error fetching brokers:', error);
+        toast.error('Failed to fetch brokers', {
+          description: error.message
+        });
+      }
+    };
+    
+    fetchBrokers();
+  }, []);
+
+  // Calculate exposure whenever legs change
+  useEffect(() => {
+    calculateExposure();
+  }, [legs]);
+
   const addLeg = () => {
-    setLegs([...legs, createDefaultLeg(legs[0].broker)]);
+    const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+    setLegs([...legs, createDefaultLeg(defaultBroker)]);
   };
 
   const removeLeg = (index: number) => {
@@ -87,6 +149,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       const newLegs = [...legs];
       newLegs.splice(index, 1);
       setLegs(newLegs);
+    } else {
+      toast.error('Cannot remove the last trade leg');
     }
   };
 
@@ -114,6 +178,101 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
 
   const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
     updateLeg(legIndex, 'mtmFormula', formula);
+  };
+
+  // Simple exposure calculation
+  const calculateExposure = () => {
+    // Create a map of months to exposures
+    const exposureMap = new Map<string, Record<string, number>>();
+    
+    // For each leg, calculate the exposure
+    legs.forEach(leg => {
+      const { buySell, product, quantity, pricingPeriodStart, pricingPeriodEnd } = leg;
+      
+      // Skip legs with no quantity
+      if (!quantity) return;
+      
+      // Get the month from the pricing period
+      const startMonth = `${pricingPeriodStart.getFullYear()}-${String(pricingPeriodStart.getMonth() + 1).padStart(2, '0')}`;
+      const endMonth = `${pricingPeriodEnd.getFullYear()}-${String(pricingPeriodEnd.getMonth() + 1).padStart(2, '0')}`;
+      
+      // For simplicity, just use the start month in this example
+      const month = startMonth;
+      
+      // Initialize the month if it doesn't exist
+      if (!exposureMap.has(month)) {
+        exposureMap.set(month, {
+          UCOME: 0,
+          FAME0: 0,
+          RME: 0,
+          HVO: 0,
+          LSGO: 0,
+          ICE_GASOIL_FUTURES: 0
+        });
+      }
+      
+      // Get the current exposure for this month
+      const monthExposure = exposureMap.get(month)!;
+      
+      // Update the exposure based on the leg
+      // For buy, add the quantity. For sell, subtract it.
+      const sign = buySell === 'buy' ? 1 : -1;
+      monthExposure[product as keyof typeof monthExposure] += sign * quantity;
+      
+      // Special case for spreads (simplified for this example)
+      if (product === 'RME') {
+        // If RME, add opposite position to FAME0 for spread
+        monthExposure['FAME0'] -= sign * quantity;
+      }
+      
+      // Update the map
+      exposureMap.set(month, monthExposure);
+    });
+    
+    // Convert the map to an array of ExposureRow
+    const exposureRows: ExposureRow[] = [];
+    exposureMap.forEach((exposure, month) => {
+      exposureRows.push({
+        month,
+        ...exposure
+      });
+    });
+    
+    // Sort by month
+    exposureRows.sort((a, b) => a.month.localeCompare(b.month));
+    
+    setExposure(exposureRows);
+  };
+
+  // Add a new broker
+  const addBroker = async () => {
+    if (!newBrokerName.trim()) {
+      toast.error('Broker name cannot be empty');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('brokers')
+        .insert({ name: newBrokerName.trim() })
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      setBrokers(prev => [...prev, data as Broker]);
+      setSelectedBroker(data.id);
+      setNewBrokerName('');
+      setIsBrokerDialogOpen(false);
+      
+      toast.success('Broker added successfully');
+    } catch (error: any) {
+      toast.error('Failed to add broker', {
+        description: error.message
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -196,7 +355,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Trade Details</h3>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="counterparty">Counterparty</Label>
             <Select 
@@ -214,6 +373,56 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="broker" className="min-w-24">Default Broker</Label>
+            <div className="flex-1">
+              <Select 
+                value={selectedBroker} 
+                onValueChange={setSelectedBroker}
+              >
+                <SelectTrigger id="broker">
+                  <SelectValue placeholder="Select broker" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brokers.filter(b => b.is_active).map((broker) => (
+                    <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Dialog open={isBrokerDialogOpen} onOpenChange={setIsBrokerDialogOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm">
+                  <PlusCircle className="h-4 w-4 mr-1" />
+                  Add Broker
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Broker</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newBrokerName">Broker Name</Label>
+                    <Input
+                      id="newBrokerName"
+                      value={newBrokerName}
+                      onChange={(e) => setNewBrokerName(e.target.value)}
+                      placeholder="Enter broker name"
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={addBroker}>Add Broker</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
@@ -277,6 +486,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                       <SelectItem value="UCOME">UCOME</SelectItem>
                       <SelectItem value="UCOME-5">UCOME-5</SelectItem>
                       <SelectItem value="RME DC">RME DC</SelectItem>
+                      <SelectItem value="HVO">HVO</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      brokers: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
       counterparties: {
         Row: {
           created_at: string
@@ -211,6 +232,33 @@ export type Database = {
           instrument_code?: string
           is_active?: boolean | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      product_relationships: {
+        Row: {
+          created_at: string | null
+          default_opposite: string | null
+          id: string
+          paired_product: string | null
+          product: string
+          relationship_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_opposite?: string | null
+          id?: string
+          paired_product?: string | null
+          product: string
+          relationship_type: string
+        }
+        Update: {
+          created_at?: string | null
+          default_opposite?: string | null
+          id?: string
+          paired_product?: string | null
+          product?: string
+          relationship_type?: string
         }
         Relationships: []
       }
