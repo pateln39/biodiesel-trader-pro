@@ -69,68 +69,68 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [selectedBroker, setSelectedBroker] = useState<string>('');
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
+  const [loadingBrokers, setLoadingBrokers] = useState<boolean>(true);
   
   const { paperProducts, isLoading: isProductsLoading } = useProductRelationships();
   const { periods, isLoading: isPeriodsLoading } = useTradingPeriods();
   
   const createId = () => crypto.randomUUID();
   
-  const [legs, setLegs] = useState<TradeLegForm[]>(
-    initialData?.legs?.map((leg: any) => ({
-      id: leg.id || createId(),
-      legReference: leg.legReference || generateLegReference(tradeReference, 0),
-      buySell: leg.buySell || 'buy',
-      product: leg.product || '',
-      instrument: leg.instrument || '',
-      tradingPeriod: leg.tradingPeriod || '',
-      price: leg.price || 0,
-      quantity: leg.quantity || 0,
-      broker: leg.broker || '',
-      formula: leg.formula || createEmptyFormula(),
-      mtmFormula: leg.mtmFormula || createEmptyFormula(),
-    })) || [{
-      id: createId(),
-      legReference: generateLegReference(tradeReference, 0),
-      buySell: 'buy',
-      product: '',
-      instrument: '',
-      tradingPeriod: '',
-      price: 0,
-      quantity: 0,
-      broker: '',
-      formula: createEmptyFormula(),
-      mtmFormula: createEmptyFormula(),
-    }]
-  );
+  const [legs, setLegs] = useState<TradeLegForm[]>([]);
   
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
   const [highlightedProduct, setHighlightedProduct] = useState<string>('');
 
+  // Initialize legs after products and periods are loaded
+  useEffect(() => {
+    if (!isProductsLoading && !isPeriodsLoading && paperProducts.length > 0 && legs.length === 0) {
+      const defaultProductCode = paperProducts.length > 0 ? paperProducts[0].productCode : '';
+      const instrumentOptions = getInstrumentOptions(defaultProductCode);
+      const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
+      
+      const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+      
+      setLegs([{
+        id: createId(),
+        legReference: generateLegReference(tradeReference, 0),
+        buySell: 'buy',
+        product: defaultProductCode,
+        instrument: defaultInstrument,
+        tradingPeriod: '',
+        price: 0,
+        quantity: 0,
+        broker: defaultBroker,
+        formula: createEmptyFormula(),
+        mtmFormula: createEmptyFormula(),
+      }]);
+    }
+  }, [isProductsLoading, isPeriodsLoading, paperProducts, periods, brokers, selectedBroker]);
+
   useEffect(() => {
     const fetchBrokers = async () => {
-      const { data, error } = await supabase
-        .from('brokers')
-        .select('*')
-        .order('name');
+      setLoadingBrokers(true);
+      try {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('*')
+          .order('name');
+          
+        if (error) {
+          toast.error('Failed to fetch brokers', {
+            description: error.message
+          });
+          return;
+        }
         
-      if (error) {
-        toast.error('Failed to fetch brokers', {
-          description: error.message
-        });
-        return;
-      }
-      
-      setBrokers(data || []);
-      
-      if (data && data.length > 0 && !selectedBroker) {
-        setSelectedBroker(data[0].id);
+        setBrokers(data || []);
         
-        setLegs(prevLegs => 
-          prevLegs.map(leg => ({
-            ...leg,
-            broker: data[0].name
-          }))
-        );
+        if (data && data.length > 0) {
+          setSelectedBroker(data[0].id);
+        }
+      } catch (error: any) {
+        console.error('Error loading brokers:', error);
+      } finally {
+        setLoadingBrokers(false);
       }
     };
     
@@ -162,15 +162,19 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
     const legIndex = legs.length;
     
+    const defaultProductCode = paperProducts.length > 0 ? paperProducts[0].productCode : '';
+    const instrumentOptions = getInstrumentOptions(defaultProductCode);
+    const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
+    
     setLegs(prev => [
       ...prev, 
       {
         id: createId(),
         legReference: generateLegReference(tradeReference, legIndex),
         buySell: 'buy',
-        product: paperProducts.length > 0 ? paperProducts[0].productCode : '',
-        instrument: '',
-        tradingPeriod: periods.length > 0 ? periods[0].periodCode : '',
+        product: defaultProductCode,
+        instrument: defaultInstrument,
+        tradingPeriod: '',
         price: 0,
         quantity: 0,
         broker: defaultBroker,
@@ -385,14 +389,18 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         formula: leg.formula || createEmptyFormula(),
         mtmFormula: leg.mtmFormula || createEmptyFormula(),
       })));
-    } else {
+    } else if (paperProducts.length > 0) {
+      const defaultProductCode = paperProducts[0].productCode;
+      const instrumentOptions = getInstrumentOptions(defaultProductCode);
+      const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
+      
       setLegs([{
         id: createId(),
         legReference: generateLegReference(tradeReference, 0),
         buySell: 'buy',
-        product: paperProducts.length > 0 ? paperProducts[0].productCode : '',
-        instrument: paperProducts.length > 0 ? getInstrumentOptions(paperProducts[0].productCode)[0] : '',
-        tradingPeriod: periods.length > 0 ? periods[0].periodCode : '',
+        product: defaultProductCode,
+        instrument: defaultInstrument,
+        tradingPeriod: '',
         price: 0,
         quantity: 0,
         broker: brokers.find(b => b.id === selectedBroker)?.name || '',
@@ -402,7 +410,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   }, [initialData, selectedBroker, brokers, paperProducts, periods, tradeReference]);
   
-  const isLoading = isProductsLoading || isPeriodsLoading;
+  const isLoading = isProductsLoading || isPeriodsLoading || loadingBrokers;
   
   if (isLoading) {
     return <div className="flex justify-center p-8">Loading trade data...</div>;
@@ -554,8 +562,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                         <SelectValue placeholder="Select period" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="" disabled>Select a period</SelectItem>
-                        
                         {/* Monthly periods */}
                         <SelectItem value="" disabled className="font-semibold text-primary">
                           Monthly
