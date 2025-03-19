@@ -11,6 +11,7 @@ import { PaperParentTrade, PaperTradePositionSide, PaperTradeRow as PaperTradeRo
 import { generateLegReference } from '@/utils/tradeUtils';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -172,6 +173,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return false;
     }
     
+    if (!comment.trim()) {
+      toast.error("Please enter a comment for this trade");
+      return false;
+    }
+    
     // Check if each row has at least one side with valid quantity
     const invalidRow = rows.find(row => 
       (!row.leftSide || row.leftSide.quantity <= 0) && 
@@ -187,7 +193,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   };
   
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm() || isSubmitting) {
@@ -238,7 +244,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         rows: compatibleRows // Include the rows structure for the new UI
       };
       
-      onSubmit(tradeData);
+      // Submit the data
+      await onSubmit(tradeData);
     } catch (error: any) {
       console.error('Error preparing trade data:', error);
       toast.error("Failed to prepare trade data");

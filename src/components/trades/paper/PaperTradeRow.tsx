@@ -119,8 +119,8 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
       <CardContent className="p-4 space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Badge variant="success">Position {rowIndex + 1}</Badge>
-            <span className="text-sm">Total Quantity: {totalQuantity} MT</span>
+            <Badge variant="outline">Position {rowIndex + 1}</Badge>
+            <span className="text-sm text-muted-foreground">Total Quantity: {totalQuantity} MT</span>
           </div>
           <Button 
             type="button" 
@@ -178,7 +178,7 @@ const PaperTradeRow: React.FC<PaperTradeRowProps> = ({
           </TabsContent>
           
           <TabsContent value="mtm">
-            <div className="border rounded-md p-3 bg-gray-50">
+            <div className="border rounded-md p-3 bg-muted/50">
               <Label className="mb-2 block">MTM Formula</Label>
               <FormulaBuilder
                 value={row.mtmFormula || createEmptyFormula()}
