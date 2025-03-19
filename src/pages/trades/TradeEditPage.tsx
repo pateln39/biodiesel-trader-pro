@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
-import PaperTradeForm from '@/components/trades/PaperTradeForm';
+// Update the import to use the PaperTradeForm2 component which supports initialData
+import PaperTradeForm from '@/components/trades/PaperTradeForm2';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PaperTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
