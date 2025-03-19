@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,8 +20,8 @@ import FormulaBuilder from './FormulaBuilder';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Broker } from '@/types/brokers';
 
-// Types for the form state
 interface TradeLegForm {
   id: string;
   buySell: BuySell;
@@ -45,12 +44,6 @@ interface ExposureRow {
   HVO: number;
   LSGO: number;
   ICE_GASOIL_FUTURES: number;
-}
-
-interface Broker {
-  id: string;
-  name: string;
-  is_active: boolean;
 }
 
 interface PaperTradeFormProps {
@@ -76,10 +69,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
   
-  // Create a unique ID for each leg
   const createId = () => crypto.randomUUID();
   
-  // Initialize with one empty leg if no initial data
   const [legs, setLegs] = useState<TradeLegForm[]>(
     initialData?.legs?.map((leg: any) => ({
       id: leg.id || createId(),
@@ -108,10 +99,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }]
   );
   
-  // Calculate exposure based on trade legs
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
 
-  // Fetch brokers on component mount
   useEffect(() => {
     const fetchBrokers = async () => {
       const { data, error } = await supabase
@@ -128,11 +117,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       setBrokers(data || []);
       
-      // Set default broker if available
       if (data && data.length > 0 && !selectedBroker) {
         setSelectedBroker(data[0].id);
         
-        // Set default broker for all legs
         setLegs(prevLegs => 
           prevLegs.map(leg => ({
             ...leg,
@@ -145,12 +132,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     fetchBrokers();
   }, []);
   
-  // Calculate exposure whenever legs change
   useEffect(() => {
     calculateExposure();
   }, [legs]);
   
-  // Add a new leg
   const addLeg = () => {
     const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
     
@@ -172,7 +157,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     ]);
   };
   
-  // Remove a leg
   const removeLeg = (id: string) => {
     if (legs.length <= 1) {
       toast.error('Cannot remove the last trade leg');
@@ -182,7 +166,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setLegs(prev => prev.filter(leg => leg.id !== id));
   };
   
-  // Update a leg
   const updateLeg = (id: string, field: keyof TradeLegForm, value: any) => {
     setLegs(prev => 
       prev.map(leg => 
@@ -191,27 +174,19 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     );
   };
   
-  // Simple exposure calculation
   const calculateExposure = () => {
-    // Create a map of months to exposures
     const exposureMap = new Map<string, Record<string, number>>();
     
-    // For each leg, calculate the exposure
     legs.forEach(leg => {
       const { buySell, product, quantity, pricingPeriodStart, pricingPeriodEnd } = leg;
       
-      // Skip legs with no quantity
       if (!quantity) return;
       
-      // Get the month from the pricing period
       const startMonth = `${pricingPeriodStart.getFullYear()}-${String(pricingPeriodStart.getMonth() + 1).padStart(2, '0')}`;
       const endMonth = `${pricingPeriodEnd.getFullYear()}-${String(pricingPeriodEnd.getMonth() + 1).padStart(2, '0')}`;
       
-      // For simplicity, just use the start month in this example
-      // In a real implementation, we'd distribute across all months in the range
       const month = startMonth;
       
-      // Initialize the month if it doesn't exist
       if (!exposureMap.has(month)) {
         exposureMap.set(month, {
           UCOME: 0,
@@ -223,40 +198,36 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         });
       }
       
-      // Get the current exposure for this month
       const monthExposure = exposureMap.get(month)!;
       
-      // Update the exposure based on the leg
-      // For buy, add the quantity. For sell, subtract it.
       const sign = buySell === 'buy' ? 1 : -1;
       monthExposure[product as keyof typeof monthExposure] += sign * quantity;
       
-      // Special case for spreads (simplified for this example)
       if (product === 'RME') {
-        // If RME, add opposite position to FAME0 for spread
         monthExposure['FAME0'] -= sign * quantity;
       }
       
-      // Update the map
       exposureMap.set(month, monthExposure);
     });
     
-    // Convert the map to an array of ExposureRow
     const exposureRows: ExposureRow[] = [];
     exposureMap.forEach((exposure, month) => {
       exposureRows.push({
         month,
-        ...exposure
+        UCOME: exposure.UCOME,
+        FAME0: exposure.FAME0,
+        RME: exposure.RME,
+        HVO: exposure.HVO,
+        LSGO: exposure.LSGO,
+        ICE_GASOIL_FUTURES: exposure.ICE_GASOIL_FUTURES
       });
     });
     
-    // Sort by month
     exposureRows.sort((a, b) => a.month.localeCompare(b.month));
     
     setExposure(exposureRows);
   };
   
-  // Add a new broker
   const addBroker = async () => {
     if (!newBrokerName.trim()) {
       toast.error('Broker name cannot be empty');
@@ -287,15 +258,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
-  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form fields
     const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     const isCommentValid = validateRequiredField(comment, 'Comment');
     
-    // Validate each leg
     const legValidations = legs.map((leg, index) => {
       const legNumber = index + 1;
       return validateFields([
@@ -312,11 +280,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       ]);
     });
     
-    // Check if all validations passed
     const areAllLegsValid = legValidations.every(isValid => isValid);
     
     if (isCounterpartyValid && isCommentValid && areAllLegsValid) {
-      // Prepare submission data
       const tradeLegs: PaperTradeLeg[] = legs.map((leg, index) => {
         return {
           id: leg.id,
@@ -335,7 +301,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         };
       });
       
-      // Submit the form
       onSubmit({
         id: initialData?.id,
         tradeReference,
@@ -349,12 +314,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
-  // Reset all form fields to initial state
   const resetForm = useCallback(() => {
     setCounterparty(initialData?.counterparty || '');
     setComment(initialData?.comment || '');
     
-    // Reset legs
     if (initialData?.legs) {
       setLegs(initialData.legs.map((leg: any) => ({
         id: leg.id || createId(),
@@ -386,10 +349,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   }, [initialData, selectedBroker, brokers]);
   
-  // Render the form
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Header Section */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -473,7 +434,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <Separator />
       
-      {/* Trade Legs Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Trade Legs</h3>
@@ -483,7 +443,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           </Button>
         </div>
         
-        {/* Trade Legs Table */}
         {legs.map((leg, index) => (
           <Card key={leg.id} className="border border-muted">
             <CardHeader className="p-4 flex flex-row items-start justify-between">
@@ -588,7 +547,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 </div>
               </div>
 
-              {/* Formula Builder Tabs */}
               <div className="border rounded-md p-4 bg-gray-50 mb-4">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
@@ -656,7 +614,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <Separator />
       
-      {/* Exposure Table Section */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Exposure Table</h3>
         
@@ -712,7 +669,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <Separator />
       
-      {/* Form Actions */}
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

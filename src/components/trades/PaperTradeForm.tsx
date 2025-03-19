@@ -234,7 +234,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     exposureMap.forEach((exposure, month) => {
       exposureRows.push({
         month,
-        ...exposure
+        UCOME: exposure.UCOME,
+        FAME0: exposure.FAME0,
+        RME: exposure.RME,
+        HVO: exposure.HVO,
+        LSGO: exposure.LSGO,
+        ICE_GASOIL_FUTURES: exposure.ICE_GASOIL_FUTURES
       });
     });
     
