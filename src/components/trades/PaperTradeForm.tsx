@@ -7,20 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useReferenceData } from '@/hooks/useReferenceData';
+import { useProductRelationships } from '@/hooks/useProductRelationships';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { Plus, Trash2, PlusCircle } from 'lucide-react';
 import { validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
 import { BuySell } from '@/types/trade';
-import { PaperTradeLeg, PaperTradeProduct } from '@/types/paper';
+import { PaperTradeLeg } from '@/types/paper';
 import { PricingFormula } from '@/types/pricing';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import FormulaBuilder from './FormulaBuilder';
 import ExposureTable from './ExposureTable';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { useProductRelationships } from '@/hooks/useProductRelationships';
 import { useTradingPeriods } from '@/hooks/useTradingPeriods';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Broker } from '@/types/brokers';
@@ -70,6 +69,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
   const [loadingBrokers, setLoadingBrokers] = useState<boolean>(true);
+  const [dataReady, setDataReady] = useState<boolean>(false);
   
   const { paperProducts, isLoading: isProductsLoading } = useProductRelationships();
   const { periods, isLoading: isPeriodsLoading } = useTradingPeriods();
@@ -81,31 +81,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
   const [highlightedProduct, setHighlightedProduct] = useState<string>('');
 
-  // Initialize legs after products and periods are loaded
-  useEffect(() => {
-    if (!isProductsLoading && !isPeriodsLoading && paperProducts.length > 0 && legs.length === 0) {
-      const defaultProductCode = paperProducts.length > 0 ? paperProducts[0].productCode : '';
-      const instrumentOptions = getInstrumentOptions(defaultProductCode);
-      const defaultInstrument = instrumentOptions.length > 0 ? instrumentOptions[0] : '';
-      
-      const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
-      
-      setLegs([{
-        id: createId(),
-        legReference: generateLegReference(tradeReference, 0),
-        buySell: 'buy',
-        product: defaultProductCode,
-        instrument: defaultInstrument,
-        tradingPeriod: '',
-        price: 0,
-        quantity: 0,
-        broker: defaultBroker,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
-      }]);
-    }
-  }, [isProductsLoading, isPeriodsLoading, paperProducts, periods, brokers, selectedBroker]);
-
+  // Fetch brokers on mount
   useEffect(() => {
     const fetchBrokers = async () => {
       setLoadingBrokers(true);
@@ -136,6 +112,36 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     
     fetchBrokers();
   }, []);
+
+  // Set dataReady once all data is loaded
+  useEffect(() => {
+    setDataReady(!isProductsLoading && !isPeriodsLoading && !loadingBrokers);
+  }, [isProductsLoading, isPeriodsLoading, loadingBrokers]);
+
+  // Initialize legs after data is ready
+  useEffect(() => {
+    if (dataReady && paperProducts.length > 0 && periods.length > 0 && brokers.length > 0 && legs.length === 0) {
+      const defaultProductCode = paperProducts[0]?.productCode || '';
+      const instrumentOptions = getInstrumentOptions(defaultProductCode);
+      const defaultInstrument = instrumentOptions[0] || '';
+      
+      const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
+      
+      setLegs([{
+        id: createId(),
+        legReference: generateLegReference(tradeReference, 0),
+        buySell: 'buy',
+        product: defaultProductCode,
+        instrument: defaultInstrument,
+        tradingPeriod: '',
+        price: 0,
+        quantity: 0,
+        broker: defaultBroker,
+        formula: createEmptyFormula(),
+        mtmFormula: createEmptyFormula(),
+      }]);
+    }
+  }, [dataReady, paperProducts, periods, brokers, selectedBroker, tradeReference, legs.length]);
   
   useEffect(() => {
     calculateExposure();
@@ -441,7 +447,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                   <SelectValue placeholder="Select broker" />
                 </SelectTrigger>
                 <SelectContent>
-                  {brokers.filter(b => b.is_active).map((broker) => (
+                  {brokers.filter(b => b.is_active !== false).map((broker) => (
                     <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -563,7 +569,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                       </SelectTrigger>
                       <SelectContent>
                         {/* Monthly periods */}
-                        <SelectItem value="" disabled className="font-semibold text-primary">
+                        <SelectItem value="monthly-header" disabled className="font-semibold text-primary">
                           Monthly
                         </SelectItem>
                         {periods
@@ -575,7 +581,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                           ))}
                         
                         {/* Quarterly periods */}
-                        <SelectItem value="" disabled className="font-semibold text-primary mt-2">
+                        <SelectItem value="quarterly-header" disabled className="font-semibold text-primary mt-2">
                           Quarterly
                         </SelectItem>
                         {periods

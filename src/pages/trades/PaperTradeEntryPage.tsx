@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -22,8 +22,10 @@ const PaperTradeEntryPage = () => {
         trade_reference: tradeData.tradeReference,
         trade_type: 'paper',
         counterparty: tradeData.counterparty || 'Internal', // Use a default counterparty if not specified
-        comment: tradeData.comment
+        comment: tradeData.comment || '' // Ensure we have at least an empty string for comment
       };
+      
+      console.log('Submitting parent trade:', parentTrade);
       
       // Insert parent trade
       const { data: parentTradeData, error: parentTradeError } = await supabase
@@ -55,6 +57,8 @@ const PaperTradeEntryPage = () => {
         mtm_formula: leg.mtmFormula,
         trading_period: leg.tradingPeriod
       }));
+      
+      console.log('Submitting trade legs:', tradeLegs);
       
       const { error: legsError } = await supabase
         .from('trade_legs')

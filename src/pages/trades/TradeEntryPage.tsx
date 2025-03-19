@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,14 +20,16 @@ const TradeEntryPage = () => {
   
   const handleSubmit = async (tradeData: any) => {
     try {
-      // Extract parent trade data
+      // Extract parent trade data with appropriate defaults
       const parentTrade = {
         trade_reference: tradeData.tradeReference,
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
-        counterparty: tradeData.counterparty,
-        comment: tradeData.comment
+        counterparty: tradeData.counterparty || 'Internal', // Default for paper trades
+        comment: tradeData.comment || '' // Ensure we have at least an empty string
       };
+      
+      console.log('Submitting parent trade:', parentTrade);
       
       // Insert parent trade
       const { data: parentTradeData, error: parentTradeError } = await supabase
@@ -89,6 +92,8 @@ const TradeEntryPage = () => {
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula
         }));
+        
+        console.log('Submitting paper trade legs:', legs);
         
         const { error: legsError } = await supabase
           .from('trade_legs')
