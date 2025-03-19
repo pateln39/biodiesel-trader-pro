@@ -1,310 +1,119 @@
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Trash2, Plus } from 'lucide-react';
-import { PaperTradeLeg, PaperTradeRow } from '@/types/paper';
-import PaperTradeLegForm from './PaperTradeLegForm';
-import { generateLegReference } from '@/utils/tradeUtils';
-import { createEmptyFormula } from '@/utils/formulaUtils';
-import FormulaBuilder from '../FormulaBuilder';
-import { v4 as uuidv4 } from 'uuid';
-import { ProductRelationship } from '@/hooks/useProductRelationships';
-import { Product, BuySell } from '@/types/trade';
+import { Plus, Trash } from 'lucide-react';
+import { PaperTradeLeg } from '@/types/paper';
+import { Badge } from '@/components/ui/badge';
+import { formatDate } from '@/utils/dateParsingUtils';
 
 interface PaperTradeTableProps {
-  rows: PaperTradeRow[];
-  onUpdateLegA: (rowId: string, legData: PaperTradeLeg | null) => void;
-  onUpdateLegB: (rowId: string, legData: PaperTradeLeg | null) => void;
-  onUpdateMtmFormula: (rowId: string, formula: any) => void;
-  onRemoveRow: (rowId: string) => void;
-  productRelationships: ProductRelationship[];
-  selectedBroker: string;
-  tradeReference: string;
+  legs: PaperTradeLeg[];
+  onAddLeg: () => void;
+  onRemoveLeg: (id: string) => void;
+  onEditLeg: (id: string) => void;
 }
 
 export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
-  rows,
-  onUpdateLegA,
-  onUpdateLegB,
-  onUpdateMtmFormula,
-  onRemoveRow,
-  productRelationships,
-  selectedBroker,
-  tradeReference
+  legs,
+  onAddLeg,
+  onRemoveLeg,
+  onEditLeg
 }) => {
-  const findRelationship = (product: string) => {
-    return productRelationships.find(r => r.product === product);
-  };
-
-  const findRelationshipByOpposite = (product: string) => {
-    return productRelationships.find(r => r.default_opposite === product);
-  };
-
-  const getOppositeBuySell = (buySell: 'buy' | 'sell') => {
-    return buySell === 'buy' ? 'sell' : 'buy';
-  };
-
-  const handleAddLegA = (rowId: string, legIndex: number) => {
-    const newLeg: PaperTradeLeg = {
-      id: `new-${uuidv4()}`,
-      legReference: generateLegReference(tradeReference, legIndex * 2),
-      parentTradeId: '',
-      buySell: 'buy',
-      product: 'UCOME' as Product, // Type assertion to ensure it's a valid Product
-      instrument: 'Argus UCOME',
-      pricingPeriodStart: new Date(),
-      pricingPeriodEnd: new Date(),
-      price: 0,
-      quantity: 0,
-      broker: selectedBroker,
-      formula: createEmptyFormula()
-    };
-    onUpdateLegA(rowId, newLeg);
-    
-    const relationship = findRelationship('UCOME');
-    if (relationship) {
-      if (relationship.relationship_type === 'DIFF' && relationship.default_opposite) {
-        // Ensure the default_opposite is a valid Product type before using it
-        const oppositeProduct = relationship.default_opposite as Product;
-        const newLegB: PaperTradeLeg = {
-          id: `new-${uuidv4()}`,
-          legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
-          parentTradeId: '',
-          buySell: getOppositeBuySell(newLeg.buySell),
-          product: oppositeProduct,
-          instrument: oppositeProduct.includes('LSGO') ? 'Platts LSGO' : `Argus ${oppositeProduct}`,
-          pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
-          pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
-          price: 0,
-          quantity: newLeg.quantity,
-          broker: selectedBroker,
-          formula: createEmptyFormula()
-        };
-        onUpdateLegB(rowId, newLegB);
-      } 
-      else if (relationship.relationship_type === 'SPREAD' && relationship.paired_product) {
-        // Ensure the paired_product is a valid Product type
-        const pairedProduct = relationship.paired_product as Product;
-        const newLegB: PaperTradeLeg = {
-          id: `new-${uuidv4()}`,
-          legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
-          parentTradeId: '',
-          buySell: getOppositeBuySell(newLeg.buySell),
-          product: pairedProduct,
-          instrument: `Argus ${pairedProduct}`,
-          pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
-          pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
-          price: 0,
-          quantity: newLeg.quantity,
-          broker: selectedBroker,
-          formula: createEmptyFormula()
-        };
-        onUpdateLegB(rowId, newLegB);
-      }
-    }
+  // Format number with thousands separator
+  const formatNumber = (value: number): string => {
+    return Math.round(value).toLocaleString('en-US');
   };
   
-  const handleAddLegB = (rowId: string, legIndex: number) => {
-    const newLeg: PaperTradeLeg = {
-      id: `new-${uuidv4()}`,
-      legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
-      parentTradeId: '',
-      buySell: 'sell',
-      product: 'LSGO' as Product, // Type assertion to ensure it's a valid Product
-      instrument: 'Platts LSGO',
-      pricingPeriodStart: new Date(),
-      pricingPeriodEnd: new Date(),
-      price: 0,
-      quantity: 0,
-      broker: selectedBroker,
-      formula: createEmptyFormula()
-    };
-    onUpdateLegB(rowId, newLeg);
-    
-    const relationship = findRelationshipByOpposite('LSGO');
-    if (relationship) {
-      // Ensure the product is a valid Product type
-      const relatedProduct = relationship.product as Product;
-      const newLegA: PaperTradeLeg = {
-        id: `new-${uuidv4()}`,
-        legReference: generateLegReference(tradeReference, legIndex * 2),
-        parentTradeId: '',
-        buySell: getOppositeBuySell(newLeg.buySell),
-        product: relatedProduct,
-        instrument: `Argus ${relatedProduct}`,
-        pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
-        pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
-        price: 0,
-        quantity: newLeg.quantity,
-        broker: selectedBroker,
-        formula: createEmptyFormula()
-      };
-      onUpdateLegA(rowId, newLegA);
-    }
-  };
-  
-  const handleLegAChange = (rowId: string, updatedLeg: PaperTradeLeg) => {
-    onUpdateLegA(rowId, updatedLeg);
-    
-    const row = rows.find(r => r.id === rowId);
-    if (!row || !row.legB) return;
-    
-    const relationship = findRelationship(updatedLeg.product);
-    
-    if (relationship) {
-      if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
-        const updatedLegB = { 
-          ...row.legB, 
-          quantity: updatedLeg.quantity,
-          pricingPeriodStart: updatedLeg.pricingPeriodStart,
-          pricingPeriodEnd: updatedLeg.pricingPeriodEnd
-        };
-        onUpdateLegB(rowId, updatedLegB);
-      }
-    }
-  };
-  
-  const handleLegBChange = (rowId: string, updatedLeg: PaperTradeLeg) => {
-    onUpdateLegB(rowId, updatedLeg);
-    
-    const row = rows.find(r => r.id === rowId);
-    if (!row || !row.legA) return;
-    
-    const relationship = findRelationshipByOpposite(updatedLeg.product);
-    
-    if (relationship) {
-      if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
-        const updatedLegA = { 
-          ...row.legA, 
-          quantity: updatedLeg.quantity,
-          pricingPeriodStart: updatedLeg.pricingPeriodStart,
-          pricingPeriodEnd: updatedLeg.pricingPeriodEnd
-        };
-        onUpdateLegA(rowId, updatedLegA);
-      }
-    }
+  // Format price to 2 decimal places
+  const formatPrice = (value: number): string => {
+    return value.toFixed(2);
   };
   
   return (
-    <div className="space-y-6">
-      {rows.map((row, index) => (
-        <div key={row.id} className="space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <div className="font-medium">Trade Row {index + 1}</div>
-            {rows.length > 1 && (
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => onRemoveRow(row.id)}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Remove Row
-              </Button>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="font-medium">Leg A</div>
-                {!row.legA && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleAddLegA(row.id, index)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Leg A
-                  </Button>
-                )}
-              </div>
-              
-              {row.legA ? (
-                <PaperTradeLegForm
-                  leg={row.legA}
-                  onChange={(updatedLeg) => handleLegAChange(row.id, updatedLeg)}
-                  onRemove={() => onUpdateLegA(row.id, null)}
-                  broker={selectedBroker}
-                />
-              ) : (
-                <Card className="border border-dashed flex items-center justify-center h-[200px]">
-                  <CardContent className="text-center text-muted-foreground p-6">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => handleAddLegA(row.id, index)}
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={onAddLeg} size="sm" variant="outline">
+          <Plus className="h-4 w-4 mr-1" /> Add Leg
+        </Button>
+      </div>
+      
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[80px]">Reference</TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Buy/Sell</TableHead>
+              <TableHead>Quantity</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {legs.map((leg) => (
+              <TableRow key={leg.id}>
+                <TableCell className="font-medium">{leg.legReference}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span>{leg.product}</span>
+                    <span className="text-xs text-muted-foreground">{leg.instrument}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={leg.buySell === 'buy' ? 'default' : 'destructive'}>
+                    {leg.buySell.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell>{formatNumber(leg.quantity)}</TableCell>
+                <TableCell>
+                  {leg.price ? (
+                    formatPrice(leg.price)
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Formula</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col text-xs">
+                    <span>{formatDate(leg.pricingPeriodStart)} - </span>
+                    <span>{formatDate(leg.pricingPeriodEnd)}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onEditLeg(leg.id)}
+                      className="h-8 w-8"
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Leg A
+                      <span className="sr-only">Edit</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                        <path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-5.5" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <path d="M10.42 12.61a2.1 2.1 0 1 1 2.97 2.97L7.95 21 4 22l.99-3.95 5.43-5.44Z" />
+                      </svg>
                     </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-            
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="font-medium">Leg B</div>
-                {!row.legB && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleAddLegB(row.id, index)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Leg B
-                  </Button>
-                )}
-              </div>
-              
-              {row.legB ? (
-                <PaperTradeLegForm
-                  leg={row.legB}
-                  onChange={(updatedLeg) => handleLegBChange(row.id, updatedLeg)}
-                  onRemove={() => onUpdateLegB(row.id, null)}
-                  broker={selectedBroker}
-                />
-              ) : (
-                <Card className="border border-dashed flex items-center justify-center h-[200px]">
-                  <CardContent className="text-center text-muted-foreground p-6">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => handleAddLegB(row.id, index)}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRemoveLeg(leg.id)}
+                      className="h-8 w-8 text-destructive"
+                      disabled={legs.length <= 1}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Leg B
+                      <span className="sr-only">Remove</span>
+                      <Trash className="h-4 w-4" />
                     </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-            
-            <div>
-              <div className="font-medium mb-2">MTM Formula</div>
-              <Card className="border">
-                <CardContent className="p-4">
-                  <FormulaBuilder
-                    value={row.mtmFormula || createEmptyFormula()}
-                    onChange={(formula) => onUpdateMtmFormula(row.id, formula)}
-                    tradeQuantity={(row.legA?.quantity || 0) + (row.legB?.quantity || 0)}
-                    buySell={(row.legA?.buySell || row.legB?.buySell) as any || 'buy'}
-                    selectedProduct={(row.legA?.product || row.legB?.product) as any || 'UCOME'}
-                    formulaType="mtm"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-          
-          {index < rows.length - 1 && <hr className="mt-6" />}
-        </div>
-      ))}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
+
+export default PaperTradeTable;

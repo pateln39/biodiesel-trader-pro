@@ -10,7 +10,8 @@ import { Trash2 } from 'lucide-react';
 import { PaperTradeLeg } from '@/types/paper';
 import FormulaBuilder from '../FormulaBuilder';
 import { createEmptyFormula } from '@/utils/formulaUtils';
-import { Product } from '@/types/trade';
+import { Product, BuySell } from '@/types/trade';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PaperTradeLegFormProps {
   leg: PaperTradeLeg;
@@ -25,8 +26,12 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
   onRemove,
   broker
 }) => {
-  const updateField = (field: keyof PaperTradeLeg, value: any) => {
+  const updateField = <K extends keyof PaperTradeLeg>(field: K, value: PaperTradeLeg[K]) => {
     onChange({ ...leg, [field]: value });
+  };
+  
+  const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
   };
   
   return (
@@ -50,7 +55,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
             <Label htmlFor={`buySell-${leg.id}`}>Buy/Sell</Label>
             <Select 
               value={leg.buySell} 
-              onValueChange={(value) => updateField('buySell', value)}
+              onValueChange={(value) => updateField('buySell', value as BuySell)}
             >
               <SelectTrigger id={`buySell-${leg.id}`}>
                 <SelectValue placeholder="Select" />
@@ -129,32 +134,57 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
               type="number" 
               value={leg.quantity} 
               onChange={(e) => updateField('quantity', Number(e.target.value))}
+              onFocus={handleNumberInputFocus}
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor={`price-${leg.id}`}>Price</Label>
+            <Label htmlFor={`price-${leg.id}`}>Fixed Price (Optional)</Label>
             <Input 
               id={`price-${leg.id}`} 
               type="number" 
               value={leg.price} 
               onChange={(e) => updateField('price', Number(e.target.value))}
+              onFocus={handleNumberInputFocus}
             />
           </div>
         </div>
         
         <div className="space-y-2">
-          <Label className="text-sm">Price Formula</Label>
-          <div className="border rounded-md p-3 bg-gray-50">
-            <FormulaBuilder
-              value={leg.formula || createEmptyFormula()}
-              onChange={(formula) => updateField('formula', formula)}
-              tradeQuantity={leg.quantity || 0}
-              buySell={leg.buySell}
-              selectedProduct={leg.product}
-              formulaType="price"
-            />
-          </div>
+          <Tabs defaultValue="price">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="price">Price Formula</TabsTrigger>
+              <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="price">
+              <div className="border rounded-md p-3 bg-gray-50">
+                <FormulaBuilder
+                  value={leg.formula || createEmptyFormula()}
+                  onChange={(formula) => updateField('formula', formula)}
+                  tradeQuantity={leg.quantity || 0}
+                  buySell={leg.buySell}
+                  selectedProduct={leg.product}
+                  formulaType="price"
+                  otherFormula={leg.mtmFormula || createEmptyFormula()}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="mtm">
+              <div className="border rounded-md p-3 bg-gray-50">
+                <FormulaBuilder
+                  value={leg.mtmFormula || createEmptyFormula()}
+                  onChange={(formula) => updateField('mtmFormula', formula)}
+                  tradeQuantity={leg.quantity || 0}
+                  buySell={leg.buySell}
+                  selectedProduct={leg.product}
+                  formulaType="mtm"
+                  otherFormula={leg.formula || createEmptyFormula()}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </CardContent>
     </Card>
