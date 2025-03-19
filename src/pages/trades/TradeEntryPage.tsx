@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
