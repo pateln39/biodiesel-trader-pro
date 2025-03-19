@@ -32,8 +32,20 @@ CREATE TABLE public.product_relationships (
 -- Initial relationships
 INSERT INTO public.product_relationships 
 (product, relationship_type, paired_product, default_opposite) VALUES
-('UCOME DIFF', 'DIFF', NULL, 'LSGO'),
-('RME', 'SPREAD', 'FAME', NULL);
+-- FP (Fixed Price) products - single sided
+('UCOME FP', 'FP', NULL, NULL),
+('RME FP', 'FP', NULL, NULL), 
+('FAME0 FP', 'FP', NULL, NULL),
+
+-- DIFF products - paired with LSGO
+('UCOME DIFF', 'DIFF', 'UCOME', 'LSGO'),
+('RME DIFF', 'DIFF', 'RME', 'LSGO'),
+('FAME0 DIFF', 'DIFF', 'FAME0', 'LSGO'),
+
+-- SPREAD products - paired products
+('RME-FAME', 'SPREAD', 'RME', 'FAME0'),
+('UCOME-FAME', 'SPREAD', 'UCOME', 'FAME0'),
+('UCOME-RME', 'SPREAD', 'UCOME', 'RME');
 ```
 
 ## 2. Core Components
@@ -90,41 +102,83 @@ Exposure Table:
 - Each row represents a trade leg that needs to be logged in the database
 - Plus (+) button exists only on the LEFT SIDE
 - When user selects a product on LEFT SIDE, the RIGHT SIDE product is auto-determined
+- Only 9 specific products should be available in the dropdown: UCOME FP, RME FP, FAME0 FP, UCOME DIFF, RME DIFF, FAME0 DIFF, RME-FAME, UCOME-FAME, UCOME-RME
+
+#### Product Relationship Rules
+1. **Fixed Price (FP) Products**:
+   - When selecting UCOME FP, RME FP, or FAME0 FP:
+   - LEFT SIDE: Contains the selected product
+   - RIGHT SIDE: Completely empty (no product, quantity, period, or price)
+   - This is a single-sided trade
+
+2. **Differential (DIFF) Products**:
+   - When selecting UCOME DIFF, RME DIFF, or FAME0 DIFF:
+   - LEFT SIDE: Automatically populated with base product (UCOME, RME, or FAME0)
+   - RIGHT SIDE: Automatically populated with LSGO
+   - Quantities are opposite (if LEFT is +1000, RIGHT is -1000)
+   - Periods are the same for both sides
+
+3. **Spread Products**:
+   - When selecting RME-FAME, UCOME-FAME, or UCOME-RME:
+   - LEFT SIDE: First product in the name (RME, UCOME)
+   - RIGHT SIDE: Second product in the name (FAME0, RME)
+   - Quantities are opposite (if LEFT is +1000, RIGHT is -1000)
+   - Periods are the same for both sides
 
 #### Auto-Population Flow
 1. User clicks "+" on LEFT SIDE
-2. User selects product (e.g., UCOME diff)
-   - System automatically sets:
-     * LEFT Product = UCOME
-     * RIGHT Product = LSGO (based on product relationship)
-3. User inputs on LEFT:
+2. User selects product from dropdown (limited to the 9 products)
+3. Based on product type:
+   - For FP products (e.g., UCOME FP):
+     * LEFT SIDE product = UCOME FP
+     * RIGHT SIDE remains completely empty
+   - For DIFF products (e.g., UCOME DIFF):
+     * LEFT SIDE product = UCOME
+     * RIGHT SIDE product = LSGO
+   - For SPREAD products (e.g., RME-FAME):
+     * LEFT SIDE product = RME
+     * RIGHT SIDE product = FAME0
+4. User inputs on LEFT:
    - Quantity (e.g., +1000)
    - Period (e.g., Apr-25)
    - Price (e.g., 500)
-4. System automatically sets on RIGHT:
+5. System automatically sets on RIGHT (except for FP products):
    - Quantity = opposite of LEFT (-1000)
    - Period = same as LEFT (Apr-25)
    - Price field remains empty for user input
-5. MTM formula is automatically set based on the selected product (UCOME diff)
+6. MTM formula is automatically set based on the selected product
 
 #### Product Rules
 ```typescript
 const productRules = {
+  'FP': {
+    // For fixed price products
+    singleSided: true,
+    // No right side product
+  },
   'DIFF': {
     // For diff products like UCOME diff
-    leftProduct: 'UCOME',
-    rightProduct: 'LSGO',
+    leftProduct: function(product) {
+      // Extract base product from relationship
+      return getPairedProduct(product); // e.g., 'UCOME'
+    },
+    rightProduct: function(product) {
+      // Get default opposite from relationship
+      return getDefaultOpposite(product); // Always 'LSGO' for DIFF
+    },
     quantityBehavior: 'opposite'
   },
   'SPREAD': {
-    // For spread products like UCOME-FAME
-    leftProduct: 'UCOME',
-    rightProduct: 'FAME',
+    // For spread products like RME-FAME
+    leftProduct: function(product) {
+      // Extract first product from relationship
+      return getPairedProduct(product); // e.g., 'RME'
+    },
+    rightProduct: function(product) {
+      // Extract second product from relationship
+      return getDefaultOpposite(product); // e.g., 'FAME0'
+    },
     quantityBehavior: 'opposite'
-  },
-  'FP': {
-    // For fixed price products
-    singleSided: true
   }
 };
 ```
@@ -162,8 +216,8 @@ interface ExposureRow {
 
 The MTM formula is now product-dependent:
 - For Product FP (Fixed Price): MTM = Product FP
-- For Product diff (e.g., UCOME diff): MTM = Product diff
-- For Spread products (e.g., UCOME-FAME): MTM = Product spread name
+- For Product DIFF (e.g., UCOME DIFF): MTM = Product DIFF
+- For Spread products (e.g., RME-FAME): MTM = Product spread name (e.g., "RME-FAME")
 
 This means the formula is automatically determined by the product selection.
 
