@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import FormulaBuilder from '../FormulaBuilder';
 import { v4 as uuidv4 } from 'uuid';
 import { ProductRelationship } from '@/hooks/useProductRelationships';
+import { Product, BuySell } from '@/types/trade';
 
 interface PaperTradeTableProps {
   rows: PaperTradeRow[];
@@ -49,7 +51,7 @@ export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
       legReference: generateLegReference(tradeReference, legIndex * 2),
       parentTradeId: '',
       buySell: 'buy',
-      product: 'UCOME',
+      product: 'UCOME' as Product, // Type assertion to ensure it's a valid Product
       instrument: 'Argus UCOME',
       pricingPeriodStart: new Date(),
       pricingPeriodEnd: new Date(),
@@ -63,13 +65,15 @@ export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
     const relationship = findRelationship('UCOME');
     if (relationship) {
       if (relationship.relationship_type === 'DIFF' && relationship.default_opposite) {
+        // Ensure the default_opposite is a valid Product type before using it
+        const oppositeProduct = relationship.default_opposite as Product;
         const newLegB: PaperTradeLeg = {
           id: `new-${uuidv4()}`,
           legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
           parentTradeId: '',
           buySell: getOppositeBuySell(newLeg.buySell),
-          product: relationship.default_opposite,
-          instrument: relationship.default_opposite.includes('LSGO') ? 'Platts LSGO' : `Argus ${relationship.default_opposite}`,
+          product: oppositeProduct,
+          instrument: oppositeProduct.includes('LSGO') ? 'Platts LSGO' : `Argus ${oppositeProduct}`,
           pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
           pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
           price: 0,
@@ -80,13 +84,15 @@ export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
         onUpdateLegB(rowId, newLegB);
       } 
       else if (relationship.relationship_type === 'SPREAD' && relationship.paired_product) {
+        // Ensure the paired_product is a valid Product type
+        const pairedProduct = relationship.paired_product as Product;
         const newLegB: PaperTradeLeg = {
           id: `new-${uuidv4()}`,
           legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
           parentTradeId: '',
           buySell: getOppositeBuySell(newLeg.buySell),
-          product: relationship.paired_product,
-          instrument: `Argus ${relationship.paired_product}`,
+          product: pairedProduct,
+          instrument: `Argus ${pairedProduct}`,
           pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
           pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
           price: 0,
@@ -105,7 +111,7 @@ export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
       legReference: generateLegReference(tradeReference, legIndex * 2 + 1),
       parentTradeId: '',
       buySell: 'sell',
-      product: 'LSGO',
+      product: 'LSGO' as Product, // Type assertion to ensure it's a valid Product
       instrument: 'Platts LSGO',
       pricingPeriodStart: new Date(),
       pricingPeriodEnd: new Date(),
@@ -118,13 +124,15 @@ export const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
     
     const relationship = findRelationshipByOpposite('LSGO');
     if (relationship) {
+      // Ensure the product is a valid Product type
+      const relatedProduct = relationship.product as Product;
       const newLegA: PaperTradeLeg = {
         id: `new-${uuidv4()}`,
         legReference: generateLegReference(tradeReference, legIndex * 2),
         parentTradeId: '',
         buySell: getOppositeBuySell(newLeg.buySell),
-        product: relationship.product,
-        instrument: `Argus ${relationship.product}`,
+        product: relatedProduct,
+        instrument: `Argus ${relatedProduct}`,
         pricingPeriodStart: new Date(newLeg.pricingPeriodStart),
         pricingPeriodEnd: new Date(newLeg.pricingPeriodEnd),
         price: 0,
