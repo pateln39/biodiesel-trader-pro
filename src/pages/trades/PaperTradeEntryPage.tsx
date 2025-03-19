@@ -21,6 +21,7 @@ const PaperTradeEntryPage = () => {
       const parentTrade = {
         trade_reference: tradeData.tradeReference,
         trade_type: 'paper',
+        counterparty: tradeData.counterparty, // Add counterparty field
         comment: tradeData.comment
       };
       
@@ -51,7 +52,9 @@ const PaperTradeEntryPage = () => {
         quantity: leg.quantity,
         broker: leg.broker,
         pricing_formula: leg.formula,
-        mtm_formula: leg.mtmFormula
+        mtm_formula: leg.mtmFormula,
+        // Add the trading period field for the new schema
+        instrument: leg.instrument || null
       }));
       
       const { error: legsError } = await supabase

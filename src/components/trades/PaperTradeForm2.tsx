@@ -21,12 +21,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Broker } from '@/types/brokers';
+import { TradingPeriod, PeriodType } from '@/types/paper';
 
 interface TradeLegForm {
   id: string;
   buySell: BuySell;
   product: Product;
   instrument: string;
+  tradingPeriod: string;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
   price: number;
@@ -68,6 +70,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [selectedBroker, setSelectedBroker] = useState<string>('');
   const [newBrokerName, setNewBrokerName] = useState<string>('');
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
+  const [tradingPeriods, setTradingPeriods] = useState<TradingPeriod[]>([]);
+  const [isLoadingPeriods, setIsLoadingPeriods] = useState<boolean>(true);
   
   const createId = () => crypto.randomUUID();
   
@@ -77,6 +81,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       buySell: leg.buySell || 'buy',
       product: leg.product || 'UCOME',
       instrument: leg.instrument || 'Argus UCOME',
+      tradingPeriod: leg.tradingPeriod || '',
       pricingPeriodStart: leg.pricingPeriodStart || new Date(),
       pricingPeriodEnd: leg.pricingPeriodEnd || new Date(),
       price: leg.price || 0,
@@ -89,6 +94,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       buySell: 'buy',
       product: 'UCOME',
       instrument: 'Argus UCOME',
+      tradingPeriod: '',
       pricingPeriodStart: new Date(),
       pricingPeriodEnd: new Date(),
       price: 0,
@@ -100,6 +106,42 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   );
   
   const [exposure, setExposure] = useState<ExposureRow[]>([]);
+
+  // Fetch trading periods
+  useEffect(() => {
+    const fetchTradingPeriods = async () => {
+      setIsLoadingPeriods(true);
+      try {
+        const { data, error } = await supabase
+          .from('trading_periods')
+          .select('*')
+          .eq('is_active', true)
+          .order('start_date', { ascending: true });
+          
+        if (error) {
+          throw error;
+        }
+        
+        const mappedPeriods = data.map(period => ({
+          id: period.id,
+          periodCode: period.period_code,
+          periodType: period.period_type as PeriodType,
+          startDate: new Date(period.start_date),
+          endDate: new Date(period.end_date)
+        }));
+        
+        setTradingPeriods(mappedPeriods);
+      } catch (error: any) {
+        toast.error('Failed to fetch trading periods', {
+          description: error.message
+        });
+      } finally {
+        setIsLoadingPeriods(false);
+      }
+    };
+    
+    fetchTradingPeriods();
+  }, []);
 
   useEffect(() => {
     const fetchBrokers = async () => {
@@ -146,6 +188,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         buySell: 'buy',
         product: 'UCOME',
         instrument: 'Argus UCOME',
+        tradingPeriod: '',
         pricingPeriodStart: new Date(),
         pricingPeriodEnd: new Date(),
         price: 0,
@@ -172,6 +215,17 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         leg.id === id ? { ...leg, [field]: value } : leg
       )
     );
+  };
+  
+  // Update period dates when trading period changes
+  const handleTradingPeriodChange = (legId: string, periodCode: string) => {
+    const period = tradingPeriods.find(p => p.periodCode === periodCode);
+    
+    if (period) {
+      updateLeg(legId, 'tradingPeriod', periodCode);
+      updateLeg(legId, 'pricingPeriodStart', period.startDate);
+      updateLeg(legId, 'pricingPeriodEnd', period.endDate);
+    }
   };
   
   const calculateExposure = () => {
@@ -272,11 +326,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         validateRequiredField(leg.instrument, `Leg ${legNumber} - Instrument`),
         validateRequiredField(leg.broker, `Leg ${legNumber} - Broker`),
         validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
-        validateDateRange(
-          leg.pricingPeriodStart, 
-          leg.pricingPeriodEnd, 
-          `Leg ${legNumber} - Pricing Period`
-        )
+        validateRequiredField(leg.tradingPeriod, `Leg ${legNumber} - Trading Period`),
       ]);
     });
     
@@ -291,8 +341,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           buySell: leg.buySell,
           product: leg.product,
           instrument: leg.instrument,
-          pricingPeriodStart: leg.pricingPeriodStart,
-          pricingPeriodEnd: leg.pricingPeriodEnd,
+          tradingPeriod: leg.tradingPeriod,
+          periodStart: leg.pricingPeriodStart,
+          periodEnd: leg.pricingPeriodEnd,
           price: leg.price,
           quantity: leg.quantity,
           broker: leg.broker,
@@ -324,6 +375,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         buySell: leg.buySell || 'buy',
         product: leg.product || 'UCOME',
         instrument: leg.instrument || 'Argus UCOME',
+        tradingPeriod: leg.tradingPeriod || '',
         pricingPeriodStart: leg.pricingPeriodStart || new Date(),
         pricingPeriodEnd: leg.pricingPeriodEnd || new Date(),
         price: leg.price || 0,
@@ -338,6 +390,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         buySell: 'buy',
         product: 'UCOME',
         instrument: 'Argus UCOME',
+        tradingPeriod: '',
         pricingPeriodStart: new Date(),
         pricingPeriodEnd: new Date(),
         price: 0,
@@ -532,18 +585,55 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
-                  <Label>Pricing Period Start</Label>
-                  <DatePicker 
-                    date={leg.pricingPeriodStart}
-                    setDate={(date) => updateLeg(leg.id, 'pricingPeriodStart', date)}
-                  />
+                  <Label htmlFor={`leg-${leg.id}-period`}>Trading Period</Label>
+                  <Select 
+                    value={leg.tradingPeriod} 
+                    onValueChange={(value) => handleTradingPeriodChange(leg.id, value)}
+                    disabled={isLoadingPeriods}
+                  >
+                    <SelectTrigger id={`leg-${leg.id}-period`}>
+                      <SelectValue placeholder={isLoadingPeriods ? "Loading periods..." : "Select period"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="" disabled>Select a trading period</SelectItem>
+                      
+                      {/* Monthly periods */}
+                      <SelectItem value="" disabled className="font-semibold">Monthly Periods</SelectItem>
+                      {tradingPeriods
+                        .filter(p => p.periodType === 'MONTH')
+                        .map(period => (
+                          <SelectItem key={period.id} value={period.periodCode}>
+                            {period.periodCode}
+                          </SelectItem>
+                        ))
+                      }
+                      
+                      {/* Quarterly periods */}
+                      <SelectItem value="" disabled className="font-semibold mt-2">Quarterly Periods</SelectItem>
+                      {tradingPeriods
+                        .filter(p => p.periodType === 'QUARTER')
+                        .map(period => (
+                          <SelectItem key={period.id} value={period.periodCode}>
+                            {period.periodCode}
+                          </SelectItem>
+                        ))
+                      }
+                    </SelectContent>
+                  </Select>
                 </div>
+                
                 <div className="space-y-2">
-                  <Label>Pricing Period End</Label>
-                  <DatePicker 
-                    date={leg.pricingPeriodEnd}
-                    setDate={(date) => updateLeg(leg.id, 'pricingPeriodEnd', date)}
-                  />
+                  <Label>Period Range</Label>
+                  <div className="text-sm border border-muted rounded-md p-2 bg-gray-50">
+                    {leg.tradingPeriod ? (
+                      <>
+                        <p><span className="font-medium">Start:</span> {leg.pricingPeriodStart.toLocaleDateString()}</p>
+                        <p><span className="font-medium">End:</span> {leg.pricingPeriodEnd.toLocaleDateString()}</p>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">Select a trading period</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
