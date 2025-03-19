@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +13,7 @@ import PaperTradeTable from './PaperTradeTable';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { getNextMonths } from '@/utils/dateUtils';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -42,7 +43,23 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   // Trade legs state
   const [tradeLegs, setTradeLegs] = useState<any[]>([]);
-  const [exposureData, setExposureData] = useState<any[]>([]);
+  
+  // Get the next 8 months for our exposure data
+  const availableMonths = useMemo(() => getNextMonths(8), []);
+  
+  // Initialize empty exposure data
+  const [exposureData, setExposureData] = useState<any[]>(() => {
+    // Create an initial empty exposure table with the next 8 months
+    return availableMonths.map(month => ({
+      month,
+      UCOME: 0,
+      FAME0: 0,
+      RME: 0,
+      HVO: 0,
+      LSGO: 0,
+      'ICE GASOIL FUTURES': 0
+    }));
+  });
   
   useEffect(() => {
     // Load brokers from database
@@ -104,33 +121,53 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const handleLegsChange = (newLegs: any[]) => {
     setTradeLegs(newLegs);
     
-    // In a real implementation, you would calculate exposures here
-    // For now, we'll just use placeholder data
+    // Calculate exposures based on the leg data
     calculateExposures(newLegs);
   };
   
-  // Placeholder function to calculate exposures
+  // Calculate exposures from trade legs
   const calculateExposures = (legs: any[]) => {
-    // This would be replaced with actual exposure calculation logic
-    const months = ["Jan-24", "Feb-24", "Mar-24", "Apr-24", "May-24", "Jun-24"];
-    const products = ["UCOME", "FAME0", "RME", "HVO", "LSGO", "ICE GASOIL FUTURES"];
-    
-    // Create empty exposure data structure
-    const exposures = months.map(month => {
+    // Create a copy of the exposure data structure with zero values
+    const exposures = availableMonths.map(month => {
       const entry: any = { month };
-      products.forEach(product => {
+      ['UCOME', 'FAME0', 'RME', 'HVO', 'LSGO', 'ICE GASOIL FUTURES'].forEach(product => {
         entry[product] = 0;
       });
       return entry;
     });
     
-    // Update exposures based on legs (placeholder logic)
+    // Process each leg and update exposures
     legs.forEach(leg => {
-      if (leg.period && leg.product && leg.quantity) {
-        const monthIndex = months.indexOf(leg.period);
-        if (monthIndex >= 0 && products.includes(leg.product)) {
-          exposures[monthIndex][leg.product] += leg.quantity;
+      if (!leg.period || !leg.product) return;
+      
+      // Find the month's index in our exposure data
+      const monthIndex = exposures.findIndex(e => e.month === leg.period);
+      if (monthIndex === -1) return;
+      
+      // Add the physical exposure for this product
+      if (exposures[monthIndex][leg.product] !== undefined) {
+        // Adjust quantity based on buy/sell
+        const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
+        exposures[monthIndex][leg.product] += quantity || 0;
+      }
+      
+      // For DIFF/SPREAD trades, also handle the right side
+      if (leg.rightSide && leg.rightSide.product) {
+        const rightProduct = leg.rightSide.product;
+        if (exposures[monthIndex][rightProduct] !== undefined) {
+          // Right side quantity is already negative for sell
+          exposures[monthIndex][rightProduct] += leg.rightSide.quantity || 0;
         }
+      }
+      
+      // Handle MTM formula exposures if present
+      if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
+        Object.entries(leg.mtmFormula.exposures.physical).forEach(([product, value]) => {
+          if (exposures[monthIndex][product] !== undefined) {
+            // Use the quantity as specified in the MTM formula
+            exposures[monthIndex][product] += Number(value) || 0;
+          }
+        });
       }
     });
     

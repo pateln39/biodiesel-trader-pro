@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { PaperTrade, PaperTradeLeg, PaperRelationshipType, BuySell } from '@/types/trade';
+import { formatMonthCode } from '@/utils/dateUtils';
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
@@ -70,7 +70,7 @@ export const usePaperTrades = () => {
                 buySell: leg.buy_sell as BuySell,
                 product: leg.product,
                 quantity: leg.quantity,
-                period: leg.pricing_period_start ? new Date(leg.pricing_period_start).toLocaleDateString() : '',
+                period: leg.trading_period || '', // Use trading_period for consistency
                 price: leg.price || 0,
                 broker: leg.broker,
                 relationshipType,
@@ -112,6 +112,55 @@ export const usePaperTrades = () => {
       if (trade.legs && trade.legs.length > 0) {
         // Insert trade legs one by one to ensure proper typing
         for (const leg of trade.legs) {
+          // Store the period in both trading_period and pricing_period_start/end for consistency
+          const tradingPeriod = leg.period;
+          
+          // If we have a proper date string in the period field, use it
+          // Otherwise we'll just use the trading_period as is
+          let pricingPeriodStart = null;
+          let pricingPeriodEnd = null;
+          
+          if (tradingPeriod) {
+            try {
+              // Parse period like "Mar-24" into a date
+              const [month, year] = tradingPeriod.split('-');
+              const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                .findIndex(m => m === month);
+              
+              if (monthIndex !== -1) {
+                const fullYear = 2000 + parseInt(year);
+                
+                // First day of month
+                pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
+                
+                // Last day of month
+                const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
+                pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+              }
+            } catch (e) {
+              console.error('Error parsing period date:', e);
+            }
+          }
+          
+          // Ensure mtmFormula has the right structure with exposures
+          let mtmFormula = leg.mtmFormula || {};
+          
+          // For DIFF trades, make sure we capture both sides in the exposures
+          if (leg.relationshipType !== 'FP' && leg.rightSide) {
+            // Store the rightSide separately in the mtmFormula for reference
+            mtmFormula = {
+              ...mtmFormula,
+              rightSide: leg.rightSide,
+              // Ensure we have proper physical exposures for both sides
+              exposures: {
+                physical: {
+                  [leg.product]: leg.quantity || 0,
+                  [leg.rightSide.product]: leg.rightSide.quantity || 0
+                }
+              }
+            };
+          }
+          
           const legData = {
             leg_reference: leg.legReference,
             parent_trade_id: parentTrade.id,
@@ -120,14 +169,11 @@ export const usePaperTrades = () => {
             quantity: leg.quantity,
             price: leg.price,
             broker: leg.broker || trade.broker,
-            trading_period: leg.relationshipType, // Store relationship type in trading_period field
+            trading_period: tradingPeriod, // Store period code in trading_period
             pricing_formula: leg.formula,
-            mtm_formula: {
-              ...leg.mtmFormula,
-              rightSide: leg.rightSide
-            },
-            pricing_period_start: leg.period ? new Date(leg.period).toISOString() : null,
-            pricing_period_end: leg.period ? new Date(leg.period).toISOString() : null
+            mtm_formula: mtmFormula,
+            pricing_period_start: pricingPeriodStart,
+            pricing_period_end: pricingPeriodEnd
           };
           
           const { error: legError } = await supabase
@@ -144,6 +190,7 @@ export const usePaperTrades = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+      queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
       toast.success('Paper trade created successfully');
     },
     onError: (error: Error) => {

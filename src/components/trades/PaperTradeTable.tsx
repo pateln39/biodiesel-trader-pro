@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
 import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
+import { getNextMonths } from '@/utils/dateUtils';
 
 interface PaperTradeTableProps {
   legs: any[];
@@ -18,12 +19,8 @@ interface PaperTradeTableProps {
 const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange }) => {
   const [productRelationships, setProductRelationships] = useState<ProductRelationship[]>([]);
   
-  // Available periods (this would be dynamic in a real implementation)
-  const availablePeriods = [
-    "Jan-24", "Feb-24", "Mar-24", "Apr-24", "May-24", "Jun-24", 
-    "Jul-24", "Aug-24", "Sep-24", "Oct-24", "Nov-24", "Dec-24",
-    "Jan-25", "Feb-25", "Mar-25", "Apr-25", "May-25", "Jun-25"
-  ];
+  // Available periods - dynamically generated for next 8 months
+  const availablePeriods = getNextMonths(8);
   
   useEffect(() => {
     // Load product relationships from database
@@ -117,7 +114,13 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         },
         mtmFormula: {
           ...createEmptyFormula(),
-          name: selectedProduct // Use the selected product as MTM formula name
+          name: selectedProduct, // Use the selected product as MTM formula name
+          exposures: {
+            physical: {
+              [relationship.paired_product || '']: updatedLeg.quantity || 0,
+              [relationship.default_opposite || '']: updatedLeg.quantity ? -updatedLeg.quantity : 0
+            }
+          }
         }
       };
     }
@@ -141,6 +144,21 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         quantity: field === 'quantity' ? -value : leg.rightSide.quantity,
         period: field === 'period' ? value : leg.rightSide.period
       };
+      
+      // Update the mtmFormula exposures for DIFF/SPREAD trades
+      if (leg.mtmFormula && leg.relationshipType !== 'FP') {
+        const exposures = {
+          physical: {
+            [leg.product]: value,
+            [leg.rightSide.product]: -value
+          }
+        };
+        
+        leg.mtmFormula = {
+          ...leg.mtmFormula,
+          exposures
+        };
+      }
     }
     
     newLegs[index] = leg;

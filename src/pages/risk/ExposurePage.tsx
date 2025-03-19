@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { PricingFormula, PartialPricingFormula, PartialExposureResult } from '@/types/pricing';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { getNextMonths } from '@/utils/dateUtils';
 
 // Types for exposure data
 interface ExposureItem {
@@ -40,6 +41,7 @@ interface MonthlyExposures {
 
 const ExposurePage = () => {
   const [showAllGrades, setShowAllGrades] = useState(false);
+  const [periods, setPeriods] = useState<string[]>(getNextMonths(8));
 
   // Fetch trade legs to calculate exposures
   const { data: tradeLegs, isLoading } = useQuery({
@@ -55,7 +57,8 @@ const ExposurePage = () => {
           quantity,
           pricing_formula,
           mtm_formula,
-          trading_period
+          trading_period,
+          pricing_period_start
         `)
         .order('trading_period', { ascending: true });
         
@@ -70,9 +73,29 @@ const ExposurePage = () => {
 
     const exposures: MonthlyExposures = {};
     
+    // Initialize with all periods
+    periods.forEach(period => {
+      exposures[period] = {};
+    });
+    
     // Process each trade leg
     tradeLegs.forEach(leg => {
-      const month = leg.trading_period || 'Unknown';
+      // Determine the trading period - either from trading_period field or from pricing_period_start
+      let month = leg.trading_period || '';
+      
+      // If month is not set but we have pricing_period_start, extract month from there
+      if (!month && leg.pricing_period_start) {
+        const date = new Date(leg.pricing_period_start);
+        const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+        const year = date.getFullYear().toString().slice(2);
+        month = `${monthName}-${year}`;
+      }
+      
+      // If still no valid month or not in our periods list, skip this leg
+      if (!month || !periods.includes(month)) {
+        return;
+      }
+      
       const grade = leg.product || 'Unknown';
       const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
       const quantity = (leg.quantity || 0) * quantityMultiplier;
@@ -138,7 +161,7 @@ const ExposurePage = () => {
     });
     
     return exposures;
-  }, [tradeLegs]);
+  }, [tradeLegs, periods]);
 
   // Convert exposures object to array for rendering
   const exposureItems = useMemo(() => {
@@ -168,10 +191,16 @@ const ExposurePage = () => {
     
     // Sort by month and then by grade
     return items.sort((a, b) => {
-      if (a.month !== b.month) return a.month.localeCompare(b.month);
+      // First sort by month (using the order in the periods array)
+      const monthIndexA = periods.indexOf(a.month);
+      const monthIndexB = periods.indexOf(b.month);
+      
+      if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
+      
+      // Then sort by grade
       return a.grade.localeCompare(b.grade);
     });
-  }, [exposureData, showAllGrades]);
+  }, [exposureData, showAllGrades, periods]);
 
   // Group exposure data by month
   const groupedByMonth = useMemo(() => {
@@ -184,8 +213,16 @@ const ExposurePage = () => {
       grouped[item.month].push(item);
     });
     
-    return grouped;
-  }, [exposureItems]);
+    // Make sure months are in the correct order (future first)
+    const orderedGrouped: Record<string, ExposureItem[]> = {};
+    periods.forEach(period => {
+      if (grouped[period]) {
+        orderedGrouped[period] = grouped[period];
+      }
+    });
+    
+    return orderedGrouped;
+  }, [exposureItems, periods]);
 
   // Function to get color class based on value
   const getValueColorClass = (value: number) => {
