@@ -1,30 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { Plus, Trash2, PlusCircle } from 'lucide-react';
-import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
+import { validatePaperTradeField, validatePaperTradeLeg } from '@/utils/paperTradeValidationUtils';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
-import { PaperTradeLeg } from '@/types/paper';
-import { PricingFormula } from '@/types/pricing';
-import { createEmptyFormula } from '@/utils/formulaUtils';
-import FormulaBuilder from './FormulaBuilder';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Broker } from '@/types/brokers';
 import { TradingPeriod, PeriodType } from '@/types/paper';
 
 interface TradeLegForm {
   id: string;
+  legReference?: string;
   buySell: BuySell;
   product: Product;
   instrument: string;
@@ -34,8 +29,6 @@ interface TradeLegForm {
   price: number;
   quantity: number;
   broker: string;
-  formula: PricingFormula;
-  mtmFormula: PricingFormula;
 }
 
 interface ExposureRow {
@@ -56,6 +49,14 @@ interface PaperTradeFormProps {
   initialData?: any;
 }
 
+type Broker = {
+  id: string;
+  name: string;
+  is_active: boolean;
+};
+
+const createId = () => crypto.randomUUID();
+
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
@@ -72,23 +73,22 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [isBrokerDialogOpen, setIsBrokerDialogOpen] = useState<boolean>(false);
   const [tradingPeriods, setTradingPeriods] = useState<TradingPeriod[]>([]);
   const [isLoadingPeriods, setIsLoadingPeriods] = useState<boolean>(true);
+  const [exposure, setExposure] = useState<ExposureRow[]>([]);
   
-  const createId = () => crypto.randomUUID();
-  
+  // Initialize legs from initialData or create default leg
   const [legs, setLegs] = useState<TradeLegForm[]>(
     initialData?.legs?.map((leg: any) => ({
       id: leg.id || createId(),
+      legReference: leg.legReference,
       buySell: leg.buySell || 'buy',
       product: leg.product || 'UCOME',
       instrument: leg.instrument || 'Argus UCOME',
       tradingPeriod: leg.tradingPeriod || '',
-      pricingPeriodStart: leg.pricingPeriodStart || new Date(),
-      pricingPeriodEnd: leg.pricingPeriodEnd || new Date(),
+      pricingPeriodStart: leg.periodStart || new Date(),
+      pricingPeriodEnd: leg.periodEnd || new Date(),
       price: leg.price || 0,
       quantity: leg.quantity || 0,
       broker: leg.broker || '',
-      formula: leg.formula || createEmptyFormula(),
-      mtmFormula: leg.mtmFormula || createEmptyFormula(),
     })) || [{
       id: createId(),
       buySell: 'buy',
@@ -100,12 +100,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       price: 0,
       quantity: 0,
       broker: '',
-      formula: createEmptyFormula(),
-      mtmFormula: createEmptyFormula(),
     }]
   );
-  
-  const [exposure, setExposure] = useState<ExposureRow[]>([]);
 
   // Fetch trading periods
   useEffect(() => {
@@ -143,6 +139,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     fetchTradingPeriods();
   }, []);
 
+  // Fetch brokers
   useEffect(() => {
     const fetchBrokers = async () => {
       const { data, error } = await supabase
@@ -162,10 +159,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       if (data && data.length > 0 && !selectedBroker) {
         setSelectedBroker(data[0].id);
         
+        // Only update broker for legs if broker is not already set
         setLegs(prevLegs => 
           prevLegs.map(leg => ({
             ...leg,
-            broker: data[0].name
+            broker: leg.broker || data[0].name
           }))
         );
       }
@@ -174,10 +172,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     fetchBrokers();
   }, []);
   
+  // Calculate exposure when legs change
   useEffect(() => {
     calculateExposure();
   }, [legs]);
   
+  // Add a new leg
   const addLeg = () => {
     const defaultBroker = brokers.find(b => b.id === selectedBroker)?.name || '';
     
@@ -194,12 +194,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         price: 0,
         quantity: 0,
         broker: defaultBroker,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
       }
     ]);
   };
   
+  // Remove a leg
   const removeLeg = (id: string) => {
     if (legs.length <= 1) {
       toast.error('Cannot remove the last trade leg');
@@ -209,6 +208,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setLegs(prev => prev.filter(leg => leg.id !== id));
   };
   
+  // Update a leg's field
   const updateLeg = (id: string, field: keyof TradeLegForm, value: any) => {
     setLegs(prev => 
       prev.map(leg => 
@@ -228,6 +228,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
+  // Calculate exposure based on current legs
   const calculateExposure = () => {
     const exposureMap = new Map<string, Record<string, number>>();
     
@@ -257,10 +258,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       const sign = buySell === 'buy' ? 1 : -1;
       monthExposure[product as keyof typeof monthExposure] += sign * quantity;
       
-      if (product === 'RME') {
-        monthExposure['FAME0'] -= sign * quantity;
-      }
-      
       exposureMap.set(month, monthExposure);
     });
     
@@ -282,6 +279,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setExposure(exposureRows);
   };
   
+  // Add a new broker
   const addBroker = async () => {
     if (!newBrokerName.trim()) {
       toast.error('Broker name cannot be empty');
@@ -312,77 +310,24 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
-    const isCommentValid = validateRequiredField(comment, 'Comment');
-    
-    const legValidations = legs.map((leg, index) => {
-      const legNumber = index + 1;
-      return validateFields([
-        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
-        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
-        validateRequiredField(leg.instrument, `Leg ${legNumber} - Instrument`),
-        validateRequiredField(leg.broker, `Leg ${legNumber} - Broker`),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
-        validateRequiredField(leg.tradingPeriod, `Leg ${legNumber} - Trading Period`),
-      ]);
-    });
-    
-    const areAllLegsValid = legValidations.every(isValid => isValid);
-    
-    if (isCounterpartyValid && isCommentValid && areAllLegsValid) {
-      const tradeLegs: PaperTradeLeg[] = legs.map((leg, index) => {
-        return {
-          id: leg.id,
-          legReference: generateLegReference(tradeReference, index),
-          parentTradeId: initialData?.id || '',
-          buySell: leg.buySell,
-          product: leg.product,
-          instrument: leg.instrument,
-          tradingPeriod: leg.tradingPeriod,
-          periodStart: leg.pricingPeriodStart,
-          periodEnd: leg.pricingPeriodEnd,
-          price: leg.price,
-          quantity: leg.quantity,
-          broker: leg.broker,
-          formula: leg.formula,
-          mtmFormula: leg.mtmFormula
-        };
-      });
-      
-      onSubmit({
-        id: initialData?.id,
-        tradeReference,
-        tradeType: 'paper',
-        counterparty,
-        comment,
-        legs: tradeLegs
-      });
-    } else {
-      toast.error('Please fix all validation errors before submitting');
-    }
-  };
-  
-  const resetForm = useCallback(() => {
+  // Reset form to initial values
+  const resetForm = () => {
     setCounterparty(initialData?.counterparty || '');
     setComment(initialData?.comment || '');
     
     if (initialData?.legs) {
       setLegs(initialData.legs.map((leg: any) => ({
         id: leg.id || createId(),
+        legReference: leg.legReference,
         buySell: leg.buySell || 'buy',
         product: leg.product || 'UCOME',
         instrument: leg.instrument || 'Argus UCOME',
         tradingPeriod: leg.tradingPeriod || '',
-        pricingPeriodStart: leg.pricingPeriodStart || new Date(),
-        pricingPeriodEnd: leg.pricingPeriodEnd || new Date(),
+        pricingPeriodStart: leg.periodStart || new Date(),
+        pricingPeriodEnd: leg.periodEnd || new Date(),
         price: leg.price || 0,
         quantity: leg.quantity || 0,
         broker: leg.broker || '',
-        formula: leg.formula || createEmptyFormula(),
-        mtmFormula: leg.mtmFormula || createEmptyFormula(),
       })));
     } else {
       setLegs([{
@@ -396,11 +341,60 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         price: 0,
         quantity: 0,
         broker: brokers.find(b => b.id === selectedBroker)?.name || '',
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
       }]);
     }
-  }, [initialData, selectedBroker, brokers]);
+  };
+  
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate main form fields
+    const isCounterpartyValid = validatePaperTradeField(counterparty, 'Counterparty');
+    const isCommentValid = validatePaperTradeField(comment, 'Comment');
+    
+    // Validate each leg
+    const legValidations = legs.map((leg, index) => 
+      validatePaperTradeLeg(leg, index + 1)
+    );
+    
+    const areAllLegsValid = legValidations.every(isValid => isValid);
+    
+    if (isCounterpartyValid && isCommentValid && areAllLegsValid) {
+      // Create the trade legs structure expected by the server
+      const tradeLegs = legs.map((leg, index) => {
+        return {
+          id: leg.id,
+          legReference: leg.legReference || generateLegReference(tradeReference, index),
+          parentTradeId: initialData?.id || '',
+          buySell: leg.buySell,
+          product: leg.product,
+          instrument: leg.instrument,
+          tradingPeriod: leg.tradingPeriod,
+          periodStart: leg.pricingPeriodStart,
+          periodEnd: leg.pricingPeriodEnd,
+          price: leg.price,
+          quantity: leg.quantity,
+          broker: leg.broker,
+          // Use empty objects for formula fields to satisfy server expectations
+          formula: { tokens: [], exposures: { physical: {}, pricing: {} } },
+          mtmFormula: { tokens: [], exposures: { physical: {}, pricing: {} } }
+        };
+      });
+      
+      // Submit the complete trade object
+      onSubmit({
+        id: initialData?.id,
+        tradeReference,
+        tradeType: 'paper',
+        counterparty,
+        comment,
+        legs: tradeLegs
+      });
+    } else {
+      toast.error('Please fix all validation errors before submitting');
+    }
+  };
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -496,210 +490,151 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           </Button>
         </div>
         
-        {legs.map((leg, index) => (
-          <Card key={leg.id} className="border border-muted">
-            <CardHeader className="p-4 flex flex-row items-start justify-between">
-              <CardTitle className="text-md">
-                Leg {index + 1} ({generateLegReference(tradeReference, index)})
-              </CardTitle>
-              {legs.length > 1 && (
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => removeLeg(leg.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-buy-sell`}>Buy/Sell</Label>
-                  <Select 
-                    value={leg.buySell} 
-                    onValueChange={(value) => updateLeg(leg.id, 'buySell', value as BuySell)}
-                  >
-                    <SelectTrigger id={`leg-${leg.id}-buy-sell`}>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="buy">Buy</SelectItem>
-                      <SelectItem value="sell">Sell</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-product`}>Product</Label>
-                  <Select 
-                    value={leg.product} 
-                    onValueChange={(value) => updateLeg(leg.id, 'product', value as Product)}
-                  >
-                    <SelectTrigger id={`leg-${leg.id}-product`}>
-                      <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FAME0">FAME0</SelectItem>
-                      <SelectItem value="RME">RME</SelectItem>
-                      <SelectItem value="UCOME">UCOME</SelectItem>
-                      <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                      <SelectItem value="RME DC">RME DC</SelectItem>
-                      <SelectItem value="HVO">HVO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-instrument`}>Instrument</Label>
-                  <Select 
-                    value={leg.instrument} 
-                    onValueChange={(value) => updateLeg(leg.id, 'instrument', value)}
-                  >
-                    <SelectTrigger id={`leg-${leg.id}-instrument`}>
-                      <SelectValue placeholder="Select instrument" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                      <SelectItem value="Argus RME">Argus RME</SelectItem>
-                      <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                      <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                      <SelectItem value="Platts diesel">Platts diesel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-broker`}>Broker</Label>
-                  <Input 
-                    id={`leg-${leg.id}-broker`} 
-                    value={leg.broker} 
-                    onChange={(e) => updateLeg(leg.id, 'broker', e.target.value)} 
-                    required 
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-period`}>Trading Period</Label>
-                  <Select 
-                    value={leg.tradingPeriod} 
-                    onValueChange={(value) => handleTradingPeriodChange(leg.id, value)}
-                    disabled={isLoadingPeriods}
-                  >
-                    <SelectTrigger id={`leg-${leg.id}-period`}>
-                      <SelectValue placeholder={isLoadingPeriods ? "Loading periods..." : "Select period"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="" disabled>Select a trading period</SelectItem>
-                      
-                      {/* Monthly periods */}
-                      <SelectItem value="" disabled className="font-semibold">Monthly Periods</SelectItem>
-                      {tradingPeriods
-                        .filter(p => p.periodType === 'MONTH')
-                        .map(period => (
-                          <SelectItem key={period.id} value={period.periodCode}>
-                            {period.periodCode}
-                          </SelectItem>
-                        ))
-                      }
-                      
-                      {/* Quarterly periods */}
-                      <SelectItem value="" disabled className="font-semibold mt-2">Quarterly Periods</SelectItem>
-                      {tradingPeriods
-                        .filter(p => p.periodType === 'QUARTER')
-                        .map(period => (
-                          <SelectItem key={period.id} value={period.periodCode}>
-                            {period.periodCode}
-                          </SelectItem>
-                        ))
-                      }
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Period Range</Label>
-                  <div className="text-sm border border-muted rounded-md p-2 bg-gray-50">
-                    {leg.tradingPeriod ? (
-                      <>
-                        <p><span className="font-medium">Start:</span> {leg.pricingPeriodStart.toLocaleDateString()}</p>
-                        <p><span className="font-medium">End:</span> {leg.pricingPeriodEnd.toLocaleDateString()}</p>
-                      </>
-                    ) : (
-                      <p className="text-muted-foreground">Select a trading period</p>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Leg #</TableHead>
+                <TableHead>Buy/Sell</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Instrument</TableHead>
+                <TableHead>Broker</TableHead>
+                <TableHead>Trading Period</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Quantity (MT)</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {legs.map((leg, index) => (
+                <TableRow key={leg.id}>
+                  <TableCell>
+                    {index + 1} ({leg.legReference || generateLegReference(tradeReference, index)})
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={leg.buySell} 
+                      onValueChange={(value) => updateLeg(leg.id, 'buySell', value as BuySell)}
+                    >
+                      <SelectTrigger className="w-[80px]">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="buy">Buy</SelectItem>
+                        <SelectItem value="sell">Sell</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={leg.product} 
+                      onValueChange={(value) => updateLeg(leg.id, 'product', value as Product)}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FAME0">FAME0</SelectItem>
+                        <SelectItem value="RME">RME</SelectItem>
+                        <SelectItem value="UCOME">UCOME</SelectItem>
+                        <SelectItem value="UCOME-5">UCOME-5</SelectItem>
+                        <SelectItem value="RME DC">RME DC</SelectItem>
+                        <SelectItem value="HVO">HVO</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={leg.instrument} 
+                      onValueChange={(value) => updateLeg(leg.id, 'instrument', value)}
+                    >
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
+                        <SelectItem value="Argus RME">Argus RME</SelectItem>
+                        <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                        <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
+                        <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      value={leg.broker} 
+                      onChange={(e) => updateLeg(leg.id, 'broker', e.target.value)} 
+                      className="w-[100px]"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={leg.tradingPeriod} 
+                      onValueChange={(value) => handleTradingPeriodChange(leg.id, value)}
+                      disabled={isLoadingPeriods}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder={isLoadingPeriods ? "Loading..." : "Select period"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="" disabled>Select period</SelectItem>
+                        {/* Monthly periods */}
+                        <SelectItem value="" disabled className="font-semibold">Monthly</SelectItem>
+                        {tradingPeriods
+                          .filter(p => p.periodType === 'MONTH')
+                          .map(period => (
+                            <SelectItem key={period.id} value={period.periodCode}>
+                              {period.periodCode}
+                            </SelectItem>
+                          ))
+                        }
+                        
+                        {/* Quarterly periods */}
+                        <SelectItem value="" disabled className="font-semibold mt-2">Quarterly</SelectItem>
+                        {tradingPeriods
+                          .filter(p => p.periodType === 'QUARTER')
+                          .map(period => (
+                            <SelectItem key={period.id} value={period.periodCode}>
+                              {period.periodCode}
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      type="number" 
+                      value={leg.price || ''} 
+                      onChange={(e) => updateLeg(leg.id, 'price', Number(e.target.value))} 
+                      className="w-[90px]"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      type="number" 
+                      value={leg.quantity || ''} 
+                      onChange={(e) => updateLeg(leg.id, 'quantity', Number(e.target.value))} 
+                      className="w-[90px]"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {legs.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeLeg(leg.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded-md p-4 bg-gray-50 mb-4">
-                <Tabs defaultValue="price">
-                  <TabsList className="w-full mb-4">
-                    <TabsTrigger value="price">Price Formula</TabsTrigger>
-                    <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="price">
-                    <div className="mb-2">
-                      <Label className="font-medium">Price Formula</Label>
-                    </div>
-                    <FormulaBuilder 
-                      value={leg.formula || createEmptyFormula()} 
-                      onChange={(formula) => updateLeg(leg.id, 'formula', formula)}
-                      tradeQuantity={leg.quantity || 0}
-                      buySell={leg.buySell}
-                      selectedProduct={leg.product}
-                      formulaType="price"
-                      otherFormula={leg.mtmFormula || createEmptyFormula()}
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="mtm">
-                    <div className="mb-2">
-                      <Label className="font-medium">MTM Pricing Formula</Label>
-                    </div>
-                    <FormulaBuilder 
-                      value={leg.mtmFormula || createEmptyFormula()} 
-                      onChange={(formula) => updateLeg(leg.id, 'mtmFormula', formula)}
-                      tradeQuantity={leg.quantity || 0}
-                      buySell={leg.buySell}
-                      selectedProduct={leg.product}
-                      formulaType="mtm"
-                      otherFormula={leg.formula || createEmptyFormula()}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-price`}>Fixed Price (Optional)</Label>
-                  <Input 
-                    id={`leg-${leg.id}-price`} 
-                    type="number" 
-                    value={leg.price || ''} 
-                    onChange={(e) => updateLeg(leg.id, 'price', Number(e.target.value))} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${leg.id}-quantity`}>Quantity (MT)</Label>
-                  <Input 
-                    id={`leg-${leg.id}-quantity`} 
-                    type="number" 
-                    value={leg.quantity || ''} 
-                    onChange={(e) => updateLeg(leg.id, 'quantity', Number(e.target.value))} 
-                    required 
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
       
       <Separator />
