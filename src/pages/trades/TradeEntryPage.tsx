@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
@@ -20,16 +21,13 @@ const TradeEntryPage = () => {
   
   const handleSubmit = async (tradeData: any) => {
     try {
-      // Extract parent trade data with appropriate defaults
+      // Extract parent trade data
       const parentTrade = {
         trade_reference: tradeData.tradeReference,
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
-        counterparty: tradeData.counterparty || 'Internal', // Default for paper trades
-        comment: tradeData.comment || '' // Ensure we have at least an empty string
+        counterparty: tradeData.counterparty,
       };
-      
-      console.log('Submitting parent trade:', parentTrade);
       
       // Insert parent trade
       const { data: parentTradeData, error: parentTradeError } = await supabase
@@ -65,7 +63,7 @@ const TradeEntryPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula // Save the MTM formula
+          mtm_formula: leg.mtmFormula, // Save the MTM formula
         }));
         
         const { error: legsError } = await supabase
@@ -76,31 +74,28 @@ const TradeEntryPage = () => {
           throw new Error(`Error inserting trade legs: ${legsError.message}`);
         }
       } else {
-        // For paper trades, insert all legs
-        const legs = tradeData.legs.map((leg: any) => ({
-          leg_reference: leg.legReference,
+        // For paper trades, extract and save both pricing and MTM formulas
+        const legData = {
+          leg_reference: generateTradeReference() + '-a',
           parent_trade_id: parentTradeId,
-          buy_sell: leg.buySell,
-          product: leg.product,
-          instrument: leg.instrument,
-          trading_period: leg.tradingPeriod,
-          pricing_period_start: leg.periodStart,
-          pricing_period_end: leg.periodEnd,
-          price: leg.price,
-          quantity: leg.quantity,
-          broker: leg.broker,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula
-        }));
+          buy_sell: tradeData.buySell,
+          product: tradeData.product,
+          instrument: tradeData.instrument,
+          pricing_period_start: tradeData.pricingPeriodStart,
+          pricing_period_end: tradeData.pricingPeriodEnd,
+          price: tradeData.price,
+          quantity: tradeData.quantity,
+          broker: tradeData.broker,
+          pricing_formula: tradeData.formula,
+          mtm_formula: tradeData.mtmFormula, // Save the MTM formula
+        };
         
-        console.log('Submitting paper trade legs:', legs);
-        
-        const { error: legsError } = await supabase
+        const { error: legError } = await supabase
           .from('trade_legs')
-          .insert(legs);
+          .insert(legData);
           
-        if (legsError) {
-          throw new Error(`Error inserting paper trade legs: ${legsError.message}`);
+        if (legError) {
+          throw new Error(`Error inserting paper trade leg: ${legError.message}`);
         }
       }
       

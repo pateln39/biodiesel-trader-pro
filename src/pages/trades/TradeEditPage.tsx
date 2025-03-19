@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +7,6 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
-// Use the existing PaperTradeForm component
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -33,6 +31,7 @@ const TradeEditPage = () => {
       }
 
       try {
+        // Fetch parent trade data
         const { data: parentTrade, error: parentError } = await supabase
           .from('parent_trades')
           .select('*')
@@ -43,6 +42,7 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
+        // Fetch trade legs
         const { data: tradeLegs, error: legsError } = await supabase
           .from('trade_legs')
           .select('*')
@@ -53,8 +53,10 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
+        // Set trade type based on parent trade
         setTradeType(parentTrade.trade_type as 'physical' | 'paper');
 
+        // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
@@ -111,12 +113,10 @@ const TradeEditPage = () => {
             createdAt: new Date(parentTrade.created_at),
             updatedAt: new Date(parentTrade.updated_at),
             counterparty: parentTrade.counterparty,
-            comment: parentTrade.comment || '',
             buySell: firstLeg.buy_sell as BuySell,
             product: firstLeg.product as Product,
             broker: firstLeg.broker || '',
             instrument: firstLeg.instrument || '',
-            tradingPeriod: firstLeg.trading_period || '',
             price: firstLeg.price || 0,
             quantity: firstLeg.quantity,
             pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
@@ -130,9 +130,8 @@ const TradeEditPage = () => {
               buySell: leg.buy_sell as BuySell,
               product: leg.product as Product,
               instrument: leg.instrument || '',
-              tradingPeriod: leg.trading_period || '',
-              periodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              periodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
               price: leg.price || 0,
               quantity: leg.quantity,
               broker: leg.broker || '',
@@ -164,11 +163,11 @@ const TradeEditPage = () => {
     try {
       if (!id) return;
 
+      // Update the parent trade
       const parentTradeUpdate = {
         trade_reference: updatedTradeData.tradeReference,
         physical_type: updatedTradeData.physicalType,
         counterparty: updatedTradeData.counterparty,
-        comment: updatedTradeData.comment,
         updated_at: new Date().toISOString()
       };
       
@@ -181,7 +180,9 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
+      // Handle the updates for trade legs based on trade type
       if (updatedTradeData.tradeType === 'physical') {
+        // For physical trades, we need to update all legs
         for (const leg of updatedTradeData.legs) {
           const legData = {
             parent_trade_id: id,
@@ -203,6 +204,7 @@ const TradeEditPage = () => {
             updated_at: new Date().toISOString()
           };
 
+          // Update the existing leg
           const { error: legUpdateError } = await supabase
             .from('trade_legs')
             .update(legData)
@@ -213,6 +215,7 @@ const TradeEditPage = () => {
           }
         }
       } else if (updatedTradeData.tradeType === 'paper') {
+        // For paper trades, update all legs
         for (const leg of updatedTradeData.legs) {
           const legData = {
             buy_sell: leg.buySell,
@@ -228,6 +231,7 @@ const TradeEditPage = () => {
             updated_at: new Date().toISOString()
           };
 
+          // Update the existing leg
           const { error: legUpdateError } = await supabase
             .from('trade_legs')
             .update(legData)
@@ -239,12 +243,14 @@ const TradeEditPage = () => {
         }
       }
 
+      // Force invalidate the trades query cache to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['trades'] });
 
       toast.success("Trade updated", {
         description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
       });
 
+      // Navigate back to trades page with state to indicate successful update
       navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
     } catch (error: any) {
       console.error('Error updating trade:', error);
@@ -329,6 +335,7 @@ const TradeEditPage = () => {
                     tradeReference={tradeData.tradeReference} 
                     onSubmit={handleSubmit} 
                     onCancel={handleCancel} 
+                    isEditMode={true}
                     initialData={tradeData as PaperTrade}
                   />
                 </TabsContent>

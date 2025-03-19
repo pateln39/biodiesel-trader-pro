@@ -9,27 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      brokers: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-        }
-        Relationships: []
-      }
       counterparties: {
         Row: {
           created_at: string
@@ -154,42 +133,8 @@ export type Database = {
         }
         Relationships: []
       }
-      paper_trade_products: {
-        Row: {
-          base_product: string | null
-          category: string
-          created_at: string | null
-          display_name: string
-          id: string
-          is_active: boolean | null
-          paired_product: string | null
-          product_code: string
-        }
-        Insert: {
-          base_product?: string | null
-          category: string
-          created_at?: string | null
-          display_name: string
-          id?: string
-          is_active?: boolean | null
-          paired_product?: string | null
-          product_code: string
-        }
-        Update: {
-          base_product?: string | null
-          category?: string
-          created_at?: string | null
-          display_name?: string
-          id?: string
-          is_active?: boolean | null
-          paired_product?: string | null
-          product_code?: string
-        }
-        Relationships: []
-      }
       parent_trades: {
         Row: {
-          comment: string | null
           counterparty: string
           created_at: string
           id: string
@@ -199,7 +144,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          comment?: string | null
           counterparty: string
           created_at?: string
           id?: string
@@ -209,7 +153,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          comment?: string | null
           counterparty?: string
           created_at?: string
           id?: string
@@ -268,33 +211,6 @@ export type Database = {
           instrument_code?: string
           is_active?: boolean | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      product_relationships: {
-        Row: {
-          created_at: string | null
-          default_opposite: string | null
-          id: string
-          paired_product: string | null
-          product: string
-          relationship_type: string
-        }
-        Insert: {
-          created_at?: string | null
-          default_opposite?: string | null
-          id?: string
-          paired_product?: string | null
-          product: string
-          relationship_type: string
-        }
-        Update: {
-          created_at?: string | null
-          default_opposite?: string | null
-          id?: string
-          paired_product?: string | null
-          product?: string
-          relationship_type?: string
         }
         Relationships: []
       }
@@ -361,7 +277,6 @@ export type Database = {
           quantity: number
           sustainability: string | null
           tolerance: number | null
-          trading_period: string | null
           unit: string | null
           updated_at: string
         }
@@ -391,7 +306,6 @@ export type Database = {
           quantity: number
           sustainability?: string | null
           tolerance?: number | null
-          trading_period?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -421,7 +335,6 @@ export type Database = {
           quantity?: number
           sustainability?: string | null
           tolerance?: number | null
-          trading_period?: string | null
           unit?: string | null
           updated_at?: string
         }
@@ -434,36 +347,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      trading_periods: {
-        Row: {
-          created_at: string | null
-          end_date: string
-          id: string
-          is_active: boolean | null
-          period_code: string
-          period_type: string
-          start_date: string
-        }
-        Insert: {
-          created_at?: string | null
-          end_date: string
-          id?: string
-          is_active?: boolean | null
-          period_code: string
-          period_type: string
-          start_date: string
-        }
-        Update: {
-          created_at?: string | null
-          end_date?: string
-          id?: string
-          is_active?: boolean | null
-          period_code?: string
-          period_type?: string
-          start_date?: string
-        }
-        Relationships: []
       }
     }
     Views: {
