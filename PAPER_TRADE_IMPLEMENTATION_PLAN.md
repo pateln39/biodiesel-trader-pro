@@ -49,8 +49,7 @@ interface PaperTradePage {
   
   // Trade Table Section
   tradeTable: {
-    legA: TradeLeg[];
-    legB: TradeLeg[];
+    rows: TradeLeg[];
     mtmFormula: FormulaConfig[];
   }
   
@@ -72,10 +71,10 @@ Broker:  [Marex ▼] [+ Add Broker]
 
 Trade Table:
 -----------
-LEG A                            LEG B                            MTM
-[+]                             [+]
+LEFT SIDE                         RIGHT SIDE                        MTM
+[+]                             
 Product  Qty   Period  Price     Product  Qty   Period  Price    Formula   Period
-[Dynamic Rows with + buttons on both sides]
+[Dynamic Rows with + button on left side only]
 
 Exposure Table:
 --------------
@@ -88,23 +87,44 @@ Exposure Table:
 ### A. Trade Table Logic
 
 #### Row Addition Rules
-- Left + button: User fills LEG A, auto-populates LEG B
-- Right + button: User fills LEG B, auto-populates LEG A
-- Auto-population based on product relationships
+- Each row represents a trade leg that needs to be logged in the database
+- Plus (+) button exists only on the LEFT SIDE
+- When user selects a product on LEFT SIDE, the RIGHT SIDE product is auto-determined
+
+#### Auto-Population Flow
+1. User clicks "+" on LEFT SIDE
+2. User selects product (e.g., UCOME diff)
+   - System automatically sets:
+     * LEFT Product = UCOME
+     * RIGHT Product = LSGO (based on product relationship)
+3. User inputs on LEFT:
+   - Quantity (e.g., +1000)
+   - Period (e.g., Apr-25)
+   - Price (e.g., 500)
+4. System automatically sets on RIGHT:
+   - Quantity = opposite of LEFT (-1000)
+   - Period = same as LEFT (Apr-25)
+   - Price field remains empty for user input
+5. MTM formula is automatically set based on the selected product (UCOME diff)
 
 #### Product Rules
 ```typescript
 const productRules = {
   'DIFF': {
-    autoPopulate: 'LSGO',
+    // For diff products like UCOME diff
+    leftProduct: 'UCOME',
+    rightProduct: 'LSGO',
     quantityBehavior: 'opposite'
   },
   'SPREAD': {
-    usesPairedProduct: true,
+    // For spread products like UCOME-FAME
+    leftProduct: 'UCOME',
+    rightProduct: 'FAME',
     quantityBehavior: 'opposite'
   },
   'FP': {
-    autoPopulate: false
+    // For fixed price products
+    singleSided: true
   }
 };
 ```
@@ -138,7 +158,16 @@ interface ExposureRow {
 - Only populate relevant columns
 - Real-time updates
 
-### C. Validation Rules
+### C. MTM Formula Rules
+
+The MTM formula is now product-dependent:
+- For Product FP (Fixed Price): MTM = Product FP
+- For Product diff (e.g., UCOME diff): MTM = Product diff
+- For Spread products (e.g., UCOME-FAME): MTM = Product spread name
+
+This means the formula is automatically determined by the product selection.
+
+### D. Validation Rules
 
 #### Comment
 - Required field
@@ -164,12 +193,10 @@ interface ExposureRow {
 ### A. Trade Table Component
 ```typescript
 interface TradeTableProps {
-  legA: TradeLeg[];
-  legB: TradeLeg[];
-  onAddLegA: () => void;
-  onAddLegB: () => void;
-  onUpdateLegA: (index: number, updates: Partial<TradeLeg>) => void;
-  onUpdateLegB: (index: number, updates: Partial<TradeLeg>) => void;
+  rows: TradeLeg[];
+  onAddRow: () => void;
+  onUpdateLeftSide: (index: number, updates: Partial<TradeLeg>) => void;
+  onUpdateRightSide: (index: number, updates: Partial<TradeLeg>) => void;
   onRemoveRow: (index: number) => void;
 }
 ```
@@ -200,8 +227,7 @@ interface PageState {
   comment: string;
   brokerId: string;
   trades: {
-    legA: TradeLeg[];
-    legB: TradeLeg[];
+    rows: TradeLeg[];
   };
   exposures: ExposureRow[];
   validation: ValidationState;
