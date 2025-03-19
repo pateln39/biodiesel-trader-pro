@@ -1,20 +1,187 @@
 
-import React from 'react';
-import { Download, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Download, Calendar, Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { mockExposureReport } from '@/data/mockData';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardContent 
+} from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 
+// Types for exposure data
+interface ExposureItem {
+  month: string;
+  grade: string;
+  physical: number;
+  pricing: number;
+  paper: number;
+  netExposure: number;
+}
+
+interface GradeExposures {
+  [grade: string]: {
+    physical: number;
+    pricing: number;
+    paper: number;
+    netExposure: number;
+  };
+}
+
+interface MonthlyExposures {
+  [month: string]: GradeExposures;
+}
+
 const ExposurePage = () => {
-  // Group exposure data by month
-  const groupedByMonth = mockExposureReport.reduce((acc, item) => {
-    if (!acc[item.month]) {
-      acc[item.month] = [];
+  const [showAllGrades, setShowAllGrades] = useState(false);
+
+  // Fetch trade legs to calculate exposures
+  const { data: tradeLegs, isLoading } = useQuery({
+    queryKey: ['exposure-data'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trade_legs')
+        .select(`
+          id,
+          leg_reference,
+          buy_sell,
+          product,
+          quantity,
+          pricing_formula,
+          mtm_formula,
+          trading_period
+        `)
+        .order('trading_period', { ascending: true });
+        
+      if (error) throw error;
+      return data || [];
     }
-    acc[item.month].push(item);
-    return acc;
-  }, {} as Record<string, typeof mockExposureReport>);
+  });
+
+  // Calculate exposures from trade legs
+  const exposureData = useMemo(() => {
+    if (!tradeLegs || tradeLegs.length === 0) return {};
+
+    const exposures: MonthlyExposures = {};
+    
+    // Process each trade leg
+    tradeLegs.forEach(leg => {
+      const month = leg.trading_period || 'Unknown';
+      const grade = leg.product || 'Unknown';
+      const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+      const quantity = (leg.quantity || 0) * quantityMultiplier;
+      
+      // Initialize month and grade if they don't exist
+      if (!exposures[month]) {
+        exposures[month] = {};
+      }
+      
+      if (!exposures[month][grade]) {
+        exposures[month][grade] = {
+          physical: 0,
+          pricing: 0,
+          paper: 0,
+          netExposure: 0
+        };
+      }
+      
+      // Add physical exposure
+      exposures[month][grade].physical += quantity;
+      
+      // Process pricing formula exposures
+      if (leg.pricing_formula?.exposures?.pricing) {
+        Object.entries(leg.pricing_formula.exposures.pricing).forEach(([instrument, value]) => {
+          if (!exposures[month][instrument]) {
+            exposures[month][instrument] = {
+              physical: 0,
+              pricing: 0,
+              paper: 0,
+              netExposure: 0
+            };
+          }
+          
+          exposures[month][instrument].pricing += Number(value) || 0;
+        });
+      }
+      
+      // Process MTM formula exposures (paper)
+      if (leg.mtm_formula?.exposures?.physical) {
+        Object.entries(leg.mtm_formula.exposures.physical).forEach(([instrument, value]) => {
+          if (!exposures[month][instrument]) {
+            exposures[month][instrument] = {
+              physical: 0,
+              pricing: 0,
+              paper: 0,
+              netExposure: 0
+            };
+          }
+          
+          exposures[month][instrument].paper += Number(value) || 0;
+        });
+      }
+    });
+    
+    // Calculate net exposure for each grade in each month
+    Object.keys(exposures).forEach(month => {
+      Object.keys(exposures[month]).forEach(grade => {
+        const { physical, pricing, paper } = exposures[month][grade];
+        exposures[month][grade].netExposure = physical + pricing + paper;
+      });
+    });
+    
+    return exposures;
+  }, [tradeLegs]);
+
+  // Convert exposures object to array for rendering
+  const exposureItems = useMemo(() => {
+    const items: ExposureItem[] = [];
+    
+    Object.entries(exposureData).forEach(([month, grades]) => {
+      Object.entries(grades).forEach(([grade, values]) => {
+        // Skip rows with all zeros if not showing all grades
+        if (!showAllGrades && 
+            values.physical === 0 && 
+            values.pricing === 0 && 
+            values.paper === 0 &&
+            values.netExposure === 0) {
+          return;
+        }
+        
+        items.push({
+          month,
+          grade,
+          physical: values.physical,
+          pricing: values.pricing,
+          paper: values.paper,
+          netExposure: values.netExposure
+        });
+      });
+    });
+    
+    // Sort by month and then by grade
+    return items.sort((a, b) => {
+      if (a.month !== b.month) return a.month.localeCompare(b.month);
+      return a.grade.localeCompare(b.grade);
+    });
+  }, [exposureData, showAllGrades]);
+
+  // Group exposure data by month
+  const groupedByMonth = useMemo(() => {
+    const grouped: Record<string, ExposureItem[]> = {};
+    
+    exposureItems.forEach(item => {
+      if (!grouped[item.month]) {
+        grouped[item.month] = [];
+      }
+      grouped[item.month].push(item);
+    });
+    
+    return grouped;
+  }, [exposureItems]);
 
   // Function to get color class based on value
   const getValueColorClass = (value: number) => {
@@ -38,6 +205,13 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
+            <Button 
+              variant="outline"
+              onClick={() => setShowAllGrades(!showAllGrades)}
+            >
+              <Filter className="mr-2 h-4 w-4" /> 
+              {showAllGrades ? 'Hide Empty' : 'Show All'}
+            </Button>
             <Button variant="outline">
               <Calendar className="mr-2 h-4 w-4" /> Change Period
             </Button>
@@ -47,65 +221,83 @@ const ExposurePage = () => {
           </div>
         </div>
 
-        <div className="space-y-6">
-          {Object.entries(groupedByMonth).map(([month, items]) => (
-            <div key={month} className="bg-card rounded-md border shadow-sm">
-              <div className="p-4 border-b">
-                <h2 className="font-semibold">{month}</h2>
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-center items-center h-40">
+                <p className="text-muted-foreground">Loading exposure data...</p>
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-muted/50">
-                      <th className="text-left p-3 font-medium">Grade</th>
-                      <th className="text-right p-3 font-medium">Physical (MT)</th>
-                      <th className="text-right p-3 font-medium">Pricing (MT)</th>
-                      <th className="text-right p-3 font-medium">Paper (MT)</th>
-                      <th className="text-right p-3 font-medium">Net Exposure (MT)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, index) => (
-                      <tr key={index} className="border-t hover:bg-muted/50">
-                        <td className="p-3 font-medium">{item.grade}</td>
-                        <td className={`p-3 text-right ${getValueColorClass(item.physical)}`}>
-                          {formatValue(item.physical)}
+            </CardContent>
+          </Card>
+        ) : Object.keys(groupedByMonth).length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-center items-center h-40">
+                <p className="text-muted-foreground">No exposure data found.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {Object.entries(groupedByMonth).map(([month, items]) => (
+              <Card key={month} className="overflow-hidden">
+                <CardHeader className="bg-muted/30 py-3">
+                  <CardTitle className="text-lg font-medium">{month}</CardTitle>
+                </CardHeader>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-muted/50">
+                        <th className="text-left p-3 font-medium">Grade</th>
+                        <th className="text-right p-3 font-medium">Physical (MT)</th>
+                        <th className="text-right p-3 font-medium">Pricing (MT)</th>
+                        <th className="text-right p-3 font-medium">Paper (MT)</th>
+                        <th className="text-right p-3 font-medium">Net Exposure (MT)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, index) => (
+                        <tr key={`${item.month}-${item.grade}-${index}`} className="border-t hover:bg-muted/50">
+                          <td className="p-3 font-medium">{item.grade}</td>
+                          <td className={`p-3 text-right ${getValueColorClass(item.physical)}`}>
+                            {formatValue(item.physical)}
+                          </td>
+                          <td className={`p-3 text-right ${getValueColorClass(item.pricing)}`}>
+                            {formatValue(item.pricing)}
+                          </td>
+                          <td className={`p-3 text-right ${getValueColorClass(item.paper)}`}>
+                            {formatValue(item.paper)}
+                          </td>
+                          <td className={`p-3 text-right font-medium ${getValueColorClass(item.netExposure)}`}>
+                            {formatValue(item.netExposure)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t bg-muted/30">
+                        <td className="p-3 font-medium">Total</td>
+                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.physical, 0))}`}>
+                          {formatValue(items.reduce((sum, item) => sum + item.physical, 0))}
                         </td>
-                        <td className={`p-3 text-right ${getValueColorClass(item.pricing)}`}>
-                          {formatValue(item.pricing)}
+                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.pricing, 0))}`}>
+                          {formatValue(items.reduce((sum, item) => sum + item.pricing, 0))}
                         </td>
-                        <td className={`p-3 text-right ${getValueColorClass(item.paper)}`}>
-                          {formatValue(item.paper)}
+                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.paper, 0))}`}>
+                          {formatValue(items.reduce((sum, item) => sum + item.paper, 0))}
                         </td>
-                        <td className={`p-3 text-right font-medium ${getValueColorClass(item.netExposure)}`}>
-                          {formatValue(item.netExposure)}
+                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.netExposure, 0))}`}>
+                          {formatValue(items.reduce((sum, item) => sum + item.netExposure, 0))}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t bg-muted/30">
-                      <td className="p-3 font-medium">Total</td>
-                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.physical, 0))}`}>
-                        {formatValue(items.reduce((sum, item) => sum + item.physical, 0))}
-                      </td>
-                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.pricing, 0))}`}>
-                        {formatValue(items.reduce((sum, item) => sum + item.pricing, 0))}
-                      </td>
-                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.paper, 0))}`}>
-                        {formatValue(items.reduce((sum, item) => sum + item.paper, 0))}
-                      </td>
-                      <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.netExposure, 0))}`}>
-                        {formatValue(items.reduce((sum, item) => sum + item.netExposure, 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
+                    </tfoot>
+                  </table>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );
