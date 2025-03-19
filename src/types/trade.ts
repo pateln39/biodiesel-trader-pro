@@ -2,7 +2,7 @@
 import { TradeType } from './index';
 
 export type BuySell = "buy" | "sell";
-export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
+export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "LSGO" | "ICE GASOIL FUTURES";
 export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";

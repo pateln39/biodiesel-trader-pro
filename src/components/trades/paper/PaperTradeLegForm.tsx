@@ -74,7 +74,8 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
                 <SelectItem value="UCOME">UCOME</SelectItem>
                 <SelectItem value="FAME0">FAME0</SelectItem>
                 <SelectItem value="RME">RME</SelectItem>
-                <SelectItem value="HVO">HVO</SelectItem>
+                <SelectItem value="UCOME-5">UCOME-5</SelectItem>
+                <SelectItem value="RME DC">RME DC</SelectItem>
                 <SelectItem value="LSGO">LSGO</SelectItem>
                 <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
               </SelectContent>
@@ -149,7 +150,7 @@ const PaperTradeLegForm: React.FC<PaperTradeLegFormProps> = ({
               onChange={(formula) => updateField('formula', formula)}
               tradeQuantity={leg.quantity || 0}
               buySell={leg.buySell}
-              selectedProduct={leg.product as any}
+              selectedProduct={leg.product}
               formulaType="price"
             />
           </div>

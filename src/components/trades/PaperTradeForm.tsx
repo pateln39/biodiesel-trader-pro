@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product } from '@/types';
+import { BuySell } from '@/types';
 import { PaperParentTrade, PaperTradeLeg, PaperTrade } from '@/types/paper';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,7 @@ interface PaperTradeFormProps {
 
 interface PaperLegFormState {
   buySell: BuySell;
-  product: Product;
+  product: string;
   instrument: string;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
@@ -99,7 +99,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     } else if (field === 'buySell') {
       (newLegs[index] as any)[field] = value as BuySell;
     } else if (field === 'product') {
-      (newLegs[index] as any)[field] = value as Product;
+      (newLegs[index] as any)[field] = value as string;
     } else if (field === 'formula' || field === 'mtmFormula') {
       (newLegs[index] as any)[field] = value as PricingFormula;
     } else {
@@ -266,7 +266,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                   <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
                   <Select 
                     value={leg.product} 
-                    onValueChange={(value) => updateLeg(legIndex, 'product', value as Product)}
+                    onValueChange={(value) => updateLeg(legIndex, 'product', value as string)}
                   >
                     <SelectTrigger id={`leg-${legIndex}-product`}>
                       <SelectValue placeholder="Select product" />
@@ -277,6 +277,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                       <SelectItem value="UCOME">UCOME</SelectItem>
                       <SelectItem value="UCOME-5">UCOME-5</SelectItem>
                       <SelectItem value="RME DC">RME DC</SelectItem>
+                      <SelectItem value="LSGO">LSGO</SelectItem>
+                      <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
