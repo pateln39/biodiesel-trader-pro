@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCcw } from 'lucide-react';
@@ -96,7 +95,6 @@ const TradesPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
 
-  // Prevent multiple refreshes by tracking refresh state
   const refreshInProgress = useRef(false);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
@@ -182,7 +180,7 @@ const TradesPage = () => {
   };
 
   const cancelDelete = () => {
-    if (isDeleting) return; // Prevent cancellation during active deletion
+    if (isDeleting) return;
     
     setDeletingTradeId(null);
     setDeletingLegId(null);
@@ -191,21 +189,18 @@ const TradesPage = () => {
     setDeleteProgress(0);
   };
 
-  // Refresh data without triggering multiple refreshes
   const safeRefreshData = useCallback(() => {
     if (refreshInProgress.current) return;
     
     refreshInProgress.current = true;
     setIsRefreshing(true);
     
-    // Use Promise.all to refresh all data sources simultaneously
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['trades'] }),
       queryClient.invalidateQueries({ queryKey: ['paper-trades'] }),
       queryClient.invalidateQueries({ queryKey: ['exposure-data'] })
     ])
     .finally(() => {
-      // Reset refresh flags after a short delay
       setTimeout(() => {
         refreshInProgress.current = false;
         setIsRefreshing(false);
@@ -213,23 +208,18 @@ const TradesPage = () => {
     });
   }, [queryClient]);
 
-  // Completely refactored delete confirmation function
   const confirmDelete = async () => {
-    if (isDeleting || !showDeleteConfirmation) return; // Guard clause
+    if (isDeleting || !showDeleteConfirmation) return;
     
-    // Set deleting state and close dialog immediately
     setIsDeleting(true);
     setShowDeleteConfirmation(false);
     setDeleteProgress(10);
 
     try {
-      // Create delete operation based on deleteMode
       const deleteOperation = async () => {
-        // Progress simulation for better UX
         setDeleteProgress(30);
         
         if (deleteMode === 'trade' && deletingTradeId) {
-          // Delete trade legs first
           setDeleteProgress(50);
           const { error: legsError } = await supabase
             .from('trade_legs')
@@ -240,7 +230,6 @@ const TradesPage = () => {
             throw legsError;
           }
           
-          // Then delete parent trade
           setDeleteProgress(70);
           const { error: parentError } = await supabase
             .from('parent_trades')
@@ -269,11 +258,10 @@ const TradesPage = () => {
         throw new Error("Invalid delete configuration");
       };
       
-      // Execute delete operation with refresh
       const successMessage = await executeWithRefresh(
         deleteOperation,
         safeRefreshData,
-        500 // Wait 500ms before refreshing data
+        500
       );
       
       setDeleteProgress(100);
@@ -285,7 +273,6 @@ const TradesPage = () => {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     } finally {
-      // Reset all delete-related state
       setIsDeleting(false);
       setDeletingTradeId(null);
       setDeletingLegId(null);
@@ -294,7 +281,6 @@ const TradesPage = () => {
     }
   };
 
-  // Manual refresh function for user-triggered refreshes
   const handleManualRefresh = () => {
     if (isRefreshing) return;
     
