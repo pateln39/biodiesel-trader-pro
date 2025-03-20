@@ -142,14 +142,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           exposures[monthIndex][rightProduct] += leg.rightSide.quantity || 0;
         }
       }
-      
-      if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
-        Object.entries(leg.mtmFormula.exposures.physical).forEach(([product, value]) => {
-          if (exposures[monthIndex][product] !== undefined) {
-            exposures[monthIndex][product] += Number(value) || 0;
-          }
-        });
-      }
     });
     
     setExposureData(exposures);
