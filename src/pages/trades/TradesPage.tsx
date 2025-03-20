@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
@@ -68,7 +69,7 @@ const TradesPage = () => {
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   
-  const { paperTrades, isLoading: paperLoading, error: paperError } = usePaperTrades();
+  const { paperTrades, isLoading: paperLoading, error: paperError, refetchPaperTrades } = usePaperTrades();
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
   
@@ -89,9 +90,7 @@ const TradesPage = () => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
-      toast({
-        variant: "destructive",
-        title: "Failed to load trades",
+      toast.error("Failed to load trades", {
         description: combinedError instanceof Error ? combinedError.message : 'Unknown error occurred'
       });
     } else {
@@ -105,10 +104,7 @@ const TradesPage = () => {
       
       setTimeout(() => {
         console.log(`Saving comment for trade ${tradeId}: ${comment}`);
-        toast({
-          title: "Comment saved",
-          description: "Your comment has been saved successfully."
-        });
+        toast.success("Comment saved");
         setSavingComments(prev => ({ ...prev, [tradeId]: false }));
       }, 500);
     }, 1000),
@@ -138,10 +134,7 @@ const TradesPage = () => {
     
     setTimeout(() => {
       console.log(`Saving comment for paper trade ${tradeId}: ${paperComments[tradeId]}`);
-      toast({
-        title: "Comment saved",
-        description: "Your comment has been saved successfully."
-      });
+      toast.success("Comment saved");
       setSavingPaperComments(prev => ({ ...prev, [tradeId]: false }));
     }, 500);
   };
@@ -182,7 +175,8 @@ const TradesPage = () => {
     
     try {
       if (deleteMode === 'trade' && deletingTradeId) {
-        const { data: legs, error: legsError } = await supabase
+        // First delete all legs for this trade
+        const { error: legsError } = await supabase
           .from('trade_legs')
           .delete()
           .eq('parent_trade_id', deletingTradeId);
@@ -191,6 +185,7 @@ const TradesPage = () => {
           throw legsError;
         }
         
+        // Then delete the parent trade
         const { error: parentError } = await supabase
           .from('parent_trades')
           .delete()
@@ -200,10 +195,7 @@ const TradesPage = () => {
           throw parentError;
         }
         
-        toast({
-          title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`,
-          description: "Trade has been deleted successfully."
-        });
+        toast.success(`${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`);
       } else if (deleteMode === 'leg' && deletingLegId) {
         const { error } = await supabase
           .from('trade_legs')
@@ -214,27 +206,28 @@ const TradesPage = () => {
           throw error;
         }
         
-        toast({
-          title: "Trade leg deleted",
-          description: "Trade leg has been deleted successfully."
-        });
+        toast.success("Trade leg deleted");
       }
-      
+
+      // Close the dialog first
       setShowDeleteConfirmation(false);
-      setIsDeleting(false);
+      
+      // Then reset state
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
+      setIsDeleting(false);
       
-      setTimeout(() => {
+      // Explicitly invalidate queries to refresh data
+      if (deleteItemDetails.tradeType === 'paper') {
+        refetchPaperTrades();
+      } else {
         refetchTrades();
-      }, 100);
+      }
 
     } catch (error) {
       console.error('Error deleting:', error);
-      toast({
-        variant: "destructive",
-        title: "Deletion failed",
+      toast.error("Deletion failed", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
       setIsDeleting(false);
@@ -297,7 +290,11 @@ const TradesPage = () => {
           {pageError}
           <div className="mt-2">
             <Button variant="outline" size="sm" onClick={() => {
-              refetchTrades();
+              if (activeTab === 'physical') {
+                refetchTrades();
+              } else {
+                refetchPaperTrades();
+              }
             }}>
               Try Again
             </Button>
@@ -477,7 +474,7 @@ const TradesPage = () => {
                   {paperError instanceof Error ? paperError.message : 'Unknown error occurred'}
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
+              <Button variant="outline" size="sm" onClick={() => refetchPaperTrades()}>
                 Try Again
               </Button>
             </div>
