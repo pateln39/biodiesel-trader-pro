@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -200,9 +199,7 @@ export const usePaperTrades = () => {
             mtm_formula: mtmFormula,
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
-            instrument: instrument,
-            // Explicitly store the relationship type to make retrieval easier
-            relationshipType: leg.relationshipType
+            instrument: instrument
           };
           
           const { error: legError } = await supabase
