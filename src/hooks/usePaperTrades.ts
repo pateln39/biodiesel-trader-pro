@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -15,7 +15,12 @@ export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   
   // Fetch paper trades
-  const { data: paperTrades, isLoading, error } = useQuery({
+  const { 
+    data: paperTrades = [], 
+    isLoading, 
+    error,
+    refetch
+  } = useQuery({
     queryKey: ['paper-trades'],
     queryFn: async () => {
       // Fetch parent trades of type 'paper'
@@ -99,9 +104,49 @@ export const usePaperTrades = () => {
       );
       
       return tradesWithLegs as PaperTrade[];
-    }
+    },
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0, // Always consider data stale to force refetch when component mounts
+    refetchInterval: 30000, // Refetch every 30 seconds to match useTrades behavior
   });
   
+  // Set up real-time subscription to paper trades changes
+  useEffect(() => {
+    // Subscribe to changes on parent_trades table for paper trades
+    const parentTradesChannel = supabase
+      .channel('paper:parent_trades')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'parent_trades',
+        filter: 'trade_type=eq.paper'
+      }, () => {
+        console.log('Paper trades changed, refetching...');
+        refetch();
+      })
+      .subscribe();
+
+    // Subscribe to changes on trade_legs table related to paper trades
+    const tradeLegsChannel = supabase
+      .channel('paper:trade_legs')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'trade_legs' 
+      }, () => {
+        console.log('Trade legs changed, refetching paper trades...');
+        refetch();
+      })
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(parentTradesChannel);
+      supabase.removeChannel(tradeLegsChannel);
+    };
+  }, [refetch]);
+
   // Create paper trade mutation
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
@@ -225,12 +270,13 @@ export const usePaperTrades = () => {
       });
     }
   });
-  
+
   return {
     paperTrades,
     isLoading,
     error,
     createPaperTrade,
-    isCreating
+    isCreating,
+    refetchPaperTrades: refetch // Export refetch function for consistency with useTrades
   };
 };

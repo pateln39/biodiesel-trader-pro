@@ -181,6 +181,12 @@ const TradesPage = () => {
     setIsDeleting(true);
     
     try {
+      // First close the dialog to prevent UI freeze before any DB operations
+      setShowDeleteConfirmation(false);
+      
+      let deleteSuccessful = false;
+      let successMessage = '';
+      
       if (deleteMode === 'trade' && deletingTradeId) {
         // Delete trade legs first
         const { error: legsError } = await supabase
@@ -202,7 +208,8 @@ const TradesPage = () => {
           throw parentError;
         }
         
-        toast.success(`${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`);
+        deleteSuccessful = true;
+        successMessage = `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`;
       } else if (deleteMode === 'leg' && deletingLegId) {
         const { error } = await supabase
           .from('trade_legs')
@@ -213,26 +220,28 @@ const TradesPage = () => {
           throw error;
         }
         
-        toast.success("Trade leg deleted");
+        deleteSuccessful = true;
+        successMessage = "Trade leg deleted";
       }
       
-      // First close the dialog to prevent UI freeze
-      setShowDeleteConfirmation(false);
-      
-      // Then schedule cache invalidation with a small delay
-      setTimeout(() => {
+      if (deleteSuccessful) {
+        toast.success(successMessage);
+        
+        // Invalidate relevant queries without setTimeout
         if (deleteItemDetails.tradeType === 'paper') {
           queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         }
         queryClient.invalidateQueries({ queryKey: ['trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-      }, 50);
-      
+      }
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error("Deletion failed", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
+      
+      // Reopen the dialog if there's an error during deletion
+      setShowDeleteConfirmation(true);
     } finally {
       // Clear state regardless of success/failure
       setIsDeleting(false);
