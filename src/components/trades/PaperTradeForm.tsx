@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -41,15 +40,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
   
-  // Trade legs state
   const [tradeLegs, setTradeLegs] = useState<any[]>([]);
   
-  // Get the next 8 months for our exposure data
   const availableMonths = useMemo(() => getNextMonths(8), []);
   
-  // Initialize empty exposure data
   const [exposureData, setExposureData] = useState<any[]>(() => {
-    // Create an initial empty exposure table with the next 8 months
     return availableMonths.map(month => ({
       month,
       UCOME: 0,
@@ -62,7 +57,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   });
   
   useEffect(() => {
-    // Load brokers from database
     const fetchBrokers = async () => {
       const { data, error } = await supabase
         .from('brokers')
@@ -86,7 +80,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     fetchBrokers();
   }, []);
   
-  // Function to add a new broker
   const handleAddBroker = async () => {
     if (!newBrokerName.trim()) {
       toast.error('Broker name cannot be empty');
@@ -117,17 +110,13 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   };
   
-  // Function to handle legs changes
   const handleLegsChange = (newLegs: any[]) => {
     setTradeLegs(newLegs);
     
-    // Calculate exposures based on the leg data
     calculateExposures(newLegs);
   };
   
-  // Calculate exposures from trade legs
   const calculateExposures = (legs: any[]) => {
-    // Create a copy of the exposure data structure with zero values
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
       ['UCOME', 'FAME0', 'RME', 'HVO', 'LSGO', 'ICE GASOIL FUTURES'].forEach(product => {
@@ -136,35 +125,27 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return entry;
     });
     
-    // Process each leg and update exposures
     legs.forEach(leg => {
       if (!leg.period || !leg.product) return;
       
-      // Find the month's index in our exposure data
       const monthIndex = exposures.findIndex(e => e.month === leg.period);
       if (monthIndex === -1) return;
       
-      // Add the physical exposure for this product
       if (exposures[monthIndex][leg.product] !== undefined) {
-        // Adjust quantity based on buy/sell
         const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
         exposures[monthIndex][leg.product] += quantity || 0;
       }
       
-      // For DIFF/SPREAD trades, also handle the right side
       if (leg.rightSide && leg.rightSide.product) {
         const rightProduct = leg.rightSide.product;
         if (exposures[monthIndex][rightProduct] !== undefined) {
-          // Right side quantity is already negative for sell
           exposures[monthIndex][rightProduct] += leg.rightSide.quantity || 0;
         }
       }
       
-      // Handle MTM formula exposures if present
       if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
         Object.entries(leg.mtmFormula.exposures.physical).forEach(([product, value]) => {
           if (exposures[monthIndex][product] !== undefined) {
-            // Use the quantity as specified in the MTM formula
             exposures[monthIndex][product] += Number(value) || 0;
           }
         });
@@ -177,23 +158,19 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Find selected broker name
     const broker = brokers.find(b => b.id === selectedBroker);
     const brokerName = broker?.name || '';
     
-    // Validate form using the new paper trade specific validation
     if (!validatePaperTradeForm(brokerName, tradeLegs)) {
       return;
     }
     
-    // Prepare trade data for submission
     const tradeData = {
       tradeReference,
       tradeType: 'paper',
       comment,
       broker: brokerName,
       legs: tradeLegs.map((leg, index) => {
-        // Create full leg with references
         const legReference = initialData?.legs?.[index]?.legReference || 
                             generateLegReference(tradeReference, index);
                             
@@ -308,12 +285,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 exposureData.map((row, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.UCOME || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.FAME0 || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.RME || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.HVO || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.LSGO || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row['ICE GASOIL FUTURES'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.UCOME || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.FAME0 || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.RME || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.HVO || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.LSGO || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
                   </tr>
                 ))
               ) : (
