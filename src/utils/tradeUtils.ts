@@ -1,4 +1,3 @@
-
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -75,9 +74,9 @@ export const formatMTMDisplay = (
       return `${product} DIFF`;
     case 'SPREAD':
       if (rightSideProduct) {
-        return `${product}-${rightSideProduct} SPREAD`;
+        return `${product}-${rightSideProduct}`;
       }
-      return `${product} SPREAD`;
+      return `${product}`;
     default:
       return product;
   }
