@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download, Calendar, Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -225,14 +224,14 @@ const ExposurePage = () => {
   }, [exposureItems, periods]);
 
   // Function to get color class based on value
-  const getValueColorClass = (value: number) => {
+  const getValueColorClass = (value: number): string => {
     if (value > 0) return 'text-green-600';
     if (value < 0) return 'text-red-600';
     return 'text-muted-foreground';
   };
 
   // Function to format values with sign
-  const formatValue = (value: number) => {
+  const formatValue = (value: number): string => {
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
 

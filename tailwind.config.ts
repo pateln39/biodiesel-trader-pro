@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -7,6 +8,11 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+	],
+	safelist: [
+		'text-green-600',
+		'text-red-600',
+		'text-muted-foreground'
 	],
 	prefix: "",
 	theme: {
