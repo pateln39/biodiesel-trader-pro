@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -18,7 +17,7 @@ import {
   PricingPeriodType 
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade } from '@/types';
+import { PhysicalTrade, PaperTrade } from '@/types';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
@@ -150,6 +149,21 @@ const MTMPage = () => {
   };
 
   const totalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
+
+  const renderPaperFormula = (trade: PaperTrade) => {
+    if (!trade.legs || trade.legs.length === 0) {
+      return <span className="text-muted-foreground italic">No formula</span>;
+    }
+    
+    const firstLeg = trade.legs[0];
+    
+    // For MTM formula display use the dash format for instrument names
+    return <span>{formatMTMDisplay(
+      firstLeg.product,
+      firstLeg.relationshipType,
+      firstLeg.rightSide?.product
+    )}</span>;
+  };
 
   return (
     <Layout>

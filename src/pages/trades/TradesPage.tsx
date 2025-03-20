@@ -500,36 +500,13 @@ const TradesPage = () => {
                 {paperTrades && paperTrades.length > 0 ? (
                   paperTrades.flatMap((trade) => {
                     return trade.legs.map((leg, legIndex) => {
-                      let productDisplay: DisplayProduct = leg.product;
+                      let productDisplay = formatProductDisplay(
+                        leg.product,
+                        leg.relationshipType,
+                        leg.rightSide?.product
+                      );
                       
-                      if (leg.instrument) {
-                        const parts = leg.instrument.split(' ');
-                        const relationshipType = parts.pop();
-                        
-                        if (relationshipType === 'DIFF') {
-                          productDisplay = `${leg.product}/LSGO`;
-                          if (leg.rightSide?.product) {
-                            productDisplay = `${leg.product}/${leg.rightSide.product}`;
-                          }
-                        } else if (relationshipType === 'SPREAD') {
-                          const products = parts[0].split('-');
-                          if (products.length === 2) {
-                            productDisplay = `${products[0]}/${products[1]}`;
-                          } else if (leg.rightSide?.product) {
-                            productDisplay = `${leg.product}/${leg.rightSide.product}`;
-                          }
-                        } else if (relationshipType === 'FP') {
-                          productDisplay = `${leg.product} FP`;
-                        }
-                      } else {
-                        productDisplay = formatProductDisplay(
-                          leg.product,
-                          leg.relationshipType,
-                          leg.rightSide?.product
-                        );
-                      }
-                      
-                      const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : ''}`;
+                      const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
                       
                       return (
                         <TableRow key={`${trade.id}-${leg.id}`}>

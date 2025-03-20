@@ -8,6 +8,7 @@ import { formatMonthCode } from '@/utils/dateUtils';
 import { 
   generateLegReference, 
   formatProductDisplay, 
+  formatMTMDisplay,
   generateInstrumentName 
 } from '@/utils/tradeUtils';
 
@@ -59,8 +60,8 @@ export const usePaperTrades = () => {
             comment: parentTrade.comment,
             broker: legs && legs[0] ? legs[0].broker : '',
             legs: (legs || []).map((leg) => {
-              // Extract the relationship_type from instrument for display purposes
-              const instrument = leg.instrument || 'FP';
+              // Extract the relationship_type from instrument
+              const instrument = leg.instrument || '';
               let relationshipType: PaperRelationshipType = 'FP';
               
               if (instrument.includes('DIFF')) {
@@ -179,7 +180,7 @@ export const usePaperTrades = () => {
             };
           }
           
-          // Generate the instrument name
+          // Generate the instrument name (for database storage - MTM format)
           const instrument = generateInstrumentName(
             leg.product, 
             leg.relationshipType,
@@ -199,7 +200,9 @@ export const usePaperTrades = () => {
             mtm_formula: mtmFormula,
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
-            instrument: instrument
+            instrument: instrument,
+            // Explicitly store the relationship type to make retrieval easier
+            relationshipType: leg.relationshipType
           };
           
           const { error: legError } = await supabase

@@ -1,3 +1,4 @@
+
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -33,7 +34,7 @@ export const formatLegReference = (tradeReference: string, legReference: string)
   return tradeReference;
 };
 
-// Format product display name based on relationship type
+// Format product display name based on relationship type (for Trades table UI)
 export const formatProductDisplay = (
   product: string,
   relationshipType: string,
@@ -52,6 +53,29 @@ export const formatProductDisplay = (
     case 'SPREAD':
       if (rightSideProduct) {
         return `${product}/${rightSideProduct}`;
+      }
+      return `${product} SPREAD`;
+    default:
+      return product;
+  }
+};
+
+// Format MTM formula display (for MTM calculations and formula display)
+export const formatMTMDisplay = (
+  product: string,
+  relationshipType: string,
+  rightSideProduct?: string
+): string => {
+  if (!product) return '';
+  
+  switch (relationshipType) {
+    case 'FP':
+      return `${product} FP`;
+    case 'DIFF':
+      return `${product} DIFF`;
+    case 'SPREAD':
+      if (rightSideProduct) {
+        return `${product}-${rightSideProduct} SPREAD`;
       }
       return `${product} SPREAD`;
     default:
@@ -87,7 +111,7 @@ export const calculateNetExposure = (
   return physical + pricing + paper;
 };
 
-// Generate instrument name from product and relationship type
+// Generate instrument name from product and relationship type (for database storage)
 export const generateInstrumentName = (
   product: string,
   relationshipType: string,
