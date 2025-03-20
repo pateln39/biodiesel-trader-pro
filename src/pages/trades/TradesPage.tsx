@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
@@ -92,9 +91,7 @@ const TradesPage = () => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
-      toast({
-        title: "Failed to load trades",
-        variant: "destructive",
+      toast.error("Failed to load trades", {
         description: combinedError instanceof Error ? combinedError.message : 'Unknown error occurred'
       });
     } else {
@@ -108,8 +105,7 @@ const TradesPage = () => {
       
       setTimeout(() => {
         console.log(`Saving comment for trade ${tradeId}: ${comment}`);
-        toast({
-          title: "Comment saved",
+        toast.success("Comment saved", {
           description: "Your comment has been saved successfully."
         });
         setSavingComments(prev => ({ ...prev, [tradeId]: false }));
@@ -141,8 +137,7 @@ const TradesPage = () => {
     
     setTimeout(() => {
       console.log(`Saving comment for paper trade ${tradeId}: ${paperComments[tradeId]}`);
-      toast({
-        title: "Comment saved",
+      toast.success("Comment saved", {
         description: "Your comment has been saved successfully."
       });
       setSavingPaperComments(prev => ({ ...prev, [tradeId]: false }));
@@ -207,9 +202,7 @@ const TradesPage = () => {
           throw parentError;
         }
         
-        toast({
-          title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`
-        });
+        toast.success(`${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`);
       } else if (deleteMode === 'leg' && deletingLegId) {
         const { error } = await supabase
           .from('trade_legs')
@@ -220,9 +213,7 @@ const TradesPage = () => {
           throw error;
         }
         
-        toast({
-          title: "Trade leg deleted"
-        });
+        toast.success("Trade leg deleted");
       }
       
       // First close the dialog to prevent UI freeze
@@ -239,9 +230,7 @@ const TradesPage = () => {
       
     } catch (error) {
       console.error('Error deleting:', error);
-      toast({
-        title: "Deletion failed",
-        variant: "destructive",
+      toast.error("Deletion failed", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     } finally {
