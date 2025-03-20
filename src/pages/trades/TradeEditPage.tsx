@@ -7,9 +7,10 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
+import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
+import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PaperTrade } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -17,7 +18,7 @@ const TradeEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{id: string}>();
   const [isLoading, setIsLoading] = useState(true);
-  const [tradeData, setTradeData] = useState<PhysicalTrade | null>(null);
+  const [tradeData, setTradeData] = useState<PhysicalTrade | PaperTrade | null>(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -39,11 +40,6 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
-        // Only handle physical trades
-        if (parentTrade.trade_type !== 'physical') {
-          throw new Error("Only physical trades are supported");
-        }
-
         // Fetch trade legs
         const { data: tradeLegs, error: legsError } = await supabase
           .from('trade_legs')
@@ -55,8 +51,9 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
-        // Map the database data to our application trade models
+        // Map the database data to our application trade models based on trade type
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
+          // Handle Physical Trade
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -102,6 +99,50 @@ const TradeEditPage = () => {
             }))
           };
           setTradeData(physicalTrade);
+        } else if (parentTrade.trade_type === 'paper' && tradeLegs.length > 0) {
+          // Handle Paper Trade
+          const paperTrade: PaperTrade = {
+            id: parentTrade.id,
+            tradeReference: parentTrade.trade_reference,
+            tradeType: 'paper',
+            counterparty: parentTrade.counterparty,
+            createdAt: new Date(parentTrade.created_at),
+            updatedAt: new Date(parentTrade.updated_at),
+            comment: parentTrade.comment || '',
+            broker: tradeLegs[0].broker || '',
+            legs: tradeLegs.map(leg => {
+              // Parse relationship type from instrument
+              let relationshipType = 'FP';
+              if (leg.instrument) {
+                if (leg.instrument.includes('DIFF')) relationshipType = 'DIFF';
+                if (leg.instrument.includes('SPREAD')) relationshipType = 'SPREAD';
+              }
+              
+              // Extract rightSide from mtm_formula if it exists
+              let rightSide;
+              if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'rightSide' in leg.mtm_formula) {
+                rightSide = leg.mtm_formula.rightSide;
+              }
+              
+              return {
+                id: leg.id,
+                parentTradeId: leg.parent_trade_id,
+                legReference: leg.leg_reference,
+                buySell: leg.buy_sell as BuySell,
+                product: leg.product as Product,
+                quantity: leg.quantity,
+                period: leg.trading_period || '',
+                price: leg.price || 0,
+                broker: leg.broker,
+                instrument: leg.instrument,
+                relationshipType: relationshipType as any,
+                rightSide: rightSide,
+                formula: leg.pricing_formula,
+                mtmFormula: leg.mtm_formula
+              };
+            })
+          };
+          setTradeData(paperTrade);
         } else {
           throw new Error("Invalid trade data");
         }
@@ -120,7 +161,7 @@ const TradeEditPage = () => {
     fetchTradeData();
   }, [id, navigate]);
 
-  const handleSubmit = async (updatedTradeData: any) => {
+  const handlePhysicalTradeSubmit = async (updatedTradeData: any) => {
     try {
       if (!id) return;
 
@@ -191,6 +232,114 @@ const TradeEditPage = () => {
     }
   };
 
+  const handlePaperTradeSubmit = async (updatedTradeData: any) => {
+    try {
+      if (!id) return;
+
+      // Update the parent trade
+      const parentTradeUpdate = {
+        trade_reference: updatedTradeData.tradeReference,
+        comment: updatedTradeData.comment || '',
+        counterparty: updatedTradeData.broker, // For paper trades, we use broker as counterparty
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error: parentUpdateError } = await supabase
+        .from('parent_trades')
+        .update(parentTradeUpdate)
+        .eq('id', id);
+        
+      if (parentUpdateError) {
+        throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
+      }
+
+      // For paper trades, update all legs
+      for (const leg of updatedTradeData.legs) {
+        // Parse the period dates if available
+        let pricingPeriodStart = null;
+        let pricingPeriodEnd = null;
+        
+        if (leg.period) {
+          try {
+            // Parse period like "Mar-24" into a date
+            const [month, year] = leg.period.split('-');
+            const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              .findIndex(m => m === month);
+            
+            if (monthIndex !== -1) {
+              const fullYear = 2000 + parseInt(year);
+              
+              // First day of month
+              pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
+              
+              // Last day of month
+              const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
+              pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+            }
+          } catch (e) {
+            console.error('Error parsing period date:', e);
+          }
+        }
+
+        // Generate instrument name for storage
+        let instrument = leg.instrument;
+        if (!instrument) {
+          if (leg.relationshipType === 'FP') {
+            instrument = leg.product;
+          } else if (leg.relationshipType === 'DIFF' && leg.rightSide?.product) {
+            instrument = `${leg.product} DIFF ${leg.rightSide.product}`;
+          } else if (leg.relationshipType === 'SPREAD' && leg.rightSide?.product) {
+            instrument = `${leg.product} SPREAD ${leg.rightSide.product}`;
+          }
+        }
+
+        const legData = {
+          parent_trade_id: id,
+          leg_reference: leg.legReference,
+          buy_sell: leg.buySell,
+          product: leg.product,
+          quantity: leg.quantity,
+          price: leg.price || 0,
+          broker: updatedTradeData.broker,
+          trading_period: leg.period,
+          pricing_period_start: pricingPeriodStart,
+          pricing_period_end: pricingPeriodEnd,
+          pricing_formula: leg.formula,
+          mtm_formula: leg.mtmFormula,
+          instrument: instrument,
+          updated_at: new Date().toISOString()
+        };
+
+        // Update the existing leg
+        const { error: legUpdateError } = await supabase
+          .from('trade_legs')
+          .update(legData)
+          .eq('id', leg.id);
+          
+        if (legUpdateError) {
+          throw new Error(`Error updating trade leg: ${legUpdateError.message}`);
+        }
+      }
+
+      // Force invalidate the cache to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+      queryClient.invalidateQueries({ queryKey: ['trades'] });
+      queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+
+      toast.success("Paper trade updated", {
+        description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
+      });
+
+      // Navigate back to trades page
+      navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
+    } catch (error: any) {
+      console.error('Error updating paper trade:', error);
+      toast.error("Failed to update paper trade", {
+        description: error.message || "An error occurred while updating the trade"
+      });
+    }
+  };
+
   const handleCancel = () => {
     navigate('/trades');
   };
@@ -238,13 +387,23 @@ const TradeEditPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PhysicalTradeForm 
-              tradeReference={tradeData.tradeReference} 
-              onSubmit={handleSubmit} 
-              onCancel={handleCancel} 
-              isEditMode={true}
-              initialData={tradeData}
-            />
+            {tradeData.tradeType === 'physical' ? (
+              <PhysicalTradeForm 
+                tradeReference={tradeData.tradeReference} 
+                onSubmit={handlePhysicalTradeSubmit} 
+                onCancel={handleCancel} 
+                isEditMode={true}
+                initialData={tradeData as PhysicalTrade}
+              />
+            ) : (
+              <PaperTradeForm 
+                tradeReference={tradeData.tradeReference} 
+                onSubmit={handlePaperTradeSubmit} 
+                onCancel={handleCancel} 
+                isEditMode={true}
+                initialData={tradeData as PaperTrade}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

@@ -46,6 +46,7 @@ import {
 } from '@/utils/formulaUtils';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useQueryClient } from '@tanstack/react-query';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -82,6 +83,7 @@ const TradesPage = () => {
   });
   const [pageError, setPageError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("physical");
+  const queryClient = useQueryClient();
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -204,6 +206,14 @@ const TradesPage = () => {
           title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`,
           description: "Trade has been deleted successfully."
         });
+
+        if (deleteItemDetails.tradeType === 'paper') {
+          queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+        
+        refetchTrades();
       } else if (deleteMode === 'leg' && deletingLegId) {
         const { error } = await supabase
           .from('trade_legs')
@@ -218,6 +228,12 @@ const TradesPage = () => {
           title: "Trade leg deleted",
           description: "Trade leg has been deleted successfully."
         });
+
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+        
+        refetchTrades();
       }
       
       setShowDeleteConfirmation(false);
@@ -225,10 +241,6 @@ const TradesPage = () => {
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
-      
-      setTimeout(() => {
-        refetchTrades();
-      }, 100);
 
     } catch (error) {
       console.error('Error deleting:', error);
