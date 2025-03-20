@@ -40,13 +40,10 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  formulaToString, 
-  formulaToDisplayString
-} from '@/utils/formulaUtils';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { formulaToDisplayString } from '@/utils/formulaUtils';
+import { Progress } from '@/components/ui/progress';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -59,30 +56,49 @@ const debounce = (func: Function, delay: number) => {
 };
 
 interface DeleteItemDetails {
+  id: string;
   reference: string;
   legNumber?: number;
   tradeType?: 'physical' | 'paper';
+  parentTradeId?: string;
 }
 
 const TradesPage = () => {
-  const { trades, loading: physicalLoading, error: physicalError, refetchTrades } = useTrades();
+  const { 
+    trades, 
+    loading: physicalLoading, 
+    error: physicalError, 
+    refetchTrades,
+    deletePhysicalTrade,
+    isDeletePhysicalTradeLoading,
+    deletePhysicalTradeLeg,
+    isDeletePhysicalTradeLegLoading 
+  } = useTrades();
+  
+  const { 
+    paperTrades, 
+    isLoading: paperLoading, 
+    error: paperError, 
+    refetchPaperTrades,
+    deletePaperTrade,
+    isDeletePaperTradeLoading
+  } = usePaperTrades();
+  
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  
-  const { paperTrades, isLoading: paperLoading, error: paperError, refetchPaperTrades } = usePaperTrades();
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
   
-  const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
-  const [deletingLegId, setDeletingLegId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
   const [deleteItemDetails, setDeleteItemDetails] = useState<DeleteItemDetails>({ 
+    id: '',
     reference: '' 
   });
   const [pageError, setPageError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("physical");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletionProgress, setDeletionProgress] = useState(0);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -140,10 +156,9 @@ const TradesPage = () => {
   };
 
   const handleDeleteTradeClick = (tradeId: string, reference: string, tradeType: 'physical' | 'paper') => {
-    setDeletingTradeId(tradeId);
-    setDeletingLegId(null);
     setDeleteMode('trade');
     setDeleteItemDetails({ 
+      id: tradeId,
       reference,
       tradeType 
     });
@@ -151,87 +166,74 @@ const TradesPage = () => {
   };
 
   const handleDeleteLegClick = (legId: string, tradeId: string, reference: string, legNumber: number) => {
-    setDeletingLegId(legId);
-    setDeletingTradeId(tradeId);
     setDeleteMode('leg');
     setDeleteItemDetails({
+      id: legId,
       reference,
       legNumber,
-      tradeType: 'physical'
+      tradeType: 'physical',
+      parentTradeId: tradeId
     });
     setShowDeleteConfirmation(true);
   };
 
   const cancelDelete = () => {
     setIsDeleting(false);
-    setDeletingTradeId(null);
-    setDeletingLegId(null);
+    setDeletionProgress(0);
     setShowDeleteConfirmation(false);
-    setDeleteItemDetails({ reference: '' });
+    setDeleteItemDetails({ id: '', reference: '' });
   };
 
   const confirmDelete = async () => {
+    if (!deleteItemDetails.id) return;
+    
     setIsDeleting(true);
+    setDeletionProgress(10); // Start progress
     
     try {
-      if (deleteMode === 'trade' && deletingTradeId) {
-        // First delete all legs for this trade
-        const { error: legsError } = await supabase
-          .from('trade_legs')
-          .delete()
-          .eq('parent_trade_id', deletingTradeId);
-          
-        if (legsError) {
-          throw legsError;
-        }
-        
-        // Then delete the parent trade
-        const { error: parentError } = await supabase
-          .from('parent_trades')
-          .delete()
-          .eq('id', deletingTradeId);
-          
-        if (parentError) {
-          throw parentError;
-        }
-        
-        toast.success(`${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`);
-      } else if (deleteMode === 'leg' && deletingLegId) {
-        const { error } = await supabase
-          .from('trade_legs')
-          .delete()
-          .eq('id', deletingLegId);
-        
-        if (error) {
-          throw error;
-        }
-        
-        toast.success("Trade leg deleted");
-      }
-
       // Close the dialog first
       setShowDeleteConfirmation(false);
       
-      // Then reset state
-      setDeletingTradeId(null);
-      setDeletingLegId(null);
-      setDeleteItemDetails({ reference: '' });
-      setIsDeleting(false);
-      
-      // Explicitly invalidate queries to refresh data
-      if (deleteItemDetails.tradeType === 'paper') {
-        refetchPaperTrades();
-      } else {
-        refetchTrades();
+      if (deleteMode === 'trade') {
+        setDeletionProgress(30);
+        
+        if (deleteItemDetails.tradeType === 'paper') {
+          // Delete paper trade
+          deletePaperTrade(deleteItemDetails.id);
+        } else {
+          // Delete physical trade
+          deletePhysicalTrade(deleteItemDetails.id);
+        }
+        
+        setDeletionProgress(80);
+      } else if (deleteMode === 'leg' && deleteItemDetails.parentTradeId) {
+        setDeletionProgress(30);
+        
+        // Delete physical trade leg
+        deletePhysicalTradeLeg({ 
+          legId: deleteItemDetails.id,
+          tradeId: deleteItemDetails.parentTradeId
+        });
+        
+        setDeletionProgress(80);
       }
-
+      
+      // Complete the progress
+      setTimeout(() => {
+        setDeletionProgress(100);
+        setTimeout(() => {
+          setIsDeleting(false);
+          setDeletionProgress(0);
+        }, 300);
+      }, 500);
+      
     } catch (error) {
-      console.error('Error deleting:', error);
-      toast.error("Deletion failed", {
+      console.error('Error in delete flow:', error);
+      toast.error("Deletion process encountered an error", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
       setIsDeleting(false);
-      setShowDeleteConfirmation(false);
+      setDeletionProgress(0);
     }
   };
 
@@ -410,6 +412,7 @@ const TradesPage = () => {
                                 <DropdownMenuItem 
                                   className="text-red-600 focus:text-red-600" 
                                   onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference, 'physical')}
+                                  disabled={isDeletePhysicalTradeLoading}
                                 >
                                   <Trash className="mr-2 h-4 w-4" />
                                   Delete Trade
@@ -424,6 +427,7 @@ const TradesPage = () => {
                                     `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
                                     legIndex + 1
                                   )}
+                                  disabled={isDeletePhysicalTradeLegLoading}
                                 >
                                   <Trash className="mr-2 h-4 w-4" />
                                   Delete Leg
@@ -547,6 +551,7 @@ const TradesPage = () => {
                                 <DropdownMenuItem 
                                   className="text-red-600 focus:text-red-600" 
                                   onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference, 'paper')}
+                                  disabled={isDeletePaperTradeLoading}
                                 >
                                   <Trash className="mr-2 h-4 w-4" />
                                   Delete Trade
@@ -586,6 +591,15 @@ const TradesPage = () => {
         </div>
 
         {pageError && showErrorAlert()}
+
+        {isDeleting && (
+          <div className="mb-4">
+            <p className="text-sm text-muted-foreground mb-1">
+              Deleting trade... Please wait
+            </p>
+            <Progress value={deletionProgress} className="h-2" />
+          </div>
+        )}
 
         <Tabs defaultValue="physical" onValueChange={setActiveTab}>
           <TabsList className="mb-4">

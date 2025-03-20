@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Trade,
@@ -17,13 +17,25 @@ import {
   DbTradeLeg,
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { deletePhysicalTrade, deletePhysicalTradeLeg, delay } from '@/utils/tradeDeleteUtils';
+import { toast } from 'sonner';
+
+// Debounce function to prevent multiple refetches in quick succession
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  };
+};
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
-    // Get all parent trades
+    // Get all parent trades of type 'physical'
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
+      .eq('trade_type', 'physical')
       .order('created_at', { ascending: false });
 
     if (parentTradesError) {
@@ -120,6 +132,15 @@ const fetchTrades = async (): Promise<Trade[]> => {
 };
 
 export const useTrades = () => {
+  const queryClient = useQueryClient();
+  const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
+  
+  // Debounced refetch function to prevent multiple refetches in quick succession
+  const debouncedRefetch = useRef(debounce((fn: Function) => {
+    console.log("Executing debounced refetch");
+    fn();
+  }, 500)).current;
+
   const { 
     data: trades = [], 
     isLoading: loading, 
@@ -128,45 +149,163 @@ export const useTrades = () => {
   } = useQuery({
     queryKey: ['trades'],
     queryFn: fetchTrades,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
     refetchOnMount: true,
-    staleTime: 0, // Always consider data stale to force refetch when component mounts
+    staleTime: 2000, // Consider data stale after 2 seconds
   });
 
-  // Set up real-time subscription to trades changes
+  // Set up real-time subscription to trades changes with filter for physical trades only
   useEffect(() => {
-    // Subscribe to changes on parent_trades table
+    // Cancel any existing subscriptions to avoid duplicates
+    if (realtimeChannelsRef.current.parentTradesChannel) {
+      supabase.removeChannel(realtimeChannelsRef.current.parentTradesChannel);
+    }
+    
+    if (realtimeChannelsRef.current.tradeLegsChannel) {
+      supabase.removeChannel(realtimeChannelsRef.current.tradeLegsChannel);
+    }
+    
+    // Subscribe to changes on parent_trades table with filter for physical trades
     const parentTradesChannel = supabase
-      .channel('public:parent_trades')
+      .channel('physical_parent_trades')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'parent_trades' 
+        table: 'parent_trades',
+        filter: 'trade_type=eq.physical'
       }, () => {
-        console.log('Parent trades changed, refetching...');
-        refetch();
+        console.log('Physical parent trades changed, debouncing refetch...');
+        debouncedRefetch(refetch);
       })
       .subscribe();
+    
+    // Store the channel reference
+    realtimeChannelsRef.current.parentTradesChannel = parentTradesChannel;
 
     // Subscribe to changes on trade_legs table
+    // Since we can't filter by parent trade type, we'll need to handle all leg changes
     const tradeLegsChannel = supabase
-      .channel('public:trade_legs')
+      .channel('trade_legs_for_physical')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'trade_legs' 
       }, () => {
-        console.log('Trade legs changed, refetching...');
-        refetch();
+        console.log('Trade legs changed, debouncing refetch...');
+        debouncedRefetch(refetch);
       })
       .subscribe();
+    
+    // Store the channel reference
+    realtimeChannelsRef.current.tradeLegsChannel = tradeLegsChannel;
 
     // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(parentTradesChannel);
-      supabase.removeChannel(tradeLegsChannel);
+      console.log("Cleaning up trade subscriptions");
+      if (realtimeChannelsRef.current.parentTradesChannel) {
+        supabase.removeChannel(realtimeChannelsRef.current.parentTradesChannel);
+      }
+      
+      if (realtimeChannelsRef.current.tradeLegsChannel) {
+        supabase.removeChannel(realtimeChannelsRef.current.tradeLegsChannel);
+      }
     };
-  }, [refetch]);
+  }, [refetch, debouncedRefetch]);
 
-  return { trades, loading, error, refetchTrades: refetch };
+  // Mutation for deleting a physical trade
+  const deletePhysicalTradeMutation = useMutation({
+    mutationFn: async (tradeId: string) => {
+      // First update UI optimistically
+      queryClient.setQueryData(['trades'], (oldData: any) => {
+        // Filter out the deleted trade
+        return oldData.filter((trade: any) => trade.id !== tradeId);
+      });
+      
+      // Then perform actual deletion
+      const success = await deletePhysicalTrade(tradeId);
+      
+      // Wait a little bit before refetching to allow database operations to complete
+      await delay(800);
+      
+      return { success, tradeId };
+    },
+    onSuccess: (data) => {
+      // Only show success message after deletion completes
+      if (data.success) {
+        toast.success("Physical trade deleted successfully");
+      }
+      
+      // Invalidate affected queries after a short delay
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+      }, 500);
+    },
+    onError: (error) => {
+      toast.error("Failed to delete physical trade", { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+      
+      // Refetch to make sure UI is consistent with database
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+      }, 500);
+    }
+  });
+
+  // Mutation for deleting a physical trade leg
+  const deletePhysicalTradeLegMutation = useMutation({
+    mutationFn: async ({ legId, tradeId }: { legId: string; tradeId: string }) => {
+      // Optimistically update UI
+      queryClient.setQueryData(['trades'], (oldData: any) => {
+        return oldData.map((trade: PhysicalTrade) => {
+          if (trade.id === tradeId) {
+            return {
+              ...trade,
+              legs: trade.legs?.filter(leg => leg.id !== legId) || []
+            };
+          }
+          return trade;
+        });
+      });
+      
+      // Then perform actual deletion
+      const success = await deletePhysicalTradeLeg(legId);
+      
+      // Wait a little bit before refetching to allow database operations to complete
+      await delay(800);
+      
+      return { success, legId, tradeId };
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success("Trade leg deleted successfully");
+      }
+      
+      // Invalidate affected queries after a short delay
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+      }, 500);
+    },
+    onError: (error) => {
+      toast.error("Failed to delete trade leg", { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+      
+      // Refetch to make sure UI is consistent with database
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+      }, 500);
+    }
+  });
+
+  return { 
+    trades, 
+    loading, 
+    error, 
+    refetchTrades: refetch,
+    deletePhysicalTrade: deletePhysicalTradeMutation.mutate,
+    isDeletePhysicalTradeLoading: deletePhysicalTradeMutation.isPending,
+    deletePhysicalTradeLeg: deletePhysicalTradeLegMutation.mutate,
+    isDeletePhysicalTradeLegLoading: deletePhysicalTradeLegMutation.isPending
+  };
 };

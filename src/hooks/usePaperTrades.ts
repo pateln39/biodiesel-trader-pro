@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -11,9 +11,26 @@ import {
   formatMTMDisplay,
   generateInstrumentName 
 } from '@/utils/tradeUtils';
+import { deletePaperTrade, delay } from '@/utils/tradeDeleteUtils';
+
+// Debounce function to prevent multiple refetches in quick succession
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  };
+};
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
+  const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
+  
+  // Debounced refetch function to prevent multiple refetches in quick succession
+  const debouncedRefetch = useRef(debounce((fn: Function) => {
+    console.log("Executing debounced paper trade refetch");
+    fn();
+  }, 500)).current;
   
   // Fetch paper trades
   const { data: paperTrades, isLoading, error, refetch } = useQuery({
@@ -100,13 +117,24 @@ export const usePaperTrades = () => {
       );
       
       return tradesWithLegs as PaperTrade[];
-    }
+    },
+    staleTime: 2000, // Consider data stale after 2 seconds
+    refetchOnWindowFocus: false // Disable automatic refetch on window focus
   });
   
-  // Set up real-time subscription to trades changes
+  // Set up real-time subscription to trades changes with filter for paper trades only
   useEffect(() => {
+    // Cancel any existing subscriptions to avoid duplicates
+    if (realtimeChannelsRef.current.paperParentTradesChannel) {
+      supabase.removeChannel(realtimeChannelsRef.current.paperParentTradesChannel);
+    }
+    
+    if (realtimeChannelsRef.current.paperTradeLegsChannel) {
+      supabase.removeChannel(realtimeChannelsRef.current.paperTradeLegsChannel);
+    }
+    
     // Subscribe to changes on parent_trades table for paper trades
-    const parentTradesChannel = supabase
+    const paperParentTradesChannel = supabase
       .channel('paper_parent_trades')
       .on('postgres_changes', { 
         event: '*', 
@@ -114,30 +142,82 @@ export const usePaperTrades = () => {
         table: 'parent_trades',
         filter: 'trade_type=eq.paper'
       }, () => {
-        console.log('Paper trades changed, refetching...');
-        refetch();
+        console.log('Paper trades changed, debouncing refetch...');
+        debouncedRefetch(refetch);
       })
       .subscribe();
 
+    realtimeChannelsRef.current.paperParentTradesChannel = paperParentTradesChannel;
+
     // Subscribe to changes on trade_legs table for paper trades
-    const tradeLegsChannel = supabase
+    // Since we can't filter by parent trade type, we'll need to handle all leg changes
+    const paperTradeLegsChannel = supabase
       .channel('paper_trade_legs')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'trade_legs' 
       }, () => {
-        console.log('Paper trade legs changed, refetching...');
-        refetch();
+        console.log('Paper trade legs changed, debouncing refetch...');
+        debouncedRefetch(refetch);
       })
       .subscribe();
 
+    realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
+
     // Cleanup subscriptions on unmount
     return () => {
-      supabase.removeChannel(parentTradesChannel);
-      supabase.removeChannel(tradeLegsChannel);
+      console.log("Cleaning up paper trade subscriptions");
+      if (realtimeChannelsRef.current.paperParentTradesChannel) {
+        supabase.removeChannel(realtimeChannelsRef.current.paperParentTradesChannel);
+      }
+      
+      if (realtimeChannelsRef.current.paperTradeLegsChannel) {
+        supabase.removeChannel(realtimeChannelsRef.current.paperTradeLegsChannel);
+      }
     };
-  }, [refetch]);
+  }, [refetch, debouncedRefetch]);
+  
+  // Mutation for deleting a paper trade
+  const deletePaperTradeMutation = useMutation({
+    mutationFn: async (tradeId: string) => {
+      // First update UI optimistically
+      queryClient.setQueryData(['paper-trades'], (oldData: any) => {
+        // Filter out the deleted trade
+        return oldData.filter((trade: any) => trade.id !== tradeId);
+      });
+      
+      // Then perform actual deletion
+      const success = await deletePaperTrade(tradeId);
+      
+      // Wait a little bit before refetching to allow database operations to complete
+      await delay(800);
+      
+      return { success, tradeId };
+    },
+    onSuccess: (data) => {
+      // Only show success message after deletion completes
+      if (data.success) {
+        toast.success("Paper trade deleted successfully");
+      }
+      
+      // Invalidate affected queries after a short delay
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+      }, 500);
+    },
+    onError: (error) => {
+      toast.error("Failed to delete paper trade", { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+      
+      // Refetch to make sure UI is consistent with database
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+      }, 500);
+    }
+  });
   
   // Create paper trade mutation
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
@@ -252,9 +332,12 @@ export const usePaperTrades = () => {
       return { ...trade, id: parentTrade.id };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-      queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-      toast.success('Paper trade created successfully');
+      // Use a delay before invalidating queries
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+        toast.success('Paper trade created successfully');
+      }, 500);
     },
     onError: (error: Error) => {
       toast.error('Failed to create paper trade', {
@@ -264,11 +347,13 @@ export const usePaperTrades = () => {
   });
   
   return {
-    paperTrades,
+    paperTrades: paperTrades || [],
     isLoading,
     error,
     createPaperTrade,
     isCreating,
-    refetchPaperTrades: refetch
+    refetchPaperTrades: refetch,
+    deletePaperTrade: deletePaperTradeMutation.mutate,
+    isDeletePaperTradeLoading: deletePaperTradeMutation.isPending
   };
 };
