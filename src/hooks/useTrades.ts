@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -131,8 +130,6 @@ export const useTrades = () => {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     staleTime: 0, // Always consider data stale to force refetch when component mounts
-    // Add a small refetch interval to ensure trade data stays fresh
-    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Set up real-time subscription to trades changes
