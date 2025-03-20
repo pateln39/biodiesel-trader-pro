@@ -1,7 +1,6 @@
-
-import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -64,6 +63,7 @@ interface DeleteItemDetails {
 }
 
 const TradesPage = () => {
+  const navigate = useNavigate();
   const { 
     trades, 
     loading: physicalLoading, 
@@ -99,6 +99,13 @@ const TradesPage = () => {
   const [activeTab, setActiveTab] = useState<string>("physical");
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletionProgress, setDeletionProgress] = useState(0);
+  
+  // New state for UI navigation recovery
+  const [showNavigationRecovery, setShowNavigationRecovery] = useState(false);
+  const recoveryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // New flag to track if we're in a deletion workflow
+  const isDeletingRef = useRef(false);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -114,6 +121,44 @@ const TradesPage = () => {
     }
   }, [physicalError, paperError]);
 
+  // Effect to check if navigation is stuck and offer recovery
+  useEffect(() => {
+    if (isDeleting || isDeletePhysicalTradeLoading || isDeletePhysicalTradeLegLoading || isDeletePaperTradeLoading) {
+      isDeletingRef.current = true;
+      
+      // Set a timeout to check if deletion is taking too long
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current);
+      }
+      
+      recoveryTimeoutRef.current = setTimeout(() => {
+        if (isDeletingRef.current) {
+          console.log("Deletion taking too long, offering navigation recovery");
+          setShowNavigationRecovery(true);
+        }
+      }, 5000); // Show recovery option after 5 seconds
+    } else if (isDeletingRef.current) {
+      // Clear deletion flag when no longer deleting
+      isDeletingRef.current = false;
+      
+      // Clear any pending recovery timeouts
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current);
+        recoveryTimeoutRef.current = null;
+      }
+      
+      // Hide navigation recovery if shown
+      setShowNavigationRecovery(false);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (recoveryTimeoutRef.current) {
+        clearTimeout(recoveryTimeoutRef.current);
+      }
+    };
+  }, [isDeleting, isDeletePhysicalTradeLoading, isDeletePhysicalTradeLegLoading, isDeletePaperTradeLoading]);
+
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
       setSavingComments(prev => ({ ...prev, [tradeId]: true }));
@@ -126,6 +171,26 @@ const TradesPage = () => {
     }, 1000),
     []
   );
+
+  // Handle forced navigation when UI is stuck
+  const handleForceNavigation = useCallback((path: string) => {
+    console.log(`Forcing navigation to ${path}`);
+    
+    // Reset all deletion-related state
+    setIsDeleting(false);
+    setDeletionProgress(0);
+    setShowDeleteConfirmation(false);
+    setDeleteItemDetails({ id: '', reference: '' });
+    isDeletingRef.current = false;
+    
+    // Hide navigation recovery UI
+    setShowNavigationRecovery(false);
+    
+    // Use setTimeout to allow React to finish current cycle
+    setTimeout(() => {
+      navigate(path);
+    }, 100);
+  }, [navigate]);
 
   const handleCommentChange = (tradeId: string, comment: string) => {
     setComments(prev => ({
@@ -156,6 +221,10 @@ const TradesPage = () => {
   };
 
   const handleDeleteTradeClick = (tradeId: string, reference: string, tradeType: 'physical' | 'paper') => {
+    // Reset any stale state
+    setDeletionProgress(0);
+    setIsDeleting(false);
+    
     setDeleteMode('trade');
     setDeleteItemDetails({ 
       id: tradeId,
@@ -166,6 +235,10 @@ const TradesPage = () => {
   };
 
   const handleDeleteLegClick = (legId: string, tradeId: string, reference: string, legNumber: number) => {
+    // Reset any stale state
+    setDeletionProgress(0);
+    setIsDeleting(false);
+    
     setDeleteMode('leg');
     setDeleteItemDetails({
       id: legId,
@@ -187,38 +260,35 @@ const TradesPage = () => {
   const confirmDelete = async () => {
     if (!deleteItemDetails.id) return;
     
+    // Close the dialog first to reduce DOM operations
+    setShowDeleteConfirmation(false);
+    
+    // Then start the deletion process
     setIsDeleting(true);
     setDeletionProgress(10); // Start progress
     
     try {
-      // Close the dialog first
-      setShowDeleteConfirmation(false);
+      setDeletionProgress(30);
       
       if (deleteMode === 'trade') {
-        setDeletionProgress(30);
-        
         if (deleteItemDetails.tradeType === 'paper') {
           // Delete paper trade
-          deletePaperTrade(deleteItemDetails.id);
+          await deletePaperTrade(deleteItemDetails.id);
         } else {
           // Delete physical trade
-          deletePhysicalTrade(deleteItemDetails.id);
+          await deletePhysicalTrade(deleteItemDetails.id);
         }
-        
-        setDeletionProgress(80);
       } else if (deleteMode === 'leg' && deleteItemDetails.parentTradeId) {
-        setDeletionProgress(30);
-        
         // Delete physical trade leg
-        deletePhysicalTradeLeg({ 
+        await deletePhysicalTradeLeg({ 
           legId: deleteItemDetails.id,
           tradeId: deleteItemDetails.parentTradeId
         });
-        
-        setDeletionProgress(80);
       }
       
-      // Complete the progress
+      setDeletionProgress(80);
+      
+      // Complete the progress with a slight delay to ensure animations complete
       setTimeout(() => {
         setDeletionProgress(100);
         setTimeout(() => {
@@ -234,6 +304,9 @@ const TradesPage = () => {
       });
       setIsDeleting(false);
       setDeletionProgress(0);
+      
+      // Show recovery UI in case of errors
+      setShowNavigationRecovery(true);
     }
   };
 
@@ -583,11 +656,34 @@ const TradesPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
-          <Link to="/trades/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Trade
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {showNavigationRecovery && (
+              <div className="bg-yellow-50 text-yellow-800 px-4 py-2 rounded-md flex items-center gap-2 shadow-sm border border-yellow-200">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">Navigation issue detected</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2"
+                  onClick={() => window.location.reload()}
+                >
+                  <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleForceNavigation('/dashboard')}
+                >
+                  Go to Dashboard
+                </Button>
+              </div>
+            )}
+            <Link to="/trades/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Trade
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {pageError && showErrorAlert()}

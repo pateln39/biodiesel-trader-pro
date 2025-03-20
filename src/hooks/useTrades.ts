@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -17,7 +17,7 @@ import {
   DbTradeLeg,
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { deletePhysicalTrade, deletePhysicalTradeLeg, delay } from '@/utils/tradeDeleteUtils';
+import { deletePhysicalTrade, deletePhysicalTradeLeg, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
 import { toast } from 'sonner';
 
 // Debounce function to prevent multiple refetches in quick succession
@@ -134,9 +134,14 @@ const fetchTrades = async (): Promise<Trade[]> => {
 export const useTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
+  const isProcessingRef = useRef<boolean>(false);
   
-  // Debounced refetch function to prevent multiple refetches in quick succession
+  // Debounced refetch function with additional safeguard
   const debouncedRefetch = useRef(debounce((fn: Function) => {
+    if (isProcessingRef.current) {
+      console.log("Skipping refetch as deletion is in progress");
+      return;
+    }
     console.log("Executing debounced refetch");
     fn();
   }, 500)).current;
@@ -149,21 +154,15 @@ export const useTrades = () => {
   } = useQuery({
     queryKey: ['trades'],
     queryFn: fetchTrades,
-    refetchOnWindowFocus: false, // Disable automatic refetch on window focus
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 2000, // Consider data stale after 2 seconds
+    staleTime: 2000,
   });
 
-  // Set up real-time subscription to trades changes with filter for physical trades only
-  useEffect(() => {
-    // Cancel any existing subscriptions to avoid duplicates
-    if (realtimeChannelsRef.current.parentTradesChannel) {
-      supabase.removeChannel(realtimeChannelsRef.current.parentTradesChannel);
-    }
-    
-    if (realtimeChannelsRef.current.tradeLegsChannel) {
-      supabase.removeChannel(realtimeChannelsRef.current.tradeLegsChannel);
-    }
+  // Setup and cleanup function for realtime subscriptions
+  const setupRealtimeSubscriptions = useCallback(() => {
+    // First clean up any existing subscriptions
+    cleanupSubscriptions(realtimeChannelsRef.current);
     
     // Subscribe to changes on parent_trades table with filter for physical trades
     const parentTradesChannel = supabase
@@ -174,8 +173,10 @@ export const useTrades = () => {
         table: 'parent_trades',
         filter: 'trade_type=eq.physical'
       }, () => {
-        console.log('Physical parent trades changed, debouncing refetch...');
-        debouncedRefetch(refetch);
+        if (!isProcessingRef.current) {
+          console.log('Physical parent trades changed, debouncing refetch...');
+          debouncedRefetch(refetch);
+        }
       })
       .subscribe();
     
@@ -183,7 +184,6 @@ export const useTrades = () => {
     realtimeChannelsRef.current.parentTradesChannel = parentTradesChannel;
 
     // Subscribe to changes on trade_legs table
-    // Since we can't filter by parent trade type, we'll need to handle all leg changes
     const tradeLegsChannel = supabase
       .channel('trade_legs_for_physical')
       .on('postgres_changes', { 
@@ -191,43 +191,64 @@ export const useTrades = () => {
         schema: 'public', 
         table: 'trade_legs' 
       }, () => {
-        console.log('Trade legs changed, debouncing refetch...');
-        debouncedRefetch(refetch);
+        if (!isProcessingRef.current) {
+          console.log('Trade legs changed, debouncing refetch...');
+          debouncedRefetch(refetch);
+        }
       })
       .subscribe();
     
     // Store the channel reference
     realtimeChannelsRef.current.tradeLegsChannel = tradeLegsChannel;
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      console.log("Cleaning up trade subscriptions");
-      if (realtimeChannelsRef.current.parentTradesChannel) {
-        supabase.removeChannel(realtimeChannelsRef.current.parentTradesChannel);
-      }
-      
-      if (realtimeChannelsRef.current.tradeLegsChannel) {
-        supabase.removeChannel(realtimeChannelsRef.current.tradeLegsChannel);
-      }
-    };
   }, [refetch, debouncedRefetch]);
 
-  // Mutation for deleting a physical trade
+  // Set up real-time subscription to trades changes with improved cleanup
+  useEffect(() => {
+    setupRealtimeSubscriptions();
+    
+    // Cleanup subscriptions on unmount
+    return () => {
+      cleanupSubscriptions(realtimeChannelsRef.current);
+    };
+  }, [setupRealtimeSubscriptions]);
+
+  // Mutation for deleting a physical trade with improved error handling and state management
   const deletePhysicalTradeMutation = useMutation({
     mutationFn: async (tradeId: string) => {
-      // First update UI optimistically
-      queryClient.setQueryData(['trades'], (oldData: any) => {
-        // Filter out the deleted trade
-        return oldData.filter((trade: any) => trade.id !== tradeId);
-      });
-      
-      // Then perform actual deletion
-      const success = await deletePhysicalTrade(tradeId);
-      
-      // Wait a little bit before refetching to allow database operations to complete
-      await delay(800);
-      
-      return { success, tradeId };
+      try {
+        // Mark as processing to prevent concurrent operations and realtime updates
+        isProcessingRef.current = true;
+        console.log("Setting isProcessing to true for deletePhysicalTrade");
+        
+        // Temporarily remove realtime subscriptions during deletion
+        cleanupSubscriptions(realtimeChannelsRef.current);
+        
+        // First update UI optimistically
+        queryClient.setQueryData(['trades'], (oldData: any) => {
+          // Filter out the deleted trade
+          return oldData.filter((trade: any) => trade.id !== tradeId);
+        });
+        
+        // Then perform actual deletion
+        const success = await deletePhysicalTrade(tradeId);
+        
+        // Wait a little bit before refetching to allow database operations to complete
+        await delay(800);
+        
+        return { success, tradeId };
+      } catch (error) {
+        console.error("Error in deletePhysicalTradeMutation:", error);
+        throw error;
+      } finally {
+        // Re-establish subscriptions
+        setupRealtimeSubscriptions();
+        
+        // Reset processing flag
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          console.log("Setting isProcessing to false for deletePhysicalTrade");
+        }, 500);
+      }
     },
     onSuccess: (data) => {
       // Only show success message after deletion completes
@@ -252,29 +273,50 @@ export const useTrades = () => {
     }
   });
 
-  // Mutation for deleting a physical trade leg
+  // Mutation for deleting a physical trade leg with improved error handling
   const deletePhysicalTradeLegMutation = useMutation({
     mutationFn: async ({ legId, tradeId }: { legId: string; tradeId: string }) => {
-      // Optimistically update UI
-      queryClient.setQueryData(['trades'], (oldData: any) => {
-        return oldData.map((trade: PhysicalTrade) => {
-          if (trade.id === tradeId) {
-            return {
-              ...trade,
-              legs: trade.legs?.filter(leg => leg.id !== legId) || []
-            };
-          }
-          return trade;
+      try {
+        // Mark as processing to prevent concurrent operations and realtime updates
+        isProcessingRef.current = true;
+        console.log("Setting isProcessing to true for deletePhysicalTradeLeg");
+        
+        // Temporarily remove realtime subscriptions during deletion
+        cleanupSubscriptions(realtimeChannelsRef.current);
+        
+        // Optimistically update UI
+        queryClient.setQueryData(['trades'], (oldData: any) => {
+          return oldData.map((trade: PhysicalTrade) => {
+            if (trade.id === tradeId) {
+              return {
+                ...trade,
+                legs: trade.legs?.filter(leg => leg.id !== legId) || []
+              };
+            }
+            return trade;
+          });
         });
-      });
-      
-      // Then perform actual deletion
-      const success = await deletePhysicalTradeLeg(legId);
-      
-      // Wait a little bit before refetching to allow database operations to complete
-      await delay(800);
-      
-      return { success, legId, tradeId };
+        
+        // Then perform actual deletion
+        const success = await deletePhysicalTradeLeg(legId);
+        
+        // Wait a little bit before refetching to allow database operations to complete
+        await delay(800);
+        
+        return { success, legId, tradeId };
+      } catch (error) {
+        console.error("Error in deletePhysicalTradeLegMutation:", error);
+        throw error;
+      } finally {
+        // Re-establish subscriptions
+        setupRealtimeSubscriptions();
+        
+        // Reset processing flag
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          console.log("Setting isProcessing to false for deletePhysicalTradeLeg");
+        }, 500);
+      }
     },
     onSuccess: (data) => {
       if (data.success) {

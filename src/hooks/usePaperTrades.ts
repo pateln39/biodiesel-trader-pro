@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -11,7 +10,7 @@ import {
   formatMTMDisplay,
   generateInstrumentName 
 } from '@/utils/tradeUtils';
-import { deletePaperTrade, delay } from '@/utils/tradeDeleteUtils';
+import { deletePaperTrade, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
 
 // Debounce function to prevent multiple refetches in quick succession
 const debounce = (fn: Function, ms = 300) => {
@@ -25,9 +24,14 @@ const debounce = (fn: Function, ms = 300) => {
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
+  const isProcessingRef = useRef<boolean>(false);
   
-  // Debounced refetch function to prevent multiple refetches in quick succession
+  // Debounced refetch function with additional safeguard
   const debouncedRefetch = useRef(debounce((fn: Function) => {
+    if (isProcessingRef.current) {
+      console.log("Skipping paper trade refetch as deletion is in progress");
+      return;
+    }
     console.log("Executing debounced paper trade refetch");
     fn();
   }, 500)).current;
@@ -122,16 +126,10 @@ export const usePaperTrades = () => {
     refetchOnWindowFocus: false // Disable automatic refetch on window focus
   });
   
-  // Set up real-time subscription to trades changes with filter for paper trades only
-  useEffect(() => {
-    // Cancel any existing subscriptions to avoid duplicates
-    if (realtimeChannelsRef.current.paperParentTradesChannel) {
-      supabase.removeChannel(realtimeChannelsRef.current.paperParentTradesChannel);
-    }
-    
-    if (realtimeChannelsRef.current.paperTradeLegsChannel) {
-      supabase.removeChannel(realtimeChannelsRef.current.paperTradeLegsChannel);
-    }
+  // Setup and cleanup function for realtime subscriptions
+  const setupRealtimeSubscriptions = useCallback(() => {
+    // First clean up any existing subscriptions
+    cleanupSubscriptions(realtimeChannelsRef.current);
     
     // Subscribe to changes on parent_trades table for paper trades
     const paperParentTradesChannel = supabase
@@ -142,15 +140,16 @@ export const usePaperTrades = () => {
         table: 'parent_trades',
         filter: 'trade_type=eq.paper'
       }, () => {
-        console.log('Paper trades changed, debouncing refetch...');
-        debouncedRefetch(refetch);
+        if (!isProcessingRef.current) {
+          console.log('Paper trades changed, debouncing refetch...');
+          debouncedRefetch(refetch);
+        }
       })
       .subscribe();
 
     realtimeChannelsRef.current.paperParentTradesChannel = paperParentTradesChannel;
 
     // Subscribe to changes on trade_legs table for paper trades
-    // Since we can't filter by parent trade type, we'll need to handle all leg changes
     const paperTradeLegsChannel = supabase
       .channel('paper_trade_legs')
       .on('postgres_changes', { 
@@ -158,42 +157,63 @@ export const usePaperTrades = () => {
         schema: 'public', 
         table: 'trade_legs' 
       }, () => {
-        console.log('Paper trade legs changed, debouncing refetch...');
-        debouncedRefetch(refetch);
+        if (!isProcessingRef.current) {
+          console.log('Paper trade legs changed, debouncing refetch...');
+          debouncedRefetch(refetch);
+        }
       })
       .subscribe();
 
     realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      console.log("Cleaning up paper trade subscriptions");
-      if (realtimeChannelsRef.current.paperParentTradesChannel) {
-        supabase.removeChannel(realtimeChannelsRef.current.paperParentTradesChannel);
-      }
-      
-      if (realtimeChannelsRef.current.paperTradeLegsChannel) {
-        supabase.removeChannel(realtimeChannelsRef.current.paperTradeLegsChannel);
-      }
-    };
   }, [refetch, debouncedRefetch]);
   
-  // Mutation for deleting a paper trade
+  // Set up real-time subscription with improved cleanup
+  useEffect(() => {
+    setupRealtimeSubscriptions();
+    
+    // Cleanup subscriptions on unmount
+    return () => {
+      cleanupSubscriptions(realtimeChannelsRef.current);
+    };
+  }, [setupRealtimeSubscriptions]);
+  
+  // Mutation for deleting a paper trade with improved error handling
   const deletePaperTradeMutation = useMutation({
     mutationFn: async (tradeId: string) => {
-      // First update UI optimistically
-      queryClient.setQueryData(['paper-trades'], (oldData: any) => {
-        // Filter out the deleted trade
-        return oldData.filter((trade: any) => trade.id !== tradeId);
-      });
-      
-      // Then perform actual deletion
-      const success = await deletePaperTrade(tradeId);
-      
-      // Wait a little bit before refetching to allow database operations to complete
-      await delay(800);
-      
-      return { success, tradeId };
+      try {
+        // Mark as processing to prevent concurrent operations and realtime updates
+        isProcessingRef.current = true;
+        console.log("Setting isProcessing to true for deletePaperTrade");
+        
+        // Temporarily remove realtime subscriptions during deletion
+        cleanupSubscriptions(realtimeChannelsRef.current);
+        
+        // First update UI optimistically
+        queryClient.setQueryData(['paper-trades'], (oldData: any) => {
+          // Filter out the deleted trade
+          return oldData.filter((trade: any) => trade.id !== tradeId);
+        });
+        
+        // Then perform actual deletion
+        const success = await deletePaperTrade(tradeId);
+        
+        // Wait a little bit before refetching to allow database operations to complete
+        await delay(800);
+        
+        return { success, tradeId };
+      } catch (error) {
+        console.error("Error in deletePaperTradeMutation:", error);
+        throw error;
+      } finally {
+        // Re-establish subscriptions
+        setupRealtimeSubscriptions();
+        
+        // Reset processing flag
+        setTimeout(() => {
+          isProcessingRef.current = false;
+          console.log("Setting isProcessing to false for deletePaperTrade");
+        }, 500);
+      }
     },
     onSuccess: (data) => {
       // Only show success message after deletion completes
