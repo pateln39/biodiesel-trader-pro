@@ -18,6 +18,7 @@ import {
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade, PaperTrade } from '@/types';
+import { formatMTMDisplay } from '@/utils/tradeUtils';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
