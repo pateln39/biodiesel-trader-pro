@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -10,7 +9,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
 import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
 import { getNextMonths } from '@/utils/dateUtils';
-import { formatProductDisplay } from '@/utils/tradeUtils';
+import { formatProductDisplay, formatMTMDisplay } from '@/utils/tradeUtils';
 
 interface PaperTradeTableProps {
   legs: any[];
@@ -20,11 +19,9 @@ interface PaperTradeTableProps {
 const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange }) => {
   const [productRelationships, setProductRelationships] = useState<ProductRelationship[]>([]);
   
-  // Available periods - dynamically generated for next 8 months
   const availablePeriods = getNextMonths(8);
   
   useEffect(() => {
-    // Load product relationships from database
     const fetchProductRelationships = async () => {
       const { data, error } = await supabase
         .from('product_relationships')
@@ -37,7 +34,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         return;
       }
       
-      // Cast the relationship_type field to ensure it's one of our allowed types
       const typedData = data?.map(item => ({
         ...item,
         relationship_type: item.relationship_type as PaperRelationshipType
@@ -49,7 +45,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     fetchProductRelationships();
   }, []);
   
-  // Add a new leg
   const addLeg = () => {
     const newLeg = {
       id: crypto.randomUUID(),
@@ -67,20 +62,17 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     onLegsChange([...legs, newLeg]);
   };
 
-  // Copy the previous leg with a new ID and empty period
   const copyPreviousLeg = () => {
     if (legs.length === 0) return;
     
     const previousLeg = legs[legs.length - 1];
     
-    // Create a deep clone of the previous leg
     const newLeg = {
       ...JSON.parse(JSON.stringify(previousLeg)),
       id: crypto.randomUUID(),
-      period: '' // Clear the period
+      period: ''
     };
     
-    // If there's a right side, update its period too
     if (newLeg.rightSide) {
       newLeg.rightSide.period = '';
     }
@@ -91,21 +83,17 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     });
   };
   
-  // Remove a leg
   const removeLeg = (index: number) => {
     const newLegs = [...legs];
     newLegs.splice(index, 1);
     onLegsChange(newLegs);
   };
   
-  // Handle selection of a paper product (FP, DIFF, SPREAD)
   const handleProductSelect = (index: number, selectedProduct: string) => {
-    // If no product selected, do nothing
     if (!selectedProduct) {
       return;
     }
     
-    // Find the product relationship for the selected product
     const relationship = productRelationships.find(pr => pr.product === selectedProduct);
     
     if (!relationship) {
@@ -116,18 +104,15 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     const newLegs = [...legs];
     let updatedLeg = { ...newLegs[index] };
     
-    // Update leg based on relationship type
     if (relationship.relationship_type === 'FP') {
-      // Fixed Price - single sided
       updatedLeg = {
         ...updatedLeg,
         product: relationship.paired_product || '',
         relationshipType: 'FP' as PaperRelationshipType,
-        rightSide: null, // No right side for FP
+        rightSide: null,
         instrument: `${relationship.paired_product} FP`
       };
     } else if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
-      // DIFF or SPREAD - paired products
       updatedLeg = {
         ...updatedLeg,
         product: relationship.paired_product || '',
@@ -143,7 +128,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           : `${relationship.paired_product}-${relationship.default_opposite} SPREAD`,
         mtmFormula: {
           ...createEmptyFormula(),
-          name: selectedProduct, // Use the selected product as MTM formula name
+          name: selectedProduct,
           rightSide: {
             product: relationship.default_opposite || '',
             quantity: updatedLeg.quantity ? -updatedLeg.quantity : 0,
@@ -164,15 +149,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     onLegsChange(newLegs);
   };
   
-  // Update left side field
   const updateLeftSide = (index: number, field: string, value: any) => {
     const newLegs = [...legs];
     const leg = { ...newLegs[index] };
     
-    // Update the field
     (leg as any)[field] = value;
     
-    // If quantity or period changes, update right side if it exists
     if (leg.rightSide && (field === 'quantity' || field === 'period')) {
       leg.rightSide = {
         ...leg.rightSide,
@@ -180,7 +162,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         period: field === 'period' ? value : leg.rightSide.period
       };
       
-      // Update the mtmFormula exposures for DIFF/SPREAD trades
       if (leg.mtmFormula && leg.relationshipType !== 'FP') {
         const exposures = {
           physical: {
@@ -200,7 +181,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     onLegsChange(newLegs);
   };
   
-  // Update right side field
   const updateRightSide = (index: number, field: string, value: any) => {
     const newLegs = [...legs];
     const leg = { ...newLegs[index] };
@@ -216,7 +196,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     onLegsChange(newLegs);
   };
   
-  // Format a value for display
   const formatValue = (value: any) => {
     if (typeof value === 'number') {
       return value.toLocaleString();
@@ -224,7 +203,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     return value;
   };
   
-  // Get display text for relationship selection
   const getRelationshipDisplayText = (leg: any) => {
     if (!leg.relationshipType) return "Select product";
     
@@ -236,11 +214,20 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     return relationship?.product || "Select product";
   };
 
-  // Format product display based on relationship type and product
   const getProductDisplay = (leg: any) => {
     if (!leg.product) return "";
     
     return formatProductDisplay(
+      leg.product,
+      leg.relationshipType,
+      leg.rightSide?.product
+    );
+  };
+  
+  const getMTMFormulaDisplay = (leg: any) => {
+    if (!leg.product) return "";
+    
+    return formatMTMDisplay(
       leg.product,
       leg.relationshipType,
       leg.rightSide?.product
@@ -303,7 +290,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </Button>
                   </td>
                   
-                  {/* LEFT SIDE */}
                   <td className="px-4 py-3">
                     <Select 
                       value={getRelationshipDisplayText(leg)}
@@ -356,7 +342,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     />
                   </td>
                   
-                  {/* RIGHT SIDE */}
                   {leg.rightSide ? (
                     <>
                       <td className="px-4 py-3">
@@ -399,11 +384,10 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </td>
                   )}
                   
-                  {/* MTM */}
                   <td className="px-4 py-3">
                     <Input 
                       type="text" 
-                      value={getProductDisplay(leg)} 
+                      value={getMTMFormulaDisplay(leg)} 
                       readOnly
                       className="w-32 bg-gray-50"
                     />
