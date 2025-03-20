@@ -230,10 +230,19 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   const getRelationshipDisplayText = (leg: any) => {
     if (!leg.relationshipType) return "Select product";
     
-    const relationship = productRelationships.find(pr => 
-      pr.relationship_type === leg.relationshipType && 
-      pr.paired_product === leg.product
-    );
+    let relationship;
+    
+    if (leg.relationshipType === 'FP') {
+      relationship = productRelationships.find(pr => 
+        pr.relationship_type === 'FP' && 
+        pr.paired_product === leg.product
+      );
+    } else {
+      relationship = productRelationships.find(pr => 
+        pr.relationship_type === leg.relationshipType && 
+        pr.paired_product === leg.product
+      );
+    }
     
     return relationship?.product || "Select product";
   };
@@ -331,6 +340,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       </SelectContent>
                     </Select>
                   </td>
+                  
                   <td className="px-4 py-3">
                     <Input 
                       type="number" 
