@@ -294,12 +294,14 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           <thead className="bg-gray-50">
             <tr>
               <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={1}>PRODUCT TYPE</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={4}>LEFT SIDE</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={4}>RIGHT SIDE</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={2}>MTM</th>
             </tr>
             <tr>
               <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
@@ -343,6 +345,15 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                         ))}
                       </SelectContent>
                     </Select>
+                  </td>
+                  
+                  <td className="px-4 py-3">
+                    <Input 
+                      type="text" 
+                      value={leg.product || ''} 
+                      readOnly
+                      className="w-full bg-gray-50"
+                    />
                   </td>
                   
                   <td className="px-4 py-3">
@@ -442,7 +453,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               ))
             ) : (
               <tr>
-                <td colSpan={11} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={12} className="px-6 py-4 text-center text-sm text-gray-500">
                   No trade legs yet. Click "Add Row" to start building your trade.
                 </td>
               </tr>
