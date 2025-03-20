@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
@@ -64,6 +64,30 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     };
     
     onLegsChange([...legs, newLeg]);
+  };
+
+  // Copy the previous leg with a new ID and empty period
+  const copyPreviousLeg = () => {
+    if (legs.length === 0) return;
+    
+    const previousLeg = legs[legs.length - 1];
+    
+    // Create a deep clone of the previous leg
+    const newLeg = {
+      ...JSON.parse(JSON.stringify(previousLeg)),
+      id: crypto.randomUUID(),
+      period: '' // Clear the period
+    };
+    
+    // If there's a right side, update its period too
+    if (newLeg.rightSide) {
+      newLeg.rightSide.period = '';
+    }
+    
+    onLegsChange([...legs, newLeg]);
+    toast.success('Previous row copied', {
+      description: 'Please select a period for the new row'
+    });
   };
   
   // Remove a leg
@@ -203,7 +227,16 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end space-x-2">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={copyPreviousLeg}
+          disabled={legs.length === 0}
+        >
+          <Copy className="h-4 w-4 mr-1" />
+          Copy Previous Row
+        </Button>
         <Button type="button" variant="outline" onClick={addLeg}>
           <Plus className="h-4 w-4 mr-1" />
           Add Row
