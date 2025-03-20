@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -232,12 +233,15 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     let relationship;
     
+    // Find the relationship based on relationship_type and the product's name
     if (leg.relationshipType === 'FP') {
+      // For FP, we need to match where paired_product equals leg.product
       relationship = productRelationships.find(pr => 
         pr.relationship_type === 'FP' && 
         pr.paired_product === leg.product
       );
     } else {
+      // For DIFF/SPREAD, we also match on paired_product
       relationship = productRelationships.find(pr => 
         pr.relationship_type === leg.relationshipType && 
         pr.paired_product === leg.product
