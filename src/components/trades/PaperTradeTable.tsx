@@ -110,7 +110,17 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         product: relationship.paired_product || '',
         relationshipType: 'FP' as PaperRelationshipType,
         rightSide: null,
-        instrument: `${relationship.paired_product} FP`
+        instrument: `${relationship.paired_product} FP`,
+        mtmFormula: {
+          ...createEmptyFormula(),
+          name: `${relationship.paired_product} FP`,
+          exposures: {
+            physical: {
+              [relationship.paired_product || '']: updatedLeg.quantity || 0
+            },
+            pricing: {}
+          }
+        }
       };
     } else if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
       updatedLeg = {
@@ -173,6 +183,20 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
         leg.mtmFormula = {
           ...leg.mtmFormula,
           exposures
+        };
+      }
+    }
+    
+    if (field === 'quantity' && leg.relationshipType === 'FP' && leg.product) {
+      if (leg.mtmFormula) {
+        leg.mtmFormula = {
+          ...leg.mtmFormula,
+          exposures: {
+            physical: {
+              [leg.product]: value
+            },
+            pricing: {}
+          }
         };
       }
     }
