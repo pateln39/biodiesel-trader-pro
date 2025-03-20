@@ -1,4 +1,3 @@
-
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -15,6 +14,49 @@ export const generateTradeReference = (): string => {
 export const generateLegReference = (tradeReference: string, legNumber: number): string => {
   const suffix = String.fromCharCode(97 + legNumber); // 0 -> 'a', 1 -> 'b', etc.
   return `${tradeReference}-${suffix}`;
+};
+
+// Format a leg reference for display
+export const formatLegReference = (tradeReference: string, legReference: string): string => {
+  // If the leg reference already contains the trade reference, just return the leg reference
+  if (legReference && legReference.startsWith(tradeReference)) {
+    return legReference;
+  }
+  
+  // Otherwise, if there's a suffix in the leg reference, append it to the trade reference
+  if (legReference && legReference.includes('-')) {
+    const suffix = legReference.split('-').pop();
+    return `${tradeReference}-${suffix}`;
+  }
+  
+  // Fallback: just return the trade reference
+  return tradeReference;
+};
+
+// Format product display name based on relationship type
+export const formatProductDisplay = (
+  product: string,
+  relationshipType: string,
+  rightSideProduct?: string
+): string => {
+  if (!product) return '';
+  
+  switch (relationshipType) {
+    case 'FP':
+      return `${product} FP`;
+    case 'DIFF':
+      if (rightSideProduct) {
+        return `${product}/${rightSideProduct}`;
+      }
+      return `${product} DIFF`;
+    case 'SPREAD':
+      if (rightSideProduct) {
+        return `${product}/${rightSideProduct}`;
+      }
+      return `${product} SPREAD`;
+    default:
+      return product;
+  }
 };
 
 // Calculate open quantity for a trade

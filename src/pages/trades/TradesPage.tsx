@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { formatDate } from '@/utils/tradeUtils';
+import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
 import { PhysicalTrade, PhysicalTradeLeg, PaperTrade } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
@@ -65,17 +64,14 @@ interface DeleteItemDetails {
 }
 
 const TradesPage = () => {
-  // Physical trades state
   const { trades, loading: physicalLoading, error: physicalError, refetchTrades } = useTrades();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   
-  // Paper trades state
   const { paperTrades, isLoading: paperLoading, error: paperError } = usePaperTrades();
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
   
-  // Shared delete state
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
   const [deletingLegId, setDeletingLegId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,7 +134,6 @@ const TradesPage = () => {
   };
 
   const handlePaperCommentBlur = (tradeId: string) => {
-    // Reusing the same debounced save function for paper trades
     setSavingPaperComments(prev => ({ ...prev, [tradeId]: true }));
     
     setTimeout(() => {
@@ -225,14 +220,12 @@ const TradesPage = () => {
         });
       }
       
-      // First close the dialog and reset all state before refetching
       setShowDeleteConfirmation(false);
       setIsDeleting(false);
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
       
-      // Then refetch the data
       setTimeout(() => {
         refetchTrades();
       }, 100);
@@ -244,7 +237,6 @@ const TradesPage = () => {
         title: "Deletion failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
-      // Even on error, close the dialog
       setIsDeleting(false);
       setShowDeleteConfirmation(false);
     }
@@ -270,22 +262,24 @@ const TradesPage = () => {
   };
 
   const renderPaperFormula = (trade: PaperTrade) => {
-    if (!trade.legs || trade.legs.length === 0 || !trade.legs[0].formula) {
+    if (!trade.legs || trade.legs.length === 0) {
       return <span className="text-muted-foreground italic">No formula</span>;
     }
     
-    // For paper trades, show the relationship type and products involved
     const firstLeg = trade.legs[0];
+    let displayText = firstLeg.product;
     
-    if (firstLeg.relationshipType === 'FP') {
-      return <span>{firstLeg.product} (Fixed Price)</span>;
-    } else if (firstLeg.relationshipType === 'DIFF' && firstLeg.rightSide) {
-      return <span>{firstLeg.product} - {firstLeg.rightSide.product}</span>;
-    } else if (firstLeg.relationshipType === 'SPREAD' && firstLeg.rightSide) {
-      return <span>{firstLeg.product} + {firstLeg.rightSide.product}</span>;
+    if (firstLeg.instrument) {
+      displayText = firstLeg.instrument;
+    } else if (firstLeg.relationshipType && firstLeg.rightSide) {
+      displayText = formatProductDisplay(
+        firstLeg.product,
+        firstLeg.relationshipType,
+        firstLeg.rightSide.product
+      );
     }
     
-    return <span className="text-muted-foreground italic">Custom formula</span>;
+    return <span>{displayText}</span>;
   };
 
   const isMultiLegTrade = (trade: PhysicalTrade) => {
@@ -360,7 +354,6 @@ const TradesPage = () => {
                 {physicalTrades.length > 0 ? (
                   physicalTrades.flatMap((trade) => {
                     const hasMultipleLegs = isMultiLegTrade(trade);
-                    // Add safety check to ensure legs is an array
                     const legs = trade.legs || [];
                     
                     return legs.map((leg, legIndex) => (
@@ -506,58 +499,87 @@ const TradesPage = () => {
               <TableBody>
                 {paperTrades && paperTrades.length > 0 ? (
                   paperTrades.flatMap((trade) => {
-                    // Only show first leg for now as the main one
-                    return trade.legs.map((leg, legIndex) => (
-                      <TableRow key={`${trade.id}-${leg.id}`}>
-                        <TableCell>
-                          <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                            {trade.tradeReference}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{leg.broker || trade.broker}</TableCell>
-                        <TableCell>{renderPaperFormula(trade)}</TableCell>
-                        <TableCell>{leg.period}</TableCell>
-                        <TableCell className="capitalize">{leg.buySell}</TableCell>
-                        <TableCell className="text-right">{leg.quantity}</TableCell>
-                        <TableCell className="text-right">{leg.price}</TableCell>
-                        <TableCell>
-                          <div className="relative">
-                            <Textarea 
-                              placeholder="Add comments..."
-                              value={paperComments[trade.id] || trade.comment || ''}
-                              onChange={(e) => handlePaperCommentChange(trade.id, e.target.value)}
-                              onBlur={() => handlePaperCommentBlur(trade.id)}
-                              className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                              rows={1}
-                            />
-                            {savingPaperComments[trade.id] && (
-                              <div className="absolute top-1 right-1">
-                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">Actions</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <Link to={`/trades/edit/${trade.id}`}>
-                                <DropdownMenuItem>Edit Trade</DropdownMenuItem>
-                              </Link>
-                              <DropdownMenuItem 
-                                className="text-red-600 focus:text-red-600" 
-                                onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference, 'paper')}
-                              >
-                                <Trash className="mr-2 h-4 w-4" />
-                                Delete Trade
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ));
+                    return trade.legs.map((leg, legIndex) => {
+                      let productDisplay = leg.product;
+                      
+                      if (leg.instrument) {
+                        const parts = leg.instrument.split(' ');
+                        const relationshipType = parts.pop();
+                        
+                        if (relationshipType === 'DIFF') {
+                          productDisplay = `${leg.product}/${leg.rightSide?.product || 'LSGO'}`;
+                        } else if (relationshipType === 'SPREAD') {
+                          const products = parts[0].split('-');
+                          if (products.length === 2) {
+                            productDisplay = `${products[0]}/${products[1]}`;
+                          } else {
+                            productDisplay = `${leg.product}/${leg.rightSide?.product || ''}`;
+                          }
+                        } else if (relationshipType === 'FP') {
+                          productDisplay = `${leg.product} FP`;
+                        }
+                      } else {
+                        productDisplay = formatProductDisplay(
+                          leg.product,
+                          leg.relationshipType,
+                          leg.rightSide?.product
+                        );
+                      }
+                      
+                      const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : ''}`;
+                      
+                      return (
+                        <TableRow key={`${trade.id}-${leg.id}`}>
+                          <TableCell>
+                            <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+                              {displayReference}
+                            </Link>
+                          </TableCell>
+                          <TableCell>{leg.broker || trade.broker}</TableCell>
+                          <TableCell>{productDisplay}</TableCell>
+                          <TableCell>{leg.period}</TableCell>
+                          <TableCell className="capitalize">{leg.buySell}</TableCell>
+                          <TableCell className="text-right">{leg.quantity}</TableCell>
+                          <TableCell className="text-right">{leg.price}</TableCell>
+                          <TableCell>
+                            <div className="relative">
+                              <Textarea 
+                                placeholder="Add comments..."
+                                value={paperComments[trade.id] || trade.comment || ''}
+                                onChange={(e) => handlePaperCommentChange(trade.id, e.target.value)}
+                                onBlur={() => handlePaperCommentBlur(trade.id)}
+                                className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
+                                rows={1}
+                              />
+                              {savingPaperComments[trade.id] && (
+                                <div className="absolute top-1 right-1">
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">Actions</Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <Link to={`/trades/edit/${trade.id}`}>
+                                  <DropdownMenuItem>Edit Trade</DropdownMenuItem>
+                                </Link>
+                                <DropdownMenuItem 
+                                  className="text-red-600 focus:text-red-600" 
+                                  onClick={() => handleDeleteTradeClick(trade.id, trade.tradeReference, 'paper')}
+                                >
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Delete Trade
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
                   })
                 ) : (
                   <TableRow>
@@ -606,8 +628,6 @@ const TradesPage = () => {
 
       <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
         if (!isOpen && !isDeleting) {
-          // Only handle closing via this callback if not already deleting
-          // This prevents duplicate state resets
           cancelDelete();
         }
       }}>

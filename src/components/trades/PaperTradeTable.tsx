@@ -10,6 +10,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
 import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
 import { getNextMonths } from '@/utils/dateUtils';
+import { formatProductDisplay } from '@/utils/tradeUtils';
 
 interface PaperTradeTableProps {
   legs: any[];
@@ -120,9 +121,10 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       // Fixed Price - single sided
       updatedLeg = {
         ...updatedLeg,
-        product: selectedProduct,
+        product: relationship.paired_product || '',
         relationshipType: 'FP' as PaperRelationshipType,
-        rightSide: null // No right side for FP
+        rightSide: null, // No right side for FP
+        instrument: `${relationship.paired_product} FP`
       };
     } else if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
       // DIFF or SPREAD - paired products
@@ -136,9 +138,18 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           period: updatedLeg.period || '',
           price: 0
         },
+        instrument: relationship.relationship_type === 'DIFF' 
+          ? `${relationship.paired_product} DIFF` 
+          : `${relationship.paired_product}-${relationship.default_opposite} SPREAD`,
         mtmFormula: {
           ...createEmptyFormula(),
           name: selectedProduct, // Use the selected product as MTM formula name
+          rightSide: {
+            product: relationship.default_opposite || '',
+            quantity: updatedLeg.quantity ? -updatedLeg.quantity : 0,
+            period: updatedLeg.period || '',
+            price: 0
+          },
           exposures: {
             physical: {
               [relationship.paired_product || '']: updatedLeg.quantity || 0,
@@ -223,6 +234,17 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     );
     
     return relationship?.product || "Select product";
+  };
+
+  // Format product display based on relationship type and product
+  const getProductDisplay = (leg: any) => {
+    if (!leg.product) return "";
+    
+    return formatProductDisplay(
+      leg.product,
+      leg.relationshipType,
+      leg.rightSide?.product
+    );
   };
   
   return (
@@ -381,7 +403,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                   <td className="px-4 py-3">
                     <Input 
                       type="text" 
-                      value={leg.mtmFormula?.name || ''} 
+                      value={getProductDisplay(leg)} 
                       readOnly
                       className="w-32 bg-gray-50"
                     />

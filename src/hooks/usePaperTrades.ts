@@ -1,9 +1,11 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { PaperTrade, PaperTradeLeg, PaperRelationshipType, BuySell } from '@/types/trade';
 import { formatMonthCode } from '@/utils/dateUtils';
+import { generateLegReference, formatProductDisplay } from '@/utils/tradeUtils';
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
@@ -36,7 +38,8 @@ export const usePaperTrades = () => {
           const { data: legs, error: legsError } = await supabase
             .from('trade_legs')
             .select('*')
-            .eq('parent_trade_id', parentTrade.id);
+            .eq('parent_trade_id', parentTrade.id)
+            .order('leg_reference', { ascending: true });
             
           if (legsError) {
             throw new Error(`Error fetching trade legs: ${legsError.message}`);
@@ -52,8 +55,15 @@ export const usePaperTrades = () => {
             comment: parentTrade.comment,
             broker: legs && legs[0] ? legs[0].broker : '',
             legs: (legs || []).map((leg) => {
-              // Parse the relationship_type from trading_period if available
-              const relationshipType = leg.trading_period as PaperRelationshipType || 'FP';
+              // Extract the relationship_type from instrument for display purposes
+              const instrument = leg.instrument || 'FP';
+              let relationshipType: PaperRelationshipType = 'FP';
+              
+              if (instrument.includes('DIFF')) {
+                relationshipType = 'DIFF';
+              } else if (instrument.includes('SPREAD')) {
+                relationshipType = 'SPREAD';
+              }
               
               // Safely extract rightSide from mtm_formula if it exists
               let rightSide;
@@ -70,9 +80,10 @@ export const usePaperTrades = () => {
                 buySell: leg.buy_sell as BuySell,
                 product: leg.product,
                 quantity: leg.quantity,
-                period: leg.trading_period || '', // Use trading_period for consistency
+                period: leg.trading_period || '', 
                 price: leg.price || 0,
                 broker: leg.broker,
+                instrument: leg.instrument,
                 relationshipType,
                 rightSide: rightSide,
                 formula: leg.pricing_formula,
@@ -90,15 +101,17 @@ export const usePaperTrades = () => {
   // Create paper trade mutation
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
-      // Insert parent trade
+      // Store the original product selection in the comment field for reference
+      let comment = trade.comment || '';
+      
+      // Insert parent trade - store the product info in the comment
       const { data: parentTrade, error: parentError } = await supabase
         .from('parent_trades')
         .insert({
           trade_reference: trade.tradeReference,
           trade_type: 'paper',
-          comment: trade.comment,
-          // Note: counterparty is not required for paper trades but the DB may require it
-          // We'll use the broker name as a placeholder if needed
+          comment: comment,
+          // Use the broker name as a placeholder if needed
           counterparty: trade.broker || 'Paper Trade'
         })
         .select('id')
@@ -110,13 +123,16 @@ export const usePaperTrades = () => {
       
       // Prepare legs for insertion
       if (trade.legs && trade.legs.length > 0) {
-        // Insert trade legs one by one to ensure proper typing
-        for (const leg of trade.legs) {
+        // Insert trade legs one by one
+        for (let i = 0; i < trade.legs.length; i++) {
+          const leg = trade.legs[i];
+          // Generate leg reference with alphabetical suffix
+          const legReference = generateLegReference(trade.tradeReference || '', i);
+          
           // Store the period in both trading_period and pricing_period_start/end for consistency
           const tradingPeriod = leg.period;
           
-          // If we have a proper date string in the period field, use it
-          // Otherwise we'll just use the trading_period as is
+          // Parse period if available
           let pricingPeriodStart = null;
           let pricingPeriodEnd = null;
           
@@ -142,16 +158,14 @@ export const usePaperTrades = () => {
             }
           }
           
-          // Ensure mtmFormula has the right structure with exposures
+          // Prepare mtmFormula with rightSide info
           let mtmFormula = leg.mtmFormula || {};
           
-          // For DIFF trades, make sure we capture both sides in the exposures
+          // For DIFF/SPREAD trades, capture both sides in the exposures
           if (leg.relationshipType !== 'FP' && leg.rightSide) {
-            // Store the rightSide separately in the mtmFormula for reference
             mtmFormula = {
               ...mtmFormula,
               rightSide: leg.rightSide,
-              // Ensure we have proper physical exposures for both sides
               exposures: {
                 physical: {
                   [leg.product]: leg.quantity || 0,
@@ -161,19 +175,36 @@ export const usePaperTrades = () => {
             };
           }
           
+          // Store the full instrument name for future display formatting
+          // Example: "UCOME DIFF", "RME FP", "FAME0-RME SPREAD"
+          let instrument = leg.product;
+          if (leg.relationshipType) {
+            instrument = `${leg.product} ${leg.relationshipType}`;
+          }
+          
+          // For differential or spread trades with right side
+          if (leg.relationshipType !== 'FP' && leg.rightSide && leg.rightSide.product) {
+            if (leg.relationshipType === 'SPREAD') {
+              instrument = `${leg.product}-${leg.rightSide.product} SPREAD`;
+            } else if (leg.relationshipType === 'DIFF') {
+              instrument = `${leg.product} DIFF`;
+            }
+          }
+          
           const legData = {
-            leg_reference: leg.legReference,
+            leg_reference: legReference,
             parent_trade_id: parentTrade.id,
             buy_sell: leg.buySell,
             product: leg.product,
             quantity: leg.quantity,
             price: leg.price,
             broker: leg.broker || trade.broker,
-            trading_period: tradingPeriod, // Store period code in trading_period
+            trading_period: tradingPeriod,
             pricing_formula: leg.formula,
             mtm_formula: mtmFormula,
             pricing_period_start: pricingPeriodStart,
-            pricing_period_end: pricingPeriodEnd
+            pricing_period_end: pricingPeriodEnd,
+            instrument: instrument
           };
           
           const { error: legError } = await supabase
