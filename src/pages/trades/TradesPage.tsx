@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCcw } from 'lucide-react';
@@ -355,9 +356,13 @@ const TradesPage = () => {
         <AlertDescription>
           {pageError}
           <div className="mt-2">
-            <Button variant="outline" size="sm" onClick={() => {
-              refetchTrades();
-            }}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                refetchTrades();
+              }}
+            >
               Try Again
             </Button>
           </div>
