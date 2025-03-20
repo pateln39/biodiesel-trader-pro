@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -13,198 +13,95 @@ import {
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
-  const supabaseChannels = useRef<ReturnType<typeof supabase.channel>[]>([]);
-  
-  // Track if we already have active subscriptions to avoid duplicates
-  const hasSetupSubscriptions = useRef(false);
-  
-  // Track if a refetch is already in progress
-  const refetchInProgress = useRef(false);
   
   // Fetch paper trades
-  const { 
-    data: paperTrades = [], 
-    isLoading, 
-    error,
-    refetch
-  } = useQuery({
+  const { data: paperTrades, isLoading, error } = useQuery({
     queryKey: ['paper-trades'],
     queryFn: async () => {
-      // Set refetch flag to prevent duplicate refetches
-      refetchInProgress.current = true;
-      
-      try {
-        // Fetch parent trades of type 'paper'
-        const { data: parentTrades, error: parentError } = await supabase
-          .from('parent_trades')
-          .select(`
-            id,
-            trade_reference,
-            counterparty,
-            created_at,
-            updated_at,
-            comment
-          `)
-          .eq('trade_type', 'paper')
-          .order('created_at', { ascending: false });
-          
-        if (parentError) {
-          throw new Error(`Error fetching paper trades: ${parentError.message}`);
-        }
+      // Fetch parent trades of type 'paper'
+      const { data: parentTrades, error: parentError } = await supabase
+        .from('parent_trades')
+        .select(`
+          id,
+          trade_reference,
+          counterparty,
+          created_at,
+          updated_at,
+          comment
+        `)
+        .eq('trade_type', 'paper')
+        .order('created_at', { ascending: false });
         
-        // For each parent trade, fetch its legs
-        const tradesWithLegs = await Promise.all(
-          (parentTrades || []).map(async (parentTrade) => {
-            const { data: legs, error: legsError } = await supabase
-              .from('trade_legs')
-              .select('*')
-              .eq('parent_trade_id', parentTrade.id)
-              .order('leg_reference', { ascending: true });
-              
-            if (legsError) {
-              throw new Error(`Error fetching trade legs: ${legsError.message}`);
-            }
-            
-            return {
-              id: parentTrade.id,
-              tradeReference: parentTrade.trade_reference,
-              tradeType: 'paper' as const,
-              counterparty: parentTrade.counterparty || '',
-              createdAt: new Date(parentTrade.created_at),
-              updatedAt: new Date(parentTrade.updated_at),
-              comment: parentTrade.comment,
-              broker: legs && legs[0] ? legs[0].broker : '',
-              legs: (legs || []).map((leg) => {
-                // Extract the relationship_type from instrument
-                const instrument = leg.instrument || '';
-                let relationshipType: PaperRelationshipType = 'FP';
-                
-                if (instrument.includes('DIFF')) {
-                  relationshipType = 'DIFF';
-                } else if (instrument.includes('SPREAD')) {
-                  relationshipType = 'SPREAD';
-                }
-                
-                // Safely extract rightSide from mtm_formula if it exists
-                let rightSide;
-                if (leg.mtm_formula && 
-                   typeof leg.mtm_formula === 'object' && 
-                   'rightSide' in leg.mtm_formula) {
-                  rightSide = leg.mtm_formula.rightSide;
-                }
-                
-                return {
-                  id: leg.id,
-                  parentTradeId: leg.parent_trade_id,
-                  legReference: leg.leg_reference,
-                  buySell: leg.buy_sell as BuySell,
-                  product: leg.product as Product,
-                  quantity: leg.quantity,
-                  period: leg.trading_period || '', 
-                  price: leg.price || 0,
-                  broker: leg.broker,
-                  instrument: leg.instrument,
-                  relationshipType,
-                  rightSide: rightSide,
-                  formula: leg.pricing_formula,
-                  mtmFormula: leg.mtm_formula
-                };
-              })
-            };
-          })
-        );
-        
-        return tradesWithLegs as PaperTrade[];
-      } finally {
-        // Clear refetch flag after a short delay
-        setTimeout(() => {
-          refetchInProgress.current = false;
-        }, 500);
+      if (parentError) {
+        throw new Error(`Error fetching paper trades: ${parentError.message}`);
       }
-    },
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 30000, // Increase stale time to reduce refetches
-    refetchInterval: 60000, // Reduce refetch interval to once per minute
+      
+      // For each parent trade, fetch its legs
+      const tradesWithLegs = await Promise.all(
+        (parentTrades || []).map(async (parentTrade) => {
+          const { data: legs, error: legsError } = await supabase
+            .from('trade_legs')
+            .select('*')
+            .eq('parent_trade_id', parentTrade.id)
+            .order('leg_reference', { ascending: true });
+            
+          if (legsError) {
+            throw new Error(`Error fetching trade legs: ${legsError.message}`);
+          }
+          
+          return {
+            id: parentTrade.id,
+            tradeReference: parentTrade.trade_reference,
+            tradeType: 'paper' as const,
+            counterparty: parentTrade.counterparty || '',
+            createdAt: new Date(parentTrade.created_at),
+            updatedAt: new Date(parentTrade.updated_at),
+            comment: parentTrade.comment,
+            broker: legs && legs[0] ? legs[0].broker : '',
+            legs: (legs || []).map((leg) => {
+              // Extract the relationship_type from instrument
+              const instrument = leg.instrument || '';
+              let relationshipType: PaperRelationshipType = 'FP';
+              
+              if (instrument.includes('DIFF')) {
+                relationshipType = 'DIFF';
+              } else if (instrument.includes('SPREAD')) {
+                relationshipType = 'SPREAD';
+              }
+              
+              // Safely extract rightSide from mtm_formula if it exists
+              let rightSide;
+              if (leg.mtm_formula && 
+                 typeof leg.mtm_formula === 'object' && 
+                 'rightSide' in leg.mtm_formula) {
+                rightSide = leg.mtm_formula.rightSide;
+              }
+              
+              return {
+                id: leg.id,
+                parentTradeId: leg.parent_trade_id,
+                legReference: leg.leg_reference,
+                buySell: leg.buy_sell as BuySell,
+                product: leg.product as Product,
+                quantity: leg.quantity,
+                period: leg.trading_period || '', 
+                price: leg.price || 0,
+                broker: leg.broker,
+                instrument: leg.instrument,
+                relationshipType,
+                rightSide: rightSide,
+                formula: leg.pricing_formula,
+                mtmFormula: leg.mtm_formula
+              };
+            })
+          };
+        })
+      );
+      
+      return tradesWithLegs as PaperTrade[];
+    }
   });
   
-  // Controlled refetch function to prevent multiple simultaneous refetches
-  const safeRefetch = useCallback(() => {
-    if (refetchInProgress.current) {
-      console.log('Refetch already in progress, skipping...');
-      return Promise.resolve();
-    }
-    
-    console.log('Executing safe refetch for paper trades');
-    return refetch();
-  }, [refetch]);
-  
-  // Set up real-time subscription to paper trades changes
-  useEffect(() => {
-    // Only set up subscriptions once
-    if (hasSetupSubscriptions.current) {
-      return;
-    }
-    
-    hasSetupSubscriptions.current = true;
-    console.log('Setting up paper trades realtime subscriptions');
-    
-    // Subscribe to changes on parent_trades table for paper trades
-    const parentTradesChannel = supabase
-      .channel('paper:parent_trades')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'parent_trades',
-        filter: 'trade_type=eq.paper'
-      }, (payload) => {
-        console.log('Paper trades changed:', payload);
-        
-        // Use debounced refetch to prevent rapid multiple refetches
-        if (!refetchInProgress.current) {
-          const timer = setTimeout(() => {
-            safeRefetch();
-          }, 300);
-          
-          return () => clearTimeout(timer);
-        }
-      })
-      .subscribe();
-
-    // Subscribe to changes on trade_legs table related to paper trades
-    const tradeLegsChannel = supabase
-      .channel('paper:trade_legs')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'trade_legs' 
-      }, (payload) => {
-        console.log('Trade legs changed:', payload);
-        
-        // Use debounced refetch to prevent rapid multiple refetches
-        if (!refetchInProgress.current) {
-          const timer = setTimeout(() => {
-            safeRefetch();
-          }, 300);
-          
-          return () => clearTimeout(timer);
-        }
-      })
-      .subscribe();
-
-    // Store channels for cleanup
-    supabaseChannels.current = [parentTradesChannel, tradeLegsChannel];
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      console.log('Cleaning up paper trades realtime subscriptions');
-      supabaseChannels.current.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-      hasSetupSubscriptions.current = false;
-    };
-  }, [safeRefetch]);
-
   // Create paper trade mutation
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
@@ -328,13 +225,12 @@ export const usePaperTrades = () => {
       });
     }
   });
-
+  
   return {
     paperTrades,
     isLoading,
     error,
     createPaperTrade,
-    isCreating,
-    refetchPaperTrades: safeRefetch // Export safe refetch function for consistency with useTrades
+    isCreating
   };
 };

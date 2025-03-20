@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -120,14 +120,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
 };
 
 export const useTrades = () => {
-  const supabaseChannels = useRef<ReturnType<typeof supabase.channel>[]>([]);
-  
-  // Track if we already have active subscriptions to avoid duplicates
-  const hasSetupSubscriptions = useRef(false);
-  
-  // Track if a refetch is already in progress
-  const refetchInProgress = useRef(false);
-  
   const { 
     data: trades = [], 
     isLoading: loading, 
@@ -138,93 +130,45 @@ export const useTrades = () => {
     queryFn: fetchTrades,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    staleTime: 30000, // Increase stale time to reduce refetches
-    refetchInterval: 60000, // Reduce refetch interval to once per minute
+    staleTime: 0, // Always consider data stale to force refetch when component mounts
+    // Add a small refetch interval to ensure trade data stays fresh
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
-
-  // Controlled refetch function to prevent multiple simultaneous refetches
-  const safeRefetch = useCallback(() => {
-    if (refetchInProgress.current) {
-      console.log('Refetch already in progress, skipping...');
-      return Promise.resolve();
-    }
-    
-    refetchInProgress.current = true;
-    console.log('Executing safe refetch for trades');
-    
-    return refetch().finally(() => {
-      // Clear refetch flag after a short delay
-      setTimeout(() => {
-        refetchInProgress.current = false;
-      }, 500);
-    });
-  }, [refetch]);
 
   // Set up real-time subscription to trades changes
   useEffect(() => {
-    // Only set up subscriptions once
-    if (hasSetupSubscriptions.current) {
-      return;
-    }
-    
-    hasSetupSubscriptions.current = true;
-    console.log('Setting up trades realtime subscriptions');
-    
     // Subscribe to changes on parent_trades table
     const parentTradesChannel = supabase
-      .channel('physical:parent_trades')
+      .channel('public:parent_trades')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'parent_trades',
-        filter: 'trade_type=eq.physical'
-      }, (payload) => {
-        console.log('Physical trades changed:', payload);
-        
-        // Use debounced refetch to prevent rapid multiple refetches
-        if (!refetchInProgress.current) {
-          const timer = setTimeout(() => {
-            safeRefetch();
-          }, 300);
-          
-          return () => clearTimeout(timer);
-        }
+        table: 'parent_trades' 
+      }, () => {
+        console.log('Parent trades changed, refetching...');
+        refetch();
       })
       .subscribe();
 
     // Subscribe to changes on trade_legs table
     const tradeLegsChannel = supabase
-      .channel('physical:trade_legs')
+      .channel('public:trade_legs')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'trade_legs' 
-      }, (payload) => {
-        console.log('Trade legs changed:', payload);
-        
-        // Use debounced refetch to prevent rapid multiple refetches
-        if (!refetchInProgress.current) {
-          const timer = setTimeout(() => {
-            safeRefetch();
-          }, 300);
-          
-          return () => clearTimeout(timer);
-        }
+      }, () => {
+        console.log('Trade legs changed, refetching...');
+        refetch();
       })
       .subscribe();
 
-    // Store channels for cleanup
-    supabaseChannels.current = [parentTradesChannel, tradeLegsChannel];
-
     // Cleanup subscriptions on unmount
     return () => {
-      console.log('Cleaning up trades realtime subscriptions');
-      supabaseChannels.current.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-      hasSetupSubscriptions.current = false;
+      supabase.removeChannel(parentTradesChannel);
+      supabase.removeChannel(tradeLegsChannel);
     };
-  }, [safeRefetch]);
+  }, [refetch]);
 
-  return { trades, loading, error, refetchTrades: safeRefetch };
+  return { trades, loading, error, refetchTrades: refetch };
 };

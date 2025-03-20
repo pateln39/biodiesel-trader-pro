@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCcw } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
 import { PhysicalTrade, PhysicalTradeLeg, PaperTrade, DisplayProduct } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
-import { executeWithRefresh } from '@/utils/asyncUtils';
 import { 
   Table,
   TableHeader,
@@ -48,7 +48,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useQueryClient } from '@tanstack/react-query';
-import { Progress } from '@/components/ui/progress';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -68,23 +67,16 @@ interface DeleteItemDetails {
 
 const TradesPage = () => {
   const { trades, loading: physicalLoading, error: physicalError, refetchTrades } = useTrades();
-  const { 
-    paperTrades, 
-    isLoading: paperLoading, 
-    error: paperError, 
-    refetchPaperTrades 
-  } = usePaperTrades();
-  
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   
+  const { paperTrades, isLoading: paperLoading, error: paperError } = usePaperTrades();
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
   
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
   const [deletingLegId, setDeletingLegId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteProgress, setDeleteProgress] = useState(0);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
   const [deleteItemDetails, setDeleteItemDetails] = useState<DeleteItemDetails>({ 
@@ -92,10 +84,7 @@ const TradesPage = () => {
   });
   const [pageError, setPageError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("physical");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
-
-  const refreshInProgress = useRef(false);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -103,7 +92,9 @@ const TradesPage = () => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
-      toast.error("Failed to load trades", {
+      toast({
+        title: "Failed to load trades",
+        variant: "destructive",
         description: combinedError instanceof Error ? combinedError.message : 'Unknown error occurred'
       });
     } else {
@@ -117,7 +108,8 @@ const TradesPage = () => {
       
       setTimeout(() => {
         console.log(`Saving comment for trade ${tradeId}: ${comment}`);
-        toast.success("Comment saved", {
+        toast({
+          title: "Comment saved",
           description: "Your comment has been saved successfully."
         });
         setSavingComments(prev => ({ ...prev, [tradeId]: false }));
@@ -149,7 +141,8 @@ const TradesPage = () => {
     
     setTimeout(() => {
       console.log(`Saving comment for paper trade ${tradeId}: ${paperComments[tradeId]}`);
-      toast.success("Comment saved", {
+      toast({
+        title: "Comment saved",
         description: "Your comment has been saved successfully."
       });
       setSavingPaperComments(prev => ({ ...prev, [tradeId]: false }));
@@ -180,112 +173,84 @@ const TradesPage = () => {
   };
 
   const cancelDelete = () => {
-    if (isDeleting) return;
-    
+    setIsDeleting(false);
     setDeletingTradeId(null);
     setDeletingLegId(null);
     setShowDeleteConfirmation(false);
     setDeleteItemDetails({ reference: '' });
-    setDeleteProgress(0);
   };
 
-  const safeRefreshData = useCallback(() => {
-    if (refreshInProgress.current) return;
-    
-    refreshInProgress.current = true;
-    setIsRefreshing(true);
-    
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['trades'] }),
-      queryClient.invalidateQueries({ queryKey: ['paper-trades'] }),
-      queryClient.invalidateQueries({ queryKey: ['exposure-data'] })
-    ])
-    .finally(() => {
-      setTimeout(() => {
-        refreshInProgress.current = false;
-        setIsRefreshing(false);
-      }, 500);
-    });
-  }, [queryClient]);
-
   const confirmDelete = async () => {
-    if (isDeleting || !showDeleteConfirmation) return;
+    if (isDeleting) return; // Prevent multiple delete operations
     
     setIsDeleting(true);
-    setShowDeleteConfirmation(false);
-    setDeleteProgress(10);
-
+    
     try {
-      const deleteOperation = async () => {
-        setDeleteProgress(30);
-        
-        if (deleteMode === 'trade' && deletingTradeId) {
-          setDeleteProgress(50);
-          const { error: legsError } = await supabase
-            .from('trade_legs')
-            .delete()
-            .eq('parent_trade_id', deletingTradeId);
-            
-          if (legsError) {
-            throw legsError;
-          }
+      if (deleteMode === 'trade' && deletingTradeId) {
+        // Delete trade legs first
+        const { error: legsError } = await supabase
+          .from('trade_legs')
+          .delete()
+          .eq('parent_trade_id', deletingTradeId);
           
-          setDeleteProgress(70);
-          const { error: parentError } = await supabase
-            .from('parent_trades')
-            .delete()
-            .eq('id', deletingTradeId);
-            
-          if (parentError) {
-            throw parentError;
-          }
-          
-          return `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`;
-        } else if (deleteMode === 'leg' && deletingLegId) {
-          setDeleteProgress(60);
-          const { error } = await supabase
-            .from('trade_legs')
-            .delete()
-            .eq('id', deletingLegId);
-          
-          if (error) {
-            throw error;
-          }
-          
-          return "Trade leg deleted";
+        if (legsError) {
+          throw legsError;
         }
         
-        throw new Error("Invalid delete configuration");
-      };
+        // Then delete parent trade
+        const { error: parentError } = await supabase
+          .from('parent_trades')
+          .delete()
+          .eq('id', deletingTradeId);
+          
+        if (parentError) {
+          throw parentError;
+        }
+        
+        toast({
+          title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`
+        });
+      } else if (deleteMode === 'leg' && deletingLegId) {
+        const { error } = await supabase
+          .from('trade_legs')
+          .delete()
+          .eq('id', deletingLegId);
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast({
+          title: "Trade leg deleted"
+        });
+      }
       
-      const successMessage = await executeWithRefresh(
-        deleteOperation,
-        safeRefreshData,
-        500
-      );
+      // First close the dialog to prevent UI freeze
+      setShowDeleteConfirmation(false);
       
-      setDeleteProgress(100);
-      toast.success(successMessage);
+      // Then schedule cache invalidation with a small delay
+      setTimeout(() => {
+        if (deleteItemDetails.tradeType === 'paper') {
+          queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+      }, 50);
       
     } catch (error) {
       console.error('Error deleting:', error);
-      toast.error("Deletion failed", {
+      toast({
+        title: "Deletion failed",
+        variant: "destructive",
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
     } finally {
+      // Clear state regardless of success/failure
       setIsDeleting(false);
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
-      setDeleteProgress(0);
     }
-  };
-
-  const handleManualRefresh = () => {
-    if (isRefreshing) return;
-    
-    toast.info("Refreshing data...");
-    safeRefreshData();
   };
 
   const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
@@ -342,13 +307,9 @@ const TradesPage = () => {
         <AlertDescription>
           {pageError}
           <div className="mt-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                refetchTrades();
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={() => {
+              refetchTrades();
+            }}>
               Try Again
             </Button>
           </div>
@@ -631,21 +592,11 @@ const TradesPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleManualRefresh} 
-              disabled={isRefreshing}
-            >
-              <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} /> 
-              Refresh
+          <Link to="/trades/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> New Trade
             </Button>
-            <Link to="/trades/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> New Trade
-              </Button>
-            </Link>
-          </div>
+          </Link>
         </div>
 
         {pageError && showErrorAlert()}
@@ -701,18 +652,6 @@ const TradesPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {isDeleting && (
-        <div className="fixed inset-0 bg-black/5 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full space-y-4">
-            <h3 className="text-lg font-medium text-center">Deleting {deleteItemDetails.reference}</h3>
-            <Progress value={deleteProgress} className="h-2" />
-            <p className="text-sm text-center text-muted-foreground">
-              Please wait while the operation completes...
-            </p>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 };
