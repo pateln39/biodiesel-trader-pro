@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
-import { PhysicalTrade, PhysicalTradeLeg, PaperTrade } from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg, PaperTrade, DisplayProduct } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { 
@@ -267,7 +267,7 @@ const TradesPage = () => {
     }
     
     const firstLeg = trade.legs[0];
-    let displayText = firstLeg.product;
+    let displayText: DisplayProduct = firstLeg.product;
     
     if (firstLeg.instrument) {
       displayText = firstLeg.instrument;
@@ -500,20 +500,23 @@ const TradesPage = () => {
                 {paperTrades && paperTrades.length > 0 ? (
                   paperTrades.flatMap((trade) => {
                     return trade.legs.map((leg, legIndex) => {
-                      let productDisplay = leg.product;
+                      let productDisplay: DisplayProduct = leg.product;
                       
                       if (leg.instrument) {
                         const parts = leg.instrument.split(' ');
                         const relationshipType = parts.pop();
                         
                         if (relationshipType === 'DIFF') {
-                          productDisplay = `${leg.product}/${leg.rightSide?.product || 'LSGO'}`;
+                          productDisplay = `${leg.product}/LSGO`;
+                          if (leg.rightSide?.product) {
+                            productDisplay = `${leg.product}/${leg.rightSide.product}`;
+                          }
                         } else if (relationshipType === 'SPREAD') {
                           const products = parts[0].split('-');
                           if (products.length === 2) {
                             productDisplay = `${products[0]}/${products[1]}`;
-                          } else {
-                            productDisplay = `${leg.product}/${leg.rightSide?.product || ''}`;
+                          } else if (leg.rightSide?.product) {
+                            productDisplay = `${leg.product}/${leg.rightSide.product}`;
                           }
                         } else if (relationshipType === 'FP') {
                           productDisplay = `${leg.product} FP`;

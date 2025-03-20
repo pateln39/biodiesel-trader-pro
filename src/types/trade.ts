@@ -3,6 +3,7 @@ import { TradeType } from './index';
 
 export type BuySell = "buy" | "sell";
 export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
+export type DisplayProduct = string; // For displaying formatted product names
 export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
@@ -33,6 +34,7 @@ export interface PaperTradeLeg {
   price: number;
   broker: string;
   relationshipType: PaperRelationshipType;
+  instrument?: string; // Store the full product name with type (e.g., "UCOME DIFF")
   rightSide?: {
     product: string;
     quantity: number;

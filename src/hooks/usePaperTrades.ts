@@ -3,9 +3,13 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { PaperTrade, PaperTradeLeg, PaperRelationshipType, BuySell } from '@/types/trade';
+import { PaperTrade, PaperTradeLeg, PaperRelationshipType, BuySell, Product } from '@/types/trade';
 import { formatMonthCode } from '@/utils/dateUtils';
-import { generateLegReference, formatProductDisplay } from '@/utils/tradeUtils';
+import { 
+  generateLegReference, 
+  formatProductDisplay, 
+  generateInstrumentName 
+} from '@/utils/tradeUtils';
 
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
@@ -78,7 +82,7 @@ export const usePaperTrades = () => {
                 parentTradeId: leg.parent_trade_id,
                 legReference: leg.leg_reference,
                 buySell: leg.buy_sell as BuySell,
-                product: leg.product,
+                product: leg.product as Product,
                 quantity: leg.quantity,
                 period: leg.trading_period || '', 
                 price: leg.price || 0,
@@ -175,21 +179,12 @@ export const usePaperTrades = () => {
             };
           }
           
-          // Store the full instrument name for future display formatting
-          // Example: "UCOME DIFF", "RME FP", "FAME0-RME SPREAD"
-          let instrument = leg.product;
-          if (leg.relationshipType) {
-            instrument = `${leg.product} ${leg.relationshipType}`;
-          }
-          
-          // For differential or spread trades with right side
-          if (leg.relationshipType !== 'FP' && leg.rightSide && leg.rightSide.product) {
-            if (leg.relationshipType === 'SPREAD') {
-              instrument = `${leg.product}-${leg.rightSide.product} SPREAD`;
-            } else if (leg.relationshipType === 'DIFF') {
-              instrument = `${leg.product} DIFF`;
-            }
-          }
+          // Generate the instrument name
+          const instrument = generateInstrumentName(
+            leg.product, 
+            leg.relationshipType,
+            leg.rightSide?.product
+          );
           
           const legData = {
             leg_reference: legReference,

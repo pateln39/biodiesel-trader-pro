@@ -48,7 +48,7 @@ export const formatProductDisplay = (
       if (rightSideProduct) {
         return `${product}/${rightSideProduct}`;
       }
-      return `${product} DIFF`;
+      return `${product}/LSGO`;
     case 'SPREAD':
       if (rightSideProduct) {
         return `${product}/${rightSideProduct}`;
@@ -85,4 +85,25 @@ export const calculateNetExposure = (
   paper: number
 ): number => {
   return physical + pricing + paper;
+};
+
+// Generate instrument name from product and relationship type
+export const generateInstrumentName = (
+  product: string,
+  relationshipType: string,
+  rightSideProduct?: string
+): string => {
+  switch (relationshipType) {
+    case 'FP':
+      return `${product} FP`;
+    case 'DIFF':
+      return `${product} DIFF`;
+    case 'SPREAD':
+      if (rightSideProduct) {
+        return `${product}-${rightSideProduct} SPREAD`;
+      }
+      return `${product} SPREAD`;
+    default:
+      return product;
+  }
 };
