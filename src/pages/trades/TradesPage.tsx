@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
@@ -92,8 +93,8 @@ const TradesPage = () => {
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
       toast({
-        variant: "destructive",
         title: "Failed to load trades",
+        variant: "destructive",
         description: combinedError instanceof Error ? combinedError.message : 'Unknown error occurred'
       });
     } else {
@@ -180,11 +181,14 @@ const TradesPage = () => {
   };
 
   const confirmDelete = async () => {
+    if (isDeleting) return; // Prevent multiple delete operations
+    
     setIsDeleting(true);
     
     try {
       if (deleteMode === 'trade' && deletingTradeId) {
-        const { data: legs, error: legsError } = await supabase
+        // Delete trade legs first
+        const { error: legsError } = await supabase
           .from('trade_legs')
           .delete()
           .eq('parent_trade_id', deletingTradeId);
@@ -193,6 +197,7 @@ const TradesPage = () => {
           throw legsError;
         }
         
+        // Then delete parent trade
         const { error: parentError } = await supabase
           .from('parent_trades')
           .delete()
@@ -203,17 +208,8 @@ const TradesPage = () => {
         }
         
         toast({
-          title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`,
-          description: "Trade has been deleted successfully."
+          title: `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`
         });
-
-        if (deleteItemDetails.tradeType === 'paper') {
-          queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-        }
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-        
-        refetchTrades();
       } else if (deleteMode === 'leg' && deletingLegId) {
         const { error } = await supabase
           .from('trade_legs')
@@ -225,32 +221,35 @@ const TradesPage = () => {
         }
         
         toast({
-          title: "Trade leg deleted",
-          description: "Trade leg has been deleted successfully."
+          title: "Trade leg deleted"
         });
-
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-        
-        refetchTrades();
       }
       
+      // First close the dialog to prevent UI freeze
       setShowDeleteConfirmation(false);
+      
+      // Then schedule cache invalidation with a small delay
+      setTimeout(() => {
+        if (deleteItemDetails.tradeType === 'paper') {
+          queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+      }, 50);
+      
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast({
+        title: "Deletion failed",
+        variant: "destructive",
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    } finally {
+      // Clear state regardless of success/failure
       setIsDeleting(false);
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
-
-    } catch (error) {
-      console.error('Error deleting:', error);
-      toast({
-        variant: "destructive",
-        title: "Deletion failed",
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      setIsDeleting(false);
-      setShowDeleteConfirmation(false);
     }
   };
 
@@ -618,11 +617,14 @@ const TradesPage = () => {
         </Tabs>
       </div>
 
-      <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
-        if (!isOpen && !isDeleting) {
-          cancelDelete();
-        }
-      }}>
+      <AlertDialog 
+        open={showDeleteConfirmation} 
+        onOpenChange={(isOpen) => {
+          if (!isOpen && !isDeleting) {
+            cancelDelete();
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
