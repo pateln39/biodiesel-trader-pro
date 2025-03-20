@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Filter, Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
+import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
 import { PhysicalTrade, PhysicalTradeLeg, PaperTrade, DisplayProduct } from '@/types';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { executeWithRefresh } from '@/utils/asyncUtils';
 import { 
   Table,
   TableHeader,
@@ -47,6 +48,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useQueryClient } from '@tanstack/react-query';
+import { Progress } from '@/components/ui/progress';
 
 const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -66,16 +68,23 @@ interface DeleteItemDetails {
 
 const TradesPage = () => {
   const { trades, loading: physicalLoading, error: physicalError, refetchTrades } = useTrades();
+  const { 
+    paperTrades, 
+    isLoading: paperLoading, 
+    error: paperError, 
+    refetchPaperTrades 
+  } = usePaperTrades();
+  
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   
-  const { paperTrades, isLoading: paperLoading, error: paperError } = usePaperTrades();
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
   
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
   const [deletingLegId, setDeletingLegId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState(0);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'trade' | 'leg'>('trade');
   const [deleteItemDetails, setDeleteItemDetails] = useState<DeleteItemDetails>({ 
@@ -83,7 +92,11 @@ const TradesPage = () => {
   });
   const [pageError, setPageError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("physical");
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
+
+  // Prevent multiple refreshes by tracking refresh state
+  const refreshInProgress = useRef(false);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -168,87 +181,124 @@ const TradesPage = () => {
   };
 
   const cancelDelete = () => {
-    setIsDeleting(false);
+    if (isDeleting) return; // Prevent cancellation during active deletion
+    
     setDeletingTradeId(null);
     setDeletingLegId(null);
     setShowDeleteConfirmation(false);
     setDeleteItemDetails({ reference: '' });
+    setDeleteProgress(0);
   };
 
+  // Refresh data without triggering multiple refreshes
+  const safeRefreshData = useCallback(() => {
+    if (refreshInProgress.current) return;
+    
+    refreshInProgress.current = true;
+    setIsRefreshing(true);
+    
+    // Use Promise.all to refresh all data sources simultaneously
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['trades'] }),
+      queryClient.invalidateQueries({ queryKey: ['paper-trades'] }),
+      queryClient.invalidateQueries({ queryKey: ['exposure-data'] })
+    ])
+    .finally(() => {
+      // Reset refresh flags after a short delay
+      setTimeout(() => {
+        refreshInProgress.current = false;
+        setIsRefreshing(false);
+      }, 500);
+    });
+  }, [queryClient]);
+
+  // Completely refactored delete confirmation function
   const confirmDelete = async () => {
-    if (isDeleting) return; // Prevent multiple delete operations
+    if (isDeleting || !showDeleteConfirmation) return; // Guard clause
     
+    // Set deleting state and close dialog immediately
     setIsDeleting(true);
-    
+    setShowDeleteConfirmation(false);
+    setDeleteProgress(10);
+
     try {
-      // First close the dialog to prevent UI freeze before any DB operations
-      setShowDeleteConfirmation(false);
-      
-      let deleteSuccessful = false;
-      let successMessage = '';
-      
-      if (deleteMode === 'trade' && deletingTradeId) {
-        // Delete trade legs first
-        const { error: legsError } = await supabase
-          .from('trade_legs')
-          .delete()
-          .eq('parent_trade_id', deletingTradeId);
+      // Create delete operation based on deleteMode
+      const deleteOperation = async () => {
+        // Progress simulation for better UX
+        setDeleteProgress(30);
+        
+        if (deleteMode === 'trade' && deletingTradeId) {
+          // Delete trade legs first
+          setDeleteProgress(50);
+          const { error: legsError } = await supabase
+            .from('trade_legs')
+            .delete()
+            .eq('parent_trade_id', deletingTradeId);
+            
+          if (legsError) {
+            throw legsError;
+          }
           
-        if (legsError) {
-          throw legsError;
-        }
-        
-        // Then delete parent trade
-        const { error: parentError } = await supabase
-          .from('parent_trades')
-          .delete()
-          .eq('id', deletingTradeId);
+          // Then delete parent trade
+          setDeleteProgress(70);
+          const { error: parentError } = await supabase
+            .from('parent_trades')
+            .delete()
+            .eq('id', deletingTradeId);
+            
+          if (parentError) {
+            throw parentError;
+          }
           
-        if (parentError) {
-          throw parentError;
+          return `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`;
+        } else if (deleteMode === 'leg' && deletingLegId) {
+          setDeleteProgress(60);
+          const { error } = await supabase
+            .from('trade_legs')
+            .delete()
+            .eq('id', deletingLegId);
+          
+          if (error) {
+            throw error;
+          }
+          
+          return "Trade leg deleted";
         }
         
-        deleteSuccessful = true;
-        successMessage = `${deleteItemDetails.tradeType === 'paper' ? 'Paper' : 'Physical'} trade deleted`;
-      } else if (deleteMode === 'leg' && deletingLegId) {
-        const { error } = await supabase
-          .from('trade_legs')
-          .delete()
-          .eq('id', deletingLegId);
-        
-        if (error) {
-          throw error;
-        }
-        
-        deleteSuccessful = true;
-        successMessage = "Trade leg deleted";
-      }
+        throw new Error("Invalid delete configuration");
+      };
       
-      if (deleteSuccessful) {
-        toast.success(successMessage);
-        
-        // Invalidate relevant queries without setTimeout
-        if (deleteItemDetails.tradeType === 'paper') {
-          queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-        }
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-      }
+      // Execute delete operation with refresh
+      const successMessage = await executeWithRefresh(
+        deleteOperation,
+        safeRefreshData,
+        500 // Wait 500ms before refreshing data
+      );
+      
+      setDeleteProgress(100);
+      toast.success(successMessage);
+      
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error("Deletion failed", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
-      
-      // Reopen the dialog if there's an error during deletion
-      setShowDeleteConfirmation(true);
     } finally {
-      // Clear state regardless of success/failure
+      // Reset all delete-related state
       setIsDeleting(false);
       setDeletingTradeId(null);
       setDeletingLegId(null);
       setDeleteItemDetails({ reference: '' });
+      setDeleteProgress(0);
     }
+  };
+
+  // Manual refresh function for user-triggered refreshes
+  const handleManualRefresh = () => {
+    if (isRefreshing) return;
+    
+    toast.info("Refreshing data...");
+    safeRefreshData();
   };
 
   const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
@@ -590,11 +640,21 @@ const TradesPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
-          <Link to="/trades/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Trade
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleManualRefresh} 
+              disabled={isRefreshing}
+            >
+              <RefreshCcw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} /> 
+              Refresh
             </Button>
-          </Link>
+            <Link to="/trades/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Trade
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {pageError && showErrorAlert()}
@@ -650,6 +710,18 @@ const TradesPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isDeleting && (
+        <div className="fixed inset-0 bg-black/5 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-background p-6 rounded-lg shadow-lg max-w-md w-full space-y-4">
+            <h3 className="text-lg font-medium text-center">Deleting {deleteItemDetails.reference}</h3>
+            <Progress value={deleteProgress} className="h-2" />
+            <p className="text-sm text-center text-muted-foreground">
+              Please wait while the operation completes...
+            </p>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
