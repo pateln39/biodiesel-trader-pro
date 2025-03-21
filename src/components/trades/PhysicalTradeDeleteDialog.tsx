@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -38,6 +38,34 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
+  // Log important state changes for debugging
+  useEffect(() => {
+    console.log(`[PHYSICAL DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
+  }, [showDeleteConfirmation, isDeleting]);
+
+  // Handle Cancel button click in a safe way
+  const handleCancel = (e: React.MouseEvent) => {
+    // Stop propagation to prevent multiple handlers firing
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("[PHYSICAL DELETE DIALOG] Cancel button clicked directly");
+    onCancelDelete();
+  };
+
+  // Separate handler for dialog open state changes to ensure proper behavior
+  const handleOpenChange = (open: boolean) => {
+    console.log(`[PHYSICAL DELETE DIALOG] Dialog open state change: ${open}, isDeleting: ${isDeleting}`);
+    
+    // If dialog is closing and we're not in the process of deleting, consider it a cancel
+    if (!open && !isDeleting) {
+      console.log("[PHYSICAL DELETE DIALOG] Dialog dismissed - treating as cancel");
+      onCancelDelete();
+    }
+    
+    // Always inform parent of state changes
+    onOpenChange(open);
+  };
+
   return (
     <>
       {isDeleting && (
@@ -49,12 +77,10 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
         </div>
       )}
     
-      <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
-        if (!isOpen && !isDeleting) {
-          onCancelDelete();
-        }
-        onOpenChange(isOpen);
-      }}>
+      <AlertDialog 
+        open={showDeleteConfirmation}
+        onOpenChange={handleOpenChange}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -67,7 +93,7 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={onCancelDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancel} disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onConfirmDelete} 
               disabled={isDeleting}

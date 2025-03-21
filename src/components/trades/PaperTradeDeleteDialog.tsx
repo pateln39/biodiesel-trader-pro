@@ -39,11 +39,19 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
-  // Use useEffect to manage side effects when showDeleteConfirmation changes
+  // Log important state changes for debugging
   useEffect(() => {
-    // No cleanup needed for this effect as we're just tracking a prop
     console.log(`[PAPER DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
   }, [showDeleteConfirmation, isDeleting]);
+
+  // Handle Cancel button click in a safe way
+  const handleCancel = (e: React.MouseEvent) => {
+    // Stop propagation to prevent multiple handlers firing
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("[PAPER DELETE DIALOG] Cancel button clicked directly");
+    onCancelDelete();
+  };
 
   const getDeleteTitle = () => {
     return deleteMode === 'trade' 
@@ -56,16 +64,19 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
       ? `This will permanently delete the paper trade ${deleteItemDetails.reference} and all its legs from the database.`
       : `This will permanently delete the leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''} from the database.`;
   };
-
-  // Handler for dialog state changes to ensure proper cancel behavior
-  const handleOpenChange = (isOpen: boolean) => {
-    console.log(`[PAPER DELETE DIALOG] Dialog open state change: ${isOpen}, isDeleting: ${isDeleting}`);
-    if (!isOpen && !isDeleting) {
-      // Only invoke cancel if we're closing and not in the process of deleting
+  
+  // Separate handler for dialog open state changes to ensure proper behavior
+  const handleOpenChange = (open: boolean) => {
+    console.log(`[PAPER DELETE DIALOG] Dialog open state change: ${open}, isDeleting: ${isDeleting}`);
+    
+    // If dialog is closing and we're not in the process of deleting, consider it a cancel
+    if (!open && !isDeleting) {
+      console.log("[PAPER DELETE DIALOG] Dialog dismissed - treating as cancel");
       onCancelDelete();
     }
-    // Always inform parent of open state changes
-    onOpenChange(isOpen);
+    
+    // Always inform parent of state changes
+    onOpenChange(open);
   };
 
   return (
@@ -91,7 +102,7 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={onCancelDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancel} disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onConfirmDelete} 
               disabled={isDeleting}
