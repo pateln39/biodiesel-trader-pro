@@ -42,6 +42,18 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   // Log important state changes for debugging
   useEffect(() => {
     console.log(`[PAPER DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
+    
+    // When the dialog becomes visible, focus trap is active
+    if (showDeleteConfirmation) {
+      document.body.classList.add('dialog-open');
+      
+      // Ensure we clean up the class when component unmounts
+      return () => {
+        document.body.classList.remove('dialog-open');
+      };
+    }
+    
+    return undefined;
   }, [showDeleteConfirmation, isDeleting]);
 
   // Handle Cancel button click in a safe way

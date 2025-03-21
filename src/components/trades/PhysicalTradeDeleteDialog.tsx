@@ -41,6 +41,18 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
   // Log important state changes for debugging
   useEffect(() => {
     console.log(`[PHYSICAL DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
+    
+    // When the dialog becomes visible, focus trap is active
+    if (showDeleteConfirmation) {
+      document.body.classList.add('dialog-open');
+      
+      // Ensure we clean up the class when component unmounts
+      return () => {
+        document.body.classList.remove('dialog-open');
+      };
+    }
+    
+    return undefined;
   }, [showDeleteConfirmation, isDeleting]);
 
   // Handle Cancel button click in a safe way
@@ -66,6 +78,18 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
     onOpenChange(open);
   };
 
+  const getDeleteTitle = () => {
+    return deleteMode === 'trade' 
+      ? `Delete Physical Trade ${deleteItemDetails.reference}?`
+      : `Delete Leg ${deleteItemDetails.legNumber} of Trade ${deleteItemDetails.reference}?`;
+  };
+  
+  const getDeleteDescription = () => {
+    return deleteMode === 'trade'
+      ? `This will permanently delete the physical trade ${deleteItemDetails.reference} from the database.`
+      : `This will permanently delete leg ${deleteItemDetails.legNumber} of trade ${deleteItemDetails.reference} from the database.`;
+  };
+
   return (
     <>
       {isDeleting && (
@@ -83,13 +107,9 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{getDeleteTitle()}</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteMode === 'trade' ? (
-                <>This will permanently delete the physical trade {deleteItemDetails.reference} from the database.</>
-              ) : (
-                <>This will permanently delete leg {deleteItemDetails.legNumber} of trade {deleteItemDetails.reference} from the database.</>
-              )}
+              {getDeleteDescription()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

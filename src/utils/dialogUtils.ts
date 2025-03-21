@@ -17,20 +17,23 @@ export const safelyCloseDialog = (
     progressTimerRef.current = null;
   }
   
-  // Use a set timeout to ensure animations complete
-  // Update state in a specific sequence to avoid race conditions
-  setTimeout(() => {
+  // Use requestAnimationFrame to coordinate with browser's rendering cycle
+  // This helps ensure we're not fighting with React's own scheduling
+  requestAnimationFrame(() => {
+    // Update state in a specific sequence to avoid race conditions
     setIsDeleting(false);
     setDeletionProgress(0);
     
-    // Use nested timeouts to better coordinate with UI animations
-    setTimeout(() => {
+    // Use a single animation frame to coordinate state updates with UI
+    requestAnimationFrame(() => {
+      // This ensures dialog closing animation has started before we reset other states
       setShowConfirmation(false);
       
-      // Reset item details last
+      // After dialog is closed, reset item details
+      // Wait for Radix UI's animation duration (300ms) to complete
       setTimeout(() => {
         setItemDetails(defaultDetails);
-      }, 100);
-    }, 50);
-  }, 10);
+      }, 300);
+    });
+  });
 };
