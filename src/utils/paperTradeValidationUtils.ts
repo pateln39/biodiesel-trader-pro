@@ -57,9 +57,10 @@ export const validatePaperTradeLeg = (
   ];
 
   // For spreads and diffs that have right side, validate right side as well
+  // Update validation to only check the period if it exists on the rightSide object
   const rightSideValidations = leg.rightSide ? [
     validateRequiredField(leg.rightSide.product, `Leg ${legNumber} - Right Side Product`),
-    validateRequiredField(leg.rightSide.period, `Leg ${legNumber} - Right Side Period`)
+    leg.rightSide.period !== undefined ? validateRequiredField(leg.rightSide.period, `Leg ${legNumber} - Right Side Period`) : true
   ] : [];
 
   return validateFields([...commonValidations, ...rightSideValidations]);

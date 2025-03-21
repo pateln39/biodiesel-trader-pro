@@ -3,8 +3,6 @@ import { BuySell, Product } from './trade';
 import { PricingFormula } from './pricing';
 import { ParentTrade, Trade } from './common';
 
-export type PaperRelationshipType = 'FP' | 'DIFF' | 'SPREAD';
-
 // Paper trade parent
 export interface PaperParentTrade extends ParentTrade {
   tradeType: "paper";
@@ -23,10 +21,11 @@ export interface PaperTradeLeg {
   price: number;
   broker: string;
   instrument: string;
-  relationshipType: PaperRelationshipType;
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
   rightSide?: {
     product: Product;
     quantity: number;
+    period?: string;
   };
   // Using Record<string, any> for formula and mtmFormula to be compatible with JSON
   formula?: Record<string, any>;
