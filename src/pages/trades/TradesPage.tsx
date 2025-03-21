@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCw } from 'lucide-react';
@@ -106,6 +107,10 @@ const TradesPage = () => {
   
   // New flag to track if we're in a deletion workflow
   const isDeletingRef = useRef(false);
+  
+  // Track a delete operation's completion status
+  const deleteCompletedRef = useRef(false);
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
@@ -121,43 +126,56 @@ const TradesPage = () => {
     }
   }, [physicalError, paperError]);
 
-  // Effect to check if navigation is stuck and offer recovery
+  // Modified effect to check if navigation is stuck and offer recovery
   useEffect(() => {
-    if (isDeleting || isDeletePhysicalTradeLoading || isDeletePhysicalTradeLegLoading || isDeletePaperTradeLoading) {
+    // Clear any existing timers when the component mounts or deletion state changes
+    if (recoveryTimeoutRef.current) {
+      clearTimeout(recoveryTimeoutRef.current);
+      recoveryTimeoutRef.current = null;
+    }
+    
+    if (progressTimerRef.current) {
+      clearTimeout(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    
+    const anyDeleteInProgress = isDeleting || isDeletePhysicalTradeLoading || isDeletePhysicalTradeLegLoading || isDeletePaperTradeLoading;
+    
+    if (anyDeleteInProgress) {
       isDeletingRef.current = true;
+      deleteCompletedRef.current = false;
       
       // Set a timeout to check if deletion is taking too long
-      if (recoveryTimeoutRef.current) {
-        clearTimeout(recoveryTimeoutRef.current);
-      }
-      
       recoveryTimeoutRef.current = setTimeout(() => {
-        if (isDeletingRef.current) {
+        if (isDeletingRef.current && !deleteCompletedRef.current) {
           console.log("Deletion taking too long, offering navigation recovery");
           setShowNavigationRecovery(true);
         }
       }, 5000); // Show recovery option after 5 seconds
     } else if (isDeletingRef.current) {
-      // Clear deletion flag when no longer deleting
+      // When deletion finishes successfully
       isDeletingRef.current = false;
-      
-      // Clear any pending recovery timeouts
-      if (recoveryTimeoutRef.current) {
-        clearTimeout(recoveryTimeoutRef.current);
-        recoveryTimeoutRef.current = null;
-      }
+      deleteCompletedRef.current = true;
       
       // Hide navigation recovery if shown
-      setShowNavigationRecovery(false);
+      if (showNavigationRecovery) {
+        setShowNavigationRecovery(false);
+      }
     }
     
     // Cleanup on unmount
     return () => {
       if (recoveryTimeoutRef.current) {
         clearTimeout(recoveryTimeoutRef.current);
+        recoveryTimeoutRef.current = null;
+      }
+      
+      if (progressTimerRef.current) {
+        clearTimeout(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
     };
-  }, [isDeleting, isDeletePhysicalTradeLoading, isDeletePhysicalTradeLegLoading, isDeletePaperTradeLoading]);
+  }, [isDeleting, isDeletePhysicalTradeLoading, isDeletePhysicalTradeLegLoading, isDeletePaperTradeLoading, showNavigationRecovery]);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -182,6 +200,7 @@ const TradesPage = () => {
     setShowDeleteConfirmation(false);
     setDeleteItemDetails({ id: '', reference: '' });
     isDeletingRef.current = false;
+    deleteCompletedRef.current = false;
     
     // Hide navigation recovery UI
     setShowNavigationRecovery(false);
@@ -224,6 +243,7 @@ const TradesPage = () => {
     // Reset any stale state
     setDeletionProgress(0);
     setIsDeleting(false);
+    deleteCompletedRef.current = false;
     
     setDeleteMode('trade');
     setDeleteItemDetails({ 
@@ -238,6 +258,7 @@ const TradesPage = () => {
     // Reset any stale state
     setDeletionProgress(0);
     setIsDeleting(false);
+    deleteCompletedRef.current = false;
     
     setDeleteMode('leg');
     setDeleteItemDetails({
@@ -255,8 +276,10 @@ const TradesPage = () => {
     setDeletionProgress(0);
     setShowDeleteConfirmation(false);
     setDeleteItemDetails({ id: '', reference: '' });
+    deleteCompletedRef.current = false;
   };
 
+  // Improved deletion flow with better progress handling
   const confirmDelete = async () => {
     if (!deleteItemDetails.id) return;
     
@@ -265,11 +288,48 @@ const TradesPage = () => {
     
     // Then start the deletion process
     setIsDeleting(true);
-    setDeletionProgress(10); // Start progress
+    isDeletingRef.current = true;
+    deleteCompletedRef.current = false;
+    
+    // Start progress animation
+    setDeletionProgress(10);
+    
+    // Use a timer for smoother progress indication
+    // This is separate from the actual deletion process
+    let progressStep = 1;
+    progressTimerRef.current = setInterval(() => {
+      setDeletionProgress(prev => {
+        // Increase slowly at first, then faster
+        if (prev < 30) return prev + 1;
+        if (prev < 60) return prev + 2;
+        if (prev < 90) return prev + 0.5;
+        return prev;
+      });
+      
+      progressStep++;
+      
+      // Stop at 90% and wait for actual completion
+      if (progressStep > 50 || deleteCompletedRef.current) {
+        if (progressTimerRef.current) {
+          clearInterval(progressTimerRef.current);
+          progressTimerRef.current = null;
+        }
+        
+        // If we reached the end of our animation but the operation hasn't completed,
+        // don't go to 100% yet - this gives visual feedback that something is still happening
+        if (deleteCompletedRef.current) {
+          setDeletionProgress(100);
+          
+          // Fully reset all state after a short delay
+          setTimeout(() => {
+            setIsDeleting(false);
+            setDeletionProgress(0);
+          }, 500);
+        }
+      }
+    }, 50);
     
     try {
-      setDeletionProgress(30);
-      
       if (deleteMode === 'trade') {
         if (deleteItemDetails.tradeType === 'paper') {
           // Delete paper trade
@@ -286,24 +346,33 @@ const TradesPage = () => {
         });
       }
       
-      setDeletionProgress(80);
+      // Mark the deletion as complete
+      deleteCompletedRef.current = true;
       
-      // Complete the progress with a slight delay to ensure animations complete
-      setTimeout(() => {
+      // If our progress timer already finished, we need to complete the progress bar
+      if (!progressTimerRef.current) {
         setDeletionProgress(100);
         setTimeout(() => {
           setIsDeleting(false);
           setDeletionProgress(0);
-        }, 300);
-      }, 500);
-      
+        }, 500);
+      }
     } catch (error) {
       console.error('Error in delete flow:', error);
       toast.error("Deletion process encountered an error", {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
+      
+      // Reset deletion state
       setIsDeleting(false);
       setDeletionProgress(0);
+      isDeletingRef.current = false;
+      
+      // Clear the progress timer
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
       
       // Show recovery UI in case of errors
       setShowNavigationRecovery(true);

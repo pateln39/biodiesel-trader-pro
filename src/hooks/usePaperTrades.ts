@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +12,7 @@ import {
   generateInstrumentName 
 } from '@/utils/tradeUtils';
 import { deletePaperTrade } from '@/utils/paperTradeDeleteUtils';
-import { cleanupSubscriptions, delay } from '@/utils/subscriptionUtils';
+import { cleanupSubscriptions, delay, pauseSubscriptions, resumeSubscriptions } from '@/utils/subscriptionUtils';
 
 // Debounce function to prevent multiple refetches in quick succession
 const debounce = (fn: Function, ms = 300) => {
@@ -314,9 +313,15 @@ export const usePaperTrades = () => {
         schema: 'public', 
         table: 'parent_trades',
         filter: 'trade_type=eq.paper'
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.legacyPaperTradesChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for legacy_paper_trades');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Legacy paper trades changed, debouncing refetch...');
+          console.log('Legacy paper trades changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -331,9 +336,15 @@ export const usePaperTrades = () => {
         event: '*', 
         schema: 'public', 
         table: 'trade_legs' 
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.legacyTradeLegsChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for legacy_paper_trade_legs');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Legacy paper trade legs changed, debouncing refetch...');
+          console.log('Legacy paper trade legs changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -348,9 +359,15 @@ export const usePaperTrades = () => {
         event: '*', 
         schema: 'public', 
         table: 'paper_trades'
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.paperTradesChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for paper_trades');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Paper trades changed, debouncing refetch...');
+          console.log('Paper trades changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -365,9 +382,15 @@ export const usePaperTrades = () => {
         event: '*', 
         schema: 'public', 
         table: 'paper_trade_legs' 
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.paperTradeLegsChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for paper_trade_legs');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Paper trade legs changed, debouncing refetch...');
+          console.log('Paper trade legs changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -394,8 +417,8 @@ export const usePaperTrades = () => {
         isProcessingRef.current = true;
         console.log("Setting isProcessing to true for deletePaperTrade");
         
-        // Temporarily remove realtime subscriptions during deletion
-        cleanupSubscriptions(realtimeChannelsRef.current);
+        // Pause realtime subscriptions during deletion instead of removing them
+        pauseSubscriptions(realtimeChannelsRef.current);
         
         // First update UI optimistically
         queryClient.setQueryData(['paper-trades'], (oldData: any) => {
@@ -414,8 +437,8 @@ export const usePaperTrades = () => {
         console.error("Error in deletePaperTradeMutation:", error);
         throw error;
       } finally {
-        // Re-establish subscriptions
-        setupRealtimeSubscriptions();
+        // Resume subscriptions instead of recreating them
+        resumeSubscriptions(realtimeChannelsRef.current);
         
         // Reset processing flag
         setTimeout(() => {
@@ -430,11 +453,11 @@ export const usePaperTrades = () => {
         toast.success("Paper trade deleted successfully");
       }
       
-      // Invalidate affected queries after a short delay
+      // Invalidate affected queries after a longer delay to avoid UI freezing
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-      }, 500);
+      }, 800);
     },
     onError: (error) => {
       toast.error("Failed to delete paper trade", { 
@@ -444,7 +467,7 @@ export const usePaperTrades = () => {
       // Refetch to make sure UI is consistent with database
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-      }, 500);
+      }, 800);
     }
   });
   

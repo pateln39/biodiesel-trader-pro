@@ -18,7 +18,7 @@ import {
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
-import { cleanupSubscriptions, delay } from '@/utils/subscriptionUtils';
+import { cleanupSubscriptions, delay, pauseSubscriptions, resumeSubscriptions } from '@/utils/subscriptionUtils';
 import { toast } from 'sonner';
 
 // Debounce function to prevent multiple refetches in quick succession
@@ -173,9 +173,15 @@ export const useTrades = () => {
         schema: 'public', 
         table: 'parent_trades',
         filter: 'trade_type=eq.physical'
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.parentTradesChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for parent_trades');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Physical parent trades changed, debouncing refetch...');
+          console.log('Physical parent trades changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -191,9 +197,15 @@ export const useTrades = () => {
         event: '*', 
         schema: 'public', 
         table: 'trade_legs' 
-      }, () => {
+      }, (payload) => {
+        // Skip if we're in the middle of a deletion
+        if (realtimeChannelsRef.current.tradeLegsChannel?.isPaused) {
+          console.log('Subscription paused, skipping update for trade_legs');
+          return;
+        }
+        
         if (!isProcessingRef.current) {
-          console.log('Trade legs changed, debouncing refetch...');
+          console.log('Trade legs changed, debouncing refetch...', payload);
           debouncedRefetch(refetch);
         }
       })
@@ -221,8 +233,8 @@ export const useTrades = () => {
         isProcessingRef.current = true;
         console.log("Setting isProcessing to true for deletePhysicalTrade");
         
-        // Temporarily remove realtime subscriptions during deletion
-        cleanupSubscriptions(realtimeChannelsRef.current);
+        // Pause realtime subscriptions during deletion instead of removing them
+        pauseSubscriptions(realtimeChannelsRef.current);
         
         // First update UI optimistically
         queryClient.setQueryData(['trades'], (oldData: any) => {
@@ -241,8 +253,8 @@ export const useTrades = () => {
         console.error("Error in deletePhysicalTradeMutation:", error);
         throw error;
       } finally {
-        // Re-establish subscriptions
-        setupRealtimeSubscriptions();
+        // Resume subscriptions instead of recreating them
+        resumeSubscriptions(realtimeChannelsRef.current);
         
         // Reset processing flag
         setTimeout(() => {
@@ -260,7 +272,7 @@ export const useTrades = () => {
       // Invalidate affected queries after a short delay
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 500);
+      }, 800);
     },
     onError: (error) => {
       toast.error("Failed to delete physical trade", { 
@@ -270,7 +282,7 @@ export const useTrades = () => {
       // Refetch to make sure UI is consistent with database
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 500);
+      }, 800);
     }
   });
 
@@ -282,8 +294,8 @@ export const useTrades = () => {
         isProcessingRef.current = true;
         console.log("Setting isProcessing to true for deletePhysicalTradeLeg");
         
-        // Temporarily remove realtime subscriptions during deletion
-        cleanupSubscriptions(realtimeChannelsRef.current);
+        // Pause realtime subscriptions during deletion instead of removing them
+        pauseSubscriptions(realtimeChannelsRef.current);
         
         // Optimistically update UI
         queryClient.setQueryData(['trades'], (oldData: any) => {
@@ -309,8 +321,8 @@ export const useTrades = () => {
         console.error("Error in deletePhysicalTradeLegMutation:", error);
         throw error;
       } finally {
-        // Re-establish subscriptions
-        setupRealtimeSubscriptions();
+        // Resume subscriptions instead of recreating them
+        resumeSubscriptions(realtimeChannelsRef.current);
         
         // Reset processing flag
         setTimeout(() => {
@@ -327,7 +339,7 @@ export const useTrades = () => {
       // Invalidate affected queries after a short delay
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 500);
+      }, 800);
     },
     onError: (error) => {
       toast.error("Failed to delete trade leg", { 
@@ -337,7 +349,7 @@ export const useTrades = () => {
       // Refetch to make sure UI is consistent with database
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 500);
+      }, 800);
     }
   });
 
