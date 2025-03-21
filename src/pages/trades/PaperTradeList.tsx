@@ -21,7 +21,9 @@ interface PaperTradeListProps {
   error: Error | null;
   refetchPaperTrades: () => void;
   onDeleteTrade: (tradeId: string, reference: string) => void;
+  onDeleteLeg: (legId: string, tradeId: string, reference: string, legIndex: number) => void;
   isDeleteTradeLoading: boolean;
+  isDeleteLegLoading: boolean;
 }
 
 // Helper functions
@@ -41,7 +43,9 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   error,
   refetchPaperTrades,
   onDeleteTrade,
-  isDeleteTradeLoading
+  onDeleteLeg,
+  isDeleteTradeLoading,
+  isDeleteLegLoading
 }) => {
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
@@ -154,6 +158,14 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                         <Link to={`/trades/edit/${trade.id}`}>
                           <DropdownMenuItem>Edit Trade</DropdownMenuItem>
                         </Link>
+                        <DropdownMenuItem 
+                          className="text-amber-600 focus:text-amber-600" 
+                          onClick={() => onDeleteLeg(leg.id, trade.id, trade.tradeReference, legIndex)}
+                          disabled={isDeleteLegLoading || isDeleteTradeLoading}
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete Leg
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600 focus:text-red-600" 
                           onClick={() => onDeleteTrade(trade.id, trade.tradeReference)}

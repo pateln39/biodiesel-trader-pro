@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, RefreshCw } from 'lucide-react';
@@ -35,9 +34,12 @@ const TradesPage = () => {
   const [physicalDeletionProgress, setPhysicalDeletionProgress] = useState(0);
   
   // State for paper trade handling
+  const [paperDeleteMode, setPaperDeleteMode] = useState<'trade' | 'leg'>('trade');
   const [paperDeleteItemDetails, setPaperDeleteItemDetails] = useState<{ 
     id: string;
     reference: string;
+    legNumber?: number;
+    parentTradeId?: string;
   }>({ id: '', reference: '' });
   const [showPaperDeleteConfirmation, setShowPaperDeleteConfirmation] = useState(false);
   const [isPaperDeleting, setIsPaperDeleting] = useState(false);
@@ -71,7 +73,9 @@ const TradesPage = () => {
     error: paperError, 
     refetchPaperTrades,
     deletePaperTrade,
-    isDeletePaperTradeLoading
+    isDeletePaperTradeLoading,
+    deletePaperTradeLeg,
+    isDeletePaperTradeLegLoading
   } = usePaperTrades();
   
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
@@ -236,9 +240,25 @@ const TradesPage = () => {
     setPaperDeletionProgress(0);
     setIsPaperDeleting(false);
     
+    setPaperDeleteMode('trade');
     setPaperDeleteItemDetails({ 
       id: tradeId,
       reference 
+    });
+    setShowPaperDeleteConfirmation(true);
+  };
+
+  const handleDeletePaperLegClick = (legId: string, tradeId: string, reference: string, legIndex: number) => {
+    // Reset any stale state
+    setPaperDeletionProgress(0);
+    setIsPaperDeleting(false);
+    
+    setPaperDeleteMode('leg');
+    setPaperDeleteItemDetails({
+      id: legId,
+      reference,
+      legNumber: legIndex + 1,
+      parentTradeId: tradeId
     });
     setShowPaperDeleteConfirmation(true);
   };
@@ -256,7 +276,7 @@ const TradesPage = () => {
     }
   };
 
-  // Isolated paper deletion flow with better progress handling
+  // Updated paper deletion flow with leg deletion support
   const confirmPaperDelete = async () => {
     if (!paperDeleteItemDetails.id) return;
     
@@ -293,8 +313,16 @@ const TradesPage = () => {
     }, 50);
     
     try {
-      // Delete paper trade
-      await deletePaperTrade(paperDeleteItemDetails.id);
+      if (paperDeleteMode === 'trade') {
+        // Delete entire paper trade
+        await deletePaperTrade(paperDeleteItemDetails.id);
+      } else if (paperDeleteMode === 'leg' && paperDeleteItemDetails.parentTradeId) {
+        // Delete single paper trade leg
+        await deletePaperTradeLeg({ 
+          legId: paperDeleteItemDetails.id,
+          parentTradeId: paperDeleteItemDetails.parentTradeId
+        });
+      }
       
       // Complete the progress bar
       setPaperDeletionProgress(100);
@@ -391,7 +419,9 @@ const TradesPage = () => {
             error={paperError}
             refetchPaperTrades={refetchPaperTrades}
             onDeleteTrade={handleDeletePaperTradeClick}
+            onDeleteLeg={handleDeletePaperLegClick}
             isDeleteTradeLoading={isDeletePaperTradeLoading}
+            isDeleteLegLoading={isDeletePaperTradeLegLoading}
           />
         </div>
       </div>
@@ -466,6 +496,7 @@ const TradesPage = () => {
             {/* Show paper progress only in paper tab */}
             <PaperTradeDeleteDialog 
               showDeleteConfirmation={showPaperDeleteConfirmation}
+              deleteMode={paperDeleteMode}
               deleteItemDetails={paperDeleteItemDetails}
               isDeleting={isPaperDeleting}
               deletionProgress={paperDeletionProgress}

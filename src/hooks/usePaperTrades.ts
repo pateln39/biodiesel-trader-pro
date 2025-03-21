@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -33,7 +32,9 @@ export const usePaperTrades = () => {
   
   const { 
     deletePaperTrade: paperTradeDeleteFn, 
-    isDeletePaperTradeLoading
+    isDeletePaperTradeLoading,
+    deletePaperTradeLeg: paperTradeLegDeleteFn,
+    isDeletePaperTradeLegLoading
   } = usePaperTradeDelete();
   
   const debouncedRefetch = useRef(debounce((fn: Function) => {
@@ -330,6 +331,9 @@ export const usePaperTrades = () => {
     isCreating,
     refetchPaperTrades: refetch,
     deletePaperTrade: paperTradeDeleteFn,
-    isDeletePaperTradeLoading
+    isDeletePaperTradeLoading,
+    deletePaperTradeLeg: paperTradeLegDeleteFn,
+    isDeletePaperTradeLegLoading
   };
 };
+

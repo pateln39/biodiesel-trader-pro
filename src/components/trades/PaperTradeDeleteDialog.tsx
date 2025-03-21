@@ -15,9 +15,12 @@ import { Progress } from '@/components/ui/progress';
 
 interface PaperTradeDeleteDialogProps {
   showDeleteConfirmation: boolean;
+  deleteMode: 'trade' | 'leg';
   deleteItemDetails: {
     id: string;
     reference: string;
+    legNumber?: number;
+    parentTradeId?: string;
   };
   isDeleting: boolean;
   deletionProgress: number;
@@ -28,6 +31,7 @@ interface PaperTradeDeleteDialogProps {
 
 const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   showDeleteConfirmation,
+  deleteMode,
   deleteItemDetails,
   isDeleting,
   deletionProgress,
@@ -35,12 +39,24 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
+  const getDeleteTitle = () => {
+    return deleteMode === 'trade' 
+      ? `Delete Paper Trade ${deleteItemDetails.reference}?`
+      : `Delete Leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''}?`;
+  };
+  
+  const getDeleteDescription = () => {
+    return deleteMode === 'trade'
+      ? `This will permanently delete the paper trade ${deleteItemDetails.reference} and all its legs from the database.`
+      : `This will permanently delete the leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''} from the database.`;
+  };
+
   return (
     <>
       {isDeleting && (
         <div className="mb-4">
           <p className="text-sm text-muted-foreground mb-1">
-            Deleting paper trade... Please wait
+            Deleting {deleteMode === 'trade' ? 'paper trade' : 'paper trade leg'}... Please wait
           </p>
           <Progress value={deletionProgress} className="h-2" />
         </div>
@@ -54,9 +70,9 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{getDeleteTitle()}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the paper trade {deleteItemDetails.reference} from the database.
+              {getDeleteDescription()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
