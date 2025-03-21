@@ -3,19 +3,14 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Trade,
-  TradeType,
   PhysicalTrade,
-  PaperTrade,
   BuySell,
   Product,
   IncoTerm,
   Unit,
   PaymentTerm,
-  CreditStatus,
-  DbParentTrade,
-  DbTradeLeg,
-} from '@/types';
+  CreditStatus
+} from '@/types/trade';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { deletePhysicalTrade, deletePhysicalTradeLeg, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
 import { toast } from 'sonner';
@@ -29,38 +24,70 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
-const fetchTrades = async (): Promise<Trade[]> => {
+// Define database types
+interface DbPhysicalTrade {
+  id: string;
+  trade_reference: string;
+  physical_type: string | null;
+  counterparty: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DbPhysicalTradeLeg {
+  id: string;
+  parent_trade_id: string;
+  leg_reference: string;
+  buy_sell: string;
+  product: string;
+  sustainability: string | null;
+  inco_term: string | null;
+  quantity: number;
+  tolerance: number | null;
+  loading_period_start: string | null;
+  loading_period_end: string | null;
+  pricing_period_start: string | null;
+  pricing_period_end: string | null;
+  unit: string | null;
+  payment_term: string | null;
+  credit_status: string | null;
+  pricing_formula: any | null;
+  created_at: string;
+  updated_at: string;
+  mtm_formula: any | null;
+}
+
+const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
   try {
-    // Get all parent trades of type 'physical'
-    const { data: parentTrades, error: parentTradesError } = await supabase
-      .from('parent_trades')
+    // Get all physical trades from the renamed physical_trades table
+    const { data: physicalTradesData, error: physicalTradesError } = await supabase
+      .from('physical_trades')
       .select('*')
-      .eq('trade_type', 'physical')
       .order('created_at', { ascending: false });
 
-    if (parentTradesError) {
-      throw new Error(`Error fetching parent trades: ${parentTradesError.message}`);
+    if (physicalTradesError) {
+      throw new Error(`Error fetching physical trades: ${physicalTradesError.message}`);
     }
 
-    // Get all trade legs
-    const { data: tradeLegs, error: tradeLegsError } = await supabase
-      .from('trade_legs')
+    // Get all physical trade legs from the renamed physical_trade_legs table
+    const { data: physicalTradeLegsData, error: tradeLegsError } = await supabase
+      .from('physical_trade_legs')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (tradeLegsError) {
-      throw new Error(`Error fetching trade legs: ${tradeLegsError.message}`);
+      throw new Error(`Error fetching physical trade legs: ${tradeLegsError.message}`);
     }
 
-    // Map parent trades and legs to create the trade objects
-    const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      // Find all legs for this parent trade
-      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
+    // Map physical trades and legs to create the trade objects
+    const mappedTrades = physicalTradesData.map((parent: DbPhysicalTrade) => {
+      // Find all legs for this physical trade
+      const legs = physicalTradeLegsData.filter((leg: DbPhysicalTradeLeg) => leg.parent_trade_id === parent.id);
       
       // Use the first leg for the main trade data (for backward compatibility)
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
-      if (parent.trade_type === 'physical' && firstLeg) {
+      if (firstLeg) {
         // Create physical trade
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
@@ -109,24 +136,36 @@ const fetchTrades = async (): Promise<Trade[]> => {
         return physicalTrade;
       } 
       
-      // Fallback with minimal data if there are no legs or unknown type
+      // Fallback with minimal data if there are no legs
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
-        tradeType: parent.trade_type as TradeType,
+        tradeType: 'physical' as const,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
+        physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
         counterparty: parent.counterparty,
-        // Add missing required properties for Trade
+        // Add missing required properties for PhysicalTrade
         buySell: 'buy' as BuySell,
         product: 'UCOME' as Product,
+        incoTerm: 'FOB' as IncoTerm,
+        quantity: 0,
+        loadingPeriodStart: new Date(),
+        loadingPeriodEnd: new Date(),
+        pricingPeriodStart: new Date(),
+        pricingPeriodEnd: new Date(),
+        unit: 'MT' as Unit,
+        paymentTerm: '30 days' as PaymentTerm,
+        creditStatus: 'pending' as CreditStatus,
+        formula: createEmptyFormula(),
+        mtmFormula: createEmptyFormula(),
         legs: []
-      } as Trade;
+      } as PhysicalTrade;
     });
 
     return mappedTrades;
   } catch (error: any) {
-    console.error('Error fetching trades:', error);
+    console.error('Error fetching physical trades:', error);
     throw new Error(error.message);
   }
 };
@@ -152,8 +191,8 @@ export const useTrades = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['trades'],
-    queryFn: fetchTrades,
+    queryKey: ['physical-trades'],
+    queryFn: fetchPhysicalTrades,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 2000,
@@ -164,42 +203,41 @@ export const useTrades = () => {
     // First clean up any existing subscriptions
     cleanupSubscriptions(realtimeChannelsRef.current);
     
-    // Subscribe to changes on parent_trades table with filter for physical trades
-    const parentTradesChannel = supabase
-      .channel('physical_parent_trades')
+    // Subscribe to changes on physical_trades table
+    const physicalTradesChannel = supabase
+      .channel('physical_trades_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'parent_trades',
-        filter: 'trade_type=eq.physical'
+        table: 'physical_trades'
       }, () => {
         if (!isProcessingRef.current) {
-          console.log('Physical parent trades changed, debouncing refetch...');
+          console.log('Physical trades changed, debouncing refetch...');
           debouncedRefetch(refetch);
         }
       })
       .subscribe();
     
     // Store the channel reference
-    realtimeChannelsRef.current.parentTradesChannel = parentTradesChannel;
+    realtimeChannelsRef.current.physicalTradesChannel = physicalTradesChannel;
 
-    // Subscribe to changes on trade_legs table
-    const tradeLegsChannel = supabase
-      .channel('trade_legs_for_physical')
+    // Subscribe to changes on physical_trade_legs table
+    const physicalTradeLegsChannel = supabase
+      .channel('physical_trade_legs_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'trade_legs' 
+        table: 'physical_trade_legs' 
       }, () => {
         if (!isProcessingRef.current) {
-          console.log('Trade legs changed, debouncing refetch...');
+          console.log('Physical trade legs changed, debouncing refetch...');
           debouncedRefetch(refetch);
         }
       })
       .subscribe();
     
     // Store the channel reference
-    realtimeChannelsRef.current.tradeLegsChannel = tradeLegsChannel;
+    realtimeChannelsRef.current.physicalTradeLegsChannel = physicalTradeLegsChannel;
   }, [refetch, debouncedRefetch]);
 
   // Set up real-time subscription to trades changes with improved cleanup
@@ -224,7 +262,7 @@ export const useTrades = () => {
         cleanupSubscriptions(realtimeChannelsRef.current);
         
         // First update UI optimistically
-        queryClient.setQueryData(['trades'], (oldData: any) => {
+        queryClient.setQueryData(['physical-trades'], (oldData: any) => {
           // Filter out the deleted trade
           return oldData.filter((trade: any) => trade.id !== tradeId);
         });
@@ -258,7 +296,7 @@ export const useTrades = () => {
       
       // Invalidate affected queries after a short delay
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['physical-trades'] });
       }, 500);
     },
     onError: (error) => {
@@ -268,7 +306,7 @@ export const useTrades = () => {
       
       // Refetch to make sure UI is consistent with database
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['physical-trades'] });
       }, 500);
     }
   });
@@ -285,7 +323,7 @@ export const useTrades = () => {
         cleanupSubscriptions(realtimeChannelsRef.current);
         
         // Optimistically update UI
-        queryClient.setQueryData(['trades'], (oldData: any) => {
+        queryClient.setQueryData(['physical-trades'], (oldData: any) => {
           return oldData.map((trade: PhysicalTrade) => {
             if (trade.id === tradeId) {
               return {
@@ -325,7 +363,7 @@ export const useTrades = () => {
       
       // Invalidate affected queries after a short delay
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['physical-trades'] });
       }, 500);
     },
     onError: (error) => {
@@ -335,7 +373,7 @@ export const useTrades = () => {
       
       // Refetch to make sure UI is consistent with database
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
+        queryClient.invalidateQueries({ queryKey: ['physical-trades'] });
       }, 500);
     }
   });

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -36,39 +37,39 @@ export const usePaperTrades = () => {
     fn();
   }, 500)).current;
   
-  // Fetch paper trades
+  // Fetch paper trades from the new paper_trades table
   const { data: paperTrades, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades'],
     queryFn: async () => {
-      // Fetch parent trades of type 'paper'
-      const { data: parentTrades, error: parentError } = await supabase
-        .from('parent_trades')
+      // Fetch parent trades from the new paper_trades table
+      const { data: paperTradesData, error: parentError } = await supabase
+        .from('paper_trades')
         .select(`
           id,
           trade_reference,
           counterparty,
+          broker,
+          comment,
           created_at,
-          updated_at,
-          comment
+          updated_at
         `)
-        .eq('trade_type', 'paper')
         .order('created_at', { ascending: false });
         
       if (parentError) {
         throw new Error(`Error fetching paper trades: ${parentError.message}`);
       }
       
-      // For each parent trade, fetch its legs
+      // For each parent trade, fetch its legs from the new paper_trade_legs table
       const tradesWithLegs = await Promise.all(
-        (parentTrades || []).map(async (parentTrade) => {
+        (paperTradesData || []).map(async (parentTrade) => {
           const { data: legs, error: legsError } = await supabase
-            .from('trade_legs')
+            .from('paper_trade_legs')
             .select('*')
             .eq('parent_trade_id', parentTrade.id)
             .order('leg_reference', { ascending: true });
             
           if (legsError) {
-            throw new Error(`Error fetching trade legs: ${legsError.message}`);
+            throw new Error(`Error fetching paper trade legs: ${legsError.message}`);
           }
           
           return {
@@ -79,24 +80,17 @@ export const usePaperTrades = () => {
             createdAt: new Date(parentTrade.created_at),
             updatedAt: new Date(parentTrade.updated_at),
             comment: parentTrade.comment,
-            broker: legs && legs[0] ? legs[0].broker : '',
+            broker: parentTrade.broker,
             legs: (legs || []).map((leg) => {
-              // Extract the relationship_type from instrument
-              const instrument = leg.instrument || '';
-              let relationshipType: PaperRelationshipType = 'FP';
-              
-              if (instrument.includes('DIFF')) {
-                relationshipType = 'DIFF';
-              } else if (instrument.includes('SPREAD')) {
-                relationshipType = 'SPREAD';
-              }
-              
-              // Safely extract rightSide from mtm_formula if it exists
-              let rightSide;
-              if (leg.mtm_formula && 
-                 typeof leg.mtm_formula === 'object' && 
-                 'rightSide' in leg.mtm_formula) {
-                rightSide = leg.mtm_formula.rightSide;
+              // Create right side object if right_side_product exists
+              let rightSide: any = undefined;
+              if (leg.right_side_product) {
+                rightSide = {
+                  product: leg.right_side_product,
+                  quantity: leg.right_side_quantity,
+                  period: leg.right_side_period,
+                  price: leg.right_side_price
+                };
               }
               
               return {
@@ -106,13 +100,13 @@ export const usePaperTrades = () => {
                 buySell: leg.buy_sell as BuySell,
                 product: leg.product as Product,
                 quantity: leg.quantity,
-                period: leg.trading_period || '', 
+                period: leg.period || '', 
                 price: leg.price || 0,
                 broker: leg.broker,
                 instrument: leg.instrument,
-                relationshipType,
+                relationshipType: leg.relationship_type as PaperRelationshipType,
                 rightSide: rightSide,
-                formula: leg.pricing_formula,
+                formula: leg.formula,
                 mtmFormula: leg.mtm_formula
               };
             })
@@ -131,14 +125,13 @@ export const usePaperTrades = () => {
     // First clean up any existing subscriptions
     cleanupSubscriptions(realtimeChannelsRef.current);
     
-    // Subscribe to changes on parent_trades table for paper trades
-    const paperParentTradesChannel = supabase
-      .channel('paper_parent_trades')
+    // Subscribe to changes on paper_trades table
+    const paperTradesChannel = supabase
+      .channel('paper_trades_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'parent_trades',
-        filter: 'trade_type=eq.paper'
+        table: 'paper_trades',
       }, () => {
         if (!isProcessingRef.current) {
           console.log('Paper trades changed, debouncing refetch...');
@@ -147,15 +140,15 @@ export const usePaperTrades = () => {
       })
       .subscribe();
 
-    realtimeChannelsRef.current.paperParentTradesChannel = paperParentTradesChannel;
+    realtimeChannelsRef.current.paperTradesChannel = paperTradesChannel;
 
-    // Subscribe to changes on trade_legs table for paper trades
+    // Subscribe to changes on paper_trade_legs table
     const paperTradeLegsChannel = supabase
-      .channel('paper_trade_legs')
+      .channel('paper_trade_legs_changes')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'trade_legs' 
+        table: 'paper_trade_legs' 
       }, () => {
         if (!isProcessingRef.current) {
           console.log('Paper trade legs changed, debouncing refetch...');
@@ -177,7 +170,7 @@ export const usePaperTrades = () => {
     };
   }, [setupRealtimeSubscriptions]);
   
-  // Mutation for deleting a paper trade with improved error handling
+  // Mutation for deleting a paper trade
   const deletePaperTradeMutation = useMutation({
     mutationFn: async (tradeId: string) => {
       try {
@@ -239,21 +232,17 @@ export const usePaperTrades = () => {
     }
   });
   
-  // Create paper trade mutation
+  // Create paper trade mutation - updated to use new table structure
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
-      // Store the original product selection in the comment field for reference
-      let comment = trade.comment || '';
-      
-      // Insert parent trade - store the product info in the comment
-      const { data: parentTrade, error: parentError } = await supabase
-        .from('parent_trades')
+      // Insert parent trade into the new paper_trades table
+      const { data: paperTrade, error: parentError } = await supabase
+        .from('paper_trades')
         .insert({
           trade_reference: trade.tradeReference,
-          trade_type: 'paper',
-          comment: comment,
-          // Use the broker name as a placeholder if needed
-          counterparty: trade.broker || 'Paper Trade'
+          counterparty: trade.counterparty || trade.broker || 'Paper Trade',
+          comment: trade.comment || '',
+          broker: trade.broker || ''
         })
         .select('id')
         .single();
@@ -262,59 +251,13 @@ export const usePaperTrades = () => {
         throw new Error(`Error creating paper trade: ${parentError.message}`);
       }
       
-      // Prepare legs for insertion
+      // Prepare legs for insertion into the new paper_trade_legs table
       if (trade.legs && trade.legs.length > 0) {
         // Insert trade legs one by one
         for (let i = 0; i < trade.legs.length; i++) {
           const leg = trade.legs[i];
           // Generate leg reference with alphabetical suffix
           const legReference = generateLegReference(trade.tradeReference || '', i);
-          
-          // Store the period in both trading_period and pricing_period_start/end for consistency
-          const tradingPeriod = leg.period;
-          
-          // Parse period if available
-          let pricingPeriodStart = null;
-          let pricingPeriodEnd = null;
-          
-          if (tradingPeriod) {
-            try {
-              // Parse period like "Mar-24" into a date
-              const [month, year] = tradingPeriod.split('-');
-              const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                .findIndex(m => m === month);
-              
-              if (monthIndex !== -1) {
-                const fullYear = 2000 + parseInt(year);
-                
-                // First day of month
-                pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
-                
-                // Last day of month
-                const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
-                pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
-              }
-            } catch (e) {
-              console.error('Error parsing period date:', e);
-            }
-          }
-          
-          // Prepare mtmFormula with rightSide info
-          let mtmFormula = leg.mtmFormula || {};
-          
-          // For DIFF/SPREAD trades, capture both sides in the exposures
-          if (leg.relationshipType !== 'FP' && leg.rightSide) {
-            mtmFormula = {
-              ...mtmFormula,
-              rightSide: leg.rightSide,
-              exposures: {
-                physical: {
-                  [leg.product]: leg.quantity || 0,
-                  [leg.rightSide.product]: leg.rightSide.quantity || 0
-                }
-              }
-            };
-          }
           
           // Generate the instrument name (for database storage - MTM format)
           const instrument = generateInstrumentName(
@@ -324,23 +267,26 @@ export const usePaperTrades = () => {
           );
           
           const legData = {
+            parent_trade_id: paperTrade.id,
             leg_reference: legReference,
-            parent_trade_id: parentTrade.id,
             buy_sell: leg.buySell,
             product: leg.product,
             quantity: leg.quantity,
-            price: leg.price,
-            broker: leg.broker || trade.broker,
-            trading_period: tradingPeriod,
-            pricing_formula: leg.formula,
-            mtm_formula: mtmFormula,
-            pricing_period_start: pricingPeriodStart,
-            pricing_period_end: pricingPeriodEnd,
-            instrument: instrument
+            period: leg.period || '',
+            price: leg.price || 0,
+            broker: leg.broker || trade.broker || '',
+            relationship_type: leg.relationshipType,
+            instrument: instrument,
+            formula: leg.formula,
+            mtm_formula: leg.mtmFormula,
+            right_side_product: leg.rightSide?.product,
+            right_side_quantity: leg.rightSide?.quantity,
+            right_side_period: leg.rightSide?.period,
+            right_side_price: leg.rightSide?.price
           };
           
           const { error: legError } = await supabase
-            .from('trade_legs')
+            .from('paper_trade_legs')
             .insert(legData);
             
           if (legError) {
@@ -349,7 +295,7 @@ export const usePaperTrades = () => {
         }
       }
       
-      return { ...trade, id: parentTrade.id };
+      return { ...trade, id: paperTrade.id };
     },
     onSuccess: () => {
       // Use a delay before invalidating queries

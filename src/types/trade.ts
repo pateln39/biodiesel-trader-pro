@@ -1,28 +1,96 @@
 
-import { TradeType } from './index';
+import { ParentTrade, Trade } from "./common";
 
+// Physical trade types
 export type BuySell = "buy" | "sell";
-export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
-export type DisplayProduct = string; // For displaying formatted product names
-export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
-export type Unit = "MT" | "KG" | "L";
-export type CreditStatus = "approved" | "pending" | "rejected";
-export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
+export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP";
+export type Unit = "MT" | "BBL" | "GAL";
+export type PaymentTerm = "30 days" | "45 days" | "60 days" | "immediate";
+export type CreditStatus = "pending" | "approved" | "rejected";
+export type Product = 
+  | "UCOME" 
+  | "FAME0" 
+  | "RME" 
+  | "HVO" 
+  | "LSGO"
+  | "UCOME DIFF" 
+  | "RME DIFF" 
+  | "FAME0 DIFF"
+  | "RME-FAME"
+  | "UCOME-FAME"
+  | "UCOME-RME"
+  | "UCOME FP"
+  | "RME FP"
+  | "FAME0 FP";
+
+export type DisplayProduct = Product | string;
+
+// Paper trade specific types
 export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 
-// Paper trade interface
-export interface PaperTrade {
-  id: string;
-  tradeReference: string;
-  tradeType: 'paper';
-  createdAt: Date;
-  updatedAt: Date;
-  counterparty: string;
-  comment?: string;
-  broker: string;
-  legs: PaperTradeLeg[];
+// Common formula types
+export interface FormulaToken {
+  type: "number" | "operator" | "variable" | "function";
+  value: string | number;
 }
 
+export interface FormulaConfig {
+  tokens: FormulaToken[];
+}
+
+// Physical trade leg definition
+export interface PhysicalTradeLeg {
+  id: string;
+  parentTradeId: string;
+  legReference: string;
+  buySell: BuySell;
+  product: Product;
+  sustainability?: string;
+  incoTerm: IncoTerm;
+  quantity: number;
+  tolerance?: number;
+  loadingPeriodStart: Date;
+  loadingPeriodEnd: Date;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  unit: Unit;
+  paymentTerm: PaymentTerm;
+  creditStatus: CreditStatus;
+  formula: FormulaConfig;
+  mtmFormula: FormulaConfig;
+}
+
+// Physical trade definition
+export interface PhysicalTrade extends Trade {
+  physicalType: 'spot' | 'term';
+  counterparty: string;
+  buySell: BuySell;
+  product: Product;
+  sustainability?: string;
+  incoTerm: IncoTerm;
+  quantity: number;
+  tolerance?: number;
+  loadingPeriodStart: Date;
+  loadingPeriodEnd: Date;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  unit: Unit;
+  paymentTerm: PaymentTerm;
+  creditStatus: CreditStatus;
+  formula: FormulaConfig;
+  mtmFormula: FormulaConfig;
+  legs?: PhysicalTradeLeg[];
+}
+
+// Paper trade right side definition (for DIFF and SPREAD)
+export interface PaperTradeRightSide {
+  product: string;
+  quantity: number;
+  period?: string;
+  price?: number;
+}
+
+// Paper trade leg definition
 export interface PaperTradeLeg {
   id: string;
   parentTradeId: string;
@@ -32,44 +100,17 @@ export interface PaperTradeLeg {
   quantity: number;
   period: string;
   price: number;
-  broker: string;
+  broker?: string;
   relationshipType: PaperRelationshipType;
-  instrument?: string; // Store the full product name with type (e.g., "UCOME DIFF")
-  rightSide?: {
-    product: string;
-    quantity: number;
-    period: string;
-    price: number;
-  };
-  formula: any;
-  mtmFormula: any;
-}
-
-// Paper trade table row interface for the UI
-export interface PaperTradeTableRow {
-  id: string;
-  product: string;
-  buySell: BuySell;
-  quantity: number;
-  period: string;
-  price: number;
-  relationshipType: PaperRelationshipType;
-  rightSide?: {
-    product: string;
-    quantity: number;
-    period: string;
-    price: number;
-  };
+  instrument?: string;
+  rightSide?: PaperTradeRightSide; 
   formula?: any;
   mtmFormula?: any;
 }
 
-// Product relationship interface for the UI
-export interface ProductRelationship {
-  id: string;
-  product: string;
-  relationship_type: PaperRelationshipType;
-  paired_product: string | null;
-  default_opposite: string | null;
-  created_at?: string;
+// Paper trade definition
+export interface PaperTrade extends ParentTrade {
+  comment?: string;
+  broker: string;
+  legs: PaperTradeLeg[];
 }
