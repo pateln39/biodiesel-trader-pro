@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +12,8 @@ import {
   formatMTMDisplay,
   generateInstrumentName 
 } from '@/utils/tradeUtils';
-import { deletePaperTrade, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
+import { deletePaperTrade } from '@/utils/paperTradeDeleteUtils';
+import { cleanupSubscriptions, delay } from '@/utils/subscriptionUtils';
 
 // Debounce function to prevent multiple refetches in quick succession
 const debounce = (fn: Function, ms = 300) => {

@@ -45,4 +45,6 @@ export interface PaperTrade extends Trade {
   broker: string;
   legs: PaperTradeLeg[];
   comment?: string;
+  // Added to track if a trade is using the legacy schema or new schema
+  legacy?: boolean;
 }

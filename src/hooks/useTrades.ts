@@ -17,7 +17,8 @@ import {
   DbTradeLeg,
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { deletePhysicalTrade, deletePhysicalTradeLeg, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
+import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
+import { cleanupSubscriptions, delay } from '@/utils/subscriptionUtils';
 import { toast } from 'sonner';
 
 // Debounce function to prevent multiple refetches in quick succession
