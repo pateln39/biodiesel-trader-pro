@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,8 +11,8 @@ import {
   generateInstrumentName 
 } from '@/utils/tradeUtils';
 import { deletePaperTrade, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
+import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/paperFormulaUtils';
 
-// Debounce function to prevent multiple refetches in quick succession
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   return function(...args: any[]) {
@@ -27,7 +26,6 @@ export const usePaperTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
-  // Debounced refetch function with additional safeguard
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
       console.log("Skipping paper trade refetch as deletion is in progress");
@@ -37,11 +35,9 @@ export const usePaperTrades = () => {
     fn();
   }, 500)).current;
   
-  // Fetch paper trades from the new paper_trades table
   const { data: paperTrades, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades'],
     queryFn: async () => {
-      // Fetch parent trades from the new paper_trades table
       const { data: paperTradesData, error: parentError } = await supabase
         .from('paper_trades')
         .select(`
@@ -59,7 +55,6 @@ export const usePaperTrades = () => {
         throw new Error(`Error fetching paper trades: ${parentError.message}`);
       }
       
-      // For each parent trade, fetch its legs from the new paper_trade_legs table
       const tradesWithLegs = await Promise.all(
         (paperTradesData || []).map(async (parentTrade) => {
           const { data: legs, error: legsError } = await supabase
@@ -82,7 +77,6 @@ export const usePaperTrades = () => {
             comment: parentTrade.comment,
             broker: parentTrade.broker,
             legs: (legs || []).map((leg) => {
-              // Create right side object if right_side_product exists
               let rightSide: any = undefined;
               if (leg.right_side_product) {
                 rightSide = {
@@ -106,8 +100,8 @@ export const usePaperTrades = () => {
                 instrument: leg.instrument,
                 relationshipType: leg.relationship_type as PaperRelationshipType,
                 rightSide: rightSide,
-                formula: leg.formula,
-                mtmFormula: leg.mtm_formula
+                formula: validateAndParsePricingFormula(leg.formula),
+                mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
               };
             })
           };
@@ -116,16 +110,13 @@ export const usePaperTrades = () => {
       
       return tradesWithLegs as PaperTrade[];
     },
-    staleTime: 2000, // Consider data stale after 2 seconds
-    refetchOnWindowFocus: false // Disable automatic refetch on window focus
+    staleTime: 2000,
+    refetchOnWindowFocus: false
   });
   
-  // Setup and cleanup function for realtime subscriptions
   const setupRealtimeSubscriptions = useCallback(() => {
-    // First clean up any existing subscriptions
     cleanupSubscriptions(realtimeChannelsRef.current);
     
-    // Subscribe to changes on paper_trades table
     const paperTradesChannel = supabase
       .channel('paper_trades_changes')
       .on('postgres_changes', { 
@@ -142,7 +133,6 @@ export const usePaperTrades = () => {
 
     realtimeChannelsRef.current.paperTradesChannel = paperTradesChannel;
 
-    // Subscribe to changes on paper_trade_legs table
     const paperTradeLegsChannel = supabase
       .channel('paper_trade_legs_changes')
       .on('postgres_changes', { 
@@ -160,37 +150,28 @@ export const usePaperTrades = () => {
     realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
   }, [refetch, debouncedRefetch]);
   
-  // Set up real-time subscription with improved cleanup
   useEffect(() => {
     setupRealtimeSubscriptions();
     
-    // Cleanup subscriptions on unmount
     return () => {
       cleanupSubscriptions(realtimeChannelsRef.current);
     };
   }, [setupRealtimeSubscriptions]);
   
-  // Mutation for deleting a paper trade
   const deletePaperTradeMutation = useMutation({
     mutationFn: async (tradeId: string) => {
       try {
-        // Mark as processing to prevent concurrent operations and realtime updates
         isProcessingRef.current = true;
         console.log("Setting isProcessing to true for deletePaperTrade");
         
-        // Temporarily remove realtime subscriptions during deletion
         cleanupSubscriptions(realtimeChannelsRef.current);
         
-        // First update UI optimistically
         queryClient.setQueryData(['paper-trades'], (oldData: any) => {
-          // Filter out the deleted trade
           return oldData.filter((trade: any) => trade.id !== tradeId);
         });
         
-        // Then perform actual deletion
         const success = await deletePaperTrade(tradeId);
         
-        // Wait a little bit before refetching to allow database operations to complete
         await delay(800);
         
         return { success, tradeId };
@@ -198,10 +179,8 @@ export const usePaperTrades = () => {
         console.error("Error in deletePaperTradeMutation:", error);
         throw error;
       } finally {
-        // Re-establish subscriptions
         setupRealtimeSubscriptions();
         
-        // Reset processing flag
         setTimeout(() => {
           isProcessingRef.current = false;
           console.log("Setting isProcessing to false for deletePaperTrade");
@@ -209,12 +188,10 @@ export const usePaperTrades = () => {
       }
     },
     onSuccess: (data) => {
-      // Only show success message after deletion completes
       if (data.success) {
         toast.success("Paper trade deleted successfully");
       }
       
-      // Invalidate affected queries after a short delay
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
@@ -225,17 +202,14 @@ export const usePaperTrades = () => {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
       
-      // Refetch to make sure UI is consistent with database
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
       }, 500);
     }
   });
   
-  // Create paper trade mutation - updated to use new table structure
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
-      // Insert parent trade into the new paper_trades table
       const { data: paperTrade, error: parentError } = await supabase
         .from('paper_trades')
         .insert({
@@ -251,15 +225,10 @@ export const usePaperTrades = () => {
         throw new Error(`Error creating paper trade: ${parentError.message}`);
       }
       
-      // Prepare legs for insertion into the new paper_trade_legs table
       if (trade.legs && trade.legs.length > 0) {
-        // Insert trade legs one by one
         for (let i = 0; i < trade.legs.length; i++) {
           const leg = trade.legs[i];
-          // Generate leg reference with alphabetical suffix
           const legReference = generateLegReference(trade.tradeReference || '', i);
-          
-          // Generate the instrument name (for database storage - MTM format)
           const instrument = generateInstrumentName(
             leg.product, 
             leg.relationshipType,
@@ -298,7 +267,6 @@ export const usePaperTrades = () => {
       return { ...trade, id: paperTrade.id };
     },
     onSuccess: () => {
-      // Use a delay before invalidating queries
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });

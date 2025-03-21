@@ -1,18 +1,19 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateAndParsePricingFormula, createEmptyFormula } from '@/utils/paperFormulaUtils';
+import { validateAndParsePhysicalFormula, createEmptyPhysicalFormula } from '@/utils/physicalFormulaUtils';
 
-/**
- * Migrates paper trades from physical_trades and physical_trade_legs tables
- * to the new paper_trades and paper_trade_legs tables.
- * This is a one-time migration function.
- */
+// Delay function for smoother migrations
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Migration function to move paper trades from physical_trades table to paper_trades table
 export const migratePaperTrades = async (): Promise<boolean> => {
   try {
-    console.log('Starting paper trades migration');
+    console.log('Starting paper trade migration');
     
-    // 1. Fetch all paper trades from the physical_trades table
-    const { data: paperTradesData, error: fetchError } = await supabase
+    // Step 1: Get all paper trades from physical_trades table
+    const { data: paperTradesInPhysicalTable, error: fetchError } = await supabase
       .from('physical_trades')
       .select('*')
       .eq('trade_type', 'paper');
@@ -21,125 +22,142 @@ export const migratePaperTrades = async (): Promise<boolean> => {
       throw new Error(`Error fetching paper trades: ${fetchError.message}`);
     }
     
-    console.log(`Found ${paperTradesData?.length || 0} paper trades to migrate`);
+    console.log(`Found ${paperTradesInPhysicalTable?.length || 0} paper trades to migrate`);
     
-    if (!paperTradesData || paperTradesData.length === 0) {
+    if (!paperTradesInPhysicalTable || paperTradesInPhysicalTable.length === 0) {
       console.log('No paper trades to migrate');
       return true;
     }
     
-    // 2. For each paper trade, migrate it and its legs
-    for (const tradeToBeMigrated of paperTradesData) {
-      // 2.1. Get trade legs
-      const { data: tradeLegs, error: legsError } = await supabase
+    // Step 2: Migrate each paper trade
+    for (const paperTrade of paperTradesInPhysicalTable) {
+      // First, get the legs for this trade
+      const { data: legData, error: legFetchError } = await supabase
         .from('physical_trade_legs')
         .select('*')
-        .eq('parent_trade_id', tradeToBeMigrated.id);
+        .eq('parent_trade_id', paperTrade.id);
         
-      if (legsError) {
-        throw new Error(`Error fetching trade legs: ${legsError.message}`);
-      }
-      
-      if (!tradeLegs || tradeLegs.length === 0) {
-        console.warn(`Trade ${tradeToBeMigrated.id} has no legs, skipping`);
+      if (legFetchError) {
+        console.error(`Error fetching legs for trade ${paperTrade.id}: ${legFetchError.message}`);
         continue;
       }
       
-      // 2.2. Insert into paper_trades
+      // Create the new paper trade in the paper_trades table
       const { data: newPaperTrade, error: insertTradeError } = await supabase
         .from('paper_trades')
         .insert({
-          id: tradeToBeMigrated.id, // Keep the same ID for reference
-          trade_reference: tradeToBeMigrated.trade_reference,
-          counterparty: tradeToBeMigrated.counterparty,
-          comment: tradeToBeMigrated.comment,
-          broker: tradeLegs[0].broker || 'Unknown', // Default if missing
-          created_at: tradeToBeMigrated.created_at,
-          updated_at: tradeToBeMigrated.updated_at
+          trade_reference: paperTrade.trade_reference,
+          counterparty: paperTrade.counterparty,
+          comment: paperTrade.comment || '',
+          broker: paperTrade.broker || legData?.[0]?.broker || 'Unknown',
+          created_at: paperTrade.created_at,
+          updated_at: paperTrade.updated_at
         })
-        .select()
+        .select('id')
         .single();
         
       if (insertTradeError) {
-        throw new Error(`Error inserting paper trade: ${insertTradeError.message}`);
+        console.error(`Error creating paper trade: ${insertTradeError.message}`);
+        continue;
       }
       
-      console.log(`Migrated paper trade: ${tradeToBeMigrated.trade_reference}`);
-      
-      // 2.3. Insert legs into paper_trade_legs
-      for (const leg of tradeLegs) {
-        const { error: insertLegError } = await supabase
-          .from('paper_trade_legs')
-          .insert({
-            id: leg.id, // Keep the same ID for reference
-            parent_trade_id: leg.parent_trade_id,
+      // Create the legs in the paper_trade_legs table
+      if (legData && legData.length > 0) {
+        for (const leg of legData) {
+          const newLeg = {
+            parent_trade_id: newPaperTrade.id,
             leg_reference: leg.leg_reference,
             buy_sell: leg.buy_sell,
             product: leg.product,
             quantity: leg.quantity,
-            period: leg.trading_period || '', // Map to new column
+            period: leg.trading_period || '',
             price: leg.price || 0,
-            broker: leg.broker,
-            relationship_type: leg.instrument?.includes('DIFF') ? 'DIFF' : 
-                              leg.instrument?.includes('SPREAD') ? 'SPREAD' : 'FP',
-            instrument: leg.instrument,
-            formula: leg.pricing_formula,
-            mtm_formula: leg.mtm_formula,
-            // Extract right side info from mtm_formula if available
-            right_side_product: leg.mtm_formula?.rightSide?.product,
-            right_side_quantity: leg.mtm_formula?.rightSide?.quantity,
-            right_side_period: leg.mtm_formula?.rightSide?.period,
-            right_side_price: leg.mtm_formula?.rightSide?.price,
-            created_at: leg.created_at,
-            updated_at: leg.updated_at
-          });
+            broker: leg.broker || '',
+            relationship_type: leg.relationship_type || 'FP',
+            instrument: leg.instrument || '',
+            formula: validateAndParsePricingFormula(leg.pricing_formula),
+            mtm_formula: validateAndParsePricingFormula(leg.mtm_formula),
+            right_side_product: leg.right_side_product,
+            right_side_quantity: leg.right_side_quantity,
+            right_side_period: leg.right_side_period,
+            right_side_price: leg.right_side_price
+          };
           
-        if (insertLegError) {
-          throw new Error(`Error inserting paper trade leg: ${insertLegError.message}`);
+          const { error: insertLegError } = await supabase
+            .from('paper_trade_legs')
+            .insert(newLeg);
+            
+          if (insertLegError) {
+            console.error(`Error creating paper trade leg: ${insertLegError.message}`);
+          }
         }
       }
       
-      console.log(`Migrated ${tradeLegs.length} legs for trade: ${tradeToBeMigrated.trade_reference}`);
+      // Small delay to avoid overwhelming the database
+      await delay(100);
     }
     
-    console.log('Paper trades migration completed successfully');
-    toast.success('Paper trades migrated successfully');
+    console.log('Paper trade migration completed successfully');
     return true;
-    
   } catch (error) {
-    console.error('Error in paper trades migration:', error);
-    toast.error('Paper trades migration failed', {
+    console.error('Error during paper trade migration:', error);
+    toast.error("Migration failed", {
       description: error instanceof Error ? error.message : 'Unknown error occurred'
     });
     return false;
   }
 };
 
-/**
- * Cleans up paper trades from the physical_trades table after successful migration.
- * WARNING: Only call this after verifying that migration was successful.
- */
+// Function to clean up old paper trades from physical_trades table after successful migration
 export const cleanupPaperTradesFromPhysicalTable = async (): Promise<boolean> => {
   try {
-    console.log('Starting cleanup of paper trades from physical tables');
+    console.log('Starting cleanup of paper trades from physical_trades table');
     
-    // Delete paper trades from physical_trades
-    const { error: deleteError } = await supabase
+    // First, fetch the paper trades to get their IDs
+    const { data: paperTradesInPhysicalTable, error: fetchError } = await supabase
       .from('physical_trades')
-      .delete()
+      .select('id')
       .eq('trade_type', 'paper');
       
-    if (deleteError) {
-      throw new Error(`Error deleting paper trades: ${deleteError.message}`);
+    if (fetchError) {
+      throw new Error(`Error fetching paper trades: ${fetchError.message}`);
     }
     
-    console.log('Paper trades cleanup completed successfully');
-    toast.success('Old paper trades data removed successfully');
-    return true;
+    if (!paperTradesInPhysicalTable || paperTradesInPhysicalTable.length === 0) {
+      console.log('No paper trades to clean up');
+      return true;
+    }
     
+    const tradeIds = paperTradesInPhysicalTable.map(trade => trade.id);
+    
+    // Delete the legs first
+    const { error: legDeleteError } = await supabase
+      .from('physical_trade_legs')
+      .delete()
+      .in('parent_trade_id', tradeIds);
+      
+    if (legDeleteError) {
+      throw new Error(`Error deleting paper trade legs: ${legDeleteError.message}`);
+    }
+    
+    // Small delay to ensure legs are deleted before trades
+    await delay(500);
+    
+    // Delete the paper trades from physical_trades
+    const { error: tradeDeleteError } = await supabase
+      .from('physical_trades')
+      .delete()
+      .in('id', tradeIds);
+      
+    if (tradeDeleteError) {
+      throw new Error(`Error deleting paper trades: ${tradeDeleteError.message}`);
+    }
+    
+    console.log(`Successfully cleaned up ${tradeIds.length} paper trades from physical_trades table`);
+    return true;
   } catch (error) {
-    console.error('Error in paper trades cleanup:', error);
-    toast.error('Paper trades cleanup failed', {
+    console.error('Error during paper trade cleanup:', error);
+    toast.error("Cleanup failed", {
       description: error instanceof Error ? error.message : 'Unknown error occurred'
     });
     return false;

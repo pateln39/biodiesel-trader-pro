@@ -1,5 +1,7 @@
 
 import { ParentTrade, Trade } from "./common";
+import { PhysicalFormulaConfig } from "./physicalFormula";
+import { PaperPricingFormula, PaperFormulaToken } from "./paperFormula";
 
 // Physical trade types
 export type BuySell = "buy" | "sell";
@@ -28,16 +30,6 @@ export type DisplayProduct = Product | string;
 // Paper trade specific types
 export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 
-// Common formula types
-export interface FormulaToken {
-  type: "number" | "operator" | "variable" | "function";
-  value: string | number;
-}
-
-export interface FormulaConfig {
-  tokens: FormulaToken[];
-}
-
 // Physical trade leg definition
 export interface PhysicalTradeLeg {
   id: string;
@@ -56,8 +48,8 @@ export interface PhysicalTradeLeg {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
-  formula: FormulaConfig;
-  mtmFormula: FormulaConfig;
+  formula: PhysicalFormulaConfig;
+  mtmFormula: PhysicalFormulaConfig;
 }
 
 // Physical trade definition
@@ -77,8 +69,8 @@ export interface PhysicalTrade extends Trade {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
-  formula: FormulaConfig;
-  mtmFormula: FormulaConfig;
+  formula: PhysicalFormulaConfig;
+  mtmFormula: PhysicalFormulaConfig;
   legs?: PhysicalTradeLeg[];
 }
 
@@ -104,8 +96,8 @@ export interface PaperTradeLeg {
   relationshipType: PaperRelationshipType;
   instrument?: string;
   rightSide?: PaperTradeRightSide; 
-  formula?: any;
-  mtmFormula?: any;
+  formula?: PaperPricingFormula;
+  mtmFormula?: PaperPricingFormula;
 }
 
 // Paper trade definition

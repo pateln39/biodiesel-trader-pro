@@ -11,7 +11,7 @@ import {
   PaymentTerm,
   CreditStatus
 } from '@/types/trade';
-import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { validateAndParsePhysicalFormula, createEmptyPhysicalFormula } from '@/utils/physicalFormulaUtils';
 import { deletePhysicalTrade, deletePhysicalTradeLeg, delay, cleanupSubscriptions } from '@/utils/tradeDeleteUtils';
 import { toast } from 'sonner';
 
@@ -59,7 +59,7 @@ interface DbPhysicalTradeLeg {
 
 const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
   try {
-    // Get all physical trades from the renamed physical_trades table
+    // Get all physical trades from the physical_trades table
     const { data: physicalTradesData, error: physicalTradesError } = await supabase
       .from('physical_trades')
       .select('*')
@@ -69,7 +69,7 @@ const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
       throw new Error(`Error fetching physical trades: ${physicalTradesError.message}`);
     }
 
-    // Get all physical trade legs from the renamed physical_trade_legs table
+    // Get all physical trade legs from the physical_trade_legs table
     const { data: physicalTradeLegsData, error: tradeLegsError } = await supabase
       .from('physical_trade_legs')
       .select('*')
@@ -110,8 +110,8 @@ const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
-          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
+          formula: validateAndParsePhysicalFormula(firstLeg.pricing_formula),
+          mtmFormula: validateAndParsePhysicalFormula(firstLeg.mtm_formula),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -129,8 +129,8 @@ const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            formula: validateAndParsePhysicalFormula(leg.pricing_formula),
+            mtmFormula: validateAndParsePhysicalFormula(leg.mtm_formula)
           }))
         };
         return physicalTrade;
@@ -157,8 +157,8 @@ const fetchPhysicalTrades = async (): Promise<PhysicalTrade[]> => {
         unit: 'MT' as Unit,
         paymentTerm: '30 days' as PaymentTerm,
         creditStatus: 'pending' as CreditStatus,
-        formula: createEmptyFormula(),
-        mtmFormula: createEmptyFormula(),
+        formula: createEmptyPhysicalFormula(),
+        mtmFormula: createEmptyPhysicalFormula(),
         legs: []
       } as PhysicalTrade;
     });
