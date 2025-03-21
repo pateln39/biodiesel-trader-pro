@@ -1,8 +1,8 @@
-// Import PaperTrade from the correct location
+
+// Import types from their correct locations
 import { PaperTrade } from '@/types/paper';
-// Keep other imports as they are
-import { PhysicalTrade, Movement } from '@/types/physical';
-import { AuditLog } from '@/types/common';
+import { PhysicalTrade } from '@/types/physical';
+import { Movement, AuditLog } from '@/types/common';
 
 // Mock data for audit logs
 export const mockAuditLogs: AuditLog[] = [
@@ -29,7 +29,7 @@ export const mockAuditLogs: AuditLog[] = [
   {
     id: '3',
     timestamp: new Date('2023-03-12T09:45:00'),
-    entityType: 'payment',
+    entityType: 'trade', // Changed from 'payment' to 'trade'
     entityId: 'PAY-789',
     field: 'status',
     oldValue: 'pending',
@@ -38,31 +38,53 @@ export const mockAuditLogs: AuditLog[] = [
   }
 ];
 
-// Mock data for physical trades
+// Mock data for physical trades - updated to match PhysicalTrade interface
 export const mockPhysicalTrades: PhysicalTrade[] = [
   {
     id: 'PT001',
+    tradeType: 'physical',
+    physicalType: 'spot',
     tradeReference: 'PHY-2023-001',
     counterparty: 'EcoFuels GmbH',
+    buySell: 'buy',
     product: 'FAME0',
+    sustainability: 'ISCC EU',
+    incoTerm: 'FOB',
     quantity: 1000,
     unit: 'MT',
     tolerance: 2.5,
     loadingPeriodStart: new Date('2023-04-01'),
     loadingPeriodEnd: new Date('2023-04-15'),
-    createdAt: new Date('2023-03-10')
+    pricingPeriodStart: new Date('2023-04-01'),
+    pricingPeriodEnd: new Date('2023-04-15'),
+    paymentTerm: '30 days',
+    creditStatus: 'approved',
+    createdAt: new Date('2023-03-10'),
+    updatedAt: new Date('2023-03-10'),
+    legs: []
   },
   {
     id: 'PT002',
+    tradeType: 'physical',
+    physicalType: 'spot',
     tradeReference: 'PHY-2023-002',
     counterparty: 'Renewable Energy Corp',
+    buySell: 'sell',
     product: 'RME',
+    sustainability: 'ISCC EU',
+    incoTerm: 'CIF',
     quantity: 2000,
     unit: 'MT',
     tolerance: 5,
     loadingPeriodStart: new Date('2023-04-10'),
     loadingPeriodEnd: new Date('2023-04-20'),
-    createdAt: new Date('2023-03-12')
+    pricingPeriodStart: new Date('2023-04-10'),
+    pricingPeriodEnd: new Date('2023-04-20'),
+    paymentTerm: '30 days',
+    creditStatus: 'approved',
+    createdAt: new Date('2023-03-12'),
+    updatedAt: new Date('2023-03-12'),
+    legs: []
   }
 ];
 

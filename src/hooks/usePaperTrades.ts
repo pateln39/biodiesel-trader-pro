@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
-import { PaperTrade, PaperTradeLeg, PaperRelationshipType } from '@/types/paper';
+import { PaperTrade, PaperTradeLeg } from '@/types/paper';
 import { formatMonthCode } from '@/utils/dateUtils';
 import { 
   generateLegReference, 
@@ -102,7 +102,7 @@ export const usePaperTrades = () => {
           comment: paperTrade.comment,
           legs: (legs || []).map((leg) => {
             const instrument = leg.instrument || '';
-            let relationshipType: PaperRelationshipType = 'FP';
+            let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
             
             if (instrument.includes('DIFF')) {
               relationshipType = 'DIFF';
