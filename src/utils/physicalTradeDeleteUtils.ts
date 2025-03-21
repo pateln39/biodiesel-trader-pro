@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { delay } from './subscriptionUtils';
@@ -37,6 +36,7 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
     }
     
     console.log(`Successfully deleted physical trade: ${tradeId}`);
+    toast.success("Trade deleted successfully");
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTrade:', error);
@@ -48,12 +48,32 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
 };
 
 /**
- * Delete a single leg from a physical trade with improved error handling
+ * Delete a single leg from a physical trade, handling the case where it's the last leg
  */
-export const deletePhysicalTradeLeg = async (legId: string): Promise<boolean> => {
+export const deletePhysicalTradeLeg = async (legId: string, parentTradeId: string): Promise<boolean> => {
   try {
-    console.log(`Starting deletion process for leg: ${legId}`);
+    console.log(`Starting deletion process for leg: ${legId} of trade: ${parentTradeId}`);
     
+    // First, check if this is the only leg for the parent trade
+    const { data: legsCount, error: countError } = await supabase
+      .from('trade_legs')
+      .select('id', { count: 'exact' })
+      .eq('parent_trade_id', parentTradeId);
+    
+    if (countError) {
+      console.error('Error checking remaining legs:', countError);
+      throw countError;
+    }
+    
+    const isLastLeg = legsCount?.length === 1;
+    
+    // If it's the last leg, delete both the leg and the parent trade
+    if (isLastLeg) {
+      console.log(`This is the last leg for trade ${parentTradeId}, deleting entire trade`);
+      return await deletePhysicalTrade(parentTradeId);
+    }
+    
+    // Otherwise, just delete the leg
     const { error } = await supabase
       .from('trade_legs')
       .delete()
@@ -65,6 +85,7 @@ export const deletePhysicalTradeLeg = async (legId: string): Promise<boolean> =>
     }
     
     console.log(`Successfully deleted leg: ${legId}`);
+    toast.success("Trade leg deleted successfully");
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTradeLeg:', error);
