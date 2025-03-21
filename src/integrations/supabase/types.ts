@@ -154,6 +154,74 @@ export type Database = {
         }
         Relationships: []
       }
+      paper_trade_legs: {
+        Row: {
+          broker: string | null
+          buy_sell: string
+          created_at: string
+          formula: Json | null
+          id: string
+          instrument: string | null
+          leg_reference: string
+          mtm_formula: Json | null
+          paper_trade_id: string
+          period: string | null
+          price: number | null
+          pricing_period_end: string | null
+          pricing_period_start: string | null
+          product: string
+          quantity: number
+          trading_period: string | null
+          updated_at: string
+        }
+        Insert: {
+          broker?: string | null
+          buy_sell: string
+          created_at?: string
+          formula?: Json | null
+          id?: string
+          instrument?: string | null
+          leg_reference: string
+          mtm_formula?: Json | null
+          paper_trade_id: string
+          period?: string | null
+          price?: number | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product: string
+          quantity: number
+          trading_period?: string | null
+          updated_at?: string
+        }
+        Update: {
+          broker?: string | null
+          buy_sell?: string
+          created_at?: string
+          formula?: Json | null
+          id?: string
+          instrument?: string | null
+          leg_reference?: string
+          mtm_formula?: Json | null
+          paper_trade_id?: string
+          period?: string | null
+          price?: number | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product?: string
+          quantity?: number
+          trading_period?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paper_trade_legs_paper_trade_id_fkey"
+            columns: ["paper_trade_id"]
+            isOneToOne: false
+            referencedRelation: "paper_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paper_trade_products: {
         Row: {
           base_product: string | null
@@ -184,6 +252,36 @@ export type Database = {
           is_active?: boolean | null
           paired_product?: string | null
           product_code?: string
+        }
+        Relationships: []
+      }
+      paper_trades: {
+        Row: {
+          broker: string | null
+          comment: string | null
+          counterparty: string
+          created_at: string
+          id: string
+          trade_reference: string
+          updated_at: string
+        }
+        Insert: {
+          broker?: string | null
+          comment?: string | null
+          counterparty: string
+          created_at?: string
+          id?: string
+          trade_reference: string
+          updated_at?: string
+        }
+        Update: {
+          broker?: string | null
+          comment?: string | null
+          counterparty?: string
+          created_at?: string
+          id?: string
+          trade_reference?: string
+          updated_at?: string
         }
         Relationships: []
       }
