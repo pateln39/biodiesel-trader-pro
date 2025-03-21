@@ -28,10 +28,10 @@ export interface PaperTradeLeg {
     product: Product;
     quantity: number;
   };
-  // Changed these types to be more flexible
-  formula?: any;
-  mtmFormula?: any;
-  // New explicit exposures field separate from mtm_formula
+  // Using Record<string, any> for formula and mtmFormula to be compatible with JSON
+  formula?: Record<string, any>;
+  mtmFormula?: Record<string, any>;
+  // Typed exposures field separate from mtm_formula
   exposures?: {
     physical?: Record<string, number>;
     pricing?: Record<string, number>;
@@ -44,6 +44,5 @@ export interface PaperTrade extends Trade {
   tradeType: "paper";
   broker: string;
   legs: PaperTradeLeg[];
-  // Add comment property that was missing
   comment?: string;
 }

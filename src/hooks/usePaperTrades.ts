@@ -145,8 +145,8 @@ export const usePaperTrades = () => {
       })
     );
     
-    // Cast to PaperTrade[] after we've transformed data to match the interface
-    return tradesWithLegs as PaperTrade[];
+    // Use type assertion to match our PaperTrade interface
+    return tradesWithLegs as unknown as PaperTrade[];
   };
   
   // Fetch new paper trades from paper_trades/paper_trade_legs tables
@@ -231,21 +231,45 @@ export const usePaperTrades = () => {
             }
             
             // Process exposures with type safety
-            let exposuresObj;
+            let exposuresObj: PaperTradeLeg['exposures'] = {
+              physical: {},
+              pricing: {},
+              paper: {}
+            };
+            
             if (leg.exposures) {
               // Handle exposures from the dedicated column
               if (typeof leg.exposures === 'object') {
-                exposuresObj = leg.exposures;
+                // Safely access nested properties with type checking
+                const exposuresData = leg.exposures as Record<string, any>;
+                
+                if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+                  exposuresObj.physical = exposuresData.physical as Record<string, number>;
+                }
+                
+                if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+                  exposuresObj.paper = exposuresData.paper as Record<string, number>;
+                }
+                
+                if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+                  exposuresObj.pricing = exposuresData.pricing as Record<string, number>;
+                }
               }
-            } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'exposures' in leg.mtm_formula) {
+            } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
               // Fallback to mtm_formula for legacy compatibility
-              const mtmExposures = leg.mtm_formula.exposures;
-              if (mtmExposures && typeof mtmExposures === 'object') {
-                exposuresObj = {
-                  physical: mtmExposures.physical || {},
-                  paper: mtmExposures.physical || {},  // For backward compatibility
-                  pricing: mtmExposures.pricing || {}
-                };
+              const mtmData = leg.mtm_formula as Record<string, any>;
+              
+              if (mtmData.exposures && typeof mtmData.exposures === 'object') {
+                const mtmExposures = mtmData.exposures as Record<string, any>;
+                
+                if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+                  exposuresObj.physical = mtmExposures.physical as Record<string, number>;
+                  exposuresObj.paper = mtmExposures.physical as Record<string, number>;  // For backward compatibility
+                }
+                
+                if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+                  exposuresObj.pricing = mtmExposures.pricing as Record<string, number>;
+                }
               }
             }
             
@@ -271,8 +295,8 @@ export const usePaperTrades = () => {
       })
     );
     
-    // Cast to PaperTrade[] after transformation
-    return tradesWithLegs as PaperTrade[];
+    // Use type assertion to match our PaperTrade interface
+    return tradesWithLegs as unknown as PaperTrade[];
   };
   
   // Setup and cleanup function for realtime subscriptions
@@ -505,17 +529,17 @@ export const usePaperTrades = () => {
           );
           
           // Prepare mtmFormula for database (convert from TypeScript to JSON)
-          let mtmFormulaForDb = leg.mtmFormula;
-          if (mtmFormulaForDb && typeof mtmFormulaForDb === 'object') {
+          let mtmFormulaForDb = null;
+          if (leg.mtmFormula && typeof leg.mtmFormula === 'object') {
             // Make sure it's proper JSON
-            mtmFormulaForDb = JSON.parse(JSON.stringify(mtmFormulaForDb));
+            mtmFormulaForDb = JSON.parse(JSON.stringify(leg.mtmFormula));
           }
           
           // Prepare formula for database (convert from TypeScript to JSON)
-          let formulaForDb = leg.formula;
-          if (formulaForDb && typeof formulaForDb === 'object') {
+          let formulaForDb = null;
+          if (leg.formula && typeof leg.formula === 'object') {
             // Make sure it's proper JSON
-            formulaForDb = JSON.parse(JSON.stringify(formulaForDb));
+            formulaForDb = JSON.parse(JSON.stringify(leg.formula));
           }
           
           const legData = {

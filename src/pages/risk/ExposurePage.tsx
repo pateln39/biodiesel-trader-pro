@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Download, Calendar, Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -172,9 +173,13 @@ const ExposurePage = () => {
           };
         }
         
+        // Check for new explicit exposures field first
         if (leg.exposures && typeof leg.exposures === 'object') {
-          if (leg.exposures.physical && typeof leg.exposures.physical === 'object') {
-            Object.entries(leg.exposures.physical).forEach(([prodName, value]) => {
+          const exposuresData = leg.exposures as Record<string, any>;
+          
+          // Handle physical exposures
+          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+            Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
               if (!exposures[month][prodName]) {
                 exposures[month][prodName] = {
                   physical: 0,
@@ -188,8 +193,9 @@ const ExposurePage = () => {
             });
           }
           
-          if (leg.exposures.pricing && typeof leg.exposures.pricing === 'object') {
-            Object.entries(leg.exposures.pricing).forEach(([instrument, value]) => {
+          // Handle pricing exposures
+          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+            Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
               if (!exposures[month][instrument]) {
                 exposures[month][instrument] = {
                   physical: 0,
@@ -203,12 +209,15 @@ const ExposurePage = () => {
             });
           }
         }
+        // Fall back to mtm_formula if no explicit exposures
         else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-          const mtmFormula = leg.mtm_formula;
+          const mtmFormula = leg.mtm_formula as Record<string, any>;
           
           if (mtmFormula.exposures && typeof mtmFormula.exposures === 'object') {
-            if (mtmFormula.exposures.physical && typeof mtmFormula.exposures.physical === 'object') {
-              Object.entries(mtmFormula.exposures.physical).forEach(([prodName, value]) => {
+            const mtmExposures = mtmFormula.exposures as Record<string, any>;
+            
+            if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+              Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
                 if (!exposures[month][prodName]) {
                   exposures[month][prodName] = {
                     physical: 0,
@@ -223,12 +232,14 @@ const ExposurePage = () => {
             }
           }
         }
+        // Default fallback if no structured exposure data is available
         else {
           exposures[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
         }
       });
     }
     
+    // Calculate net exposures
     Object.keys(exposures).forEach(month => {
       Object.keys(exposures[month]).forEach(grade => {
         const { physical, pricing, paper } = exposures[month][grade];
