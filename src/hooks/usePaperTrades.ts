@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
 import { PaperTrade, PaperTradeLeg } from '@/types/paper';
@@ -11,8 +11,11 @@ import {
   formatMTMDisplay,
   generateInstrumentName 
 } from '@/utils/tradeUtils';
-import { deletePaperTrade } from '@/utils/paperTradeDeleteUtils';
-import { cleanupSubscriptions, delay, pauseSubscriptions, resumeSubscriptions } from '@/utils/subscriptionUtils';
+import { 
+  cleanupPaperSubscriptions, 
+  setupPaperTradeSubscriptions 
+} from '@/utils/paperTradeSubscriptionUtils';
+import { usePaperTradeDelete } from './usePaperTradeDelete';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -27,23 +30,28 @@ export const usePaperTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
+  const { 
+    deletePaperTrade: paperTradeDeleteFn, 
+    isDeletePaperTradeLoading
+  } = usePaperTradeDelete();
+  
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
-      console.log("Skipping paper trade refetch as deletion is in progress");
+      console.log("[PAPER] Skipping paper trade refetch as deletion is in progress");
       return;
     }
-    console.log("Executing debounced paper trade refetch");
+    console.log("[PAPER] Executing debounced paper trade refetch");
     fn();
   }, 500)).current;
   
   const { data: paperTrades, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades'],
-    queryFn: fetchNewPaperTrades,
+    queryFn: fetchPaperTrades,
     staleTime: 2000,
     refetchOnWindowFocus: false
   });
   
-  async function fetchNewPaperTrades(): Promise<PaperTrade[]> {
+  async function fetchPaperTrades(): Promise<PaperTrade[]> {
     const { data: paperTradesData, error: paperTradesError } = await supabase
       .from('paper_trades')
       .select(`
@@ -58,7 +66,7 @@ export const usePaperTrades = () => {
       .order('created_at', { ascending: false });
       
     if (paperTradesError) {
-      console.error('Error fetching paper trades:', paperTradesError.message);
+      console.error('[PAPER] Error fetching paper trades:', paperTradesError.message);
       throw paperTradesError;
     }
     
@@ -66,7 +74,7 @@ export const usePaperTrades = () => {
       return [];
     }
     
-    console.log(`Found ${paperTradesData.length} paper trades`);
+    console.log(`[PAPER] Found ${paperTradesData.length} paper trades`);
     
     const tradesWithLegs = await Promise.all(
       paperTradesData.map(async (paperTrade) => {
@@ -77,7 +85,7 @@ export const usePaperTrades = () => {
           .order('leg_reference', { ascending: true });
           
         if (legsError) {
-          console.error('Error fetching paper trade legs:', legsError.message);
+          console.error('[PAPER] Error fetching paper trade legs:', legsError.message);
           return {
             id: paperTrade.id,
             tradeReference: paperTrade.trade_reference,
@@ -182,108 +190,21 @@ export const usePaperTrades = () => {
   };
   
   const setupRealtimeSubscriptions = useCallback(() => {
-    cleanupSubscriptions(realtimeChannelsRef.current);
-    
-    const paperTradesChannel = supabase
-      .channel('paper_trades')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'paper_trades'
-      }, (payload) => {
-        if (realtimeChannelsRef.current.paperTradesChannel?.isPaused) {
-          console.log('Subscription paused, skipping update for paper_trades');
-          return;
-        }
-        
-        if (!isProcessingRef.current) {
-          console.log('Paper trades changed, debouncing refetch...', payload);
-          debouncedRefetch(refetch);
-        }
-      })
-      .subscribe();
-
-    realtimeChannelsRef.current.paperTradesChannel = paperTradesChannel;
-
-    const paperTradeLegsChannel = supabase
-      .channel('paper_trade_legs')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'paper_trade_legs' 
-      }, (payload) => {
-        if (realtimeChannelsRef.current.paperTradeLegsChannel?.isPaused) {
-          console.log('Subscription paused, skipping update for paper_trade_legs');
-          return;
-        }
-        
-        if (!isProcessingRef.current) {
-          console.log('Paper trade legs changed, debouncing refetch...', payload);
-          debouncedRefetch(refetch);
-        }
-      })
-      .subscribe();
-
-    realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
+    return setupPaperTradeSubscriptions(
+      realtimeChannelsRef,
+      isProcessingRef, 
+      debouncedRefetch,
+      refetch
+    );
   }, [refetch, debouncedRefetch]);
   
   useEffect(() => {
-    setupRealtimeSubscriptions();
+    const cleanup = setupRealtimeSubscriptions();
     
     return () => {
-      cleanupSubscriptions(realtimeChannelsRef.current);
+      cleanup();
     };
   }, [setupRealtimeSubscriptions]);
-  
-  const deletePaperTradeMutation = useMutation({
-    mutationFn: async (tradeId: string) => {
-      try {
-        isProcessingRef.current = true;
-        console.log("Setting isProcessing to true for deletePaperTrade");
-        
-        pauseSubscriptions(realtimeChannelsRef.current);
-        
-        queryClient.setQueryData(['paper-trades'], (oldData: any) => {
-          return oldData.filter((trade: any) => trade.id !== tradeId);
-        });
-        
-        const success = await deletePaperTrade(tradeId);
-        
-        await delay(800);
-        
-        return { success, tradeId };
-      } catch (error) {
-        console.error("Error in deletePaperTradeMutation:", error);
-        throw error;
-      } finally {
-        resumeSubscriptions(realtimeChannelsRef.current);
-        
-        setTimeout(() => {
-          isProcessingRef.current = false;
-          console.log("Setting isProcessing to false for deletePaperTrade");
-        }, 500);
-      }
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("Paper trade deleted successfully");
-      }
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-      }, 800);
-    },
-    onError: (error) => {
-      toast.error("Failed to delete paper trade", { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-      }, 800);
-    }
-  });
   
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
@@ -407,7 +328,7 @@ export const usePaperTrades = () => {
     createPaperTrade,
     isCreating,
     refetchPaperTrades: refetch,
-    deletePaperTrade: deletePaperTradeMutation.mutate,
-    isDeletePaperTradeLoading: deletePaperTradeMutation.isPending
+    deletePaperTrade: paperTradeDeleteFn,
+    isDeletePaperTradeLoading
   };
 };

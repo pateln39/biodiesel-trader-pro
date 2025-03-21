@@ -1,5 +1,6 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Trade,
@@ -15,9 +16,8 @@ import {
   DbTradeLeg,
 } from '@/types';
 import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
-import { cleanupSubscriptions, delay, pauseSubscriptions, resumeSubscriptions } from '@/utils/subscriptionUtils';
-import { toast } from 'sonner';
+import { cleanupPhysicalSubscriptions, setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { usePhysicalTradeDelete } from './usePhysicalTradeDelete';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -116,7 +116,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
 
     return mappedTrades;
   } catch (error: any) {
-    console.error('Error fetching trades:', error);
+    console.error('[PHYSICAL] Error fetching trades:', error);
     throw new Error(error.message);
   }
 };
@@ -126,12 +126,20 @@ export const useTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
+  // Use the isolated delete hook
+  const { 
+    deletePhysicalTrade, 
+    isDeletePhysicalTradeLoading,
+    deletePhysicalTradeLeg,
+    isDeletePhysicalTradeLegLoading
+  } = usePhysicalTradeDelete();
+  
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
-      console.log("Skipping refetch as deletion is in progress");
+      console.log("[PHYSICAL] Skipping refetch as deletion is in progress");
       return;
     }
-    console.log("Executing debounced refetch");
+    console.log("[PHYSICAL] Executing debounced refetch for physical trades");
     fn();
   }, 500)).current;
 
@@ -149,174 +157,30 @@ export const useTrades = () => {
   });
 
   const setupRealtimeSubscriptions = useCallback(() => {
-    cleanupSubscriptions(realtimeChannelsRef.current);
-    
-    const parentTradesChannel = supabase
-      .channel('physical_parent_trades')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'parent_trades',
-        filter: 'trade_type=eq.physical'
-      }, (payload) => {
-        if (realtimeChannelsRef.current.parentTradesChannel?.isPaused) {
-          console.log('Subscription paused, skipping update for parent_trades');
-          return;
-        }
-        
-        if (!isProcessingRef.current) {
-          console.log('Physical parent trades changed, debouncing refetch...', payload);
-          debouncedRefetch(refetch);
-        }
-      })
-      .subscribe();
-    
-    realtimeChannelsRef.current.parentTradesChannel = parentTradesChannel;
-
-    const tradeLegsChannel = supabase
-      .channel('trade_legs_for_physical')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'trade_legs' 
-      }, (payload) => {
-        if (realtimeChannelsRef.current.tradeLegsChannel?.isPaused) {
-          console.log('Subscription paused, skipping update for trade_legs');
-          return;
-        }
-        
-        if (!isProcessingRef.current) {
-          console.log('Trade legs changed, debouncing refetch...', payload);
-          debouncedRefetch(refetch);
-        }
-      })
-      .subscribe();
-    
-    realtimeChannelsRef.current.tradeLegsChannel = tradeLegsChannel;
+    return setupPhysicalTradeSubscriptions(
+      realtimeChannelsRef,
+      isProcessingRef,
+      debouncedRefetch,
+      refetch
+    );
   }, [refetch, debouncedRefetch]);
 
   useEffect(() => {
-    setupRealtimeSubscriptions();
+    const cleanup = setupRealtimeSubscriptions();
     
     return () => {
-      cleanupSubscriptions(realtimeChannelsRef.current);
+      cleanup();
     };
   }, [setupRealtimeSubscriptions]);
-
-  const deletePhysicalTradeMutation = useMutation({
-    mutationFn: async (tradeId: string) => {
-      try {
-        isProcessingRef.current = true;
-        console.log("Setting isProcessing to true for deletePhysicalTrade");
-        
-        pauseSubscriptions(realtimeChannelsRef.current);
-        
-        queryClient.setQueryData(['trades'], (oldData: any) => {
-          return oldData.filter((trade: any) => trade.id !== tradeId);
-        });
-        
-        const success = await deletePhysicalTrade(tradeId);
-        
-        await delay(800);
-        
-        return { success, tradeId };
-      } catch (error) {
-        console.error("Error in deletePhysicalTradeMutation:", error);
-        throw error;
-      } finally {
-        resumeSubscriptions(realtimeChannelsRef.current);
-        
-        setTimeout(() => {
-          isProcessingRef.current = false;
-          console.log("Setting isProcessing to false for deletePhysicalTrade");
-        }, 500);
-      }
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("Physical trade deleted successfully");
-      }
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 800);
-    },
-    onError: (error) => {
-      toast.error("Failed to delete physical trade", { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 800);
-    }
-  });
-
-  const deletePhysicalTradeLegMutation = useMutation({
-    mutationFn: async ({ legId, tradeId }: { legId: string; tradeId: string }) => {
-      try {
-        isProcessingRef.current = true;
-        console.log("Setting isProcessing to true for deletePhysicalTradeLeg");
-        
-        pauseSubscriptions(realtimeChannelsRef.current);
-        
-        queryClient.setQueryData(['trades'], (oldData: any) => {
-          return oldData.map((trade: PhysicalTrade) => {
-            if (trade.id === tradeId) {
-              return {
-                ...trade,
-                legs: trade.legs?.filter(leg => leg.id !== legId) || []
-              };
-            }
-            return trade;
-          });
-        });
-        
-        const success = await deletePhysicalTradeLeg(legId);
-        
-        await delay(800);
-        
-        return { success, legId, tradeId };
-      } catch (error) {
-        console.error("Error in deletePhysicalTradeLegMutation:", error);
-        throw error;
-      } finally {
-        resumeSubscriptions(realtimeChannelsRef.current);
-        
-        setTimeout(() => {
-          isProcessingRef.current = false;
-          console.log("Setting isProcessing to false for deletePhysicalTradeLeg");
-        }, 500);
-      }
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("Trade leg deleted successfully");
-      }
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 800);
-    },
-    onError: (error) => {
-      toast.error("Failed to delete trade leg", { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['trades'] });
-      }, 800);
-    }
-  });
 
   return { 
     trades, 
     loading, 
     error, 
     refetchTrades: refetch,
-    deletePhysicalTrade: deletePhysicalTradeMutation.mutate,
-    isDeletePhysicalTradeLoading: deletePhysicalTradeMutation.isPending,
-    deletePhysicalTradeLeg: deletePhysicalTradeLegMutation.mutate,
-    isDeletePhysicalTradeLegLoading: deletePhysicalTradeLegMutation.isPending
+    deletePhysicalTrade,
+    isDeletePhysicalTradeLoading,
+    deletePhysicalTradeLeg,
+    isDeletePhysicalTradeLegLoading
   };
 };
