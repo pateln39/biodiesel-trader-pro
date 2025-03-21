@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
  * @param channelRefs Record containing channel references to be cleaned up
  */
 export const cleanupSubscriptions = (channelRefs: Record<string, any>) => {
-  console.log("Cleaning up all trade subscriptions");
+  console.log("Cleaning up all subscriptions");
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {

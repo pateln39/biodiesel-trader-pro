@@ -32,7 +32,7 @@ const debounce = (fn: Function, ms = 300) => {
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
-    // Get all parent trades of type 'physical'
+    // Get all parent trades of type 'physical' only
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
@@ -110,7 +110,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
         return physicalTrade;
       } 
       
-      // Fallback with minimal data if there are no legs or unknown type
+      // Fallback with minimal data if there are no legs
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
@@ -165,7 +165,7 @@ export const useTrades = () => {
     // First clean up any existing subscriptions
     cleanupSubscriptions(realtimeChannelsRef.current);
     
-    // Subscribe to changes on parent_trades table with filter for physical trades
+    // Subscribe to changes on parent_trades table with filter for physical trades only
     const parentTradesChannel = supabase
       .channel('physical_parent_trades')
       .on('postgres_changes', { 
