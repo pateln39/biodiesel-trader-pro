@@ -18,7 +18,6 @@ import PricingAdminPage from "./pages/pricing/PricingAdminPage";
 import MTMPage from "./pages/risk/MTMPage";
 import PNLPage from "./pages/risk/PNLPage";
 import PricesPage from "./pages/risk/PricesPage";
-import MigrationManager from "./components/MigrationManager";
 
 const queryClient = new QueryClient();
 
@@ -28,7 +27,6 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <MigrationManager />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

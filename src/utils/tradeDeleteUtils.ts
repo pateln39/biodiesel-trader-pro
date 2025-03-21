@@ -14,12 +14,12 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
     
     // Step 1: Delete all legs for this trade
     const { error: legsError } = await supabase
-      .from('physical_trade_legs')
+      .from('trade_legs')
       .delete()
       .eq('parent_trade_id', tradeId);
       
     if (legsError) {
-      console.error('Error deleting physical trade legs:', legsError);
+      console.error('Error deleting trade legs:', legsError);
       throw legsError;
     }
     
@@ -28,12 +28,13 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
     
     // Step 2: Delete the parent trade
     const { error: parentError } = await supabase
-      .from('physical_trades')
+      .from('parent_trades')
       .delete()
-      .eq('id', tradeId);
+      .eq('id', tradeId)
+      .eq('trade_type', 'physical');
       
     if (parentError) {
-      console.error('Error deleting physical trade:', parentError);
+      console.error('Error deleting parent trade:', parentError);
       throw parentError;
     }
     
@@ -53,23 +54,23 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
  */
 export const deletePhysicalTradeLeg = async (legId: string): Promise<boolean> => {
   try {
-    console.log(`Starting deletion process for physical trade leg: ${legId}`);
+    console.log(`Starting deletion process for leg: ${legId}`);
     
     const { error } = await supabase
-      .from('physical_trade_legs')
+      .from('trade_legs')
       .delete()
       .eq('id', legId);
     
     if (error) {
-      console.error('Error deleting physical trade leg:', error);
+      console.error('Error deleting trade leg:', error);
       throw error;
     }
     
-    console.log(`Successfully deleted physical trade leg: ${legId}`);
+    console.log(`Successfully deleted leg: ${legId}`);
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTradeLeg:', error);
-    toast.error("Physical trade leg deletion failed", {
+    toast.error("Trade leg deletion failed", {
       description: error instanceof Error ? error.message : 'Unknown error occurred'
     });
     return false;
@@ -83,9 +84,9 @@ export const deletePaperTrade = async (tradeId: string): Promise<boolean> => {
   try {
     console.log(`Starting deletion process for paper trade: ${tradeId}`);
     
-    // Step 1: Delete all legs for this paper trade
+    // Step 1: Delete all legs for this trade
     const { error: legsError } = await supabase
-      .from('paper_trade_legs')
+      .from('trade_legs')
       .delete()
       .eq('parent_trade_id', tradeId);
       
@@ -97,14 +98,15 @@ export const deletePaperTrade = async (tradeId: string): Promise<boolean> => {
     // Add a small delay between operations to avoid database race conditions
     await delay(300);
     
-    // Step 2: Delete the parent paper trade
+    // Step 2: Delete the parent trade
     const { error: parentError } = await supabase
-      .from('paper_trades')
+      .from('parent_trades')
       .delete()
-      .eq('id', tradeId);
+      .eq('id', tradeId)
+      .eq('trade_type', 'paper');
       
     if (parentError) {
-      console.error('Error deleting paper trade:', parentError);
+      console.error('Error deleting paper parent trade:', parentError);
       throw parentError;
     }
     

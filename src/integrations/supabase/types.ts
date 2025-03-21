@@ -154,80 +154,6 @@ export type Database = {
         }
         Relationships: []
       }
-      paper_trade_legs: {
-        Row: {
-          broker: string | null
-          buy_sell: string
-          created_at: string
-          formula: Json | null
-          id: string
-          instrument: string | null
-          leg_reference: string
-          mtm_formula: Json | null
-          parent_trade_id: string
-          period: string
-          price: number
-          product: string
-          quantity: number
-          relationship_type: string
-          right_side_period: string | null
-          right_side_price: number | null
-          right_side_product: string | null
-          right_side_quantity: number | null
-          updated_at: string
-        }
-        Insert: {
-          broker?: string | null
-          buy_sell: string
-          created_at?: string
-          formula?: Json | null
-          id?: string
-          instrument?: string | null
-          leg_reference: string
-          mtm_formula?: Json | null
-          parent_trade_id: string
-          period: string
-          price: number
-          product: string
-          quantity: number
-          relationship_type: string
-          right_side_period?: string | null
-          right_side_price?: number | null
-          right_side_product?: string | null
-          right_side_quantity?: number | null
-          updated_at?: string
-        }
-        Update: {
-          broker?: string | null
-          buy_sell?: string
-          created_at?: string
-          formula?: Json | null
-          id?: string
-          instrument?: string | null
-          leg_reference?: string
-          mtm_formula?: Json | null
-          parent_trade_id?: string
-          period?: string
-          price?: number
-          product?: string
-          quantity?: number
-          relationship_type?: string
-          right_side_period?: string | null
-          right_side_price?: number | null
-          right_side_product?: string | null
-          right_side_quantity?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "paper_trade_legs_parent_trade_id_fkey"
-            columns: ["parent_trade_id"]
-            isOneToOne: false
-            referencedRelation: "paper_trades"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       paper_trade_products: {
         Row: {
           base_product: string | null
@@ -261,156 +187,7 @@ export type Database = {
         }
         Relationships: []
       }
-      paper_trades: {
-        Row: {
-          broker: string
-          comment: string | null
-          counterparty: string
-          created_at: string
-          id: string
-          trade_reference: string
-          updated_at: string
-        }
-        Insert: {
-          broker: string
-          comment?: string | null
-          counterparty: string
-          created_at?: string
-          id?: string
-          trade_reference: string
-          updated_at?: string
-        }
-        Update: {
-          broker?: string
-          comment?: string | null
-          counterparty?: string
-          created_at?: string
-          id?: string
-          trade_reference?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      payment_terms: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
-      physical_trade_legs: {
-        Row: {
-          broker: string | null
-          buy_sell: string
-          calculated_price: number | null
-          created_at: string
-          credit_status: string | null
-          id: string
-          inco_term: string | null
-          instrument: string | null
-          last_calculation_date: string | null
-          leg_reference: string
-          loading_period_end: string | null
-          loading_period_start: string | null
-          mtm_calculated_price: number | null
-          mtm_formula: Json | null
-          mtm_last_calculation_date: string | null
-          parent_trade_id: string
-          payment_term: string | null
-          price: number | null
-          pricing_formula: Json | null
-          pricing_period_end: string | null
-          pricing_period_start: string | null
-          product: string
-          quantity: number
-          sustainability: string | null
-          tolerance: number | null
-          trading_period: string | null
-          unit: string | null
-          updated_at: string
-        }
-        Insert: {
-          broker?: string | null
-          buy_sell: string
-          calculated_price?: number | null
-          created_at?: string
-          credit_status?: string | null
-          id?: string
-          inco_term?: string | null
-          instrument?: string | null
-          last_calculation_date?: string | null
-          leg_reference: string
-          loading_period_end?: string | null
-          loading_period_start?: string | null
-          mtm_calculated_price?: number | null
-          mtm_formula?: Json | null
-          mtm_last_calculation_date?: string | null
-          parent_trade_id: string
-          payment_term?: string | null
-          price?: number | null
-          pricing_formula?: Json | null
-          pricing_period_end?: string | null
-          pricing_period_start?: string | null
-          product: string
-          quantity: number
-          sustainability?: string | null
-          tolerance?: number | null
-          trading_period?: string | null
-          unit?: string | null
-          updated_at?: string
-        }
-        Update: {
-          broker?: string | null
-          buy_sell?: string
-          calculated_price?: number | null
-          created_at?: string
-          credit_status?: string | null
-          id?: string
-          inco_term?: string | null
-          instrument?: string | null
-          last_calculation_date?: string | null
-          leg_reference?: string
-          loading_period_end?: string | null
-          loading_period_start?: string | null
-          mtm_calculated_price?: number | null
-          mtm_formula?: Json | null
-          mtm_last_calculation_date?: string | null
-          parent_trade_id?: string
-          payment_term?: string | null
-          price?: number | null
-          pricing_formula?: Json | null
-          pricing_period_end?: string | null
-          pricing_period_start?: string | null
-          product?: string
-          quantity?: number
-          sustainability?: string | null
-          tolerance?: number | null
-          trading_period?: string | null
-          unit?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "physical_trade_legs_parent_trade_id_fkey"
-            columns: ["parent_trade_id"]
-            isOneToOne: false
-            referencedRelation: "physical_trades"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      physical_trades: {
+      parent_trades: {
         Row: {
           comment: string | null
           counterparty: string
@@ -440,6 +217,24 @@ export type Database = {
           trade_reference?: string
           trade_type?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_terms: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -538,6 +333,107 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      trade_legs: {
+        Row: {
+          broker: string | null
+          buy_sell: string
+          calculated_price: number | null
+          created_at: string
+          credit_status: string | null
+          id: string
+          inco_term: string | null
+          instrument: string | null
+          last_calculation_date: string | null
+          leg_reference: string
+          loading_period_end: string | null
+          loading_period_start: string | null
+          mtm_calculated_price: number | null
+          mtm_formula: Json | null
+          mtm_last_calculation_date: string | null
+          parent_trade_id: string
+          payment_term: string | null
+          price: number | null
+          pricing_formula: Json | null
+          pricing_period_end: string | null
+          pricing_period_start: string | null
+          product: string
+          quantity: number
+          sustainability: string | null
+          tolerance: number | null
+          trading_period: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          broker?: string | null
+          buy_sell: string
+          calculated_price?: number | null
+          created_at?: string
+          credit_status?: string | null
+          id?: string
+          inco_term?: string | null
+          instrument?: string | null
+          last_calculation_date?: string | null
+          leg_reference: string
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          mtm_calculated_price?: number | null
+          mtm_formula?: Json | null
+          mtm_last_calculation_date?: string | null
+          parent_trade_id: string
+          payment_term?: string | null
+          price?: number | null
+          pricing_formula?: Json | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product: string
+          quantity: number
+          sustainability?: string | null
+          tolerance?: number | null
+          trading_period?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          broker?: string | null
+          buy_sell?: string
+          calculated_price?: number | null
+          created_at?: string
+          credit_status?: string | null
+          id?: string
+          inco_term?: string | null
+          instrument?: string | null
+          last_calculation_date?: string | null
+          leg_reference?: string
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          mtm_calculated_price?: number | null
+          mtm_formula?: Json | null
+          mtm_last_calculation_date?: string | null
+          parent_trade_id?: string
+          payment_term?: string | null
+          price?: number | null
+          pricing_formula?: Json | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product?: string
+          quantity?: number
+          sustainability?: string | null
+          tolerance?: number | null
+          trading_period?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_legs_parent_trade_id_fkey"
+            columns: ["parent_trade_id"]
+            isOneToOne: false
+            referencedRelation: "parent_trades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       trading_periods: {
         Row: {

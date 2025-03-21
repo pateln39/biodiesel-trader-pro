@@ -1,88 +1,28 @@
 
-import { ParentTrade, Trade } from "./common";
-import { PhysicalFormulaConfig } from "./physicalFormula";
-import { PaperPricingFormula, PaperFormulaToken } from "./paperFormula";
+import { TradeType } from './index';
 
-// Physical trade types
 export type BuySell = "buy" | "sell";
-export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP";
-export type Unit = "MT" | "BBL" | "GAL";
-export type PaymentTerm = "30 days" | "45 days" | "60 days" | "immediate";
-export type CreditStatus = "pending" | "approved" | "rejected";
-export type Product = 
-  | "UCOME" 
-  | "FAME0" 
-  | "RME" 
-  | "HVO" 
-  | "LSGO"
-  | "UCOME DIFF" 
-  | "RME DIFF" 
-  | "FAME0 DIFF"
-  | "RME-FAME"
-  | "UCOME-FAME"
-  | "UCOME-RME"
-  | "UCOME FP"
-  | "RME FP"
-  | "FAME0 FP";
-
-export type DisplayProduct = Product | string;
-
-// Paper trade specific types
+export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
+export type DisplayProduct = string; // For displaying formatted product names
+export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
+export type Unit = "MT" | "KG" | "L";
+export type CreditStatus = "approved" | "pending" | "rejected";
+export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
 export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 
-// Physical trade leg definition
-export interface PhysicalTradeLeg {
+// Paper trade interface
+export interface PaperTrade {
   id: string;
-  parentTradeId: string;
-  legReference: string;
-  buySell: BuySell;
-  product: Product;
-  sustainability?: string;
-  incoTerm: IncoTerm;
-  quantity: number;
-  tolerance?: number;
-  loadingPeriodStart: Date;
-  loadingPeriodEnd: Date;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  unit: Unit;
-  paymentTerm: PaymentTerm;
-  creditStatus: CreditStatus;
-  formula: PhysicalFormulaConfig;
-  mtmFormula: PhysicalFormulaConfig;
-}
-
-// Physical trade definition
-export interface PhysicalTrade extends Trade {
-  physicalType: 'spot' | 'term';
+  tradeReference: string;
+  tradeType: 'paper';
+  createdAt: Date;
+  updatedAt: Date;
   counterparty: string;
-  buySell: BuySell;
-  product: Product;
-  sustainability?: string;
-  incoTerm: IncoTerm;
-  quantity: number;
-  tolerance?: number;
-  loadingPeriodStart: Date;
-  loadingPeriodEnd: Date;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  unit: Unit;
-  paymentTerm: PaymentTerm;
-  creditStatus: CreditStatus;
-  formula: PhysicalFormulaConfig;
-  mtmFormula: PhysicalFormulaConfig;
-  legs?: PhysicalTradeLeg[];
+  comment?: string;
+  broker: string;
+  legs: PaperTradeLeg[];
 }
 
-// Paper trade right side definition (for DIFF and SPREAD)
-export interface PaperTradeRightSide {
-  product: string;
-  quantity: number;
-  period?: string;
-  price?: number;
-}
-
-// Paper trade leg definition
 export interface PaperTradeLeg {
   id: string;
   parentTradeId: string;
@@ -92,17 +32,44 @@ export interface PaperTradeLeg {
   quantity: number;
   period: string;
   price: number;
-  broker?: string;
+  broker: string;
   relationshipType: PaperRelationshipType;
-  instrument?: string;
-  rightSide?: PaperTradeRightSide; 
-  formula?: PaperPricingFormula;
-  mtmFormula?: PaperPricingFormula;
+  instrument?: string; // Store the full product name with type (e.g., "UCOME DIFF")
+  rightSide?: {
+    product: string;
+    quantity: number;
+    period: string;
+    price: number;
+  };
+  formula: any;
+  mtmFormula: any;
 }
 
-// Paper trade definition
-export interface PaperTrade extends ParentTrade {
-  comment?: string;
-  broker: string;
-  legs: PaperTradeLeg[];
+// Paper trade table row interface for the UI
+export interface PaperTradeTableRow {
+  id: string;
+  product: string;
+  buySell: BuySell;
+  quantity: number;
+  period: string;
+  price: number;
+  relationshipType: PaperRelationshipType;
+  rightSide?: {
+    product: string;
+    quantity: number;
+    period: string;
+    price: number;
+  };
+  formula?: any;
+  mtmFormula?: any;
+}
+
+// Product relationship interface for the UI
+export interface ProductRelationship {
+  id: string;
+  product: string;
+  relationship_type: PaperRelationshipType;
+  paired_product: string | null;
+  default_opposite: string | null;
+  created_at?: string;
 }

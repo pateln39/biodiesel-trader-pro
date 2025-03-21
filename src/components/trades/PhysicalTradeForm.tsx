@@ -4,15 +4,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PhysicalParentTrade, PhysicalTradeLeg, PhysicalTrade } from '@/types';
-import { PhysicalFormulaConfig } from '@/types/physicalFormula';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg, PhysicalTrade } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
 import { DatePicker } from '@/components/ui/date-picker';
 import FormulaBuilder from './FormulaBuilder';
-import { createEmptyPhysicalFormula } from '@/utils/physicalFormulaUtils';
+import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
@@ -39,8 +38,8 @@ interface LegFormState {
   loadingPeriodEnd: Date;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
-  formula?: PhysicalFormulaConfig;
-  mtmFormula?: PhysicalFormulaConfig;
+  formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -57,8 +56,8 @@ const createDefaultLeg = (): LegFormState => ({
   loadingPeriodEnd: new Date(),
   pricingPeriodStart: new Date(),
   pricingPeriodEnd: new Date(),
-  formula: createEmptyPhysicalFormula(),
-  mtmFormula: createEmptyPhysicalFormula()
+  formula: createEmptyFormula(),
+  mtmFormula: createEmptyFormula()
 });
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ 
@@ -87,18 +86,18 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       loadingPeriodEnd: leg.loadingPeriodEnd,
       pricingPeriodStart: leg.pricingPeriodStart,
       pricingPeriodEnd: leg.pricingPeriodEnd,
-      formula: leg.formula || createEmptyPhysicalFormula(),
-      mtmFormula: leg.mtmFormula || createEmptyPhysicalFormula()
+      formula: leg.formula || createEmptyFormula(),
+      mtmFormula: leg.mtmFormula || createEmptyFormula()
     })) || [createDefaultLeg()]
   );
 
-  const handleFormulaChange = (formula: PhysicalFormulaConfig, legIndex: number) => {
+  const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
     setLegs(newLegs);
   };
 
-  const handleMtmFormulaChange = (formula: PhysicalFormulaConfig, legIndex: number) => {
+  const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].mtmFormula = formula;
     setLegs(newLegs);
@@ -116,10 +115,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     }
   };
 
-  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PhysicalFormulaConfig | undefined) => {
+  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingFormula | undefined) => {
     const newLegs = [...legs];
     if (field === 'formula' || field === 'mtmFormula') {
-      (newLegs[index] as any)[field] = value as PhysicalFormulaConfig;
+      (newLegs[index] as any)[field] = value as PricingFormula;
     } else if (
       field === 'loadingPeriodStart' || 
       field === 'loadingPeriodEnd' || 
@@ -511,13 +510,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <Label className="font-medium">Price Formula</Label>
                     </div>
                     <FormulaBuilder 
-                      value={leg.formula || createEmptyPhysicalFormula()} 
+                      value={leg.formula || createEmptyFormula()} 
                       onChange={(formula) => handleFormulaChange(formula, legIndex)}
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
                       formulaType="price"
-                      otherFormula={leg.mtmFormula || createEmptyPhysicalFormula()}
+                      otherFormula={leg.mtmFormula || createEmptyFormula()}
                     />
                   </TabsContent>
                   
@@ -526,13 +525,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <Label className="font-medium">MTM Pricing Formula</Label>
                     </div>
                     <FormulaBuilder 
-                      value={leg.mtmFormula || createEmptyPhysicalFormula()} 
+                      value={leg.mtmFormula || createEmptyFormula()} 
                       onChange={(formula) => handleMtmFormulaChange(formula, legIndex)}
                       tradeQuantity={leg.quantity || 0}
                       buySell={leg.buySell}
                       selectedProduct={leg.product}
                       formulaType="mtm"
-                      otherFormula={leg.formula || createEmptyPhysicalFormula()}
+                      otherFormula={leg.formula || createEmptyFormula()}
                     />
                   </TabsContent>
                 </Tabs>
