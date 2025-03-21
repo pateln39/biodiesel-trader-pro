@@ -47,8 +47,8 @@ export const usePaperTrades = () => {
         fetchNewPaperTrades()
       ]);
       
-      // Combine both results
-      return [...legacyTrades, ...newTrades];
+      // Combine both results and cast to PaperTrade[] after proper transformation
+      return [...legacyTrades, ...newTrades] as PaperTrade[];
     },
     staleTime: 2000, // Consider data stale after 2 seconds
     refetchOnWindowFocus: false // Disable automatic refetch on window focus
@@ -145,6 +145,7 @@ export const usePaperTrades = () => {
       })
     );
     
+    // Cast to PaperTrade[] after we've transformed data to match the interface
     return tradesWithLegs as PaperTrade[];
   };
   
@@ -229,6 +230,25 @@ export const usePaperTrades = () => {
               rightSide = leg.mtm_formula.rightSide;
             }
             
+            // Process exposures with type safety
+            let exposuresObj;
+            if (leg.exposures) {
+              // Handle exposures from the dedicated column
+              if (typeof leg.exposures === 'object') {
+                exposuresObj = leg.exposures;
+              }
+            } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'exposures' in leg.mtm_formula) {
+              // Fallback to mtm_formula for legacy compatibility
+              const mtmExposures = leg.mtm_formula.exposures;
+              if (mtmExposures && typeof mtmExposures === 'object') {
+                exposuresObj = {
+                  physical: mtmExposures.physical || {},
+                  paper: mtmExposures.physical || {},  // For backward compatibility
+                  pricing: mtmExposures.pricing || {}
+                };
+              }
+            }
+            
             return {
               id: leg.id,
               paperTradeId: leg.paper_trade_id,
@@ -244,17 +264,14 @@ export const usePaperTrades = () => {
               rightSide: rightSide,
               formula: leg.formula,
               mtmFormula: leg.mtm_formula,
-              exposures: leg.exposures || (leg.mtm_formula?.exposures ? {
-                physical: leg.mtm_formula.exposures.physical || {},
-                paper: leg.mtm_formula.exposures.physical || {},  // For backward compatibility
-                pricing: leg.mtm_formula.exposures.pricing || {}
-              } : undefined)
+              exposures: exposuresObj
             };
           })
         };
       })
     );
     
+    // Cast to PaperTrade[] after transformation
     return tradesWithLegs as PaperTrade[];
   };
   
@@ -460,24 +477,7 @@ export const usePaperTrades = () => {
             }
           }
           
-          // Prepare mtmFormula with rightSide info (for backward compatibility)
-          let mtmFormula = leg.mtmFormula || {};
-          
-          // For DIFF/SPREAD trades, capture both sides in the exposures
-          if (leg.relationshipType !== 'FP' && leg.rightSide) {
-            mtmFormula = {
-              ...mtmFormula,
-              rightSide: leg.rightSide,
-              exposures: {
-                physical: {
-                  [leg.product]: leg.quantity || 0,
-                  [leg.rightSide.product]: leg.rightSide.quantity || 0
-                }
-              }
-            };
-          }
-          
-          // Create separate exposures object
+          // Create separate exposures object for database
           const exposures = {
             physical: {},
             paper: {},
@@ -504,6 +504,20 @@ export const usePaperTrades = () => {
             leg.rightSide?.product
           );
           
+          // Prepare mtmFormula for database (convert from TypeScript to JSON)
+          let mtmFormulaForDb = leg.mtmFormula;
+          if (mtmFormulaForDb && typeof mtmFormulaForDb === 'object') {
+            // Make sure it's proper JSON
+            mtmFormulaForDb = JSON.parse(JSON.stringify(mtmFormulaForDb));
+          }
+          
+          // Prepare formula for database (convert from TypeScript to JSON)
+          let formulaForDb = leg.formula;
+          if (formulaForDb && typeof formulaForDb === 'object') {
+            // Make sure it's proper JSON
+            formulaForDb = JSON.parse(JSON.stringify(formulaForDb));
+          }
+          
           const legData = {
             leg_reference: legReference,
             paper_trade_id: paperTrade.id,
@@ -514,13 +528,13 @@ export const usePaperTrades = () => {
             broker: leg.broker || trade.broker,
             period: tradingPeriod,
             trading_period: tradingPeriod,
-            formula: leg.formula,
-            mtm_formula: mtmFormula,
+            formula: formulaForDb,
+            mtm_formula: mtmFormulaForDb,
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
             instrument: instrument,
-            // Store exposures separately for better separation of concerns
-            exposures: exposures
+            // Store exposures separately - convert to proper JSON
+            exposures: JSON.parse(JSON.stringify(exposures))
           };
           
           const { error: legError } = await supabase

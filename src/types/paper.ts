@@ -28,8 +28,9 @@ export interface PaperTradeLeg {
     product: Product;
     quantity: number;
   };
-  formula?: PricingFormula;
-  mtmFormula?: PricingFormula;
+  // Changed these types to be more flexible
+  formula?: any;
+  mtmFormula?: any;
   // New explicit exposures field separate from mtm_formula
   exposures?: {
     physical?: Record<string, number>;
@@ -43,4 +44,6 @@ export interface PaperTrade extends Trade {
   tradeType: "paper";
   broker: string;
   legs: PaperTradeLeg[];
+  // Add comment property that was missing
+  comment?: string;
 }
