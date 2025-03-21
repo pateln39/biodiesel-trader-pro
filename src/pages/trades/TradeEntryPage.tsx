@@ -32,9 +32,9 @@ const TradeEntryPage = () => {
         counterparty: tradeData.counterparty,
       };
       
-      // Insert parent trade
+      // Insert parent trade into physical_trades table (renamed from parent_trades)
       const { data: parentTradeData, error: parentTradeError } = await supabase
-        .from('parent_trades')
+        .from('physical_trades')
         .insert(parentTrade)
         .select('id')
         .single();
@@ -46,7 +46,7 @@ const TradeEntryPage = () => {
       // Get the parent trade ID
       const parentTradeId = parentTradeData.id;
       
-      // For physical trades, insert all legs
+      // For physical trades, insert all legs into physical_trade_legs (renamed from trade_legs)
       const legs = tradeData.legs.map((leg: any) => ({
         leg_reference: leg.legReference,
         parent_trade_id: parentTradeId,
@@ -68,7 +68,7 @@ const TradeEntryPage = () => {
       }));
       
       const { error: legsError } = await supabase
-        .from('trade_legs')
+        .from('physical_trade_legs')
         .insert(legs);
         
       if (legsError) {

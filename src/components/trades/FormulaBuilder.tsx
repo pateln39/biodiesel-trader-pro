@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula } from '@/types';
+import { PaperFormulaToken, Instrument, PaperPricingFormula } from '@/types';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -16,7 +15,7 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString
-} from '@/utils/formulaUtils';
+} from '@/utils/paperFormulaUtils';
 import { 
   canAddTokenType, 
   calculateExposures,
@@ -26,13 +25,13 @@ import {
 } from '@/utils/formulaCalculation';
 
 interface FormulaBuilderProps {
-  value: PricingFormula;
-  onChange: (formula: PricingFormula) => void;
+  value: PaperPricingFormula;
+  onChange: (formula: PaperPricingFormula) => void;
   tradeQuantity: number;
   buySell?: 'buy' | 'sell';
   selectedProduct?: string;
   formulaType: 'price' | 'mtm';
-  otherFormula?: PricingFormula;
+  otherFormula?: PaperPricingFormula;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
@@ -175,7 +174,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     });
   };
 
-  const getTokenDisplay = (token: FormulaToken): string => {
+  const getTokenDisplay = (token: PaperFormulaToken): string => {
     if (token.type === 'percentage') {
       return `${token.value}%`;
     }

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { validateAndParsePhysicalFormula } from '@/utils/physicalFormulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 
 const TradeEditPage = () => {
@@ -28,9 +27,9 @@ const TradeEditPage = () => {
       }
 
       try {
-        // Fetch parent trade data
+        // Fetch parent trade data from physical_trades (renamed from parent_trades)
         const { data: parentTrade, error: parentError } = await supabase
-          .from('parent_trades')
+          .from('physical_trades')
           .select('*')
           .eq('id', id)
           .single();
@@ -44,9 +43,9 @@ const TradeEditPage = () => {
           throw new Error("Only physical trades are supported");
         }
 
-        // Fetch trade legs
+        // Fetch trade legs from physical_trade_legs (renamed from trade_legs)
         const { data: tradeLegs, error: legsError } = await supabase
-          .from('trade_legs')
+          .from('physical_trade_legs')
           .select('*')
           .eq('parent_trade_id', id)
           .order('created_at', { ascending: true });
@@ -78,8 +77,8 @@ const TradeEditPage = () => {
             unit: (tradeLegs[0].unit || 'MT') as Unit,
             paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
+            formula: validateAndParsePhysicalFormula(tradeLegs[0].pricing_formula),
+            mtmFormula: validateAndParsePhysicalFormula(tradeLegs[0].mtm_formula),
             legs: tradeLegs.map(leg => ({
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
@@ -97,8 +96,8 @@ const TradeEditPage = () => {
               unit: (leg.unit || 'MT') as Unit,
               paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+              formula: validateAndParsePhysicalFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePhysicalFormula(leg.mtm_formula)
             }))
           };
           setTradeData(physicalTrade);
@@ -124,7 +123,7 @@ const TradeEditPage = () => {
     try {
       if (!id) return;
 
-      // Update the parent trade
+      // Update the parent trade in physical_trades (renamed from parent_trades)
       const parentTradeUpdate = {
         trade_reference: updatedTradeData.tradeReference,
         physical_type: updatedTradeData.physicalType,
@@ -133,7 +132,7 @@ const TradeEditPage = () => {
       };
       
       const { error: parentUpdateError } = await supabase
-        .from('parent_trades')
+        .from('physical_trades')
         .update(parentTradeUpdate)
         .eq('id', id);
         
@@ -141,7 +140,7 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
-      // For physical trades, we need to update all legs
+      // For physical trades, we need to update all legs in physical_trade_legs (renamed from trade_legs)
       for (const leg of updatedTradeData.legs) {
         const legData = {
           parent_trade_id: id,
@@ -163,9 +162,9 @@ const TradeEditPage = () => {
           updated_at: new Date().toISOString()
         };
 
-        // Update the existing leg
+        // Update the existing leg in physical_trade_legs
         const { error: legUpdateError } = await supabase
-          .from('trade_legs')
+          .from('physical_trade_legs')
           .update(legData)
           .eq('id', leg.id);
           
@@ -195,36 +194,13 @@ const TradeEditPage = () => {
     navigate('/trades');
   };
 
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">Loading trade data...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!tradeData) {
-    return (
-      <Layout>
-        <div className="p-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight mb-4">Trade Not Found</h2>
-          <p className="text-muted-foreground mb-6">The trade you're looking for could not be found.</p>
-          <Button onClick={() => navigate('/trades')}>Back to Trades</Button>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Trade</h1>
           <p className="text-muted-foreground">
-            Edit trade {tradeData.tradeReference}
+            Edit trade {tradeData?.tradeReference}
           </p>
         </div>
 
@@ -238,13 +214,26 @@ const TradeEditPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PhysicalTradeForm 
-              tradeReference={tradeData.tradeReference} 
-              onSubmit={handleSubmit} 
-              onCancel={handleCancel} 
-              isEditMode={true}
-              initialData={tradeData}
-            />
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Loading trade data...</p>
+              </div>
+            ) : tradeData ? (
+              <PhysicalTradeForm 
+                tradeReference={tradeData.tradeReference} 
+                onSubmit={handleSubmit} 
+                onCancel={handleCancel} 
+                isEditMode={true}
+                initialData={tradeData}
+              />
+            ) : (
+              <div className="p-8 text-center">
+                <h2 className="text-2xl font-bold tracking-tight mb-4">Trade Not Found</h2>
+                <p className="text-muted-foreground mb-6">The trade you're looking for could not be found.</p>
+                <Button onClick={() => navigate('/trades')}>Back to Trades</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
