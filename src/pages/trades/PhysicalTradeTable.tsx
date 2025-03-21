@@ -18,6 +18,7 @@ import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTra
 import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
+import PhysicalTradeDeleteConfirmation from '@/components/trades/PhysicalTradeDeleteConfirmation';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -50,6 +51,13 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [deletingTradeId, setDeletingTradeId] = useState<string>('');
   const [deletionProgress, setDeletionProgress] = useState(0);
   const isProcessingRef = useRef(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    isOpen: false,
+    tradeId: '',
+    tradeReference: '',
+    isLeg: false,
+    parentId: '',
+  });
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -79,13 +87,34 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
+  const openDeleteConfirmation = (tradeId: string, tradeReference: string, isLeg = false, parentId = '') => {
+    setDeleteConfirmation({
+      isOpen: true,
+      tradeId,
+      tradeReference,
+      isLeg,
+      parentId
+    });
+  };
+
+  const closeDeleteConfirmation = () => {
+    if (!isDeleting) {
+      setDeleteConfirmation(prev => ({ ...prev, isOpen: false }));
+    }
+  };
+
+  const handleConfirmDelete = async () => {
     if (isProcessingRef.current) {
       return;
     }
     
+    const { tradeId, tradeReference, isLeg, parentId } = deleteConfirmation;
+    
+    // Close confirmation dialog before starting deletion process
+    setDeleteConfirmation(prev => ({ ...prev, isOpen: false }));
+    
     try {
-      console.log(`[PHYSICAL] Deleting trade: ${tradeId} (${tradeReference})`);
+      console.log(`[PHYSICAL] Deleting ${isLeg ? 'trade leg' : 'trade'}: ${tradeId}`);
       isProcessingRef.current = true;
       setIsDeleting(true);
       setDeletingTradeId(tradeId);
@@ -100,61 +129,20 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         setDeletionProgress(value);
       };
       
-      const success = await deletePhysicalTrade(tradeId, progress);
+      let success;
+      if (isLeg) {
+        success = await deletePhysicalTradeLeg(tradeId, parentId, progress);
+      } else {
+        success = await deletePhysicalTrade(tradeId, progress);
+      }
       
       if (success) {
-        toast.success(`Trade ${tradeReference} deleted successfully`);
+        toast.success(`${isLeg ? 'Trade leg' : 'Trade'} ${tradeReference} deleted successfully`);
         refetchTrades();
       }
     } catch (error) {
       console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade', { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred' 
-      });
-    } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
-    }
-  };
-
-  const handleDeleteTradeLeg = async (legId: string, legReference: string, parentId: string) => {
-    if (isProcessingRef.current) {
-      return;
-    }
-    
-    try {
-      console.log(`[PHYSICAL] Deleting trade leg: ${legId} (${legReference})`);
-      isProcessingRef.current = true;
-      setIsDeleting(true);
-      setDeletingTradeId(legId);
-      
-      // Pause subscriptions to prevent race conditions during delete
-      if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      const progress = (value: number) => {
-        console.log(`[PHYSICAL] Delete progress: ${value}%`);
-        setDeletionProgress(value);
-      };
-      
-      const success = await deletePhysicalTradeLeg(legId, parentId, progress);
-      
-      if (success) {
-        toast.success(`Trade leg ${legReference} deleted successfully`);
-        refetchTrades();
-      }
-    } catch (error) {
-      console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade leg', { 
+      toast.error(`Failed to delete ${isLeg ? 'trade leg' : 'trade'}`, { 
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
@@ -230,6 +218,14 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         </div>
       )}
 
+      <PhysicalTradeDeleteConfirmation
+        isOpen={deleteConfirmation.isOpen}
+        isDeleting={isDeleting}
+        tradeName={deleteConfirmation.tradeReference}
+        onConfirm={handleConfirmDelete}
+        onCancel={closeDeleteConfirmation}
+      />
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -297,7 +293,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id)}>
+                        <Button variant="ghost" size="sm">
                           {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -318,7 +314,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                         </Link>
                         {hasMultipleLegs && trade.physicalType === 'term' ? (
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
+                            onClick={() => openDeleteConfirmation(leg.id, leg.legReference, true, trade.id)}
                             className="text-destructive focus:text-destructive"
                             disabled={isDeleting}
                           >
@@ -327,7 +323,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
+                            onClick={() => openDeleteConfirmation(trade.id, trade.tradeReference)}
                             className="text-destructive focus:text-destructive"
                             disabled={isDeleting}
                           >
