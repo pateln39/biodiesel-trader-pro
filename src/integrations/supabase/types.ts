@@ -159,6 +159,7 @@ export type Database = {
           broker: string | null
           buy_sell: string
           created_at: string
+          exposures: Json | null
           formula: Json | null
           id: string
           instrument: string | null
@@ -178,6 +179,7 @@ export type Database = {
           broker?: string | null
           buy_sell: string
           created_at?: string
+          exposures?: Json | null
           formula?: Json | null
           id?: string
           instrument?: string | null
@@ -197,6 +199,7 @@ export type Database = {
           broker?: string | null
           buy_sell?: string
           created_at?: string
+          exposures?: Json | null
           formula?: Json | null
           id?: string
           instrument?: string | null

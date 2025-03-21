@@ -30,6 +30,12 @@ export interface PaperTradeLeg {
   };
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
+  // New explicit exposures field separate from mtm_formula
+  exposures?: {
+    physical?: Record<string, number>;
+    pricing?: Record<string, number>;
+    paper?: Record<string, number>;
+  };
 }
 
 // Complete paper trade with parent and legs

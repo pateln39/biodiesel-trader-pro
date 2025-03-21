@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -244,7 +243,12 @@ export const usePaperTrades = () => {
               relationshipType,
               rightSide: rightSide,
               formula: leg.formula,
-              mtmFormula: leg.mtm_formula
+              mtmFormula: leg.mtm_formula,
+              exposures: leg.exposures || (leg.mtm_formula?.exposures ? {
+                physical: leg.mtm_formula.exposures.physical || {},
+                paper: leg.mtm_formula.exposures.physical || {},  // For backward compatibility
+                pricing: leg.mtm_formula.exposures.pricing || {}
+              } : undefined)
             };
           })
         };
@@ -401,7 +405,7 @@ export const usePaperTrades = () => {
     }
   });
   
-  // Create paper trade mutation - updated to use new tables
+  // Create paper trade mutation - updated to use new tables and store exposures separately
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
       // Insert paper trade to new paper_trades table
@@ -456,7 +460,7 @@ export const usePaperTrades = () => {
             }
           }
           
-          // Prepare mtmFormula with rightSide info
+          // Prepare mtmFormula with rightSide info (for backward compatibility)
           let mtmFormula = leg.mtmFormula || {};
           
           // For DIFF/SPREAD trades, capture both sides in the exposures
@@ -471,6 +475,26 @@ export const usePaperTrades = () => {
                 }
               }
             };
+          }
+          
+          // Create separate exposures object
+          const exposures = {
+            physical: {},
+            paper: {},
+            pricing: {}
+          };
+          
+          // Add exposures based on leg type
+          if (leg.relationshipType === 'FP') {
+            // For FP, just the main product
+            exposures.physical[leg.product] = leg.quantity || 0;
+            exposures.paper[leg.product] = leg.quantity || 0;
+          } else if (leg.rightSide) {
+            // For DIFF/SPREAD with right side
+            exposures.physical[leg.product] = leg.quantity || 0;
+            exposures.physical[leg.rightSide.product] = leg.rightSide.quantity || 0;
+            exposures.paper[leg.product] = leg.quantity || 0;
+            exposures.paper[leg.rightSide.product] = leg.rightSide.quantity || 0;
           }
           
           // Generate the instrument name
@@ -494,7 +518,9 @@ export const usePaperTrades = () => {
             mtm_formula: mtmFormula,
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
-            instrument: instrument
+            instrument: instrument,
+            // Store exposures separately for better separation of concerns
+            exposures: exposures
           };
           
           const { error: legError } = await supabase

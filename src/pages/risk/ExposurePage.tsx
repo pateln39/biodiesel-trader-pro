@@ -42,11 +42,12 @@ const ExposurePage = () => {
   const [showAllGrades, setShowAllGrades] = useState(false);
   const [periods, setPeriods] = useState<string[]>(getNextMonths(8));
 
-  // Fetch trade legs to calculate exposures
-  const { data: tradeLegs, isLoading } = useQuery({
+  // Fetch both trade legs and paper trade legs to calculate exposures
+  const { data: tradeData, isLoading } = useQuery({
     queryKey: ['exposure-data'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch physical trade legs
+      const { data: physicalTradeLegs, error: physicalError } = await supabase
         .from('trade_legs')
         .select(`
           id,
@@ -61,15 +62,39 @@ const ExposurePage = () => {
         `)
         .order('trading_period', { ascending: true });
         
-      if (error) throw error;
-      return data || [];
+      if (physicalError) throw physicalError;
+      
+      // Fetch paper trade legs
+      const { data: paperTradeLegs, error: paperError } = await supabase
+        .from('paper_trade_legs')
+        .select(`
+          id,
+          leg_reference,
+          buy_sell,
+          product,
+          quantity,
+          formula,
+          mtm_formula,
+          exposures,
+          period,
+          trading_period
+        `)
+        .order('period', { ascending: true });
+        
+      if (paperError) throw paperError;
+      
+      return {
+        physicalTradeLegs: physicalTradeLegs || [],
+        paperTradeLegs: paperTradeLegs || []
+      };
     }
   });
 
   // Calculate exposures from trade legs
   const exposureData = useMemo(() => {
-    if (!tradeLegs || tradeLegs.length === 0) return {};
+    if (!tradeData) return {};
 
+    const { physicalTradeLegs, paperTradeLegs } = tradeData;
     const exposures: MonthlyExposures = {};
     
     // Initialize with all periods
@@ -77,79 +102,148 @@ const ExposurePage = () => {
       exposures[period] = {};
     });
     
-    // Process each trade leg
-    tradeLegs.forEach(leg => {
-      // Determine the trading period - either from trading_period field or from pricing_period_start
-      let month = leg.trading_period || '';
-      
-      // If month is not set but we have pricing_period_start, extract month from there
-      if (!month && leg.pricing_period_start) {
-        const date = new Date(leg.pricing_period_start);
-        const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-        const year = date.getFullYear().toString().slice(2);
-        month = `${monthName}-${year}`;
-      }
-      
-      // If still no valid month or not in our periods list, skip this leg
-      if (!month || !periods.includes(month)) {
-        return;
-      }
-      
-      const grade = leg.product || 'Unknown';
-      const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-      const quantity = (leg.quantity || 0) * quantityMultiplier;
-      
-      // Initialize month and grade if they don't exist
-      if (!exposures[month]) {
-        exposures[month] = {};
-      }
-      
-      if (!exposures[month][grade]) {
-        exposures[month][grade] = {
-          physical: 0,
-          pricing: 0,
-          paper: 0,
-          netExposure: 0
-        };
-      }
-      
-      // Add physical exposure
-      exposures[month][grade].physical += quantity;
-      
-      // Process pricing formula exposures - with proper validation and parsing
-      const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-      if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-        Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-          if (!exposures[month][instrument]) {
-            exposures[month][instrument] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
+    // Process physical trade legs - unchanged
+    if (physicalTradeLegs && physicalTradeLegs.length > 0) {
+      physicalTradeLegs.forEach(leg => {
+        // Determine the trading period - either from trading_period field or from pricing_period_start
+        let month = leg.trading_period || '';
+        
+        // If month is not set but we have pricing_period_start, extract month from there
+        if (!month && leg.pricing_period_start) {
+          const date = new Date(leg.pricing_period_start);
+          const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+          const year = date.getFullYear().toString().slice(2);
+          month = `${monthName}-${year}`;
+        }
+        
+        // If still no valid month or not in our periods list, skip this leg
+        if (!month || !periods.includes(month)) {
+          return;
+        }
+        
+        const grade = leg.product || 'Unknown';
+        const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+        const quantity = (leg.quantity || 0) * quantityMultiplier;
+        
+        // Initialize month and grade if they don't exist
+        if (!exposures[month]) {
+          exposures[month] = {};
+        }
+        
+        if (!exposures[month][grade]) {
+          exposures[month][grade] = {
+            physical: 0,
+            pricing: 0,
+            paper: 0,
+            netExposure: 0
+          };
+        }
+        
+        // Add physical exposure
+        exposures[month][grade].physical += quantity;
+        
+        // Process pricing formula exposures - with proper validation and parsing
+        const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+        if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+            if (!exposures[month][instrument]) {
+              exposures[month][instrument] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            exposures[month][instrument].pricing += Number(value) || 0;
+          });
+        }
+      });
+    }
+    
+    // Process paper trade legs
+    if (paperTradeLegs && paperTradeLegs.length > 0) {
+      paperTradeLegs.forEach(leg => {
+        const month = leg.period || leg.trading_period || '';
+        
+        // Skip if month is not valid or not in our periods list
+        if (!month || !periods.includes(month)) {
+          return;
+        }
+        
+        const product = leg.product || 'Unknown';
+        const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+        
+        // Initialize month and product if they don't exist
+        if (!exposures[month]) {
+          exposures[month] = {};
+        }
+        
+        if (!exposures[month][product]) {
+          exposures[month][product] = {
+            physical: 0,
+            pricing: 0,
+            paper: 0,
+            netExposure: 0
+          };
+        }
+        
+        // Process paper trade exposures - PRIORITIZE the new exposures field if available
+        if (leg.exposures) {
+          // Handle exposures directly from the dedicated column
+          if (leg.exposures.physical) {
+            Object.entries(leg.exposures.physical).forEach(([prodName, value]) => {
+              if (!exposures[month][prodName]) {
+                exposures[month][prodName] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              exposures[month][prodName].paper += Number(value) || 0;
+            });
           }
           
-          exposures[month][instrument].pricing += Number(value) || 0;
-        });
-      }
-      
-      // Process MTM formula exposures (paper) - with proper validation and parsing
-      const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-      if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-        Object.entries(mtmFormula.exposures.physical).forEach(([instrument, value]) => {
-          if (!exposures[month][instrument]) {
-            exposures[month][instrument] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
+          if (leg.exposures.pricing) {
+            Object.entries(leg.exposures.pricing).forEach(([instrument, value]) => {
+              if (!exposures[month][instrument]) {
+                exposures[month][instrument] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              exposures[month][instrument].pricing += Number(value) || 0;
+            });
           }
-          
-          exposures[month][instrument].paper += Number(value) || 0;
-        });
-      }
-    });
+        }
+        // Fallback to mtm_formula for legacy compatibility
+        else if (leg.mtm_formula && leg.mtm_formula.exposures) {
+          if (leg.mtm_formula.exposures.physical) {
+            Object.entries(leg.mtm_formula.exposures.physical).forEach(([prodName, value]) => {
+              if (!exposures[month][prodName]) {
+                exposures[month][prodName] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              exposures[month][prodName].paper += Number(value) || 0;
+            });
+          }
+        }
+        // Simplest fallback: just add the main product if no exposures info
+        else {
+          exposures[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
+        }
+      });
+    }
     
     // Calculate net exposure for each grade in each month
     Object.keys(exposures).forEach(month => {
@@ -160,7 +254,7 @@ const ExposurePage = () => {
     });
     
     return exposures;
-  }, [tradeLegs, periods]);
+  }, [tradeData, periods]);
 
   // Convert exposures object to array for rendering
   const exposureItems = useMemo(() => {

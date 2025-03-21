@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -57,7 +56,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       relationshipType: 'FP' as PaperRelationshipType,
       rightSide: null,
       formula: createEmptyFormula(),
-      mtmFormula: createEmptyFormula()
+      mtmFormula: createEmptyFormula(),
+      exposures: {
+        physical: {},
+        paper: {},
+        pricing: {}
+      }
     };
     
     onLegsChange([...legs, newLeg]);
@@ -121,16 +125,27 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
             },
             pricing: {}
           }
+        },
+        exposures: {
+          physical: {
+            [relationship.paired_product || '']: updatedLeg.quantity || 0
+          },
+          paper: {
+            [relationship.paired_product || '']: updatedLeg.quantity || 0
+          },
+          pricing: {}
         }
       };
     } else if (relationship.relationship_type === 'DIFF' || relationship.relationship_type === 'SPREAD') {
+      const rightQuantity = updatedLeg.quantity ? -updatedLeg.quantity : 0;
+      
       updatedLeg = {
         ...updatedLeg,
         product: relationship.paired_product || '',
         relationshipType: relationship.relationship_type,
         rightSide: {
           product: relationship.default_opposite || '',
-          quantity: updatedLeg.quantity ? -updatedLeg.quantity : 0,
+          quantity: rightQuantity,
           period: updatedLeg.period || '',
           price: 0
         },
@@ -142,16 +157,27 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           name: selectedProduct,
           rightSide: {
             product: relationship.default_opposite || '',
-            quantity: updatedLeg.quantity ? -updatedLeg.quantity : 0,
+            quantity: rightQuantity,
             period: updatedLeg.period || '',
             price: 0
           },
           exposures: {
             physical: {
               [relationship.paired_product || '']: updatedLeg.quantity || 0,
-              [relationship.default_opposite || '']: updatedLeg.quantity ? -updatedLeg.quantity : 0
+              [relationship.default_opposite || '']: rightQuantity
             }
           }
+        },
+        exposures: {
+          physical: {
+            [relationship.paired_product || '']: updatedLeg.quantity || 0,
+            [relationship.default_opposite || '']: rightQuantity
+          },
+          paper: {
+            [relationship.paired_product || '']: updatedLeg.quantity || 0,
+            [relationship.default_opposite || '']: rightQuantity
+          },
+          pricing: {}
         }
       };
     }
@@ -186,17 +212,33 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           exposures
         };
       }
-    }
-    
-    if (field === 'quantity' && leg.relationshipType === 'FP' && leg.product) {
-      if (leg.mtmFormula) {
-        leg.mtmFormula = {
-          ...leg.mtmFormula,
-          exposures: {
-            physical: {
-              [leg.product]: value
-            },
-            pricing: {}
+      
+      if (field === 'quantity' && leg.relationshipType === 'FP' && leg.product) {
+        if (leg.mtmFormula) {
+          leg.mtmFormula = {
+            ...leg.mtmFormula,
+            exposures: {
+              physical: {
+                [leg.product]: value
+              },
+              pricing: {}
+            }
+          };
+        }
+      }
+      
+      if (leg.exposures && leg.rightSide && leg.relationshipType !== 'FP') {
+        leg.exposures = {
+          ...leg.exposures,
+          physical: {
+            ...leg.exposures.physical,
+            [leg.product]: value,
+            [leg.rightSide.product]: -value
+          },
+          paper: {
+            ...leg.exposures.paper,
+            [leg.product]: value,
+            [leg.rightSide.product]: -value
           }
         };
       }
@@ -233,15 +275,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     let relationship;
     
-    // Find the relationship based on relationship_type and the product's name
     if (leg.relationshipType === 'FP') {
-      // For FP, we need to match where paired_product equals leg.product
       relationship = productRelationships.find(pr => 
         pr.relationship_type === 'FP' && 
         pr.paired_product === leg.product
       );
     } else {
-      // For DIFF/SPREAD, we also match on paired_product
       relationship = productRelationships.find(pr => 
         pr.relationship_type === leg.relationshipType && 
         pr.paired_product === leg.product
