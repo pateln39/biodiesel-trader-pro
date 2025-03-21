@@ -115,6 +115,6 @@ export const mockMovements: Movement[] = [
     scheduledQuantity: 1000,
     nominatedDate: new Date('2023-04-15'),
     loadport: 'Hamburg',
-    status: 'nominated'
+    status: 'in-progress' // Changed from 'nominated' to 'in-progress'
   }
 ];
