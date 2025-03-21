@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -39,6 +39,12 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
+  // Use useEffect to manage side effects when showDeleteConfirmation changes
+  useEffect(() => {
+    // No cleanup needed for this effect as we're just tracking a prop
+    console.log(`[PAPER DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
+  }, [showDeleteConfirmation, isDeleting]);
+
   const getDeleteTitle = () => {
     return deleteMode === 'trade' 
       ? `Delete Paper Trade ${deleteItemDetails.reference}?`
@@ -49,6 +55,17 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
     return deleteMode === 'trade'
       ? `This will permanently delete the paper trade ${deleteItemDetails.reference} and all its legs from the database.`
       : `This will permanently delete the leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''} from the database.`;
+  };
+
+  // Handler for dialog state changes to ensure proper cancel behavior
+  const handleOpenChange = (isOpen: boolean) => {
+    console.log(`[PAPER DELETE DIALOG] Dialog open state change: ${isOpen}, isDeleting: ${isDeleting}`);
+    if (!isOpen && !isDeleting) {
+      // Only invoke cancel if we're closing and not in the process of deleting
+      onCancelDelete();
+    }
+    // Always inform parent of open state changes
+    onOpenChange(isOpen);
   };
 
   return (
@@ -62,12 +79,10 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
         </div>
       )}
     
-      <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
-        if (!isOpen && !isDeleting) {
-          onCancelDelete();
-        }
-        onOpenChange(isOpen);
-      }}>
+      <AlertDialog 
+        open={showDeleteConfirmation} 
+        onOpenChange={handleOpenChange}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{getDeleteTitle()}</AlertDialogTitle>

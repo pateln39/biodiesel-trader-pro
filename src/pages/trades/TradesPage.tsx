@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -80,8 +81,18 @@ const TradesPage = () => {
   
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
+  // Clean up any timers when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up all timers when component unmounts to prevent memory leaks
+      if (recoveryTimeoutRef.current) clearTimeout(recoveryTimeoutRef.current);
+      if (physicalProgressTimerRef.current) clearInterval(physicalProgressTimerRef.current);
+      if (paperProgressTimerRef.current) clearInterval(paperProgressTimerRef.current);
+    };
+  }, []);
+
   // Error handling across both trade types
-  React.useEffect(() => {
+  useEffect(() => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
@@ -111,7 +122,12 @@ const TradesPage = () => {
     // Hide navigation recovery UI
     setShowNavigationRecovery(false);
     
-    // Use setTimeout to allow React to finish current cycle
+    // Clean up any timers
+    if (recoveryTimeoutRef.current) clearTimeout(recoveryTimeoutRef.current);
+    if (physicalProgressTimerRef.current) clearInterval(physicalProgressTimerRef.current);
+    if (paperProgressTimerRef.current) clearInterval(paperProgressTimerRef.current);
+    
+    // Navigate after a short delay to allow state updates to complete
     setTimeout(() => {
       navigate(path);
     }, 100);
@@ -147,112 +163,151 @@ const TradesPage = () => {
   };
 
   const cancelPhysicalDelete = () => {
-    setIsPhysicalDeleting(false);
-    setPhysicalDeletionProgress(0);
-    setShowPhysicalDeleteConfirmation(false);
-    setPhysicalDeleteItemDetails({ id: '', reference: '' });
-    
-    // Clear any progress timer
+    console.log("[PHYSICAL DELETE] Cancel physical delete requested");
+    // Clear any progress timer first to prevent state updates after cancel
     if (physicalProgressTimerRef.current) {
       clearInterval(physicalProgressTimerRef.current);
       physicalProgressTimerRef.current = null;
     }
+    
+    // Use setTimeout to ensure smooth UI transitions
+    setTimeout(() => {
+      setIsPhysicalDeleting(false);
+      setPhysicalDeletionProgress(0);
+      setShowPhysicalDeleteConfirmation(false);
+      
+      // Clear item details after a short delay to avoid UI jank
+      setTimeout(() => {
+        setPhysicalDeleteItemDetails({ id: '', reference: '' });
+      }, 100);
+    }, 50);
   };
 
   // Improved physical deletion flow with better progress handling
   const confirmPhysicalDelete = async () => {
     if (!physicalDeleteItemDetails.id) return;
     
-    // Close the dialog first to reduce DOM operations
-    setShowPhysicalDeleteConfirmation(false);
+    console.log("[PHYSICAL DELETE] Confirm physical delete requested");
     
-    // Then start the deletion process
+    // First update UI state to show progress
     setIsPhysicalDeleting(true);
+    setPhysicalDeletionProgress(5);
     
-    // Start progress animation
-    setPhysicalDeletionProgress(10);
-    
-    // Use a timer for smoother progress indication
-    // This is separate from the actual deletion process
-    let progressStep = 1;
-    physicalProgressTimerRef.current = setInterval(() => {
-      setPhysicalDeletionProgress(prev => {
-        // Increase slowly at first, then faster
-        if (prev < 30) return prev + 1;
-        if (prev < 60) return prev + 2;
-        if (prev < 90) return prev + 0.5;
-        return prev;
-      });
+    // Then close the dialog with a slight delay to ensure animations complete
+    setTimeout(() => {
+      setShowPhysicalDeleteConfirmation(false);
       
-      progressStep++;
-      
-      // Stop at 90% and wait for actual completion
-      if (progressStep > 50) {
-        if (physicalProgressTimerRef.current) {
-          clearInterval(physicalProgressTimerRef.current);
-          physicalProgressTimerRef.current = null;
-        }
-      }
-    }, 50);
-    
-    try {
-      if (physicalDeleteMode === 'trade') {
-        // Delete physical trade
-        await deletePhysicalTrade(physicalDeleteItemDetails.id);
-      } else if (physicalDeleteMode === 'leg' && physicalDeleteItemDetails.parentTradeId) {
-        // Delete physical trade leg
-        await deletePhysicalTradeLeg({ 
-          legId: physicalDeleteItemDetails.id,
-          tradeId: physicalDeleteItemDetails.parentTradeId
-        });
-      }
-      
-      // Complete the progress bar
-      setPhysicalDeletionProgress(100);
-      setTimeout(() => {
-        setIsPhysicalDeleting(false);
-        setPhysicalDeletionProgress(0);
-      }, 500);
-    } catch (error) {
-      console.error('[PHYSICAL] Error in delete flow:', error);
-      toast.error("Physical deletion process encountered an error", {
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      // Reset deletion state
-      setIsPhysicalDeleting(false);
-      setPhysicalDeletionProgress(0);
-      
-      // Clear the progress timer
+      // Use a timer for smoother progress indication
+      // This is separate from the actual deletion process
+      let progressStep = 1;
       if (physicalProgressTimerRef.current) {
         clearInterval(physicalProgressTimerRef.current);
-        physicalProgressTimerRef.current = null;
       }
       
-      // Show recovery UI in case of errors
-      setShowNavigationRecovery(true);
-    }
+      physicalProgressTimerRef.current = setInterval(() => {
+        setPhysicalDeletionProgress(prev => {
+          // Increase slowly at first, then faster
+          if (prev < 30) return prev + 1;
+          if (prev < 60) return prev + 2;
+          if (prev < 90) return prev + 0.5;
+          return prev;
+        });
+        
+        progressStep++;
+        
+        // Stop at 90% and wait for actual completion
+        if (progressStep > 50) {
+          if (physicalProgressTimerRef.current) {
+            clearInterval(physicalProgressTimerRef.current);
+            physicalProgressTimerRef.current = null;
+          }
+        }
+      }, 50);
+      
+      // Execute the actual deletion process
+      try {
+        const deleteAction = async () => {
+          if (physicalDeleteMode === 'trade') {
+            // Delete physical trade
+            await deletePhysicalTrade(physicalDeleteItemDetails.id);
+          } else if (physicalDeleteMode === 'leg' && physicalDeleteItemDetails.parentTradeId) {
+            // Delete physical trade leg
+            await deletePhysicalTradeLeg({ 
+              legId: physicalDeleteItemDetails.id,
+              tradeId: physicalDeleteItemDetails.parentTradeId
+            });
+          }
+          
+          // Complete the progress bar
+          setPhysicalDeletionProgress(100);
+          
+          // Clear delete state after animation completes
+          setTimeout(() => {
+            if (physicalProgressTimerRef.current) {
+              clearInterval(physicalProgressTimerRef.current);
+              physicalProgressTimerRef.current = null;
+            }
+            
+            setIsPhysicalDeleting(false);
+            setPhysicalDeletionProgress(0);
+            setPhysicalDeleteItemDetails({ id: '', reference: '' });
+          }, 500);
+        };
+        
+        // Execute with a small delay to ensure UI renders properly
+        setTimeout(deleteAction, 100);
+      } catch (error) {
+        console.error('[PHYSICAL] Error in delete flow:', error);
+        toast.error("Physical deletion process encountered an error", {
+          description: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+        
+        // Reset deletion state
+        setTimeout(() => {
+          setIsPhysicalDeleting(false);
+          setPhysicalDeletionProgress(0);
+          setPhysicalDeleteItemDetails({ id: '', reference: '' });
+          
+          // Clear the progress timer
+          if (physicalProgressTimerRef.current) {
+            clearInterval(physicalProgressTimerRef.current);
+            physicalProgressTimerRef.current = null;
+          }
+          
+          // Show recovery UI in case of errors
+          setShowNavigationRecovery(true);
+        }, 200);
+      }
+    }, 100);
   };
 
   // ISOLATED PAPER TRADE DELETION
   const handleDeletePaperTradeClick = (tradeId: string, reference: string) => {
-    // Reset any stale state
+    console.log("[PAPER DELETE] Triggering delete paper trade dialog", { tradeId, reference });
+    
+    // Reset any stale state first
     setPaperDeletionProgress(0);
     setIsPaperDeleting(false);
     
+    // Then update the state to show the deletion dialog
     setPaperDeleteMode('trade');
     setPaperDeleteItemDetails({ 
       id: tradeId,
       reference 
     });
+    
+    // Finally, show the confirmation dialog
     setShowPaperDeleteConfirmation(true);
   };
 
   const handleDeletePaperLegClick = (legId: string, tradeId: string, reference: string, legIndex: number) => {
-    // Reset any stale state
+    console.log("[PAPER DELETE] Triggering delete paper leg dialog", { legId, tradeId, reference, legIndex });
+    
+    // Reset any stale state first
     setPaperDeletionProgress(0);
     setIsPaperDeleting(false);
     
+    // Then update the state to show the deletion dialog
     setPaperDeleteMode('leg');
     setPaperDeleteItemDetails({
       id: legId,
@@ -260,94 +315,148 @@ const TradesPage = () => {
       legNumber: legIndex + 1,
       parentTradeId: tradeId
     });
+    
+    // Finally, show the confirmation dialog
     setShowPaperDeleteConfirmation(true);
   };
 
   const cancelPaperDelete = () => {
-    setIsPaperDeleting(false);
-    setPaperDeletionProgress(0);
-    setShowPaperDeleteConfirmation(false);
-    setPaperDeleteItemDetails({ id: '', reference: '' });
+    console.log("[PAPER DELETE] Cancel paper delete requested");
     
-    // Clear any progress timer
+    // Clear any progress timer first to prevent state updates after cancel
     if (paperProgressTimerRef.current) {
       clearInterval(paperProgressTimerRef.current);
       paperProgressTimerRef.current = null;
     }
+    
+    // Use setTimeout to ensure smooth UI transitions
+    setTimeout(() => {
+      setIsPaperDeleting(false);
+      setPaperDeletionProgress(0);
+      setShowPaperDeleteConfirmation(false);
+      
+      // Clear item details after a short delay to avoid UI jank
+      setTimeout(() => {
+        setPaperDeleteItemDetails({ id: '', reference: '' });
+      }, 100);
+    }, 50);
   };
 
-  // Updated paper deletion flow with leg deletion support
+  // Updated paper deletion flow with improved state management
   const confirmPaperDelete = async () => {
     if (!paperDeleteItemDetails.id) return;
     
-    // Close the dialog first to reduce DOM operations
-    setShowPaperDeleteConfirmation(false);
+    console.log("[PAPER DELETE] Confirm paper delete requested", paperDeleteItemDetails);
     
-    // Then start the deletion process
+    // First update UI state to show progress
     setIsPaperDeleting(true);
+    setPaperDeletionProgress(5);
     
-    // Start progress animation
-    setPaperDeletionProgress(10);
-    
-    // Use a timer for smoother progress indication
-    // This is separate from the actual deletion process
-    let progressStep = 1;
-    paperProgressTimerRef.current = setInterval(() => {
-      setPaperDeletionProgress(prev => {
-        // Increase slowly at first, then faster
-        if (prev < 30) return prev + 1;
-        if (prev < 60) return prev + 2;
-        if (prev < 90) return prev + 0.5;
-        return prev;
-      });
+    // Then close the dialog with a slight delay to ensure animations complete
+    setTimeout(() => {
+      setShowPaperDeleteConfirmation(false);
       
-      progressStep++;
-      
-      // Stop at 90% and wait for actual completion
-      if (progressStep > 50) {
-        if (paperProgressTimerRef.current) {
-          clearInterval(paperProgressTimerRef.current);
-          paperProgressTimerRef.current = null;
-        }
-      }
-    }, 50);
-    
-    try {
-      if (paperDeleteMode === 'trade') {
-        // Delete entire paper trade
-        await deletePaperTrade(paperDeleteItemDetails.id);
-      } else if (paperDeleteMode === 'leg' && paperDeleteItemDetails.parentTradeId) {
-        // Delete single paper trade leg
-        await deletePaperTradeLeg({ 
-          legId: paperDeleteItemDetails.id,
-          parentTradeId: paperDeleteItemDetails.parentTradeId
-        });
-      }
-      
-      // Complete the progress bar
-      setPaperDeletionProgress(100);
-      setTimeout(() => {
-        setIsPaperDeleting(false);
-        setPaperDeletionProgress(0);
-      }, 500);
-    } catch (error) {
-      console.error('[PAPER] Error in delete flow:', error);
-      toast.error("Paper deletion process encountered an error", {
-        description: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-      
-      // Reset deletion state
-      setIsPaperDeleting(false);
-      setPaperDeletionProgress(0);
-      
-      // Clear the progress timer
+      // Use a timer for smoother progress indication
+      // This is separate from the actual deletion process
+      let progressStep = 1;
       if (paperProgressTimerRef.current) {
         clearInterval(paperProgressTimerRef.current);
-        paperProgressTimerRef.current = null;
       }
       
-      // Show recovery UI in case of errors
-      setShowNavigationRecovery(true);
+      paperProgressTimerRef.current = setInterval(() => {
+        setPaperDeletionProgress(prev => {
+          // Increase slowly at first, then faster
+          if (prev < 30) return prev + 1;
+          if (prev < 60) return prev + 2;
+          if (prev < 90) return prev + 0.5;
+          return prev;
+        });
+        
+        progressStep++;
+        
+        // Stop at 90% and wait for actual completion
+        if (progressStep > 50) {
+          if (paperProgressTimerRef.current) {
+            clearInterval(paperProgressTimerRef.current);
+            paperProgressTimerRef.current = null;
+          }
+        }
+      }, 50);
+      
+      // Execute the actual deletion process
+      try {
+        const deleteAction = async () => {
+          if (paperDeleteMode === 'trade') {
+            // Delete entire paper trade
+            await deletePaperTrade(paperDeleteItemDetails.id);
+          } else if (paperDeleteMode === 'leg' && paperDeleteItemDetails.parentTradeId) {
+            // Delete single paper trade leg
+            await deletePaperTradeLeg({ 
+              legId: paperDeleteItemDetails.id,
+              parentTradeId: paperDeleteItemDetails.parentTradeId
+            });
+          }
+          
+          // Complete the progress bar
+          setPaperDeletionProgress(100);
+          
+          // Clear delete state after animation completes
+          setTimeout(() => {
+            if (paperProgressTimerRef.current) {
+              clearInterval(paperProgressTimerRef.current);
+              paperProgressTimerRef.current = null;
+            }
+            
+            setIsPaperDeleting(false);
+            setPaperDeletionProgress(0);
+            setPaperDeleteItemDetails({ id: '', reference: '' });
+          }, 500);
+        };
+        
+        // Execute with a small delay to ensure UI renders properly
+        setTimeout(deleteAction, 100);
+      } catch (error) {
+        console.error('[PAPER] Error in delete flow:', error);
+        toast.error("Paper deletion process encountered an error", {
+          description: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+        
+        // Reset deletion state
+        setTimeout(() => {
+          setIsPaperDeleting(false);
+          setPaperDeletionProgress(0);
+          setPaperDeleteItemDetails({ id: '', reference: '' });
+          
+          // Clear the progress timer
+          if (paperProgressTimerRef.current) {
+            clearInterval(paperProgressTimerRef.current);
+            paperProgressTimerRef.current = null;
+          }
+          
+          // Show recovery UI in case of errors
+          setShowNavigationRecovery(true);
+        }, 200);
+      }
+    }, 100);
+  };
+
+  // Function for handling dialog open state changes from PaperTradeDeleteDialog
+  const handlePaperDialogOpenChange = (isOpen: boolean) => {
+    console.log(`[PAPER DELETE] Dialog open state changed to: ${isOpen}, isDeleting: ${isPaperDeleting}`);
+    
+    // If closing the dialog and not in the process of deleting, treat as cancel
+    if (!isOpen && !isPaperDeleting) {
+      cancelPaperDelete();
+    }
+  };
+
+  // Function for handling dialog open state changes from PhysicalTradeDeleteDialog
+  const handlePhysicalDialogOpenChange = (isOpen: boolean) => {
+    console.log(`[PHYSICAL DELETE] Dialog open state changed to: ${isOpen}, isDeleting: ${isPhysicalDeleting}`);
+    
+    // If closing the dialog and not in the process of deleting, treat as cancel
+    if (!isOpen && !isPhysicalDeleting) {
+      cancelPhysicalDelete();
     }
   };
 
@@ -482,11 +591,7 @@ const TradesPage = () => {
               deletionProgress={physicalDeletionProgress}
               onConfirmDelete={confirmPhysicalDelete}
               onCancelDelete={cancelPhysicalDelete}
-              onOpenChange={(isOpen) => {
-                if (!isOpen && !isPhysicalDeleting) {
-                  cancelPhysicalDelete();
-                }
-              }}
+              onOpenChange={handlePhysicalDialogOpenChange}
             />
             
             {renderPhysicalTradesTab()}
@@ -502,11 +607,7 @@ const TradesPage = () => {
               deletionProgress={paperDeletionProgress}
               onConfirmDelete={confirmPaperDelete}
               onCancelDelete={cancelPaperDelete}
-              onOpenChange={(isOpen) => {
-                if (!isOpen && !isPaperDeleting) {
-                  cancelPaperDelete();
-                }
-              }}
+              onOpenChange={handlePaperDialogOpenChange}
             />
             
             {renderPaperTradesTab()}
