@@ -1,21 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
 import { PaperTrade, PaperTradeLeg } from '@/types/paper';
-import { formatMonthCode } from '@/utils/dateUtils';
-import { 
-  generateLegReference, 
-  formatProductDisplay, 
-  formatMTMDisplay,
-  generateInstrumentName 
-} from '@/utils/tradeUtils';
-import { 
-  cleanupPaperSubscriptions, 
-  setupPaperTradeSubscriptions 
-} from '@/utils/paperTradeSubscriptionUtils';
-import { usePaperTradeDelete } from './usePaperTradeDelete';
+import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -30,16 +19,9 @@ export const usePaperTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
-  const { 
-    deletePaperTrade: paperTradeDeleteFn, 
-    isDeletePaperTradeLoading,
-    deletePaperTradeLeg: paperTradeLegDeleteFn,
-    isDeletePaperTradeLegLoading
-  } = usePaperTradeDelete();
-  
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
-      console.log("[PAPER] Skipping paper trade refetch as deletion is in progress");
+      console.log("[PAPER] Skipping paper trade refetch as an operation is in progress");
       return;
     }
     console.log("[PAPER] Executing debounced paper trade refetch");
@@ -329,11 +311,6 @@ export const usePaperTrades = () => {
     error,
     createPaperTrade,
     isCreating,
-    refetchPaperTrades: refetch,
-    deletePaperTrade: paperTradeDeleteFn,
-    isDeletePaperTradeLoading,
-    deletePaperTradeLeg: paperTradeLegDeleteFn,
-    isDeletePaperTradeLegLoading
+    refetchPaperTrades: refetch
   };
 };
-

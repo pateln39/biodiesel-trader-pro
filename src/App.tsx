@@ -3,13 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TradesPage from "./pages/trades/TradesPage";
 import TradeEntryPage from "./pages/trades/TradeEntryPage";
-import TradeEditPage from "./pages/trades/TradeEditPage";
 import OperationsPage from "./pages/operations/OperationsPage";
 import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
@@ -34,7 +33,7 @@ const App = () => (
             {/* Trade Routes */}
             <Route path="/trades" element={<TradesPage />} />
             <Route path="/trades/new" element={<TradeEntryPage />} />
-            <Route path="/trades/edit/:id" element={<TradeEditPage />} />
+            <Route path="/trades/edit/:id" element={<NotFound />} />
             <Route path="/trades/:id" element={<NotFound />} />
             
             {/* Operations Routes */}

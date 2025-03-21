@@ -15,9 +15,8 @@ import {
   DbParentTrade,
   DbTradeLeg,
 } from '@/types';
-import { createEmptyFormula, validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { cleanupPhysicalSubscriptions, setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-import { usePhysicalTradeDelete } from './usePhysicalTradeDelete';
+import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -126,17 +125,9 @@ export const useTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
-  // Use the isolated delete hook
-  const { 
-    deletePhysicalTrade, 
-    isDeletePhysicalTradeLoading,
-    deletePhysicalTradeLeg,
-    isDeletePhysicalTradeLegLoading
-  } = usePhysicalTradeDelete();
-  
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
-      console.log("[PHYSICAL] Skipping refetch as deletion is in progress");
+      console.log("[PHYSICAL] Skipping refetch as an operation is in progress");
       return;
     }
     console.log("[PHYSICAL] Executing debounced refetch for physical trades");
@@ -177,10 +168,6 @@ export const useTrades = () => {
     trades, 
     loading, 
     error, 
-    refetchTrades: refetch,
-    deletePhysicalTrade,
-    isDeletePhysicalTradeLoading,
-    deletePhysicalTradeLeg,
-    isDeletePhysicalTradeLegLoading
+    refetchTrades: refetch
   };
 };

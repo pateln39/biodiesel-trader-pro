@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, AlertCircle, Trash, Link2 } from 'lucide-react';
+import { Loader2, AlertCircle, Link2 } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,10 +20,6 @@ interface PhysicalTradeTableProps {
   loading: boolean;
   error: Error | null;
   refetchTrades: () => void;
-  onDeleteTrade: (tradeId: string, reference: string) => void;
-  onDeleteLeg: (legId: string, tradeId: string, reference: string, legNumber: number) => void;
-  isDeleteTradeLoading: boolean;
-  isDeleteLegLoading: boolean;
 }
 
 // Helper functions
@@ -31,9 +27,7 @@ const debounce = (func: Function, delay: number) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   return (...args: any[]) => {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
+    timeoutId = setTimeout(() => func(...args), delay);
   };
 };
 
@@ -41,11 +35,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   trades,
   loading,
   error,
-  refetchTrades,
-  onDeleteTrade,
-  onDeleteLeg,
-  isDeleteTradeLoading,
-  isDeleteLegLoading
+  refetchTrades
 }) => {
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
@@ -193,34 +183,9 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                       <Button variant="ghost" size="sm">Actions</Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <Link to={`/trades/edit/${trade.id}`}>
-                        <DropdownMenuItem>Edit Trade</DropdownMenuItem>
+                      <Link to={`/trades/${trade.id}`}>
+                        <DropdownMenuItem>View Details</DropdownMenuItem>
                       </Link>
-                      {trade.physicalType === 'spot' && legIndex === 0 && (
-                        <DropdownMenuItem 
-                          className="text-red-600 focus:text-red-600" 
-                          onClick={() => onDeleteTrade(trade.id, trade.tradeReference)}
-                          disabled={isDeleteTradeLoading}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete Trade
-                        </DropdownMenuItem>
-                      )}
-                      {trade.physicalType === 'term' && (
-                        <DropdownMenuItem 
-                          className="text-red-600 focus:text-red-600" 
-                          onClick={() => onDeleteLeg(
-                            leg.id, 
-                            trade.id, 
-                            `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
-                            legIndex + 1
-                          )}
-                          disabled={isDeleteLegLoading}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete Leg
-                        </DropdownMenuItem>
-                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

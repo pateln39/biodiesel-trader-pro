@@ -1,7 +1,7 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, AlertCircle, Trash } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -20,32 +20,13 @@ interface PaperTradeListProps {
   isLoading: boolean;
   error: Error | null;
   refetchPaperTrades: () => void;
-  onDeleteTrade: (tradeId: string, reference: string) => void;
-  onDeleteLeg: (legId: string, tradeId: string, reference: string, legIndex: number) => void;
-  isDeleteTradeLoading: boolean;
-  isDeleteLegLoading: boolean;
 }
-
-// Helper functions
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, delay);
-  };
-};
 
 const PaperTradeList: React.FC<PaperTradeListProps> = ({
   paperTrades,
   isLoading,
   error,
-  refetchPaperTrades,
-  onDeleteTrade,
-  onDeleteLeg,
-  isDeleteTradeLoading,
-  isDeleteLegLoading
+  refetchPaperTrades
 }) => {
   const [paperComments, setPaperComments] = useState<Record<string, string>>({});
   const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
@@ -155,25 +136,9 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                         <Button variant="ghost" size="sm">Actions</Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <Link to={`/trades/edit/${trade.id}`}>
-                          <DropdownMenuItem>Edit Trade</DropdownMenuItem>
+                        <Link to={`/trades/${trade.id}`}>
+                          <DropdownMenuItem>View Details</DropdownMenuItem>
                         </Link>
-                        <DropdownMenuItem 
-                          className="text-amber-600 focus:text-amber-600" 
-                          onClick={() => onDeleteLeg(leg.id, trade.id, trade.tradeReference, legIndex)}
-                          disabled={isDeleteLegLoading || isDeleteTradeLoading}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete Leg
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-600 focus:text-red-600" 
-                          onClick={() => onDeleteTrade(trade.id, trade.tradeReference)}
-                          disabled={isDeleteTradeLoading}
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete Trade
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
