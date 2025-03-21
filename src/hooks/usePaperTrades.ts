@@ -1,10 +1,12 @@
-import { useRef, useCallback } from 'react';
+
+import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
 import { PaperTrade, PaperTradeLeg } from '@/types/paper';
 import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
+import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
