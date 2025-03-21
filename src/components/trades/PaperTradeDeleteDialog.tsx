@@ -68,13 +68,13 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   const getDeleteTitle = () => {
     return deleteMode === 'trade' 
       ? `Delete Paper Trade ${deleteItemDetails.reference}?`
-      : `Delete Leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''}?`;
+      : `Delete Leg ${deleteItemDetails.legNumber ? `${deleteItemDetails.legNumber}` : ''} of Trade ${deleteItemDetails.reference}?`;
   };
   
   const getDeleteDescription = () => {
     return deleteMode === 'trade'
       ? `This will permanently delete the paper trade ${deleteItemDetails.reference} and all its legs from the database.`
-      : `This will permanently delete the leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''} from the database.`;
+      : `This will permanently delete leg ${deleteItemDetails.legNumber ? `${deleteItemDetails.legNumber}` : ''} of trade ${deleteItemDetails.reference} from the database.`;
   };
   
   // Separate handler for dialog open state changes to ensure proper behavior
