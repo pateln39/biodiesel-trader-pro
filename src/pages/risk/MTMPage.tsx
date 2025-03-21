@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,8 @@ import {
   PricingPeriodType 
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade, PaperTrade } from '@/types';
+import { PhysicalTrade } from '@/types';
+import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 
 const MTMPage = () => {

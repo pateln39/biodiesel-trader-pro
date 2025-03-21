@@ -4,7 +4,7 @@
  */
 
 import { toast } from "sonner";
-import { PaperTradeLeg } from "@/types/trade";
+import { PaperTradeLeg } from "@/types/paper";
 
 /**
  * Validates that a required field has a value

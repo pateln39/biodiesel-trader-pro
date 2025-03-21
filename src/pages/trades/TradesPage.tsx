@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Filter, Loader2, AlertCircle, Trash, Link2, RefreshCw } from 'lucide-react';
@@ -6,7 +5,8 @@ import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { formatDate, formatProductDisplay } from '@/utils/tradeUtils';
-import { PhysicalTrade, PhysicalTradeLeg, PaperTrade, DisplayProduct } from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg, DisplayProduct } from '@/types';
+import { PaperTrade } from '@/types/paper';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { 

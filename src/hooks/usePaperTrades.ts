@@ -14,7 +14,6 @@ import {
 import { deletePaperTrade } from '@/utils/paperTradeDeleteUtils';
 import { cleanupSubscriptions, delay, pauseSubscriptions, resumeSubscriptions } from '@/utils/subscriptionUtils';
 
-// Debounce function to prevent multiple refetches in quick succession
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   return function(...args: any[]) {
@@ -28,7 +27,6 @@ export const usePaperTrades = () => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
-  // Debounced refetch function with additional safeguard
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
       console.log("Skipping paper trade refetch as deletion is in progress");
@@ -38,17 +36,14 @@ export const usePaperTrades = () => {
     fn();
   }, 500)).current;
   
-  // Fetch paper trades from new tables only
   const { data: paperTrades, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades'],
     queryFn: fetchNewPaperTrades,
-    staleTime: 2000, // Consider data stale after 2 seconds
-    refetchOnWindowFocus: false // Disable automatic refetch on window focus
+    staleTime: 2000,
+    refetchOnWindowFocus: false
   });
   
-  // Fetch new paper trades from paper_trades/paper_trade_legs tables
   async function fetchNewPaperTrades(): Promise<PaperTrade[]> {
-    // Fetch from new paper_trades table
     const { data: paperTradesData, error: paperTradesError } = await supabase
       .from('paper_trades')
       .select(`
@@ -73,7 +68,6 @@ export const usePaperTrades = () => {
     
     console.log(`Found ${paperTradesData.length} paper trades`);
     
-    // For each paper trade, fetch its legs
     const tradesWithLegs = await Promise.all(
       paperTradesData.map(async (paperTrade) => {
         const { data: legs, error: legsError } = await supabase
@@ -107,7 +101,6 @@ export const usePaperTrades = () => {
           updatedAt: new Date(paperTrade.updated_at),
           comment: paperTrade.comment,
           legs: (legs || []).map((leg) => {
-            // Extract the relationship_type from instrument
             const instrument = leg.instrument || '';
             let relationshipType: PaperRelationshipType = 'FP';
             
@@ -117,7 +110,6 @@ export const usePaperTrades = () => {
               relationshipType = 'SPREAD';
             }
             
-            // Safely extract rightSide from mtm_formula if it exists
             let rightSide;
             if (leg.mtm_formula && 
                 typeof leg.mtm_formula === 'object' && 
@@ -125,7 +117,6 @@ export const usePaperTrades = () => {
               rightSide = leg.mtm_formula.rightSide;
             }
             
-            // Process exposures with type safety
             let exposuresObj: PaperTradeLeg['exposures'] = {
               physical: {},
               pricing: {},
@@ -133,9 +124,7 @@ export const usePaperTrades = () => {
             };
             
             if (leg.exposures) {
-              // Handle exposures from the dedicated column
               if (typeof leg.exposures === 'object') {
-                // Safely access nested properties with type checking
                 const exposuresData = leg.exposures as Record<string, any>;
                 
                 if (exposuresData.physical && typeof exposuresData.physical === 'object') {
@@ -151,7 +140,6 @@ export const usePaperTrades = () => {
                 }
               }
             } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-              // Fallback to mtm_formula for legacy compatibility
               const mtmData = leg.mtm_formula as Record<string, any>;
               
               if (mtmData.exposures && typeof mtmData.exposures === 'object') {
@@ -159,7 +147,7 @@ export const usePaperTrades = () => {
                 
                 if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
                   exposuresObj.physical = mtmExposures.physical as Record<string, number>;
-                  exposuresObj.paper = mtmExposures.physical as Record<string, number>;  // For backward compatibility
+                  exposuresObj.paper = mtmExposures.physical as Record<string, number>;
                 }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
@@ -181,24 +169,21 @@ export const usePaperTrades = () => {
               instrument: leg.instrument,
               relationshipType,
               rightSide: rightSide,
-              formula: leg.formula,
-              mtmFormula: leg.mtm_formula,
+              formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
+              mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
               exposures: exposuresObj
-            };
+            } as PaperTradeLeg;
           })
-        };
+        } as PaperTrade;
       })
     );
     
     return tradesWithLegs;
   };
   
-  // Setup and cleanup function for realtime subscriptions
   const setupRealtimeSubscriptions = useCallback(() => {
-    // First clean up any existing subscriptions
     cleanupSubscriptions(realtimeChannelsRef.current);
     
-    // Subscribe to changes on new paper_trades table
     const paperTradesChannel = supabase
       .channel('paper_trades')
       .on('postgres_changes', { 
@@ -206,7 +191,6 @@ export const usePaperTrades = () => {
         schema: 'public', 
         table: 'paper_trades'
       }, (payload) => {
-        // Skip if we're in the middle of a deletion
         if (realtimeChannelsRef.current.paperTradesChannel?.isPaused) {
           console.log('Subscription paused, skipping update for paper_trades');
           return;
@@ -221,7 +205,6 @@ export const usePaperTrades = () => {
 
     realtimeChannelsRef.current.paperTradesChannel = paperTradesChannel;
 
-    // Subscribe to changes on new paper_trade_legs table
     const paperTradeLegsChannel = supabase
       .channel('paper_trade_legs')
       .on('postgres_changes', { 
@@ -229,7 +212,6 @@ export const usePaperTrades = () => {
         schema: 'public', 
         table: 'paper_trade_legs' 
       }, (payload) => {
-        // Skip if we're in the middle of a deletion
         if (realtimeChannelsRef.current.paperTradeLegsChannel?.isPaused) {
           console.log('Subscription paused, skipping update for paper_trade_legs');
           return;
@@ -245,37 +227,28 @@ export const usePaperTrades = () => {
     realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
   }, [refetch, debouncedRefetch]);
   
-  // Set up real-time subscription with improved cleanup
   useEffect(() => {
     setupRealtimeSubscriptions();
     
-    // Cleanup subscriptions on unmount
     return () => {
       cleanupSubscriptions(realtimeChannelsRef.current);
     };
   }, [setupRealtimeSubscriptions]);
   
-  // Mutation for deleting a paper trade with improved error handling
   const deletePaperTradeMutation = useMutation({
     mutationFn: async (tradeId: string) => {
       try {
-        // Mark as processing to prevent concurrent operations and realtime updates
         isProcessingRef.current = true;
         console.log("Setting isProcessing to true for deletePaperTrade");
         
-        // Pause realtime subscriptions during deletion instead of removing them
         pauseSubscriptions(realtimeChannelsRef.current);
         
-        // First update UI optimistically
         queryClient.setQueryData(['paper-trades'], (oldData: any) => {
-          // Filter out the deleted trade
           return oldData.filter((trade: any) => trade.id !== tradeId);
         });
         
-        // Then perform actual deletion
         const success = await deletePaperTrade(tradeId);
         
-        // Wait a little bit before refetching to allow database operations to complete
         await delay(800);
         
         return { success, tradeId };
@@ -283,10 +256,8 @@ export const usePaperTrades = () => {
         console.error("Error in deletePaperTradeMutation:", error);
         throw error;
       } finally {
-        // Resume subscriptions instead of recreating them
         resumeSubscriptions(realtimeChannelsRef.current);
         
-        // Reset processing flag
         setTimeout(() => {
           isProcessingRef.current = false;
           console.log("Setting isProcessing to false for deletePaperTrade");
@@ -294,12 +265,10 @@ export const usePaperTrades = () => {
       }
     },
     onSuccess: (data) => {
-      // Only show success message after deletion completes
       if (data.success) {
         toast.success("Paper trade deleted successfully");
       }
       
-      // Invalidate affected queries after a longer delay to avoid UI freezing
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
@@ -310,17 +279,14 @@ export const usePaperTrades = () => {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       });
       
-      // Refetch to make sure UI is consistent with database
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
       }, 800);
     }
   });
   
-  // Create paper trade mutation - updated to use new tables and store exposures separately
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
     mutationFn: async (trade: Partial<PaperTrade>) => {
-      // Insert paper trade to new paper_trades table
       const { data: paperTrade, error: paperTradeError } = await supabase
         .from('paper_trades')
         .insert({
@@ -336,23 +302,18 @@ export const usePaperTrades = () => {
         throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
       }
       
-      // Prepare legs for insertion
       if (trade.legs && trade.legs.length > 0) {
-        // Insert trade legs one by one
         for (let i = 0; i < trade.legs.length; i++) {
           const leg = trade.legs[i];
-          // Generate leg reference with alphabetical suffix
           const legReference = generateLegReference(trade.tradeReference || '', i);
           
-          const tradingPeriod = leg.period;
+          let tradingPeriod = leg.period;
           
-          // Parse period if available
           let pricingPeriodStart = null;
           let pricingPeriodEnd = null;
           
           if (tradingPeriod) {
             try {
-              // Parse period like "Mar-24" into a date
               const [month, year] = tradingPeriod.split('-');
               const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
                 .findIndex(m => m === month);
@@ -360,10 +321,8 @@ export const usePaperTrades = () => {
               if (monthIndex !== -1) {
                 const fullYear = 2000 + parseInt(year);
                 
-                // First day of month
                 pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
                 
-                // Last day of month
                 const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
                 pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
               }
@@ -372,46 +331,30 @@ export const usePaperTrades = () => {
             }
           }
           
-          // Create separate exposures object for database
           const exposures = {
             physical: {},
             paper: {},
             pricing: {}
           };
           
-          // Add exposures based on leg type
           if (leg.relationshipType === 'FP') {
-            // For FP, just the main product
             exposures.physical[leg.product] = leg.quantity || 0;
             exposures.paper[leg.product] = leg.quantity || 0;
           } else if (leg.rightSide) {
-            // For DIFF/SPREAD with right side
             exposures.physical[leg.product] = leg.quantity || 0;
             exposures.physical[leg.rightSide.product] = leg.rightSide.quantity || 0;
             exposures.paper[leg.product] = leg.quantity || 0;
             exposures.paper[leg.rightSide.product] = leg.rightSide.quantity || 0;
           }
           
-          // Generate the instrument name
           const instrument = generateInstrumentName(
             leg.product, 
             leg.relationshipType,
             leg.rightSide?.product
           );
           
-          // Prepare mtmFormula for database (convert from TypeScript to JSON)
-          let mtmFormulaForDb = null;
-          if (leg.mtmFormula && typeof leg.mtmFormula === 'object') {
-            // Make sure it's proper JSON
-            mtmFormulaForDb = JSON.parse(JSON.stringify(leg.mtmFormula));
-          }
-          
-          // Prepare formula for database (convert from TypeScript to JSON)
-          let formulaForDb = null;
-          if (leg.formula && typeof leg.formula === 'object') {
-            // Make sure it's proper JSON
-            formulaForDb = JSON.parse(JSON.stringify(leg.formula));
-          }
+          const mtmFormulaForDb = leg.mtmFormula ? (typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : leg.mtmFormula) : null;
+          const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
           
           const legData = {
             leg_reference: legReference,
@@ -428,7 +371,6 @@ export const usePaperTrades = () => {
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
             instrument: instrument,
-            // Store exposures separately - convert to proper JSON
             exposures: JSON.parse(JSON.stringify(exposures))
           };
           
@@ -445,7 +387,6 @@ export const usePaperTrades = () => {
       return { ...trade, id: paperTrade.id };
     },
     onSuccess: () => {
-      // Use a delay before invalidating queries
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
         queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
