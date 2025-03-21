@@ -3,11 +3,24 @@ import { toast } from 'sonner';
 import { delay } from './subscriptionUtils';
 
 /**
+ * Safely closes a dialog with proper animation timing
+ */
+export const safelyCloseDialog = async (setShowDialog: (show: boolean) => void): Promise<void> => {
+  // Allow time for the dialog close animation to complete
+  await delay(150);
+  setShowDialog(false);
+};
+
+/**
  * Delete a physical trade and all its legs with proper sequencing
  */
-export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => {
+export const deletePhysicalTrade = async (
+  tradeId: string,
+  onProgress?: (progress: number) => void
+): Promise<boolean> => {
   try {
     console.log(`Starting deletion process for physical trade: ${tradeId}`);
+    onProgress?.(10);
     
     // Step 1: Delete all legs for this trade
     const { error: legsError } = await supabase
@@ -19,6 +32,8 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
       console.error('Error deleting trade legs:', legsError);
       throw legsError;
     }
+    
+    onProgress?.(50);
     
     // Add a small delay between operations to avoid database race conditions
     await delay(300);
@@ -35,7 +50,14 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
       throw parentError;
     }
     
+    onProgress?.(90);
+    
+    // Allow UI to complete animations
+    await delay(200);
+    
     console.log(`Successfully deleted physical trade: ${tradeId}`);
+    onProgress?.(100);
+    
     toast.success("Trade deleted successfully");
     return true;
   } catch (error) {
@@ -50,9 +72,14 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
 /**
  * Delete a single leg from a physical trade, handling the case where it's the last leg
  */
-export const deletePhysicalTradeLeg = async (legId: string, parentTradeId: string): Promise<boolean> => {
+export const deletePhysicalTradeLeg = async (
+  legId: string, 
+  parentTradeId: string,
+  onProgress?: (progress: number) => void
+): Promise<boolean> => {
   try {
     console.log(`Starting deletion process for leg: ${legId} of trade: ${parentTradeId}`);
+    onProgress?.(10);
     
     // First, check if this is the only leg for the parent trade
     const { data: legsCount, error: countError } = await supabase
@@ -65,12 +92,18 @@ export const deletePhysicalTradeLeg = async (legId: string, parentTradeId: strin
       throw countError;
     }
     
+    onProgress?.(30);
+    
     const isLastLeg = legsCount?.length === 1;
     
     // If it's the last leg, delete both the leg and the parent trade
     if (isLastLeg) {
       console.log(`This is the last leg for trade ${parentTradeId}, deleting entire trade`);
-      return await deletePhysicalTrade(parentTradeId);
+      onProgress?.(40);
+      return await deletePhysicalTrade(parentTradeId, (progress) => {
+        // Scale progress to fit within our 40%-100% range
+        onProgress?.(40 + (progress * 0.6));
+      });
     }
     
     // Otherwise, just delete the leg
@@ -84,7 +117,14 @@ export const deletePhysicalTradeLeg = async (legId: string, parentTradeId: strin
       throw error;
     }
     
+    onProgress?.(80);
+    
+    // Allow UI to complete animations
+    await delay(200);
+    
     console.log(`Successfully deleted leg: ${legId}`);
+    onProgress?.(100);
+    
     toast.success("Trade leg deleted successfully");
     return true;
   } catch (error) {

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+
+import React, { useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Link2, Trash2, Edit } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -14,13 +15,15 @@ import {
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 import PhysicalTradeDeleteDialog from '@/components/trades/PhysicalTradeDeleteDialog';
-import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
+import { deletePhysicalTrade, deletePhysicalTradeLeg, safelyCloseDialog } from '@/utils/physicalTradeDeleteUtils';
+import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
   loading: boolean;
   error: Error | null;
   refetchTrades: () => void;
+  realtimeChannelsRef?: React.MutableRefObject<{ [key: string]: any }>;
 }
 
 // Helper functions
@@ -36,14 +39,17 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   trades,
   loading,
   error,
-  refetchTrades
+  refetchTrades,
+  realtimeChannelsRef
 }) => {
   const navigate = useNavigate();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletionProgress, setDeletionProgress] = useState(0);
   const [tradeToDelete, setTradeToDelete] = useState<{ id: string, reference: string, isLeg: boolean, parentId?: string }>({ id: '', reference: '', isLeg: false });
+  const isProcessingRef = useRef(false);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -88,26 +94,61 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     setShowDeleteConfirmation(true);
   };
 
+  const handleCancelDelete = () => {
+    console.log('[PHYSICAL] Delete operation cancelled');
+    // Reset state in a controlled sequence
+    setDeletionProgress(0);
+  };
+
   const handleConfirmDelete = async () => {
     try {
+      console.log('[PHYSICAL] Starting delete operation');
+      isProcessingRef.current = true;
       setIsDeleting(true);
+      setDeletionProgress(0);
       
-      if (tradeToDelete.isLeg && tradeToDelete.parentId) {
-        await deletePhysicalTradeLeg(tradeToDelete.id, tradeToDelete.parentId);
-      } else {
-        await deletePhysicalTrade(tradeToDelete.id);
+      // Pause subscriptions to prevent race conditions during delete
+      if (realtimeChannelsRef) {
+        pausePhysicalSubscriptions(realtimeChannelsRef.current);
       }
       
-      // Close dialog and reset state
-      setShowDeleteConfirmation(false);
-      setTradeToDelete({ id: '', reference: '', isLeg: false });
+      let success = false;
       
-      // Refetch trades to update the UI
-      refetchTrades();
+      if (tradeToDelete.isLeg && tradeToDelete.parentId) {
+        success = await deletePhysicalTradeLeg(
+          tradeToDelete.id, 
+          tradeToDelete.parentId,
+          setDeletionProgress
+        );
+      } else {
+        success = await deletePhysicalTrade(
+          tradeToDelete.id,
+          setDeletionProgress
+        );
+      }
+      
+      // Only close dialog after ensuring success
+      if (success) {
+        // Wait for animations to complete before closing dialog
+        await safelyCloseDialog(setShowDeleteConfirmation);
+        
+        // Reset delete state in controlled sequence
+        setTradeToDelete({ id: '', reference: '', isLeg: false });
+        setDeletionProgress(0);
+        
+        // Resume subscriptions and refetch trades
+        if (realtimeChannelsRef) {
+          resumePhysicalSubscriptions(realtimeChannelsRef.current);
+        }
+        
+        refetchTrades();
+      }
     } catch (error) {
-      console.error('Error during delete operation:', error);
+      console.error('[PHYSICAL] Error during delete operation:', error);
     } finally {
+      console.log('[PHYSICAL] Delete operation finalized');
       setIsDeleting(false);
+      isProcessingRef.current = false;
     }
   };
 
@@ -275,9 +316,11 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         showDeleteConfirmation={showDeleteConfirmation}
         onOpenChange={setShowDeleteConfirmation}
         onConfirmDelete={handleConfirmDelete}
+        onCancelDelete={handleCancelDelete}
         isDeleting={isDeleting}
         tradeName={tradeToDelete.reference}
         isLegDelete={tradeToDelete.isLeg}
+        deletionProgress={deletionProgress}
       />
     </>
   );
