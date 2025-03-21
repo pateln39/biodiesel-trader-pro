@@ -39,56 +39,33 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
-  // Log important state changes for debugging
+  // Use useEffect to manage side effects when showDeleteConfirmation changes
   useEffect(() => {
+    // No cleanup needed for this effect as we're just tracking a prop
     console.log(`[PAPER DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
-    
-    // When the dialog becomes visible, focus trap is active
-    if (showDeleteConfirmation) {
-      document.body.classList.add('dialog-open');
-      
-      // Ensure we clean up the class when component unmounts
-      return () => {
-        document.body.classList.remove('dialog-open');
-      };
-    }
-    
-    return undefined;
   }, [showDeleteConfirmation, isDeleting]);
-
-  // Handle Cancel button click in a safe way
-  const handleCancel = (e: React.MouseEvent) => {
-    // Stop propagation to prevent multiple handlers firing
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("[PAPER DELETE DIALOG] Cancel button clicked directly");
-    onCancelDelete();
-  };
 
   const getDeleteTitle = () => {
     return deleteMode === 'trade' 
       ? `Delete Paper Trade ${deleteItemDetails.reference}?`
-      : `Delete Leg ${deleteItemDetails.legNumber ? `${deleteItemDetails.legNumber}` : ''} of Trade ${deleteItemDetails.reference}?`;
+      : `Delete Leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''}?`;
   };
   
   const getDeleteDescription = () => {
     return deleteMode === 'trade'
       ? `This will permanently delete the paper trade ${deleteItemDetails.reference} and all its legs from the database.`
-      : `This will permanently delete leg ${deleteItemDetails.legNumber ? `${deleteItemDetails.legNumber}` : ''} of trade ${deleteItemDetails.reference} from the database.`;
+      : `This will permanently delete the leg ${deleteItemDetails.reference}${deleteItemDetails.legNumber ? `-${deleteItemDetails.legNumber}` : ''} from the database.`;
   };
-  
-  // Separate handler for dialog open state changes to ensure proper behavior
-  const handleOpenChange = (open: boolean) => {
-    console.log(`[PAPER DELETE DIALOG] Dialog open state change: ${open}, isDeleting: ${isDeleting}`);
-    
-    // If dialog is closing and we're not in the process of deleting, consider it a cancel
-    if (!open && !isDeleting) {
-      console.log("[PAPER DELETE DIALOG] Dialog dismissed - treating as cancel");
+
+  // Handler for dialog state changes to ensure proper cancel behavior
+  const handleOpenChange = (isOpen: boolean) => {
+    console.log(`[PAPER DELETE DIALOG] Dialog open state change: ${isOpen}, isDeleting: ${isDeleting}`);
+    if (!isOpen && !isDeleting) {
+      // Only invoke cancel if we're closing and not in the process of deleting
       onCancelDelete();
     }
-    
-    // Always inform parent of state changes
-    onOpenChange(open);
+    // Always inform parent of open state changes
+    onOpenChange(isOpen);
   };
 
   return (
@@ -114,7 +91,7 @@ const PaperTradeDeleteDialog: React.FC<PaperTradeDeleteDialogProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancel} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={onCancelDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onConfirmDelete} 
               disabled={isDeleting}

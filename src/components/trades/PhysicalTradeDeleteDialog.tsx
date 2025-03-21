@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -38,58 +38,6 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
   onCancelDelete,
   onOpenChange
 }) => {
-  // Log important state changes for debugging
-  useEffect(() => {
-    console.log(`[PHYSICAL DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
-    
-    // When the dialog becomes visible, focus trap is active
-    if (showDeleteConfirmation) {
-      document.body.classList.add('dialog-open');
-      
-      // Ensure we clean up the class when component unmounts
-      return () => {
-        document.body.classList.remove('dialog-open');
-      };
-    }
-    
-    return undefined;
-  }, [showDeleteConfirmation, isDeleting]);
-
-  // Handle Cancel button click in a safe way
-  const handleCancel = (e: React.MouseEvent) => {
-    // Stop propagation to prevent multiple handlers firing
-    e.preventDefault();
-    e.stopPropagation();
-    console.log("[PHYSICAL DELETE DIALOG] Cancel button clicked directly");
-    onCancelDelete();
-  };
-
-  // Separate handler for dialog open state changes to ensure proper behavior
-  const handleOpenChange = (open: boolean) => {
-    console.log(`[PHYSICAL DELETE DIALOG] Dialog open state change: ${open}, isDeleting: ${isDeleting}`);
-    
-    // If dialog is closing and we're not in the process of deleting, consider it a cancel
-    if (!open && !isDeleting) {
-      console.log("[PHYSICAL DELETE DIALOG] Dialog dismissed - treating as cancel");
-      onCancelDelete();
-    }
-    
-    // Always inform parent of state changes
-    onOpenChange(open);
-  };
-
-  const getDeleteTitle = () => {
-    return deleteMode === 'trade' 
-      ? `Delete Physical Trade ${deleteItemDetails.reference}?`
-      : `Delete Leg ${deleteItemDetails.legNumber} of Trade ${deleteItemDetails.reference}?`;
-  };
-  
-  const getDeleteDescription = () => {
-    return deleteMode === 'trade'
-      ? `This will permanently delete the physical trade ${deleteItemDetails.reference} from the database.`
-      : `This will permanently delete leg ${deleteItemDetails.legNumber} of trade ${deleteItemDetails.reference} from the database.`;
-  };
-
   return (
     <>
       {isDeleting && (
@@ -101,19 +49,25 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
         </div>
       )}
     
-      <AlertDialog 
-        open={showDeleteConfirmation}
-        onOpenChange={handleOpenChange}
-      >
+      <AlertDialog open={showDeleteConfirmation} onOpenChange={(isOpen) => {
+        if (!isOpen && !isDeleting) {
+          onCancelDelete();
+        }
+        onOpenChange(isOpen);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{getDeleteTitle()}</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              {getDeleteDescription()}
+              {deleteMode === 'trade' ? (
+                <>This will permanently delete the physical trade {deleteItemDetails.reference} from the database.</>
+              ) : (
+                <>This will permanently delete leg {deleteItemDetails.legNumber} of trade {deleteItemDetails.reference} from the database.</>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancel} disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={onCancelDelete} disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={onConfirmDelete} 
               disabled={isDeleting}
