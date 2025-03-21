@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import {
   AlertDialog,
@@ -34,19 +33,15 @@ const PhysicalTradeDeleteDialog: React.FC<PhysicalTradeDeleteDialogProps> = ({
   isLegDelete = false,
   deletionProgress = 0
 }) => {
-  // Log dialog state changes for debugging
   useEffect(() => {
     console.log(`[PHYSICAL DELETE DIALOG] Dialog visible: ${showDeleteConfirmation}, isDeleting: ${isDeleting}`);
   }, [showDeleteConfirmation, isDeleting]);
 
-  // Handle dialog state changes to ensure proper behavior
   const handleOpenChange = (isOpen: boolean) => {
     console.log(`[PHYSICAL DELETE DIALOG] Dialog open state change: ${isOpen}, isDeleting: ${isDeleting}`);
     if (!isOpen && !isDeleting) {
-      // Only invoke cancel if we're closing and not in the process of deleting
       onCancelDelete();
     }
-    // Always inform parent of open state changes
     onOpenChange(isOpen);
   };
 

@@ -14,9 +14,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
-import PhysicalTradeDeleteDialog from '@/components/trades/PhysicalTradeDeleteDialog';
-import { deletePhysicalTrade, deletePhysicalTradeLeg, safelyCloseDialog } from '@/utils/physicalTradeDeleteUtils';
+import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
 import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { toast } from 'sonner';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -45,10 +45,8 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const navigate = useNavigate();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deletionProgress, setDeletionProgress] = useState(0);
-  const [tradeToDelete, setTradeToDelete] = useState<{ id: string, reference: string, isLeg: boolean, parentId?: string }>({ id: '', reference: '', isLeg: false });
+  const [deletingTradeId, setDeletingTradeId] = useState<string>('');
   const isProcessingRef = useRef(false);
 
   const debouncedSaveComment = useCallback(
@@ -79,75 +77,92 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
-    setTradeToDelete({ id: tradeId, reference: tradeReference, isLeg: false });
-    setShowDeleteConfirmation(true);
-  };
-
-  const handleDeleteLeg = (legId: string, legReference: string, parentId: string) => {
-    setTradeToDelete({ 
-      id: legId, 
-      reference: legReference, 
-      isLeg: true,
-      parentId
-    });
-    setShowDeleteConfirmation(true);
-  };
-
-  const handleCancelDelete = () => {
-    console.log('[PHYSICAL] Delete operation cancelled');
-    // Reset state in a controlled sequence
-    setDeletionProgress(0);
-  };
-
-  const handleConfirmDelete = async () => {
+  const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
     try {
-      console.log('[PHYSICAL] Starting delete operation');
+      if (isProcessingRef.current) {
+        console.log('[PHYSICAL] Another delete operation is in progress');
+        return;
+      }
+      
+      console.log(`[PHYSICAL] Deleting trade: ${tradeId} (${tradeReference})`);
       isProcessingRef.current = true;
       setIsDeleting(true);
-      setDeletionProgress(0);
+      setDeletingTradeId(tradeId);
       
       // Pause subscriptions to prevent race conditions during delete
       if (realtimeChannelsRef) {
         pausePhysicalSubscriptions(realtimeChannelsRef.current);
       }
       
-      let success = false;
+      const progress = (value: number) => {
+        console.log(`[PHYSICAL] Delete progress: ${value}%`);
+      };
       
-      if (tradeToDelete.isLeg && tradeToDelete.parentId) {
-        success = await deletePhysicalTradeLeg(
-          tradeToDelete.id, 
-          tradeToDelete.parentId,
-          setDeletionProgress
-        );
-      } else {
-        success = await deletePhysicalTrade(
-          tradeToDelete.id,
-          setDeletionProgress
-        );
-      }
+      const success = await deletePhysicalTrade(tradeId, progress);
       
-      // Only close dialog after ensuring success
       if (success) {
-        // Wait for animations to complete before closing dialog
-        await safelyCloseDialog(setShowDeleteConfirmation);
-        
-        // Reset delete state in controlled sequence
-        setTradeToDelete({ id: '', reference: '', isLeg: false });
-        setDeletionProgress(0);
-        
-        // Resume subscriptions and refetch trades
-        if (realtimeChannelsRef) {
-          resumePhysicalSubscriptions(realtimeChannelsRef.current);
-        }
-        
+        toast.success(`Trade ${tradeReference} deleted successfully`);
         refetchTrades();
       }
     } catch (error) {
-      console.error('[PHYSICAL] Error during delete operation:', error);
+      console.error('[PHYSICAL] Error during delete:', error);
+      toast.error('Failed to delete trade', { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred' 
+      });
     } finally {
-      console.log('[PHYSICAL] Delete operation finalized');
+      // Resume subscriptions
+      if (realtimeChannelsRef) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      // Reset state
       setIsDeleting(false);
+      setDeletingTradeId('');
+      isProcessingRef.current = false;
+    }
+  };
+
+  const handleDeleteLeg = async (legId: string, legReference: string, parentId: string) => {
+    try {
+      if (isProcessingRef.current) {
+        console.log('[PHYSICAL] Another delete operation is in progress');
+        return;
+      }
+      
+      console.log(`[PHYSICAL] Deleting leg: ${legId} (${legReference}) of trade: ${parentId}`);
+      isProcessingRef.current = true;
+      setIsDeleting(true);
+      setDeletingTradeId(legId);
+      
+      // Pause subscriptions to prevent race conditions during delete
+      if (realtimeChannelsRef) {
+        pausePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      const progress = (value: number) => {
+        console.log(`[PHYSICAL] Delete progress: ${value}%`);
+      };
+      
+      const success = await deletePhysicalTradeLeg(legId, parentId, progress);
+      
+      if (success) {
+        toast.success(`Trade leg ${legReference} deleted successfully`);
+        refetchTrades();
+      }
+    } catch (error) {
+      console.error('[PHYSICAL] Error during delete leg:', error);
+      toast.error('Failed to delete trade leg', { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred' 
+      });
+    } finally {
+      // Resume subscriptions
+      if (realtimeChannelsRef) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      // Reset state
+      setIsDeleting(false);
+      setDeletingTradeId('');
       isProcessingRef.current = false;
     }
   };
@@ -201,128 +216,126 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   }
 
   return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Reference</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>INCO</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Price Formula</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {trades.length > 0 ? (
-            trades.flatMap((trade) => {
-              const hasMultipleLegs = isMultiLegTrade(trade);
-              const legs = trade.legs || [];
-              
-              return legs.map((leg, legIndex) => (
-                <TableRow 
-                  key={leg.id}
-                  className={legIndex > 0 ? "border-t-0" : undefined}
-                >
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                        {trade.physicalType === 'term' ? 
-                          `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
-                          trade.tradeReference
-                        }
-                      </Link>
-                      {hasMultipleLegs && trade.physicalType === 'term' && (
-                        <Badge variant="outline" className="h-5 text-xs">
-                          <Link2 className="mr-1 h-3 w-3" />
-                          {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{leg.buySell}</TableCell>
-                  <TableCell>{leg.incoTerm}</TableCell>
-                  <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
-                  <TableCell>{leg.product}</TableCell>
-                  <TableCell>{trade.counterparty}</TableCell>
-                  <TableCell>{renderFormula(leg)}</TableCell>
-                  <TableCell>
-                    <div className="relative">
-                      <Textarea 
-                        placeholder="Add comments..."
-                        value={comments[leg.id] || ''}
-                        onChange={(e) => handleCommentChange(leg.id, e.target.value)}
-                        onBlur={() => handleCommentBlur(leg.id)}
-                        className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                        rows={1}
-                      />
-                      {savingComments[leg.id] && (
-                        <div className="absolute top-1 right-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">Actions</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditTrade(trade.id)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Trade
-                        </DropdownMenuItem>
-                        <Link to={`/trades/${trade.id}`}>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </Link>
-                        {hasMultipleLegs && trade.physicalType === 'term' ? (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteLeg(leg.id, leg.legReference, trade.id)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade Leg
-                          </DropdownMenuItem>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Reference</TableHead>
+          <TableHead>Buy/Sell</TableHead>
+          <TableHead>INCO</TableHead>
+          <TableHead className="text-right">Quantity</TableHead>
+          <TableHead>Product</TableHead>
+          <TableHead>Counterparty</TableHead>
+          <TableHead>Price Formula</TableHead>
+          <TableHead>Comments</TableHead>
+          <TableHead className="text-center">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {trades.length > 0 ? (
+          trades.flatMap((trade) => {
+            const hasMultipleLegs = isMultiLegTrade(trade);
+            const legs = trade.legs || [];
+            
+            return legs.map((leg, legIndex) => (
+              <TableRow 
+                key={leg.id}
+                className={legIndex > 0 ? "border-t-0" : undefined}
+              >
+                <TableCell>
+                  <div className="flex items-center space-x-2">
+                    <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+                      {trade.physicalType === 'term' ? 
+                        `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
+                        trade.tradeReference
+                      }
+                    </Link>
+                    {hasMultipleLegs && trade.physicalType === 'term' && (
+                      <Badge variant="outline" className="h-5 text-xs">
+                        <Link2 className="mr-1 h-3 w-3" />
+                        {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="capitalize">{leg.buySell}</TableCell>
+                <TableCell>{leg.incoTerm}</TableCell>
+                <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
+                <TableCell>{leg.product}</TableCell>
+                <TableCell>{trade.counterparty}</TableCell>
+                <TableCell>{renderFormula(leg)}</TableCell>
+                <TableCell>
+                  <div className="relative">
+                    <Textarea 
+                      placeholder="Add comments..."
+                      value={comments[leg.id] || ''}
+                      onChange={(e) => handleCommentChange(leg.id, e.target.value)}
+                      onBlur={() => handleCommentBlur(leg.id)}
+                      className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
+                      rows={1}
+                    />
+                    {savingComments[leg.id] && (
+                      <div className="absolute top-1 right-1">
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" disabled={isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id)}>
+                        {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Deleting...
+                          </>
                         ) : (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade
-                          </DropdownMenuItem>
+                          'Actions'
                         )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ));
-            })
-          ) : (
-            <TableRow>
-              <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
-                No physical trades found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      <PhysicalTradeDeleteDialog
-        showDeleteConfirmation={showDeleteConfirmation}
-        onOpenChange={setShowDeleteConfirmation}
-        onConfirmDelete={handleConfirmDelete}
-        onCancelDelete={handleCancelDelete}
-        isDeleting={isDeleting}
-        tradeName={tradeToDelete.reference}
-        isLegDelete={tradeToDelete.isLeg}
-        deletionProgress={deletionProgress}
-      />
-    </>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleEditTrade(trade.id)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Trade
+                      </DropdownMenuItem>
+                      <Link to={`/trades/${trade.id}`}>
+                        <DropdownMenuItem>View Details</DropdownMenuItem>
+                      </Link>
+                      {hasMultipleLegs && trade.physicalType === 'term' ? (
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteLeg(leg.id, leg.legReference, trade.id)}
+                          className="text-destructive focus:text-destructive"
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Trade Leg
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
+                          className="text-destructive focus:text-destructive"
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Trade
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ));
+          })
+        ) : (
+          <TableRow>
+            <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+              No physical trades found.
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 };
 

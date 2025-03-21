@@ -3,15 +3,6 @@ import { toast } from 'sonner';
 import { delay } from './subscriptionUtils';
 
 /**
- * Safely closes a dialog with proper animation timing
- */
-export const safelyCloseDialog = async (setShowDialog: (show: boolean) => void): Promise<void> => {
-  // Allow time for the dialog close animation to complete
-  await delay(150);
-  setShowDialog(false);
-};
-
-/**
  * Delete a physical trade and all its legs with proper sequencing
  */
 export const deletePhysicalTrade = async (
@@ -58,7 +49,6 @@ export const deletePhysicalTrade = async (
     console.log(`Successfully deleted physical trade: ${tradeId}`);
     onProgress?.(100);
     
-    toast.success("Trade deleted successfully");
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTrade:', error);
@@ -125,7 +115,6 @@ export const deletePhysicalTradeLeg = async (
     console.log(`Successfully deleted leg: ${legId}`);
     onProgress?.(100);
     
-    toast.success("Trade leg deleted successfully");
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTradeLeg:', error);
