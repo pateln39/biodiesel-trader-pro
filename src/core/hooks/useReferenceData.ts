@@ -46,7 +46,7 @@ const fetchReferenceData = async (
     if (tableName === 'pricing_instruments') {
       return (data || []).map(item => item.display_name || '');
     } else if (tableName === 'paper_trade_products') {
-      return (data || []).map(item => product_code ? item.product_code : (item.display_name || ''));
+      return (data || []).map(item => item.product_code ? item.product_code : (item.display_name || ''));
     } else if (tableName === 'trading_periods') {
       return (data || []).map(item => item.period_code || '');
     } else {

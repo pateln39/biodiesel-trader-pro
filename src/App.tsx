@@ -11,6 +11,7 @@ import Index from "@/modules/trade/pages/Index";
 import NotFound from "@/modules/admin/pages/NotFound";
 import TradesPage from "@/modules/trade/pages/TradesPage";
 import TradeEntryPage from "@/modules/trade/pages/TradeEntryPage";
+import TradeEditPage from "@/modules/trade/pages/TradeEditPage";
 import OperationsPage from "@/modules/operations/pages/OperationsPage";
 import ExposurePage from "@/modules/exposure/pages/ExposurePage";
 import AuditLogPage from "@/modules/admin/pages/AuditLogPage";
@@ -42,8 +43,8 @@ const App = () => (
             {/* Trade Routes */}
             <Route path="/trades" element={<TradesPage />} />
             <Route path="/trades/new" element={<TradeEntryPage />} />
-            <Route path="/trades/edit/:id" element={<NotFound />} />
-            <Route path="/trades/:id" element={<NotFound />} />
+            <Route path="/trades/edit/:id" element={<TradeEditPage />} />
+            <Route path="/trades/:id" element={<TradeEditPage />} />
             
             {/* Operations Routes */}
             <Route path="/operations" element={<OperationsPage />} />
