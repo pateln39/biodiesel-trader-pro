@@ -1,6 +1,9 @@
 
-// Export all shared utilities
-export * from '@/utils/dateUtils';
-export * from '@/utils/formulaUtils';
-export * from '@/utils/dateParsingUtils';
-export * from '@/utils/priceCalculationUtils';
+// Export all shared utilities from core
+export * from './dateUtils';
+export * from './dateParsingUtils';
+export * from './validationUtils';
+export * from './subscriptionUtils';
+
+// Re-export shared utilities (for backward compatibility)
+// In the future, imports should come from their module-specific locations

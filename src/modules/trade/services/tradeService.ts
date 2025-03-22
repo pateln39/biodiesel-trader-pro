@@ -1,312 +1,447 @@
-
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
-import { BaseApiService } from '@/core/api';
-import { 
-  Trade, 
-  PhysicalTrade, 
-  PhysicalTradeLeg, 
-  TradeType, 
-  PaperTrade, 
-  PaperTradeLeg 
-} from '../types';
+import { ParentTrade, TradeLeg, DbParentTrade, DbTradeLeg } from '@/types';
+import { generateTradeReference, generateLegReference } from '@/modules/trade/utils/tradeUtils';
 
-class TradeService extends BaseApiService {
-  // Physical Trade Methods
-  async getPhysicalTrades(): Promise<PhysicalTrade[]> {
+export class TradeService {
+  /**
+   * Fetches all parent trades from the database.
+   * @returns {Promise<ParentTrade[]>} A promise that resolves to an array of parent trades.
+   */
+  async getParentTrades(): Promise<ParentTrade[]> {
     try {
-      const { data: parentTrades, error: parentTradesError } = await supabase
+      const { data: parentTrades, error } = await supabase
         .from('parent_trades')
-        .select('*')
-        .eq('trade_type', 'physical')
-        .order('created_at', { ascending: false });
-
-      if (parentTradesError) {
-        return this.handleError(parentTradesError);
-      }
-
-      const { data: tradeLegs, error: tradeLegsError } = await supabase
-        .from('trade_legs')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (tradeLegsError) {
-        return this.handleError(tradeLegsError);
+      if (error) {
+        console.error('Error fetching parent trades:', error);
+        throw new Error(error.message);
       }
 
-      // Transform the data from database format to application format
-      return parentTrades
-        .filter(parent => parent.trade_type === 'physical')
-        .map(parent => {
-          const legs = tradeLegs.filter(leg => leg.parent_trade_id === parent.id);
-          const firstLeg = legs[0] || null;
-          
-          if (!firstLeg) {
-            throw new Error(`Physical trade ${parent.id} has no legs`);
-          }
-          
-          // Create a PhysicalTrade object from the database data
-          const physicalTrade: PhysicalTrade = {
-            id: parent.id,
-            tradeReference: parent.trade_reference,
-            tradeType: TradeType.Physical,
-            physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
-            counterparty: parent.counterparty,
-            createdAt: new Date(parent.created_at),
-            updatedAt: new Date(parent.updated_at),
-            // Add main leg details
-            buySell: firstLeg.buy_sell,
-            product: firstLeg.product,
-            sustainability: firstLeg.sustainability || '',
-            incoTerm: firstLeg.inco_term || 'FOB',
-            quantity: firstLeg.quantity,
-            tolerance: firstLeg.tolerance || 0,
-            loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
-            loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
-            pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-            unit: firstLeg.unit || 'MT',
-            paymentTerm: firstLeg.payment_term || '30 days',
-            creditStatus: firstLeg.credit_status || 'pending',
-            formula: firstLeg.pricing_formula,
-            mtmFormula: firstLeg.mtm_formula,
-            // Add all legs including the first one
-            legs: legs.map(leg => ({
-              id: leg.id,
-              parentTradeId: leg.parent_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell,
-              product: leg.product,
-              sustainability: leg.sustainability || '',
-              incoTerm: leg.inco_term || 'FOB',
-              quantity: leg.quantity,
-              tolerance: leg.tolerance || 0,
-              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              unit: leg.unit || 'MT',
-              paymentTerm: leg.payment_term || '30 days',
-              creditStatus: leg.credit_status || 'pending',
-              formula: leg.pricing_formula,
-              mtmFormula: leg.mtm_formula
-            })),
-          };
-          
-          return physicalTrade;
-        });
-    } catch (error) {
-      return this.handleError(error);
+      // Transform the data to match the ParentTrade interface
+      const transformedParentTrades: ParentTrade[] = parentTrades.map((trade: DbParentTrade) => ({
+        id: trade.id,
+        tradeReference: trade.trade_reference,
+        tradeType: trade.trade_type,
+        counterparty: trade.counterparty,
+        createdAt: new Date(trade.created_at),
+        updatedAt: new Date(trade.updated_at),
+      }));
+
+      return transformedParentTrades;
+    } catch (error: any) {
+      console.error('Error in getParentTrades:', error);
+      throw new Error(error.message);
     }
   }
 
-  async createPhysicalTrade(trade: Omit<PhysicalTrade, 'id' | 'createdAt' | 'updatedAt'>): Promise<PhysicalTrade> {
+  /**
+   * Fetches a single parent trade by its ID.
+   * @param {string} id The ID of the parent trade to fetch.
+   * @returns {Promise<ParentTrade | null>} A promise that resolves to the parent trade or null if not found.
+   */
+  async getParentTradeById(id: string): Promise<ParentTrade | null> {
     try {
-      // Start a transaction
-      const { data: parent, error: parentError } = await supabase
+      const { data: parentTrade, error } = await supabase
         .from('parent_trades')
-        .insert({
-          trade_reference: trade.tradeReference,
-          trade_type: TradeType.Physical,
-          physical_type: trade.physicalType,
-          counterparty: trade.counterparty,
-        })
-        .select()
+        .select('*')
+        .eq('id', id)
         .single();
 
-      if (parentError) {
-        return this.handleError(parentError);
+      if (error) {
+        console.error('Error fetching parent trade by ID:', error);
+        return null;
       }
 
-      // Create the main leg
-      const { data: leg, error: legError } = await supabase
-        .from('trade_legs')
-        .insert({
-          parent_trade_id: parent.id,
-          leg_reference: `${trade.tradeReference}-1`,
-          buy_sell: trade.buySell,
-          product: trade.product,
-          sustainability: trade.sustainability,
-          inco_term: trade.incoTerm,
-          quantity: trade.quantity,
-          tolerance: trade.tolerance,
-          loading_period_start: trade.loadingPeriodStart,
-          loading_period_end: trade.loadingPeriodEnd,
-          pricing_period_start: trade.pricingPeriodStart,
-          pricing_period_end: trade.pricingPeriodEnd,
-          unit: trade.unit,
-          payment_term: trade.paymentTerm,
-          credit_status: trade.creditStatus,
-          pricing_formula: trade.formula,
-          mtm_formula: trade.mtmFormula,
-        })
-        .select()
-        .single();
-
-      if (legError) {
-        return this.handleError(legError);
+      if (!parentTrade) {
+        console.log(`Parent trade with ID ${id} not found.`);
+        return null;
       }
 
-      // Create any additional legs
-      if (trade.legs && trade.legs.length > 0) {
-        // Implementation for additional legs
-      }
+      // Transform the data to match the ParentTrade interface
+      const transformedParentTrade: ParentTrade = {
+        id: parentTrade.id,
+        tradeReference: parentTrade.trade_reference,
+        tradeType: parentTrade.trade_type,
+        counterparty: parentTrade.counterparty,
+        createdAt: new Date(parentTrade.created_at),
+        updatedAt: new Date(parentTrade.updated_at),
+      };
 
-      // Return the created trade (would normally fetch the complete trade)
-      return {
-        ...trade,
-        id: parent.id,
-        createdAt: new Date(parent.created_at),
-        updatedAt: new Date(parent.updated_at),
-        legs: [{
-          ...leg,
-          parentTradeId: parent.id,
-          buySell: leg.buy_sell,
-          product: leg.product,
-          incoTerm: leg.inco_term,
-          loadingPeriodStart: new Date(leg.loading_period_start),
-          loadingPeriodEnd: new Date(leg.loading_period_end),
-          pricingPeriodStart: new Date(leg.pricing_period_start),
-          pricingPeriodEnd: new Date(leg.pricing_period_end),
-          unit: leg.unit,
-          paymentTerm: leg.payment_term,
-          creditStatus: leg.credit_status,
-          formula: leg.pricing_formula,
-          mtmFormula: leg.mtm_formula,
-        } as PhysicalTradeLeg],
-      } as PhysicalTrade;
-    } catch (error) {
-      return this.handleError(error);
+      return transformedParentTrade;
+    } catch (error: any) {
+      console.error('Error in getParentTradeById:', error);
+      return null;
     }
   }
 
-  async updatePhysicalTrade(trade: PhysicalTrade): Promise<PhysicalTrade> {
+  /**
+   * Creates a new parent trade in the database.
+   * @param {Omit<ParentTrade, 'id' | 'createdAt' | 'updatedAt'>} trade The parent trade data to create.
+   * @returns {Promise<ParentTrade>} A promise that resolves to the newly created parent trade.
+   */
+  async createParentTrade(trade: Omit<ParentTrade, 'id' | 'createdAt' | 'updatedAt'>): Promise<ParentTrade> {
     try {
-      // Update the parent trade
-      const { error: parentError } = await supabase
+      // Generate a unique trade reference
+      const tradeReference = generateTradeReference();
+
+      const newTrade: DbParentTrade = {
+        id: uuidv4(),
+        trade_reference: tradeReference,
+        trade_type: trade.tradeType,
+        counterparty: trade.counterparty,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: createdTrade, error } = await supabase
+        .from('parent_trades')
+        .insert([newTrade])
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error creating parent trade:', error);
+        throw new Error(error.message);
+      }
+
+      // Transform the data to match the ParentTrade interface
+      const transformedCreatedTrade: ParentTrade = {
+        id: createdTrade.id,
+        tradeReference: createdTrade.trade_reference,
+        tradeType: createdTrade.trade_type,
+        counterparty: createdTrade.counterparty,
+        createdAt: new Date(createdTrade.created_at),
+        updatedAt: new Date(createdTrade.updated_at),
+      };
+
+      return transformedCreatedTrade;
+    } catch (error: any) {
+      console.error('Error in createParentTrade:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  /**
+   * Updates an existing parent trade in the database.
+   * @param {string} id The ID of the parent trade to update.
+   * @param {Partial<Omit<ParentTrade, 'createdAt' | 'updatedAt'>>} updates The updates to apply to the parent trade.
+   * @returns {Promise<ParentTrade | null>} A promise that resolves to the updated parent trade or null if not found.
+   */
+  async updateParentTrade(
+    id: string,
+    updates: Partial<Omit<ParentTrade, 'createdAt' | 'updatedAt'>>
+  ): Promise<ParentTrade | null> {
+    try {
+      const { data: updatedTrade, error } = await supabase
         .from('parent_trades')
         .update({
-          trade_reference: trade.tradeReference,
-          physical_type: trade.physicalType,
-          counterparty: trade.counterparty,
+          trade_type: updates.tradeType,
+          counterparty: updates.counterparty,
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', trade.id);
+        .eq('id', id)
+        .select('*')
+        .single();
 
-      if (parentError) {
-        return this.handleError(parentError);
+      if (error) {
+        console.error('Error updating parent trade:', error);
+        return null;
       }
 
-      // Update the main leg
-      // This would update the primary leg and handle additional legs as needed
-      
-      return trade; // Return the updated trade
-    } catch (error) {
-      return this.handleError(error);
+      if (!updatedTrade) {
+        console.log(`Parent trade with ID ${id} not found for update.`);
+        return null;
+      }
+
+      // Transform the data to match the ParentTrade interface
+      const transformedUpdatedTrade: ParentTrade = {
+        id: updatedTrade.id,
+        tradeReference: updatedTrade.trade_reference,
+        tradeType: updatedTrade.trade_type,
+        counterparty: updatedTrade.counterparty,
+        createdAt: new Date(updatedTrade.created_at),
+        updatedAt: new Date(updatedTrade.updated_at),
+      };
+
+      return transformedUpdatedTrade;
+    } catch (error: any) {
+      console.error('Error in updateParentTrade:', error);
+      return null;
     }
   }
 
-  async deletePhysicalTrade(id: string): Promise<void> {
+  /**
+   * Deletes a parent trade from the database.
+   * @param {string} id The ID of the parent trade to delete.
+   * @returns {Promise<boolean>} A promise that resolves to true if the parent trade was successfully deleted, or false otherwise.
+   */
+  async deleteParentTrade(id: string): Promise<boolean> {
     try {
-      // Delete the parent trade (cascade will delete legs)
       const { error } = await supabase
         .from('parent_trades')
         .delete()
         .eq('id', id);
 
       if (error) {
-        this.handleError(error);
+        console.error('Error deleting parent trade:', error);
+        return false;
       }
-    } catch (error) {
-      this.handleError(error);
+
+      return true;
+    } catch (error: any) {
+      console.error('Error in deleteParentTrade:', error);
+      return false;
     }
   }
 
-  // Paper Trade Methods
-  async getPaperTrades(): Promise<PaperTrade[]> {
+  /**
+   * Fetches all trade legs associated with a parent trade ID.
+   * @param {string} parentTradeId The ID of the parent trade to fetch trade legs for.
+   * @returns {Promise<TradeLeg[]>} A promise that resolves to an array of trade legs.
+   */
+  async getTradeLegsByParentTradeId(parentTradeId: string): Promise<TradeLeg[]> {
     try {
-      const { data: paperTrades, error: paperTradesError } = await supabase
-        .from('paper_trades')
+      const { data: tradeLegs, error } = await supabase
+        .from('trade_legs')
         .select('*')
+        .eq('parent_trade_id', parentTradeId)
         .order('created_at', { ascending: false });
 
-      if (paperTradesError) {
-        return this.handleError(paperTradesError);
+      if (error) {
+        console.error('Error fetching trade legs:', error);
+        throw new Error(error.message);
       }
 
-      const { data: paperTradeLegs, error: paperTradeLegsError } = await supabase
-        .from('paper_trade_legs')
+      // Transform the data to match the TradeLeg interface
+      const transformedTradeLegs: TradeLeg[] = tradeLegs.map((leg: DbTradeLeg) => ({
+        id: leg.id,
+        parentTradeId: leg.parent_trade_id,
+        legReference: leg.leg_reference,
+        buySell: leg.buy_sell,
+        product: leg.product,
+        quantity: leg.quantity,
+        unit: leg.unit,
+        price: leg.price,
+        createdAt: new Date(leg.created_at),
+        updatedAt: new Date(leg.updated_at),
+      }));
+
+      return transformedTradeLegs;
+    } catch (error: any) {
+      console.error('Error in getTradeLegsByParentTradeId:', error);
+      throw new Error(error.message);
+    }
+  }
+
+  /**
+   * Fetches a single trade leg by its ID.
+   * @param {string} id The ID of the trade leg to fetch.
+   * @returns {Promise<TradeLeg | null>} A promise that resolves to the trade leg or null if not found.
+   */
+  async getTradeLegById(id: string): Promise<TradeLeg | null> {
+    try {
+      const { data: tradeLeg, error } = await supabase
+        .from('trade_legs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('id', id)
+        .single();
 
-      if (paperTradeLegsError) {
-        return this.handleError(paperTradeLegsError);
+      if (error) {
+        console.error('Error fetching trade leg by ID:', error);
+        return null;
       }
 
-      // Transform the data from database format to application format
-      return paperTrades.map(trade => {
-        const legs = paperTradeLegs.filter(leg => leg.paper_trade_id === trade.id);
-        
-        // Create a PaperTrade object from the database data
-        const paperTrade: PaperTrade = {
-          id: trade.id,
-          tradeReference: trade.trade_reference,
-          tradeType: TradeType.Paper,
-          counterparty: trade.counterparty,
-          broker: trade.broker,
-          comment: trade.comment,
-          createdAt: new Date(trade.created_at),
-          updatedAt: new Date(trade.updated_at),
-          legs: legs.map(leg => ({
-            id: leg.id,
-            paperTradeId: leg.paper_trade_id,
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell,
-            product: leg.product,
-            period: leg.period,
-            tradingPeriod: leg.trading_period,
-            quantity: leg.quantity,
-            price: leg.price,
-            broker: leg.broker,
-            instrument: leg.instrument,
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : undefined,
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : undefined,
-            formula: leg.formula,
-            mtmFormula: leg.mtm_formula,
-            exposures: leg.exposures
-          }))
-        };
-        
-        return paperTrade;
-      });
-    } catch (error) {
-      return this.handleError(error);
+      if (!tradeLeg) {
+        console.log(`Trade leg with ID ${id} not found.`);
+        return null;
+      }
+
+      // Transform the data to match the TradeLeg interface
+      const transformedTradeLeg: TradeLeg = {
+        id: tradeLeg.id,
+        parentTradeId: tradeLeg.parent_trade_id,
+        legReference: tradeLeg.leg_reference,
+        buySell: tradeLeg.buy_sell,
+        product: tradeLeg.product,
+        quantity: tradeLeg.quantity,
+        unit: tradeLeg.unit,
+        price: tradeLeg.price,
+        createdAt: new Date(tradeLeg.created_at),
+        updatedAt: new Date(tradeLeg.updated_at),
+      };
+
+      return transformedTradeLeg;
+    } catch (error: any) {
+      console.error('Error in getTradeLegById:', error);
+      return null;
     }
   }
 
-  async createPaperTrade(trade: Omit<PaperTrade, 'id' | 'createdAt' | 'updatedAt'>): Promise<PaperTrade> {
+  /**
+   * Creates a new trade leg in the database.
+   * @param {Omit<TradeLeg, 'id' | 'createdAt' | 'updatedAt'>} leg The trade leg data to create.
+   * @returns {Promise<TradeLeg>} A promise that resolves to the newly created trade leg.
+   */
+  async createTradeLeg(leg: Omit<TradeLeg, 'id' | 'createdAt' | 'updatedAt'>): Promise<TradeLeg> {
     try {
-      // Implementation for creating a paper trade
-      return {} as PaperTrade; // Placeholder for now
-    } catch (error) {
-      return this.handleError(error);
+      // Get the parent trade to generate the leg reference
+      const parentTrade = await this.getParentTradeById(leg.parentTradeId);
+
+      if (!parentTrade) {
+        console.error(`Parent trade with ID ${leg.parentTradeId} not found.`);
+        throw new Error(`Parent trade with ID ${leg.parentTradeId} not found.`);
+      }
+
+      // Get the existing legs to generate the leg reference
+      const existingLegs = await this.getTradeLegsByParentTradeId(leg.parentTradeId);
+
+      // Generate a unique leg reference
+      const legReference = generateLegReference(parentTrade.tradeReference, existingLegs.length);
+
+      const newLeg: DbTradeLeg = {
+        id: uuidv4(),
+        parent_trade_id: leg.parentTradeId,
+        leg_reference: legReference,
+        buy_sell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        unit: leg.unit,
+        price: leg.price,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        // TODO: Remove these optional fields once the database is updated
+        instrument: null,
+        pricing_formula: null,
+        mtm_formula: null,
+        tolerance: null,
+        loading_period_start: null,
+        loading_period_end: null,
+        pricing_period_start: null,
+        pricing_period_end: null,
+        payment_term: null,
+        credit_status: null,
+        broker: null,
+        calculated_price: null,
+        last_calculation_date: null,
+        mtm_calculated_price: null,
+        mtm_last_calculation_date: null,
+        sustainability: null,
+        inco_term: null,
+        trading_period: null,
+      };
+
+      const { data: createdLeg, error } = await supabase
+        .from('trade_legs')
+        .insert([newLeg])
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error creating trade leg:', error);
+        throw new Error(error.message);
+      }
+
+      // Transform the data to match the TradeLeg interface
+      const transformedCreatedLeg: TradeLeg = {
+        id: createdLeg.id,
+        parentTradeId: createdLeg.parent_trade_id,
+        legReference: createdLeg.leg_reference,
+        buySell: createdLeg.buy_sell,
+        product: createdLeg.product,
+        quantity: createdLeg.quantity,
+        unit: createdLeg.unit,
+        price: createdLeg.price,
+        createdAt: new Date(createdLeg.created_at),
+        updatedAt: new Date(createdLeg.updated_at),
+      };
+
+      return transformedCreatedLeg;
+    } catch (error: any) {
+      console.error('Error in createTradeLeg:', error);
+      throw new Error(error.message);
     }
   }
 
-  async updatePaperTrade(trade: PaperTrade): Promise<PaperTrade> {
+  /**
+   * Updates an existing trade leg in the database.
+   * @param {string} id The ID of the trade leg to update.
+   * @param {Partial<Omit<TradeLeg, 'createdAt' | 'updatedAt' | 'parentTradeId' | 'legReference'>>} updates The updates to apply to the trade leg.
+   * @returns {Promise<TradeLeg | null>} A promise that resolves to the updated trade leg or null if not found.
+   */
+  async updateTradeLeg(
+    id: string,
+    updates: Partial<Omit<TradeLeg, 'createdAt' | 'updatedAt' | 'parentTradeId' | 'legReference'>>
+  ): Promise<TradeLeg | null> {
     try {
-      // Implementation for updating a paper trade
-      return trade; // Placeholder for now
-    } catch (error) {
-      return this.handleError(error);
+      const { data: updatedLeg, error } = await supabase
+        .from('trade_legs')
+        .update({
+          buy_sell: updates.buySell,
+          product: updates.product,
+          quantity: updates.quantity,
+          unit: updates.unit,
+          price: updates.price,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Error updating trade leg:', error);
+        return null;
+      }
+
+      if (!updatedLeg) {
+        console.log(`Trade leg with ID ${id} not found for update.`);
+        return null;
+      }
+
+      // Transform the data to match the TradeLeg interface
+      const transformedUpdatedLeg: TradeLeg = {
+        id: updatedLeg.id,
+        parentTradeId: updatedLeg.parent_trade_id,
+        legReference: updatedLeg.leg_reference,
+        buySell: updatedLeg.buy_sell,
+        product: updatedLeg.product,
+        quantity: updatedLeg.quantity,
+        unit: updatedLeg.unit,
+        price: updatedLeg.price,
+        createdAt: new Date(updatedLeg.created_at),
+        updatedAt: new Date(updatedLeg.updated_at),
+      };
+
+      return transformedUpdatedLeg;
+    } catch (error: any) {
+      console.error('Error in updateTradeLeg:', error);
+      return null;
     }
   }
 
-  async deletePaperTrade(id: string): Promise<void> {
+  /**
+   * Deletes a trade leg from the database.
+   * @param {string} id The ID of the trade leg to delete.
+   * @returns {Promise<boolean>} A promise that resolves to true if the trade leg was successfully deleted, or false otherwise.
+   */
+  async deleteTradeLeg(id: string): Promise<boolean> {
     try {
-      // Implementation for deleting a paper trade
-    } catch (error) {
-      this.handleError(error);
+      const { error } = await supabase
+        .from('trade_legs')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting trade leg:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error('Error in deleteTradeLeg:', error);
+      return false;
     }
   }
 }
-
-export const tradeService = new TradeService();
