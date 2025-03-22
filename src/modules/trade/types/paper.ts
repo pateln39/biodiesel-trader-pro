@@ -1,10 +1,11 @@
 
 import { z } from 'zod';
-import { BuySell, TradeType, tradeBaseSchema } from './common';
+import { BuySell, TradeType, tradeBaseSchema, PaperRelationshipType } from './common';
+import { PricingFormula } from './pricing';
 
 // Paper trade product types
 export enum PaperProduct {
-  FAME = 'FAME',
+  FAME = 'FAME0',
   RME = 'RME',
   UCOME = 'UCOME',
   UCO = 'UCO',
@@ -47,9 +48,15 @@ export const paperTradeLegSchema = z.object({
   instrument: z.string().optional(),
   pricingPeriodStart: z.date().optional(),
   pricingPeriodEnd: z.date().optional(),
-  formula: z.any().optional(), // Using any for now, ideally this would be a more specific type
+  formula: z.any().optional(), // Using any for now
   mtmFormula: z.any().optional(),
   exposures: z.any().optional(),
+  relationshipType: z.enum(['FP', 'DIFF', 'SPREAD']).optional(),
+  rightSide: z.object({
+    product: z.nativeEnum(PaperProduct),
+    quantity: z.number(),
+    period: z.string().optional(),
+  }).optional(),
 });
 
 export type PaperTradeLeg = z.infer<typeof paperTradeLegSchema>;

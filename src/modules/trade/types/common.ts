@@ -23,6 +23,19 @@ export enum Unit {
   LT = 'LT',
 }
 
+export type DisplayProduct = string; // For displaying formatted product names
+export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
+
+// Product relationship interface for the UI
+export interface ProductRelationship {
+  id: string;
+  product: string;
+  relationship_type: PaperRelationshipType;
+  paired_product: string | null;
+  default_opposite: string | null;
+  created_at?: string;
+}
+
 // Base schema for trades
 export const tradeBaseSchema = z.object({
   id: z.string().uuid(),

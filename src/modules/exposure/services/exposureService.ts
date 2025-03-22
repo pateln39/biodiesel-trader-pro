@@ -1,161 +1,185 @@
 
-import { Exposure, ExposureType } from '../types/exposure';
 import { supabase } from '@/integrations/supabase/client';
-
-// Interface to represent grouped exposure data by period
-interface ExposureByPeriod {
-  [period: string]: Exposure[];
-}
+import { ExposureData, ExposureReportItem, ExposureResult } from '../types/exposure';
 
 export class ExposureService {
   /**
-   * Calculate exposure across all trades
-   * This combines physical, pricing, and paper exposures
+   * Calculate exposures across all trade types
    */
-  async calculateExposure(): Promise<ExposureByPeriod> {
+  async calculateExposure(): Promise<ExposureData> {
     try {
-      // Fetch physical trades with their formulas
-      const { data: physicalLegs, error: physicalError } = await supabase
+      const exposureByMonth: Record<string, ExposureReportItem> = {};
+      const exposureByGrade: Record<string, ExposureReportItem> = {};
+      
+      // Get physical trades
+      const { data: physicalTrades, error: physicalError } = await supabase
         .from('trade_legs')
         .select(`
-          id,
-          parent_trade_id,
-          buy_sell,
+          id, 
           quantity,
+          product,
+          buy_sell,
           pricing_formula,
           mtm_formula,
-          pricing_period_start,
-          pricing_period_end
+          loading_period_start,
+          loading_period_end,
+          parent_trade_id
         `)
-        .not('pricing_formula', 'is', null);
+        .eq('parent_trade_id.trade_type', 'physical');
       
       if (physicalError) throw new Error(`Error fetching physical trades: ${physicalError.message}`);
       
-      // Fetch paper trades with their formulas
-      const { data: paperLegs, error: paperError } = await supabase
+      // Get paper trades
+      const { data: paperTrades, error: paperError } = await supabase
         .from('paper_trade_legs')
         .select(`
           id,
-          paper_trade_id,
-          buy_sell,
-          product,
           quantity,
-          period,
-          trading_period,
-          price,
-          exposures
-        `)
-        .not('exposures', 'is', null);
+          product,
+          buy_sell,
+          formula,
+          mtm_formula,
+          exposures,
+          pricing_period_start,
+          pricing_period_end,
+          paper_trade_id
+        `);
       
       if (paperError) throw new Error(`Error fetching paper trades: ${paperError.message}`);
-
-      // Group exposures by period
-      const exposuresByPeriod: ExposureByPeriod = {};
       
       // Process physical trades
-      for (const leg of physicalLegs) {
-        // Define the period based on pricing period
-        const startDate = new Date(leg.pricing_period_start);
-        const period = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+      for (const leg of physicalTrades || []) {
+        const month = this.getMonthFromDate(leg.loading_period_start);
+        const grade = leg.product;
+        const direction = leg.buy_sell === 'buy' ? 1 : -1;
+        const quantity = leg.quantity * direction;
         
-        // Get physical and pricing exposures from formula
-        const pricingFormula = leg.pricing_formula || {};
-        const mtmFormula = leg.mtm_formula || {};
+        // Handle physical exposure
+        this.addToExposure(exposureByMonth, month, 'physical', quantity, grade);
+        this.addToExposure(exposureByGrade, grade, 'physical', quantity);
         
-        // Initialize period if not exists
-        if (!exposuresByPeriod[period]) {
-          exposuresByPeriod[period] = [];
-        }
-        
-        // Add physical exposures
-        const physicalExposures = mtmFormula.exposures?.physical || pricingFormula.exposures?.physical || {};
-        for (const [instrument, quantity] of Object.entries(physicalExposures)) {
-          if (quantity === 0) continue;
-          
-          const exposureSign = leg.buy_sell === 'buy' ? 1 : -1;
-          const adjustedQuantity = Number(quantity) * exposureSign;
-          
-          exposuresByPeriod[period].push({
-            period,
-            instrument,
-            type: ExposureType.Physical,
-            quantity: adjustedQuantity
-          });
-        }
-        
-        // Add pricing exposures
-        const pricingExposures = pricingFormula.exposures?.pricing || {};
-        for (const [instrument, quantity] of Object.entries(pricingExposures)) {
-          if (quantity === 0) continue;
-          
-          const exposureSign = leg.buy_sell === 'buy' ? 1 : -1;
-          const adjustedQuantity = Number(quantity) * exposureSign;
-          
-          exposuresByPeriod[period].push({
-            period,
-            instrument,
-            type: ExposureType.Pricing,
-            quantity: adjustedQuantity
-          });
+        // Handle pricing exposure if formula exists
+        if (leg.pricing_formula) {
+          const formula = leg.pricing_formula;
+          if (typeof formula === 'object' && formula.exposures) {
+            this.processExposures(exposureByMonth, exposureByGrade, formula.exposures, month, grade);
+          }
         }
       }
       
       // Process paper trades
-      for (const leg of paperLegs) {
-        // Define period from the leg or use trading period
-        const period = leg.period || leg.trading_period || 'unknown';
+      for (const leg of paperTrades || []) {
+        const month = this.getMonthFromDate(leg.pricing_period_start);
+        const grade = leg.product;
+        const direction = leg.buy_sell === 'buy' ? 1 : -1;
+        const quantity = leg.quantity * direction;
         
-        // Initialize period if not exists
-        if (!exposuresByPeriod[period]) {
-          exposuresByPeriod[period] = [];
-        }
+        // Add paper exposure
+        this.addToExposure(exposureByMonth, month, 'paper', quantity, grade);
+        this.addToExposure(exposureByGrade, grade, 'paper', quantity);
         
-        // Add paper exposures
-        const paperExposures = leg.exposures?.paper || {};
-        for (const [instrument, quantity] of Object.entries(paperExposures)) {
-          if (quantity === 0) continue;
-          
-          const exposureSign = leg.buy_sell === 'buy' ? 1 : -1;
-          const adjustedQuantity = Number(quantity) * exposureSign;
-          
-          exposuresByPeriod[period].push({
-            period,
-            instrument,
-            type: ExposureType.Paper,
-            quantity: adjustedQuantity
-          });
-        }
-      }
-      
-      // Calculate net exposures
-      for (const period in exposuresByPeriod) {
-        const periodExposures = exposuresByPeriod[period];
-        const instrumentExposures: Record<string, number> = {};
-        
-        // Sum exposures by instrument
-        for (const exposure of periodExposures) {
-          if (exposure.type !== ExposureType.Net) {
-            const instrument = exposure.instrument;
-            instrumentExposures[instrument] = (instrumentExposures[instrument] || 0) + exposure.quantity;
+        // Add any exposures from the formula if available
+        if (leg.exposures) {
+          const exposures = leg.exposures;
+          if (typeof exposures === 'object' && exposures.paper) {
+            // Process paper exposures
+            Object.entries(exposures.paper).forEach(([instrument, value]) => {
+              this.addToExposure(exposureByMonth, month, 'paper', Number(value || 0), instrument);
+              this.addToExposure(exposureByGrade, instrument, 'paper', Number(value || 0));
+            });
           }
         }
-        
-        // Add net exposures
-        for (const [instrument, quantity] of Object.entries(instrumentExposures)) {
-          exposuresByPeriod[period].push({
-            period,
-            instrument,
-            type: ExposureType.Net,
-            quantity
-          });
-        }
       }
       
-      return exposuresByPeriod;
+      // Convert to arrays and calculate net exposures
+      const byMonth = Object.values(exposureByMonth).map(item => ({
+        ...item,
+        netExposure: item.physical + item.pricing + item.paper
+      }));
+      
+      const byGrade = Object.values(exposureByGrade).map(item => ({
+        ...item,
+        netExposure: item.physical + item.pricing + item.paper
+      }));
+      
+      // Calculate total exposure
+      const totalExposure = {
+        physical: byGrade.reduce((sum, item) => sum + item.physical, 0),
+        pricing: byGrade.reduce((sum, item) => sum + item.pricing, 0),
+        paper: byGrade.reduce((sum, item) => sum + item.paper, 0),
+        net: byGrade.reduce((sum, item) => sum + item.netExposure, 0)
+      };
+      
+      return {
+        byMonth,
+        byGrade,
+        totalExposure
+      };
     } catch (error) {
-      console.error('Error calculating exposure:', error);
+      console.error('Error calculating exposures:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Process exposures from a formula
+   */
+  private processExposures(
+    byMonth: Record<string, ExposureReportItem>,
+    byGrade: Record<string, ExposureReportItem>,
+    exposures: any,
+    month: string,
+    grade: string
+  ) {
+    // Handle physical exposures
+    if (exposures.physical) {
+      Object.entries(exposures.physical).forEach(([instrument, value]) => {
+        this.addToExposure(byMonth, month, 'physical', Number(value || 0), instrument);
+        this.addToExposure(byGrade, instrument, 'physical', Number(value || 0));
+      });
+    }
+    
+    // Handle pricing exposures
+    if (exposures.pricing) {
+      Object.entries(exposures.pricing).forEach(([instrument, value]) => {
+        this.addToExposure(byMonth, month, 'pricing', Number(value || 0), instrument);
+        this.addToExposure(byGrade, instrument, 'pricing', Number(value || 0));
+      });
+    }
+  }
+  
+  /**
+   * Add a value to the exposure record
+   */
+  private addToExposure(
+    exposures: Record<string, ExposureReportItem>,
+    key: string,
+    type: 'physical' | 'pricing' | 'paper',
+    value: number,
+    grade?: string
+  ) {
+    if (!exposures[key]) {
+      exposures[key] = {
+        month: key,
+        grade: grade || key,
+        physical: 0,
+        pricing: 0,
+        paper: 0,
+        netExposure: 0
+      };
+    }
+    
+    exposures[key][type] += value;
+  }
+  
+  /**
+   * Get month string from a date
+   */
+  private getMonthFromDate(dateStr?: string): string {
+    if (!dateStr) return 'Unknown';
+    
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
   }
 }
 

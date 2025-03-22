@@ -1,13 +1,10 @@
 
-// Re-export all types
-export * from './common';
-export * from './trade';
-export * from './pricing';
-export * from './physical';
-export * from './paper'; 
+// Re-export all types from new module locations
+export * from '@/core/types';
+export * from '@/modules/trade/types';
+export * from '@/modules/exposure/types';
+export * from '@/modules/operations/types';
+export * from '@/modules/finance/types'; 
 
-// Directly add the TradeType here to avoid circular dependency
-export enum TradeType {
-  Physical = 'physical',
-  Paper = 'paper',
-}
+// Re-export TradeType directly to avoid circular dependency
+export { TradeType } from '@/modules/trade/types';

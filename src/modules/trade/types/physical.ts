@@ -1,11 +1,12 @@
 
 import { z } from 'zod';
 import { BuySell, PhysicalType, TradeType, Unit, tradeBaseSchema } from './common';
+import { PricingFormula } from './pricing';
 
 // Product types
 export enum Product {
   UCOME = 'UCOME',
-  FAME = 'FAME',
+  FAME = 'FAME0',
   RME = 'RME',
   SME = 'SME',
   TME = 'TME',
@@ -44,20 +45,6 @@ export enum CreditStatus {
   Prepay = 'prepay',
 }
 
-// Formula component for pricing
-export interface FormulaComponent {
-  instrument: string;
-  percentage: number;
-  operation: 'add' | 'subtract' | 'multiply' | 'divide';
-  value: number;
-}
-
-// Formula definition
-export interface Formula {
-  components: FormulaComponent[];
-  premiumValue: number;
-}
-
 // Physical trade leg schema
 export const physicalTradeLegSchema = z.object({
   id: z.string().uuid(),
@@ -76,7 +63,7 @@ export const physicalTradeLegSchema = z.object({
   unit: z.nativeEnum(Unit),
   paymentTerm: z.nativeEnum(PaymentTerm),
   creditStatus: z.nativeEnum(CreditStatus),
-  formula: z.any(), // Using any for now, ideally this would be a more specific type
+  formula: z.any(), // Using any for now for formula
   mtmFormula: z.any().optional(),
 });
 
@@ -99,7 +86,7 @@ export const physicalTradeSchema = tradeBaseSchema.extend({
   unit: z.nativeEnum(Unit),
   paymentTerm: z.nativeEnum(PaymentTerm),
   creditStatus: z.nativeEnum(CreditStatus),
-  formula: z.any(), // Using any for now, ideally this would be a more specific type
+  formula: z.any(), // Using any for now for formula
   mtmFormula: z.any().optional(),
   legs: z.array(physicalTradeLegSchema),
 });

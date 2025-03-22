@@ -31,8 +31,8 @@ export class MTMService {
       // Calculate MTM for physical trades
       const mtmCalculations: MTMCalculation[] = [];
       
-      for (const trade of physicalTrades) {
-        for (const leg of trade.trade_legs) {
+      for (const trade of physicalTrades || []) {
+        for (const leg of trade.trade_legs || []) {
           // Skip if no formula is defined
           if (!leg.mtm_formula && !leg.pricing_formula) continue;
           
@@ -42,7 +42,10 @@ export class MTMService {
           // Skip if formula is still null
           if (!formula) continue;
           
-          const formulaString = formulaToDisplayString(formula.tokens || []);
+          const formulaString = typeof formula === 'object' && formula.tokens 
+            ? formulaToDisplayString(formula.tokens) 
+            : '';
+            
           const mtmValue = this.calculateMTMValue(leg.quantity, formula);
           
           mtmCalculations.push({
@@ -75,10 +78,13 @@ export class MTMService {
     // Simplified calculation for demo purposes
     // In a real system, this would evaluate the formula with current market prices
     try {
-      const exposureTotal = Object.values(formula.exposures?.physical || {})
-        .reduce((sum: number, val: any) => sum + Number(val), 0);
-      
-      return quantity * 10 + Math.abs(exposureTotal); // Simplified placeholder calculation
+      if (typeof formula === 'object' && formula.exposures && formula.exposures.physical) {
+        const exposureTotal = Object.values(formula.exposures.physical)
+          .reduce((sum: number, val: any) => sum + Number(val || 0), 0);
+        
+        return quantity * 10 + Math.abs(exposureTotal); // Simplified placeholder calculation
+      }
+      return quantity * 10; // Fallback calculation if no exposures
     } catch (error) {
       console.error('Error in MTM calculation:', error);
       return 0;

@@ -63,6 +63,95 @@ export const auditLogSchema = z.object({
 
 export type AuditLog = z.infer<typeof auditLogSchema>;
 
-// Common business types that are used across multiple modules
+// Common business types
 export type Instrument = string;
 export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
+
+// Common database interfaces
+export interface DbParentTrade {
+  id: string;
+  trade_reference: string;
+  trade_type: string;
+  physical_type?: string;
+  counterparty: string;
+  comment?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbTradeLeg {
+  id: string;
+  parent_trade_id: string;
+  leg_reference: string;
+  buy_sell: string;
+  product: string;
+  sustainability?: string;
+  inco_term?: string;
+  quantity: number;
+  tolerance?: number;
+  loading_period_start?: string;
+  loading_period_end?: string;
+  pricing_period_start?: string;
+  pricing_period_end?: string;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  pricing_formula?: any;
+  mtm_formula?: any;
+  broker?: string;
+  instrument?: string;
+  price?: number;
+  calculated_price?: number;
+  last_calculation_date?: string;
+  mtm_calculated_price?: number;
+  mtm_last_calculation_date?: string;
+  created_at: string;
+  updated_at: string;
+  trading_period?: string;
+}
+
+// Base interfaces for trades
+export interface ParentTrade {
+  id: string;
+  tradeReference: string;
+  tradeType: string;
+  counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Trade extends ParentTrade {
+  id: string;
+  tradeReference: string;
+  tradeType: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Movement base interface
+export interface BaseMovement {
+  id: string;
+  tradeId: string;
+  legId?: string;
+  scheduledQuantity: number;
+  nominatedDate?: Date;
+  vesselName?: string;
+  loadport?: string;
+  inspector?: string;
+  blDate?: Date;
+  actualQuantity?: number;
+  status: "scheduled" | "in-progress" | "completed";
+}
+
+// Price types for pricing data
+export interface PricePoint {
+  date: Date;
+  price: number;
+}
+
+export interface PriceRange {
+  startDate: Date;
+  endDate: Date;
+  points: PricePoint[];
+  average: number;
+}
