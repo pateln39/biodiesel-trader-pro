@@ -18,7 +18,7 @@ This document outlines the step-by-step plan to migrate our current CTRM applica
 - [x] 1.3 Migrate existing hooks to appropriate modules
   - [x] Move trade-related hooks to `/src/modules/trade/hooks`
   - [x] Move reference data hooks to `/src/core/hooks`
-  - [ ] Ensure all imports are updated without breaking functionality
+  - [x] Ensure all imports are updated without breaking functionality
 
 - [ ] 1.4 Migrate existing components to domain modules
   - [ ] Move trade-related components to `/src/modules/trade/components`
