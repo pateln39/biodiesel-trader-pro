@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -67,7 +68,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   isEditMode = false,
   initialData
 }) => {
-  const { counterparties, sustainabilityOptions, creditStatusOptions } = useReferenceData();
+  const referenceData = useReferenceData();
+  
+  // Access the correct reference data arrays
+  const counterparties = referenceData.counterparties || [];
+  const sustainability = referenceData.sustainability || [];
+  const creditStatus = referenceData.creditStatus || [];
+  
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
   
@@ -266,9 +273,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
               <SelectValue placeholder="Select counterparty" />
             </SelectTrigger>
             <SelectContent>
-              {counterparties.map((name) => (
-                <SelectItem key={name} value={name}>
-                  {name}
+              {counterparties.map((cp: any) => (
+                <SelectItem key={cp} value={cp}>
+                  {cp}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -353,7 +360,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <SelectValue placeholder="Select sustainability" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sustainabilityOptions.map((option) => (
+                      {sustainability.map((option: string) => (
                         <SelectItem key={option} value={option}>
                           {option}
                         </SelectItem>
@@ -393,7 +400,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <SelectValue placeholder="Select credit status" />
                     </SelectTrigger>
                     <SelectContent>
-                      {creditStatusOptions.map((status) => (
+                      {creditStatus.map((status: string) => (
                         <SelectItem key={status} value={status.toLowerCase()}>
                           {status}
                         </SelectItem>
