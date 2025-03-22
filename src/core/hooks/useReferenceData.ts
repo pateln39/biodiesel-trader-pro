@@ -20,23 +20,35 @@ const fetchReferenceData = async (
   tableName: ReferenceTableName
 ): Promise<string[]> => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from(tableName)
-      .select('*')
-      .order('name', { ascending: true });
+      .select('*');
+    
+    // Apply appropriate sorting based on table structure
+    if (tableName === 'pricing_instruments') {
+      query = query.order('display_name', { ascending: true });
+    } else if (tableName === 'paper_trade_products') {
+      query = query.order('product_code', { ascending: true });
+    } else if (tableName === 'trading_periods') {
+      query = query.order('period_code', { ascending: true });
+    } else {
+      query = query.order('name', { ascending: true });
+    }
+    
+    const { data, error } = await query;
       
     if (error) {
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
     }
     
-    // Extract the name property from each item to return a simple string array
+    // Extract the appropriate field from each item to return a simple string array
     // This is what most components expect for dropdowns
     if (tableName === 'pricing_instruments') {
-      return (data || []).map(item => item.display_name || item.name || '');
+      return (data || []).map(item => item.display_name || '');
     } else if (tableName === 'paper_trade_products') {
-      return (data || []).map(item => item.product_code || item.name || '');
+      return (data || []).map(item => product_code ? item.product_code : (item.display_name || ''));
     } else if (tableName === 'trading_periods') {
-      return (data || []).map(item => item.period_code || item.name || '');
+      return (data || []).map(item => item.period_code || '');
     } else {
       return (data || []).map(item => item.name || '');
     }
