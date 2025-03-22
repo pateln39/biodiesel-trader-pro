@@ -8,16 +8,11 @@ const fetchReferenceData = async <T extends Record<string, any>>(
   sortField: keyof T = 'name' as keyof T
 ): Promise<T[]> => {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from(tableName)
-      .select('*');
+      .select('*')
+      .order(sortField as string, { ascending: true });
       
-    if (sortField) {
-      query = query.order(sortField as string, { ascending: true });
-    }
-      
-    const { data, error } = await query;
-    
     if (error) {
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
     }
