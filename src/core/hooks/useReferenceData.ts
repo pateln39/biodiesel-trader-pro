@@ -16,15 +16,14 @@ type ReferenceTableName =
   'trading_periods';
 
 // Generic function to fetch reference data
-const fetchReferenceData = async <T extends Record<string, any>>(
-  tableName: ReferenceTableName,
-  sortField: keyof T = 'name' as keyof T
+const fetchReferenceData = async (
+  tableName: ReferenceTableName
 ): Promise<string[]> => {
   try {
     const { data, error } = await supabase
       .from(tableName)
       .select('*')
-      .order(sortField as string, { ascending: true });
+      .order('name', { ascending: true });
       
     if (error) {
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
@@ -32,13 +31,12 @@ const fetchReferenceData = async <T extends Record<string, any>>(
     
     // Extract the name property from each item to return a simple string array
     // This is what most components expect for dropdowns
-    // For tables with a different naming convention, handle specially
     if (tableName === 'pricing_instruments') {
-      return (data || []).map(item => item.display_name || '');
+      return (data || []).map(item => item.display_name || item.name || '');
     } else if (tableName === 'paper_trade_products') {
-      return (data || []).map(item => item.product_code || '');
+      return (data || []).map(item => item.product_code || item.name || '');
     } else if (tableName === 'trading_periods') {
-      return (data || []).map(item => item.period_code || '');
+      return (data || []).map(item => item.period_code || item.name || '');
     } else {
       return (data || []).map(item => item.name || '');
     }

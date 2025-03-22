@@ -59,22 +59,27 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   useEffect(() => {
     const fetchBrokers = async () => {
-      const { data, error } = await supabase
-        .from('brokers')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
+      try {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+          
+        if (error) {
+          toast.error('Failed to load brokers', {
+            description: error.message
+          });
+          return;
+        }
         
-      if (error) {
-        toast.error('Failed to load brokers', {
-          description: error.message
-        });
-        return;
-      }
-      
-      setBrokers(data || []);
-      if (data && data.length > 0 && !selectedBroker) {
-        setSelectedBroker(data[0].id);
+        setBrokers(data || []);
+        if (data && data.length > 0 && !selectedBroker) {
+          setSelectedBroker(data[0].id);
+        }
+      } catch (err: any) {
+        console.error('Error fetching brokers:', err);
+        toast.error('An unexpected error occurred while loading brokers');
       }
     };
     
