@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -164,7 +165,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       broker: brokerName,
       legs: tradeLegs.map((leg, index) => {
         const legReference = initialData?.legs?.[index]?.legReference || 
-                            generateLegReference(tradeReference, index);
+                           generateLegReference(tradeReference, index);
                             
         return {
           ...leg,

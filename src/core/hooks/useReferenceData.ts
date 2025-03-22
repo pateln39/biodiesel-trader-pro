@@ -19,7 +19,7 @@ type ReferenceTableName =
 const fetchReferenceData = async <T extends Record<string, any>>(
   tableName: ReferenceTableName,
   sortField: keyof T = 'name' as keyof T
-): Promise<T[]> => {
+): Promise<string[]> => {
   try {
     const { data, error } = await supabase
       .from(tableName)
@@ -30,7 +30,18 @@ const fetchReferenceData = async <T extends Record<string, any>>(
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
     }
     
-    return data as T[] || [];
+    // Extract the name property from each item to return a simple string array
+    // This is what most components expect for dropdowns
+    // For tables with a different naming convention, handle specially
+    if (tableName === 'pricing_instruments') {
+      return (data || []).map(item => item.display_name || '');
+    } else if (tableName === 'paper_trade_products') {
+      return (data || []).map(item => item.product_code || '');
+    } else if (tableName === 'trading_periods') {
+      return (data || []).map(item => item.period_code || '');
+    } else {
+      return (data || []).map(item => item.name || '');
+    }
   } catch (error: any) {
     console.error(`Error in fetchReferenceData for ${tableName}:`, error);
     throw new Error(error.message);
@@ -169,7 +180,6 @@ export const useReferenceData = () => {
       products.error || 
       sustainability.error || 
       incoTerms.error || 
-      paymentTerms.error || 
       creditStatus.error || 
       pricingInstruments.error || 
       brokers.error || 

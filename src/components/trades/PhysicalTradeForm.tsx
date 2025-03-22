@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -70,7 +69,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 }) => {
   const referenceData = useReferenceData();
   
-  // Access the correct reference data arrays
   const counterparties = referenceData.counterparties || [];
   const sustainability = referenceData.sustainability || [];
   const creditStatus = referenceData.creditStatus || [];
@@ -273,7 +271,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
               <SelectValue placeholder="Select counterparty" />
             </SelectTrigger>
             <SelectContent>
-              {counterparties.map((cp: any) => (
+              {counterparties.map((cp: string) => (
                 <SelectItem key={cp} value={cp}>
                   {cp}
                 </SelectItem>
@@ -394,14 +392,14 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                   <Label htmlFor={`leg-${legIndex}-credit-status`}>Credit Status</Label>
                   <Select 
                     value={leg.creditStatus} 
-                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value)}
+                    onValueChange={(value) => updateLeg(legIndex, 'creditStatus', value as CreditStatus)}
                   >
                     <SelectTrigger id={`leg-${legIndex}-credit-status`}>
                       <SelectValue placeholder="Select credit status" />
                     </SelectTrigger>
                     <SelectContent>
                       {creditStatus.map((status: string) => (
-                        <SelectItem key={status} value={status.toLowerCase()}>
+                        <SelectItem key={status} value={status}>
                           {status}
                         </SelectItem>
                       ))}
