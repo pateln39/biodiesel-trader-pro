@@ -1,6 +1,5 @@
 
-import { TradeType } from './index';
-
+// Common trade types used throughout the application
 export type BuySell = "buy" | "sell";
 export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
 export type DisplayProduct = string; // For displaying formatted product names

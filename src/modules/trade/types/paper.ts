@@ -2,20 +2,34 @@
 import { z } from 'zod';
 import { BuySell, TradeType, tradeBaseSchema } from './common';
 
-// Paper trade enums
+// Paper trade product types
 export enum PaperProduct {
-  FAME0 = 'FAME0',
-  FAME_RED_II = 'FAME_RED_II', 
-  UCOME = 'UCOME',
-  UCOME_RED_II = 'UCOME_RED_II',
+  FAME = 'FAME',
   RME = 'RME',
-  RME_RED_II = 'RME_RED_II',
-  SME = 'SME',
-  SME_RED_II = 'SME_RED_II',
+  UCOME = 'UCOME',
+  UCO = 'UCO',
+  SPREAD = 'SPREAD',
   PME = 'PME',
-  PME_RED_II = 'PME_RED_II',
-  TME = 'TME',
-  TME_RED_II = 'TME_RED_II',
+}
+
+// Broker enum
+export enum Broker {
+  Direct = 'direct',
+  BrokerA = 'broker_a',
+  BrokerB = 'broker_b',
+  BrokerC = 'broker_c',
+}
+
+// Trading period
+export enum TradingPeriod {
+  Spot = 'spot',
+  M1 = 'm1',
+  M2 = 'm2',
+  M3 = 'm3',
+  Q1 = 'q1',
+  Q2 = 'q2',
+  Q3 = 'q3',
+  Q4 = 'q4',
 }
 
 // Paper trade leg schema
@@ -24,19 +38,17 @@ export const paperTradeLegSchema = z.object({
   paperTradeId: z.string().uuid(),
   legReference: z.string(),
   buySell: z.nativeEnum(BuySell),
-  product: z.string(),
+  product: z.nativeEnum(PaperProduct),
   period: z.string().optional(),
+  tradingPeriod: z.string().optional(),
   quantity: z.number(),
   price: z.number().optional(),
-  formula: z.any().optional(),
-  mtmFormula: z.any().optional(),
-  pricingPeriodStart: z.date().optional(),
-  pricingPeriodEnd: z.date().optional(),
   broker: z.string().optional(),
   instrument: z.string().optional(),
-  tradingPeriod: z.string().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  pricingPeriodStart: z.date().optional(),
+  pricingPeriodEnd: z.date().optional(),
+  formula: z.any().optional(), // Using any for now, ideally this would be a more specific type
+  mtmFormula: z.any().optional(),
   exposures: z.any().optional(),
 });
 

@@ -62,3 +62,7 @@ export const auditLogSchema = z.object({
 });
 
 export type AuditLog = z.infer<typeof auditLogSchema>;
+
+// Common business types that are used across multiple modules
+export type Instrument = string;
+export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";

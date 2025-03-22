@@ -30,7 +30,7 @@ export enum PaymentTerm {
   ThirtyDays = '30 days',
   SixtyDays = '60 days',
   NinetyDays = '90 days',
-  OnHundredTwentyDays = '120 days',
+  OneHundredTwentyDays = '120 days',
   Cash = 'cash',
   CashAgainstDocuments = 'CAD',
 }

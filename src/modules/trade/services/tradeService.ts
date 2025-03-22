@@ -1,7 +1,14 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { BaseApiService } from '@/core/api';
-import { Trade, PhysicalTrade, PhysicalTradeLeg, TradeType, PaperTrade, PaperTradeLeg } from '../types';
+import { 
+  Trade, 
+  PhysicalTrade, 
+  PhysicalTradeLeg, 
+  TradeType, 
+  PaperTrade, 
+  PaperTradeLeg 
+} from '../types';
 
 class TradeService extends BaseApiService {
   // Physical Trade Methods
@@ -27,7 +34,6 @@ class TradeService extends BaseApiService {
       }
 
       // Transform the data from database format to application format
-      // This transformation code would be moved to a separate utility function
       return parentTrades
         .filter(parent => parent.trade_type === 'physical')
         .map(parent => {
@@ -39,8 +45,54 @@ class TradeService extends BaseApiService {
           }
           
           // Create a PhysicalTrade object from the database data
-          // This would be implemented fully with proper transformation
-          return {} as PhysicalTrade; // Placeholder for now
+          const physicalTrade: PhysicalTrade = {
+            id: parent.id,
+            tradeReference: parent.trade_reference,
+            tradeType: TradeType.Physical,
+            physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
+            counterparty: parent.counterparty,
+            createdAt: new Date(parent.created_at),
+            updatedAt: new Date(parent.updated_at),
+            // Add main leg details
+            buySell: firstLeg.buy_sell,
+            product: firstLeg.product,
+            sustainability: firstLeg.sustainability || '',
+            incoTerm: firstLeg.inco_term || 'FOB',
+            quantity: firstLeg.quantity,
+            tolerance: firstLeg.tolerance || 0,
+            loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
+            loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
+            pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+            pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+            unit: firstLeg.unit || 'MT',
+            paymentTerm: firstLeg.payment_term || '30 days',
+            creditStatus: firstLeg.credit_status || 'pending',
+            formula: firstLeg.pricing_formula,
+            mtmFormula: firstLeg.mtm_formula,
+            // Add all legs including the first one
+            legs: legs.map(leg => ({
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell,
+              product: leg.product,
+              sustainability: leg.sustainability || '',
+              incoTerm: leg.inco_term || 'FOB',
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              unit: leg.unit || 'MT',
+              paymentTerm: leg.payment_term || '30 days',
+              creditStatus: leg.credit_status || 'pending',
+              formula: leg.pricing_formula,
+              mtmFormula: leg.mtm_formula
+            })),
+          };
+          
+          return physicalTrade;
         });
     } catch (error) {
       return this.handleError(error);
@@ -190,13 +242,40 @@ class TradeService extends BaseApiService {
       }
 
       // Transform the data from database format to application format
-      // This transformation code would be moved to a separate utility function
       return paperTrades.map(trade => {
         const legs = paperTradeLegs.filter(leg => leg.paper_trade_id === trade.id);
         
         // Create a PaperTrade object from the database data
-        // This would be implemented fully with proper transformation
-        return {} as PaperTrade; // Placeholder for now
+        const paperTrade: PaperTrade = {
+          id: trade.id,
+          tradeReference: trade.trade_reference,
+          tradeType: TradeType.Paper,
+          counterparty: trade.counterparty,
+          broker: trade.broker,
+          comment: trade.comment,
+          createdAt: new Date(trade.created_at),
+          updatedAt: new Date(trade.updated_at),
+          legs: legs.map(leg => ({
+            id: leg.id,
+            paperTradeId: leg.paper_trade_id,
+            legReference: leg.leg_reference,
+            buySell: leg.buy_sell,
+            product: leg.product,
+            period: leg.period,
+            tradingPeriod: leg.trading_period,
+            quantity: leg.quantity,
+            price: leg.price,
+            broker: leg.broker,
+            instrument: leg.instrument,
+            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : undefined,
+            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : undefined,
+            formula: leg.formula,
+            mtmFormula: leg.mtm_formula,
+            exposures: leg.exposures
+          }))
+        };
+        
+        return paperTrade;
       });
     } catch (error) {
       return this.handleError(error);

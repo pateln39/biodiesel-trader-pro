@@ -1,13 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { BaseApiService } from '@/core/api';
-import { 
+import type { 
   Counterparty, 
   Product, 
-  PricingInstrument, 
+  PricingInstrument,
   HistoricalPrice, 
   ForwardPrice 
-} from '../types';
+} from '../types/reference-data';
 
 class ReferenceDataService extends BaseApiService {
   // Counterparty methods

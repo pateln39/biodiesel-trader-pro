@@ -1,7 +1,9 @@
 
+// Common types and interfaces shared across the application
 export type Instrument = string;
 export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
 
+// Database interfaces for parent trades
 export interface DbParentTrade {
   id: string;
   trade_reference: string;
@@ -12,6 +14,7 @@ export interface DbParentTrade {
   updated_at: string;
 }
 
+// Database interfaces for trade legs
 export interface DbTradeLeg {
   id: string;
   parent_trade_id: string;
@@ -35,13 +38,14 @@ export interface DbTradeLeg {
   broker?: string;
   instrument?: string;
   price?: number;
+  mtm_formula?: any;
 }
 
 // Base trade interface (parent trade)
 export interface ParentTrade {
   id: string;
   tradeReference: string;
-  tradeType: import('./index').TradeType;
+  tradeType: string; // Use string to avoid circular imports
   counterparty: string;
   createdAt: Date;
   updatedAt: Date;
@@ -51,11 +55,12 @@ export interface ParentTrade {
 export interface Trade {
   id: string;
   tradeReference: string;
-  tradeType: import('./index').TradeType;
+  tradeType: string; // Use string to avoid circular imports
   createdAt: Date;
   updatedAt: Date;
 }
 
+// Movement interface
 export interface Movement {
   id: string;
   tradeId: string;
@@ -70,6 +75,7 @@ export interface Movement {
   status: "scheduled" | "in-progress" | "completed";
 }
 
+// Audit log interface
 export interface AuditLog {
   id: string;
   timestamp: Date;
@@ -81,6 +87,7 @@ export interface AuditLog {
   userId: string;
 }
 
+// Exposure report item
 export interface ExposureReportItem {
   month: string;
   grade: string;
