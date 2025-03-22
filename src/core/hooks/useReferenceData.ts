@@ -2,9 +2,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define valid table names to satisfy TypeScript
+type ReferenceTableName = 
+  'counterparties' | 
+  'products' | 
+  'sustainability' | 
+  'inco_terms' | 
+  'payment_terms' | 
+  'credit_status' | 
+  'pricing_instruments' | 
+  'brokers' | 
+  'paper_trade_products' | 
+  'trading_periods';
+
 // Generic function to fetch reference data
 const fetchReferenceData = async <T extends Record<string, any>>(
-  tableName: string,
+  tableName: ReferenceTableName,
   sortField: keyof T = 'name' as keyof T
 ): Promise<T[]> => {
   try {
@@ -17,7 +30,7 @@ const fetchReferenceData = async <T extends Record<string, any>>(
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
     }
     
-    return data || [];
+    return data as T[] || [];
   } catch (error: any) {
     console.error(`Error in fetchReferenceData for ${tableName}:`, error);
     throw new Error(error.message);

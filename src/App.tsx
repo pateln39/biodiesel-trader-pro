@@ -5,20 +5,29 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import TradesPage from "./pages/trades/TradesPage";
-import TradeEntryPage from "./pages/trades/TradeEntryPage";
-import OperationsPage from "./pages/operations/OperationsPage";
-import ExposurePage from "./pages/risk/ExposurePage";
-import AuditLogPage from "./pages/audit/AuditLogPage";
-import ProfilePage from "./pages/profile/ProfilePage";
-import PricingAdminPage from "./pages/pricing/PricingAdminPage";
-import MTMPage from "./pages/risk/MTMPage";
-import PNLPage from "./pages/risk/PNLPage";
-import PricesPage from "./pages/risk/PricesPage";
 
-const queryClient = new QueryClient();
+// Import pages from module pages
+import Index from "@/modules/trade/pages/Index";
+import NotFound from "@/modules/admin/pages/NotFound";
+import TradesPage from "@/modules/trade/pages/TradesPage";
+import TradeEntryPage from "@/modules/trade/pages/TradeEntryPage";
+import OperationsPage from "@/modules/operations/pages/OperationsPage";
+import ExposurePage from "@/modules/exposure/pages/ExposurePage";
+import AuditLogPage from "@/modules/admin/pages/AuditLogPage";
+import ProfilePage from "@/modules/admin/pages/ProfilePage";
+import PricingAdminPage from "@/modules/admin/pages/PricingAdminPage";
+import MTMPage from "@/modules/exposure/pages/MTMPage";
+import PNLPage from "@/modules/exposure/pages/PNLPage";
+import PricesPage from "@/modules/exposure/pages/PricesPage";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

@@ -20,15 +20,15 @@ This document outlines the step-by-step plan to migrate our current CTRM applica
   - [x] Move reference data hooks to `/src/core/hooks`
   - [x] Ensure all imports are updated without breaking functionality
 
-- [ ] 1.4 Migrate existing components to domain modules
-  - [ ] Move trade-related components to `/src/modules/trade/components`
-  - [ ] Move UI components to `/src/core/components` if shared across domains
-  - [ ] Update imports without breaking functionality
+- [x] 1.4 Migrate existing components to domain modules
+  - [x] Move trade-related components to `/src/modules/trade/components`
+  - [x] Move UI components to `/src/core/components` if shared across domains
+  - [x] Update imports without breaking functionality
 
-- [ ] 1.5 Restructure pages to align with modules
-  - [ ] Move trade pages to `/src/modules/trade/pages`
-  - [ ] Move operations pages to `/src/modules/operations/pages`
-  - [ ] Update routing configuration to reflect new structure
+- [x] 1.5 Restructure pages to align with modules
+  - [x] Move trade pages to `/src/modules/trade/pages`
+  - [x] Move operations pages to `/src/modules/operations/pages`
+  - [x] Update routing configuration to reflect new structure
 
 ## Phase 2: Database Schema Enhancement
 
