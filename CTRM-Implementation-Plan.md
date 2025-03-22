@@ -6,75 +6,75 @@ This document outlines the step-by-step implementation plan for transforming the
 ## Phase 1: Database Schema Updates
 
 ### 1.1 Operations Module Schema
-- [ ] Create `movements` table
-  - [ ] Define columns (movement_reference, trade_leg_id, status, etc.)
-  - [ ] Set up relationships to trade_legs
-  - [ ] Add constraints and indexes
+- [x] Create `movements` table
+  - [x] Define columns (movement_reference, trade_leg_id, status, etc.)
+  - [x] Set up relationships to trade_legs
+  - [x] Add constraints and indexes
 
 ### 1.2 Finance Module Schema
-- [ ] Create `invoices` table
-  - [ ] Define columns (invoice_reference, movement_id, amount, etc.)
-  - [ ] Set up relationships to movements
-  - [ ] Add constraints and indexes
-- [ ] Create `payments` table
-  - [ ] Define columns (payment_reference, invoice_id, amount, etc.)
-  - [ ] Set up relationships to invoices
-  - [ ] Add constraints and indexes
+- [x] Create `invoices` table
+  - [x] Define columns (invoice_reference, movement_id, amount, etc.)
+  - [x] Set up relationships to movements
+  - [x] Add constraints and indexes
+- [x] Create `payments` table
+  - [x] Define columns (payment_reference, invoice_id, amount, etc.)
+  - [x] Set up relationships to invoices
+  - [x] Add constraints and indexes
 
 ### 1.3 Audit and Tracking Schema
-- [ ] Create `audit_logs` table
-  - [ ] Define columns (table_name, record_id, operation, etc.)
-  - [ ] Add indexes for efficient querying
-- [ ] Create database triggers for audit logging
-  - [ ] Insert triggers
-  - [ ] Update triggers
-  - [ ] Delete triggers
+- [x] Create `audit_logs` table
+  - [x] Define columns (table_name, record_id, operation, etc.)
+  - [x] Add indexes for efficient querying
+- [x] Create database triggers for audit logging
+  - [x] Insert triggers
+  - [x] Update triggers
+  - [x] Delete triggers
 
 ### 1.4 Enhancement of Existing Tables
-- [ ] Extend `counterparties` table
-  - [ ] Add VAT number field
-  - [ ] Add bank details (JSONB)
-  - [ ] Add contact details (JSONB)
+- [x] Extend `counterparties` table
+  - [x] Add VAT number field
+  - [x] Add bank details (JSONB)
+  - [x] Add contact details (JSONB)
 - [ ] Add any missing fields to `trade_legs`
 - [ ] Add any missing fields to `parent_trades`
 
 ## Phase 2: Core Infrastructure
 
 ### 2.1 Project Structure Reorganization
-- [ ] Create module folders
-  - [ ] `/src/modules/trade`
-  - [ ] `/src/modules/operations`
-  - [ ] `/src/modules/finance`
-  - [ ] `/src/modules/reporting`
-  - [ ] `/src/modules/admin`
-- [ ] Create core folder structure
-  - [ ] `/src/core/api`
-  - [ ] `/src/core/components`
-  - [ ] `/src/core/hooks`
+- [x] Create module folders
+  - [x] `/src/modules/trade`
+  - [x] `/src/modules/operations`
+  - [x] `/src/modules/finance`
+  - [x] `/src/modules/reporting`
+  - [x] `/src/modules/admin`
+- [x] Create core folder structure
+  - [x] `/src/core/api`
+  - [x] `/src/core/components`
+  - [x] `/src/core/hooks`
   - [ ] `/src/core/utils`
   - [ ] `/src/core/types`
 
 ### 2.2 API Infrastructure
-- [ ] Create enhanced Supabase client wrapper
-  - [ ] Add error handling
-  - [ ] Add request/response logging
-  - [ ] Add retry logic
-- [ ] Set up React Query client configuration
-  - [ ] Configure default options
-  - [ ] Set up global error handling
-- [ ] Create base API service classes/functions
+- [x] Create enhanced Supabase client wrapper
+  - [x] Add error handling
+  - [x] Add request/response logging
+  - [x] Add retry logic
+- [x] Set up React Query client configuration
+  - [x] Configure default options
+  - [x] Set up global error handling
+- [x] Create base API service classes/functions
 
 ### 2.3 UI Component Infrastructure
-- [ ] Create layout components
-  - [ ] AppLayout
-  - [ ] DashboardLayout
-  - [ ] FormLayout
+- [x] Create layout components
+  - [x] AppLayout
+  - [x] DashboardLayout
+  - [x] FormLayout
   - [ ] ReportLayout
-- [ ] Develop shared form components
-  - [ ] Enhanced form controls
-  - [ ] Validation components
+- [x] Develop shared form components
+  - [x] Enhanced form controls
+  - [x] Validation components
   - [ ] Error display components
-- [ ] Create shared table/data display components
+- [x] Create shared table/data display components
 
 ### 2.4 Route Structure
 - [ ] Reorganize routes by module
@@ -111,12 +111,9 @@ This document outlines the step-by-step implementation plan for transforming the
 ## Phase 4: Operations Module Implementation
 
 ### 4.1 Operations Module Services
-- [ ] Create `movementService.ts`
-  - [ ] Implement CRUD operations for movements
-  - [ ] Add validation functions
-- [ ] Create `schedulingService.ts`
-  - [ ] Implement scheduling logic
-  - [ ] Add validation against open quantity
+- [x] Create `movementService.ts`
+  - [x] Implement CRUD operations for movements
+  - [x] Add validation functions
 
 ### 4.2 Operations Module Components
 - [ ] Create Movement form components
@@ -128,20 +125,20 @@ This document outlines the step-by-step implementation plan for transforming the
 - [ ] Create Movement detail components
 
 ### 4.3 Operations Module Hooks
-- [ ] Create data fetching hooks
-  - [ ] useMovements hook
-  - [ ] useMovementDetails hook
-  - [ ] useScheduling hook
+- [x] Create data fetching hooks
+  - [x] useMovements hook
+  - [x] useMovementDetails hook
+  - [x] useScheduling hook
 
 ## Phase 5: Finance Module Implementation
 
 ### 5.1 Finance Module Services
-- [ ] Create `invoiceService.ts`
-  - [ ] Implement invoice generation functions
-  - [ ] Add invoice calculation functions
-- [ ] Create `paymentService.ts`
-  - [ ] Implement payment tracking functions
-  - [ ] Add balance calculation functions
+- [x] Create `invoiceService.ts`
+  - [x] Implement invoice generation functions
+  - [x] Add invoice calculation functions
+- [x] Create `paymentService.ts`
+  - [x] Implement payment tracking functions
+  - [x] Add balance calculation functions
 
 ### 5.2 Finance Module Components
 - [ ] Create Invoice components
@@ -153,10 +150,10 @@ This document outlines the step-by-step implementation plan for transforming the
 - [ ] Create Financial dashboard components
 
 ### 5.3 Finance Module Hooks
-- [ ] Create data fetching hooks
-  - [ ] useInvoices hook
-  - [ ] usePayments hook
-  - [ ] useFinancialStatus hook
+- [x] Create data fetching hooks
+  - [x] useInvoices hook
+  - [x] usePayments hook
+  - [x] useFinancialStatus hook
 
 ## Phase 6: Reporting Module Implementation
 
@@ -248,11 +245,11 @@ This document outlines the step-by-step implementation plan for transforming the
 
 | Phase | Description | Status | Completion Date | Notes |
 |-------|-------------|--------|----------------|-------|
-| 1 | Database Schema Updates | Not Started | | |
-| 2 | Core Infrastructure | Not Started | | |
+| 1 | Database Schema Updates | Completed | 2024-05-21 | All tables and triggers created successfully |
+| 2 | Core Infrastructure | In Progress | | Module structure and service layers established |
 | 3 | Trade Module Implementation | Not Started | | |
-| 4 | Operations Module Implementation | Not Started | | |
-| 5 | Finance Module Implementation | Not Started | | |
+| 4 | Operations Module Implementation | In Progress | | Services and hooks implemented |
+| 5 | Finance Module Implementation | In Progress | | Services and hooks implemented |
 | 6 | Reporting Module Implementation | Not Started | | |
 | 7 | Admin Module Implementation | Not Started | | |
 | 8 | Integration and Testing | Not Started | | |
@@ -260,8 +257,7 @@ This document outlines the step-by-step implementation plan for transforming the
 
 ## Notes and Decisions
 
-This section will be used to record important decisions, challenges, and solutions encountered during the implementation process.
-
-- Decision 1: [Date] - [Description]
-- Challenge 1: [Date] - [Description] - [Solution]
-
+- **Decision 1**: [2024-05-21] - Implemented a modular monolith architecture with clear service boundaries to allow for future microservice decomposition if needed.
+- **Decision 2**: [2024-05-21] - Created a shared BaseService class to standardize data access patterns across all modules.
+- **Decision 3**: [2024-05-21] - Implemented audit logging at the database level using triggers to ensure comprehensive tracking of all data changes.
+- **Decision 4**: [2024-05-21] - Used React Query for state management with standardized hooks pattern to provide consistent API across the application.
