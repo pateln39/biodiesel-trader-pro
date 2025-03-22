@@ -13,6 +13,14 @@ export const exposureReportItemSchema = z.object({
 
 export type ExposureReportItem = z.infer<typeof exposureReportItemSchema>;
 
+// Exposure types enum
+export enum ExposureType {
+  Physical = 'physical',
+  Pricing = 'pricing',
+  Paper = 'paper',
+  Net = 'net'
+}
+
 // Exposure calculation result
 export interface ExposureResult {
   physical: Record<string, number>;

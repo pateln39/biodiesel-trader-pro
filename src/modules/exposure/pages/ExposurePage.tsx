@@ -148,8 +148,8 @@ const ExposurePage = () => {
                           {Object.entries(groupedExposures).map(([instrument, quantity]) => (
                             <tr key={instrument} className="border-b">
                               <td className="p-3">{instrument}</td>
-                              <td className={`text-right p-3 ${quantity > 0 ? 'text-green-600' : quantity < 0 ? 'text-red-600' : ''}`}>
-                                {quantity.toLocaleString(undefined, {
+                              <td className={`text-right p-3 ${Number(quantity) > 0 ? 'text-green-600' : Number(quantity) < 0 ? 'text-red-600' : ''}`}>
+                                {Number(quantity).toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2
                                 })}
