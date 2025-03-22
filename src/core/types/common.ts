@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 // Pagination parameters
@@ -66,6 +65,17 @@ export type AuditLog = z.infer<typeof auditLogSchema>;
 // Common business types
 export type Instrument = string;
 export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
+export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
+
+// Product relationship interface for the UI
+export interface ProductRelationship {
+  id: string;
+  product: string;
+  relationship_type: PaperRelationshipType;
+  paired_product: string | null;
+  default_opposite: string | null;
+  created_at?: string;
+}
 
 // Common database interfaces
 export interface DbParentTrade {

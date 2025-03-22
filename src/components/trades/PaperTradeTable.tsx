@@ -7,9 +7,10 @@ import { Plus, Trash2, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
-import { ProductRelationship, PaperRelationshipType, BuySell } from '@/types/trade';
+import { PaperRelationshipType, BuySell } from '@/modules/trade/types/common';
 import { getNextMonths } from '@/utils/dateUtils';
 import { formatProductDisplay, formatMTMDisplay } from '@/utils/tradeUtils';
+import { ProductRelationship } from '@/core/types/common';
 
 interface PaperTradeTableProps {
   legs: any[];
