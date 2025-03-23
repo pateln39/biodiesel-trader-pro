@@ -1,40 +1,11 @@
 
-// Export all trade module types
+// Re-export all types from each category
 export * from './common';
 export * from './physical';
 export * from './paper';
 export * from './pricing';
 
-// Import and re-export unified trade type
-import { PaperTrade } from './paper';
-import { PhysicalTrade } from './physical';
-
-// Explicitly re-export to avoid ambiguity
-export type { PhysicalTrade, PaperTrade };
-
-// Unified trade type that can be either physical or paper
-export type Trade = PhysicalTrade | PaperTrade;
-
-// Explicitly re-export specific types to avoid ambiguity
-export { 
-  TradeType,
-  BuySell,
-  PhysicalType,
-  Unit,
-  PaymentTerm,
-  CreditStatus,
-  IncoTerm,
-  Product as CommonProduct,
-  TokenType as CommonTokenType
-} from './common';
-
-export {
-  Product as PhysicalProduct,
-  IncoTerm as PhysicalIncoTerm,
-  PaymentTerm as PhysicalPaymentTerm,
-  CreditStatus as PhysicalCreditStatus
-} from './physical';
-
-export {
-  TokenType as PricingTokenType
-} from './pricing';
+// Re-export specific types to avoid ambiguity using 'export type' syntax
+export type { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm } from './common';
+export type { PaperTrade, PaperTradeLeg } from './paper';
+export type { PhysicalTrade, PhysicalTradeLeg } from './physical';

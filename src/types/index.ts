@@ -9,8 +9,6 @@ export * from '@/modules/exposure/types';
 export * from '@/modules/operations/types';
 export * from '@/modules/finance/types';
 
-// Re-export specific types to avoid ambiguity using 'export type' syntax to resolve issues with isolatedModules
-export type { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm, Product } from '@/modules/trade/types/common';
-
-// Re-export database interfaces from core
-export type { DbParentTrade, DbTradeLeg, ParentTrade } from '@/core/types/common';
+// Re-export specific types to avoid ambiguity using 'export type' syntax
+export type { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm } from '@/modules/trade/types';
+export type { DbParentTrade, DbTradeLeg } from '@/core/types';

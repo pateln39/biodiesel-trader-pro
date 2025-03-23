@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { Edit, Trash2, X, Filter, ChevronRight, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Copy } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { createEmptyFormula } from '@/modules/pricing/utils/formulaUtils';
-import { toast } from 'sonner';
-import { PaperRelationshipType, BuySell } from '@/modules/trade/types/common';
-import { getNextMonths } from '@/core/utils/dateUtils';
-import { formatProductDisplay, formatMTMDisplay } from '@/modules/trade/utils/tradeUtils';
-import { ProductRelationship } from '@/core/types/common';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useTrades } from '@/modules/trade/hooks';
+import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { deleteTrade } from '@/modules/trade/utils/tradeDeleteUtils';
 
 interface PaperTradeLeg {
   id: string;

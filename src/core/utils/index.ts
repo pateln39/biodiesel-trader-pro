@@ -1,6 +1,5 @@
 
-// Export all shared utilities from core
+// Export all utilities from the core module
 export * from './dateUtils';
-export * from './dateParsingUtils';
 export * from './validationUtils';
 export * from './subscriptionUtils';

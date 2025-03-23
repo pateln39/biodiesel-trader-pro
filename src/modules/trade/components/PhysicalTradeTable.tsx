@@ -1,355 +1,291 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Link2, Trash2, Edit } from 'lucide-react';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
-import { formulaToDisplayString } from '@/utils/formulaUtils';
-import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
-import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { format } from 'date-fns';
+import { Edit, Trash2, X, Filter, Eye, FilePlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useTrades } from '@/modules/trade/hooks';
+import { formulaToDisplayString } from '@/modules/trade/utils/formulaUtils';
+import { deleteTrade } from '@/modules/trade/utils/tradeDeleteUtils';
+import { usePriceSubscription } from '@/modules/trade/utils/physicalTradeSubscriptionUtils';
 
-interface PhysicalTradeTableProps {
-  trades: PhysicalTrade[];
-  loading: boolean;
-  error: Error | null;
-  refetchTrades: () => void;
-  realtimeChannelsRef?: React.MutableRefObject<{ [key: string]: any }>;
+interface TradeFilter {
+  product?: string;
+  buySell?: string;
+  status?: string;
+  dateFrom?: Date | null;
+  dateTo?: Date | null;
+  showInactive?: boolean;
 }
 
-// Helper functions
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-};
-
-const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
-  trades,
-  loading,
-  error,
-  refetchTrades,
-  realtimeChannelsRef
-}) => {
+const PhysicalTradeTable = () => {
   const navigate = useNavigate();
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deletingTradeId, setDeletingTradeId] = useState<string>('');
-  const [deletionProgress, setDeletionProgress] = useState(0);
-  const isProcessingRef = useRef(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tradeToDelete, setTradeToDelete] = useState<string | null>(null);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [tradeType, setTradeType] = useState<'physical' | 'paper'>('physical');
+  const [filters, setFilters] = useState<TradeFilter>({});
+  const { trades, isLoading, error, refetch } = useTrades(tradeType, filters);
+  const [priceUpdates, setPriceUpdates] = useState<{ [tradeLegId: string]: number }>({});
 
-  const debouncedSaveComment = useCallback(
-    debounce((tradeId: string, comment: string) => {
-      setSavingComments(prev => ({ ...prev, [tradeId]: true }));
-      
-      setTimeout(() => {
-        console.log(`[PHYSICAL] Saving comment for trade ${tradeId}: ${comment}`);
-        // Add toast functionality here if needed
-        setSavingComments(prev => ({ ...prev, [tradeId]: false }));
-      }, 500);
-    }, 1000),
-    []
-  );
+  // Subscribe to price updates for each trade leg
+  usePriceSubscription(trades, setPriceUpdates);
 
-  const handleCommentChange = (tradeId: string, comment: string) => {
-    setComments(prev => ({
-      ...prev,
-      [tradeId]: comment
-    }));
+  const handleEdit = (tradeId: string) => {
+    navigate(`/risk/trades/${tradeId}`);
   };
 
-  const handleCommentBlur = (tradeId: string) => {
-    debouncedSaveComment(tradeId, comments[tradeId] || '');
+  const handleView = (tradeId: string) => {
+    navigate(`/risk/trades/view/${tradeId}`);
   };
 
-  const handleEditTrade = (tradeId: string) => {
-    navigate(`/trades/${tradeId}`);
+  const handleDelete = (tradeId: string) => {
+    setTradeToDelete(tradeId);
+    setDeleteDialogOpen(true);
   };
 
-  const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
-    if (isProcessingRef.current) {
-      return;
-    }
-    
-    try {
-      console.log(`[PHYSICAL] Deleting trade: ${tradeId} (${tradeReference})`);
-      isProcessingRef.current = true;
-      setIsDeleting(true);
-      setDeletingTradeId(tradeId);
-      
-      // Pause subscriptions to prevent race conditions during delete
-      if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      const progress = (value: number) => {
-        console.log(`[PHYSICAL] Delete progress: ${value}%`);
-        setDeletionProgress(value);
-      };
-      
-      const success = await deletePhysicalTrade(tradeId, progress);
-      
+  const confirmDelete = async () => {
+    if (tradeToDelete) {
+      const success = await deleteTrade(tradeToDelete, tradeType);
       if (success) {
-        toast.success(`Trade ${tradeReference} deleted successfully`);
-        refetchTrades();
+        toast.success('Trade deleted successfully');
+        refetch(); // Refresh the trade list
+      } else {
+        toast.error('Failed to delete trade');
       }
-    } catch (error) {
-      console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade', { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred' 
-      });
-    } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
+      setDeleteDialogOpen(false);
+      setTradeToDelete(null);
     }
   };
 
-  const handleDeleteTradeLeg = async (legId: string, legReference: string, parentId: string) => {
-    if (isProcessingRef.current) {
-      return;
-    }
-    
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    setTradeToDelete(null);
+  };
+
+  const handleFilterChange = (filterUpdates: Partial<TradeFilter>) => {
+    setFilters(prevFilters => ({ ...prevFilters, ...filterUpdates }));
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+  };
+
+  const formatDate = (date: string) => {
     try {
-      console.log(`[PHYSICAL] Deleting trade leg: ${legId} (${legReference})`);
-      isProcessingRef.current = true;
-      setIsDeleting(true);
-      setDeletingTradeId(legId);
-      
-      // Pause subscriptions to prevent race conditions during delete
-      if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      const progress = (value: number) => {
-        console.log(`[PHYSICAL] Delete progress: ${value}%`);
-        setDeletionProgress(value);
-      };
-      
-      const success = await deletePhysicalTradeLeg(legId, parentId, progress);
-      
-      if (success) {
-        toast.success(`Trade leg ${legReference} deleted successfully`);
-        refetchTrades();
-      }
+      return format(new Date(date), 'PPP');
     } catch (error) {
-      console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade leg', { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred' 
-      });
-    } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
     }
   };
 
-  const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
-    if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
-      return <span className="text-muted-foreground italic">No formula</span>;
+  const formatFormula = (formula: any) => {
+    try {
+      return formulaToDisplayString(formula.tokens);
+    } catch (error) {
+      console.error('Error formatting formula:', error);
+      return 'Invalid Formula';
     }
-    
-    const displayText = formulaToDisplayString(trade.formula.tokens);
-    
-    return (
-      <div className="max-w-[300px] overflow-hidden">
-        <span 
-          className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-          title={displayText}
-        >
-          {displayText}
-        </span>
-      </div>
-    );
   };
 
-  const isMultiLegTrade = (trade: PhysicalTrade) => {
-    return trade.legs && trade.legs.length > 1;
-  };
-
-  if (loading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (isLoading) {
+    return <Card>Loading trades...</Card>;
   }
 
   if (error) {
-    return (
-      <div className="p-8 flex flex-col items-center text-center space-y-4">
-        <AlertCircle className="h-10 w-10 text-destructive" />
-        <div>
-          <h3 className="font-medium">Failed to load trades</h3>
-          <p className="text-muted-foreground text-sm">
-            {error instanceof Error ? error.message : 'Unknown error occurred'}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
-          Try Again
-        </Button>
-      </div>
-    );
+    return <Card>Error: {error.message}</Card>;
   }
 
   return (
-    <>
-      {isDeleting && (
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground mb-1">
-            Deleting {deletingTradeId}... Please wait
-          </p>
-          <Progress value={deletionProgress} className="h-2" />
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Physical Trades</h1>
+        <div className="space-x-2">
+          <Button onClick={() => setFilterDialogOpen(true)}>
+            <Filter className="h-4 w-4 mr-2" />
+            Filter
+          </Button>
+          <Button asChild>
+            <Link to="/risk/trades/new">
+              <FilePlus className="h-4 w-4 mr-2" />
+              Add Trade
+            </Link>
+          </Button>
         </div>
-      )}
+      </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Reference</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>INCO</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Price Formula</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {trades.length > 0 ? (
-            trades.flatMap((trade) => {
-              const hasMultipleLegs = isMultiLegTrade(trade);
-              const legs = trade.legs || [];
-              
-              return legs.map((leg, legIndex) => (
-                <TableRow 
-                  key={leg.id}
-                  className={legIndex > 0 ? "border-t-0" : undefined}
-                >
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                        {trade.physicalType === 'term' ? 
-                          `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
-                          trade.tradeReference
-                        }
-                      </Link>
-                      {hasMultipleLegs && trade.physicalType === 'term' && (
-                        <Badge variant="outline" className="h-5 text-xs">
-                          <Link2 className="mr-1 h-3 w-3" />
-                          {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{leg.buySell}</TableCell>
-                  <TableCell>{leg.incoTerm}</TableCell>
-                  <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
-                  <TableCell>{leg.product}</TableCell>
-                  <TableCell>{trade.counterparty}</TableCell>
-                  <TableCell>{renderFormula(leg)}</TableCell>
-                  <TableCell>
-                    <div className="relative">
-                      <Textarea 
-                        placeholder="Add comments..."
-                        value={comments[leg.id] || ''}
-                        onChange={(e) => handleCommentChange(leg.id, e.target.value)}
-                        onBlur={() => handleCommentBlur(leg.id)}
-                        className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                        rows={1}
-                      />
-                      {savingComments[leg.id] && (
-                        <div className="absolute top-1 right-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id)}>
-                          {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Deleting...
-                            </>
-                          ) : (
-                            'Actions'
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditTrade(trade.id)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Trade
-                        </DropdownMenuItem>
-                        <Link to={`/trades/${trade.id}`}>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </Link>
-                        {hasMultipleLegs && trade.physicalType === 'term' ? (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
-                            className="text-destructive focus:text-destructive"
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade Leg
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
-                            className="text-destructive focus:text-destructive"
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ));
-            })
-          ) : (
+      <Card>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
-                No physical trades found.
-              </TableCell>
+              <TableHead>Product</TableHead>
+              <TableHead>Buy/Sell</TableHead>
+              <TableHead>Quantity</TableHead>
+              <TableHead>Unit Price</TableHead>
+              <TableHead>Formula</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Trade Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </>
+          </TableHeader>
+          <TableBody>
+            {trades.map((trade) => (
+              <TableRow key={trade.id}>
+                <TableCell>{trade.product}</TableCell>
+                <TableCell>{trade.buy_sell}</TableCell>
+                <TableCell>{trade.quantity}</TableCell>
+                <TableCell>${trade.unit_price}</TableCell>
+                <TableCell>{formatFormula(trade.pricing_formula)}</TableCell>
+                <TableCell>
+                  <Badge>{trade.credit_status}</Badge>
+                </TableCell>
+                <TableCell>{formatDate(trade.trade_date)}</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="sm" onClick={() => handleView(trade.id)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(trade.id)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(trade.id)}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Trade</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this trade? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={cancelDelete}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Filter Trades</DialogTitle>
+            <DialogDescription>
+              Apply filters to narrow down the list of trades.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="product" className="text-right">
+                Product
+              </Label>
+              <Input
+                type="text"
+                id="product"
+                className="col-span-3"
+                value={filters.product || ''}
+                onChange={(e) => handleFilterChange({ product: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="buySell" className="text-right">
+                Buy/Sell
+              </Label>
+              <Select onValueChange={(value) => handleFilterChange({ buySell: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select Buy/Sell" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Buy">Buy</SelectItem>
+                  <SelectItem value="Sell">Sell</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="status" className="text-right">
+                Status
+              </Label>
+              <Select onValueChange={(value) => handleFilterChange({ status: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Open">Open</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dateFrom" className="text-right">
+                Date From
+              </Label>
+              <Input
+                type="date"
+                id="dateFrom"
+                className="col-span-3"
+                value={filters.dateFrom ? format(filters.dateFrom, 'yyyy-MM-dd') : ''}
+                onChange={(e) => handleFilterChange({ dateFrom: new Date(e.target.value) })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="dateTo" className="text-right">
+                Date To
+              </Label>
+              <Input
+                type="date"
+                id="dateTo"
+                className="col-span-3"
+                value={filters.dateTo ? format(filters.dateTo, 'yyyy-MM-dd') : ''}
+                onChange={(e) => handleFilterChange({ dateTo: new Date(e.target.value) })}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="showInactive" className="text-right">
+                Show Inactive
+              </Label>
+              <div className="col-span-3">
+                <Checkbox
+                  id="showInactive"
+                  checked={filters.showInactive || false}
+                  onCheckedChange={(checked) => handleFilterChange({ showInactive: checked })}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+            <Button type="button" onClick={() => setFilterDialogOpen(false)}>
+              Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 
