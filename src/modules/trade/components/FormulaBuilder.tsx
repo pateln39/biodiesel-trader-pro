@@ -1,0 +1,323 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Plus, X, Calculator, Check } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PricingFormula, FormulaToken, TokenType } from '@/modules/trade/types/pricing';
+import { 
+  createInstrumentToken, 
+  createOperatorToken, 
+  createValueToken, 
+  createPercentageToken,
+  createOpenBracketToken,
+  createCloseBracketToken,
+  formulaToString
+} from '@/modules/pricing/utils/formulaUtils';
+import { 
+  canAddTokenType, 
+  calculateExposures,
+  calculatePhysicalExposure,
+  calculatePricingExposure,
+  createEmptyExposureResult
+} from '@/modules/pricing/utils/formulaCalculation';
+
+interface FormulaBuilderProps {
+  value: PricingFormula;
+  onChange: (formula: PricingFormula) => void;
+  formulaType?: 'pricing' | 'mtm';
+  instrumentOptions: Array<{ id: string; label: string; value: string }>;
+  allowEmptyFormula?: boolean;
+}
+
+const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
+  value, 
+  onChange, 
+  formulaType = 'pricing',
+  instrumentOptions,
+  allowEmptyFormula = false
+}) => {
+  const [formula, setFormula] = useState<PricingFormula>(value);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [exposureResult, setExposureResult] = useState<any>(createEmptyExposureResult());
+  
+  useEffect(() => {
+    setFormula(value);
+  }, [value]);
+  
+  useEffect(() => {
+    if (formula && formula.tokens && formula.tokens.length > 0) {
+      try {
+        if (formulaType === 'pricing') {
+          const result = calculatePricingExposure(formula);
+          setExposureResult(result);
+        } else {
+          const result = calculatePhysicalExposure(formula);
+          setExposureResult(result);
+        }
+      } catch (error: any) {
+        console.error("Error calculating exposure:", error);
+        setValidationError(error.message || 'Error calculating exposure');
+        setExposureResult(createEmptyExposureResult());
+      }
+    } else {
+      setExposureResult(createEmptyExposureResult());
+    }
+  }, [formula, formulaType]);
+  
+  const handleTokenAdd = (tokenType: TokenType, tokenValue: any = null) => {
+    if (!formula) return;
+    
+    if (!canAddTokenType(formula.tokens, tokenType)) {
+      setValidationError(`Cannot add ${tokenType} at this position`);
+      return;
+    }
+    
+    let newToken: FormulaToken;
+    
+    switch (tokenType) {
+      case 'instrument':
+        if (!tokenValue) return;
+        newToken = createInstrumentToken(tokenValue.id, tokenValue.label);
+        break;
+      case 'operator':
+        newToken = createOperatorToken(tokenValue);
+        break;
+      case 'value':
+        newToken = createValueToken(tokenValue || 0);
+        break;
+      case 'percentage':
+        newToken = createPercentageToken(tokenValue || 0);
+        break;
+      case 'open_bracket':
+        newToken = createOpenBracketToken();
+        break;
+      case 'close_bracket':
+        newToken = createCloseBracketToken();
+        break;
+      default:
+        return;
+    }
+    
+    const newTokens = [...formula.tokens, newToken];
+    setFormula({ ...formula, tokens: newTokens });
+    onChange({ ...formula, tokens: newTokens });
+    setValidationError(null);
+  };
+  
+  const handleTokenRemove = (index: number) => {
+    if (!formula) return;
+    
+    const newTokens = [...formula.tokens];
+    newTokens.splice(index, 1);
+    setFormula({ ...formula, tokens: newTokens });
+    onChange({ ...formula, tokens: newTokens });
+    setValidationError(null);
+  };
+  
+  const handleClearFormula = () => {
+    setFormula({ ...formula, tokens: [] });
+    onChange({ ...formula, tokens: [] });
+    setValidationError(null);
+  };
+  
+  const renderToken = (token: FormulaToken, index: number) => {
+    let displayValue = token.value;
+    let badgeColor = "muted";
+    
+    switch (token.type) {
+      case 'instrument':
+        displayValue = token.label;
+        badgeColor = "blue";
+        break;
+      case 'operator':
+        badgeColor = "secondary";
+        break;
+      case 'value':
+        badgeColor = "green";
+        break;
+      case 'percentage':
+        badgeColor = "orange";
+        break;
+      case 'open_bracket':
+      case 'close_bracket':
+        badgeColor = "slate";
+        break;
+    }
+    
+    return (
+      <Badge 
+        key={index} 
+        variant="outline" 
+        className={`mr-1.5 mb-1.5 text-sm font-medium capitalize text-muted-foreground border-${badgeColor}-500`}
+      >
+        {displayValue}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="ml-1 -mr-1 h-4 w-4 rounded-full hover:bg-muted"
+          onClick={() => handleTokenRemove(index)}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </Badge>
+    );
+  };
+  
+  const isValid = () => {
+    if (allowEmptyFormula && (!formula || !formula.tokens || formula.tokens.length === 0)) {
+      return true;
+    }
+    
+    return exposureResult.isValid;
+  };
+  
+  return (
+    <Card>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold">Formula Builder</h4>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleClearFormula}
+            disabled={!formula || !formula.tokens || formula.tokens.length === 0}
+          >
+            Clear Formula
+          </Button>
+        </div>
+        
+        <div className="border rounded-md p-2.5 bg-muted/50">
+          <div className="flex flex-wrap">
+            {formula && formula.tokens && formula.tokens.length > 0 ? (
+              formula.tokens.map((token, index) => renderToken(token, index))
+            ) : (
+              <span className="text-sm text-muted-foreground italic">
+                No formula added. Start building your formula below.
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {validationError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {validationError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <Tabs defaultValue="instruments" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="instruments">Instruments</TabsTrigger>
+            <TabsTrigger value="operators">Operators</TabsTrigger>
+            <TabsTrigger value="values">Values</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="instruments" className="space-y-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+              {instrumentOptions && instrumentOptions.length > 0 ? (
+                instrumentOptions.map(instrument => (
+                  <Button
+                    key={instrument.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTokenAdd('instrument', instrument)}
+                  >
+                    {instrument.label}
+                  </Button>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground italic">
+                  No instruments available.
+                </span>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="operators" className="space-y-2">
+            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+              {['+', '-', '*', '/'].map(operator => (
+                <Button
+                  key={operator}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTokenAdd('operator', operator)}
+                >
+                  {operator}
+                </Button>
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="values" className="space-y-2">
+            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTokenAdd('value', 1)}
+              >
+                1
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTokenAdd('value', 10)}
+              >
+                10
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTokenAdd('percentage', 100)}
+              >
+                100%
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTokenAdd('open_bracket')}
+              >
+                (
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleTokenAdd('close_bracket')}
+              >
+                )
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+        
+        <div className="flex items-center justify-end space-x-2">
+          {isValid() ? (
+            <Badge variant="outline" className="border-green-500 text-green-500">
+              <Check className="h-3 w-3 mr-1" />
+              Valid Formula
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="border-red-500 text-red-500">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Invalid Formula
+            </Badge>
+          )}
+          
+          <span className="text-sm text-muted-foreground">
+            {formula && formula.tokens && formula.tokens.length > 0 ? (
+              <span className="font-mono">{formulaToString(formula.tokens)}</span>
+            ) : (
+              'No formula'
+            )}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default FormulaBuilder;
