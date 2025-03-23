@@ -1,5 +1,6 @@
 
 import { z } from 'zod';
+import { MTMPriceDetail } from '@/core/types/common';
 
 // MTM calculation schema
 export const mtmCalculationSchema = z.object({
@@ -19,9 +20,6 @@ export const mtmCalculationSchema = z.object({
 
 export type MTMCalculation = z.infer<typeof mtmCalculationSchema>;
 
-// Enhanced MTM price detail interfaces
-export interface MTMPriceDetail {
-  instruments: Record<string, { price: number; date: Date | null }>;
-  evaluatedPrice: number;
-  fixedComponents?: Array<{ value: number; displayValue: string }>;
-}
+// Re-export MTMPriceDetail from core types
+export type { MTMPriceDetail };
+

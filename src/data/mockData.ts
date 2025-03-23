@@ -1,8 +1,9 @@
 
 // Import types from their correct locations
 import { PaperTrade } from '@/modules/trade/types/paper';
-import { PhysicalTrade } from '@/modules/trade/types/physical';
+import { PhysicalTrade, Product, IncoTerm, PaymentTerm, CreditStatus, BuySell } from '@/modules/trade/types/physical';
 import { AuditLog } from '@/core/types/common';
+import { MovementStatus } from '@/modules/operations/types/movement';
 
 // Add Movement type 
 export interface Movement {
@@ -129,3 +130,4 @@ export const mockMovements: Movement[] = [
     status: 'in-progress'
   }
 ];
+

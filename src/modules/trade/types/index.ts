@@ -9,7 +9,8 @@ export * from './pricing';
 export { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm } from './common';
 export { PaperTrade, PaperTradeLeg } from './paper';
 export { PhysicalTrade, PhysicalTradeLeg } from './physical';
-export { TokenType as FormulaTokenType } from './pricing';
+export { TokenType as FormulaTokenType } from '@/core/types/common';
 
-// Add DbParentTrade and DbTradeLeg from core types
+// Re-export core types
 export { DbParentTrade, DbTradeLeg, Trade } from '@/core/types/common';
+

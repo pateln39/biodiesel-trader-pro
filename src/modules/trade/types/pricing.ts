@@ -1,8 +1,9 @@
 
 import { z } from 'zod';
+import { TokenType } from '@/core/types/common';
 
-// Define the token types
-export type TokenType = 'instrument' | 'fixedValue' | 'percentage' | 'operator' | 'openBracket' | 'closeBracket';
+// Define the token types - use the TokenType from core/types
+export { TokenType };
 
 // Define the instrument type
 export type Instrument = 'Argus UCOME' | 'Argus RME' | 'Argus FAME0' | 'Platts LSGO' | 'Platts diesel';
@@ -57,3 +58,4 @@ export const pricingDataSchema = z.object({
 
 // Export the pricing data type
 export type PricingData = z.infer<typeof pricingDataSchema>;
+

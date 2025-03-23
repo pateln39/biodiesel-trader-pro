@@ -23,5 +23,7 @@ export {
 export { 
   DbParentTrade, 
   DbTradeLeg, 
-  Trade
+  Trade,
+  TokenType
 } from '@/core/types/common';
+

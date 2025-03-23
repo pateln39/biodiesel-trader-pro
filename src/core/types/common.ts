@@ -3,6 +3,17 @@
  * Common database interface types
  */
 
+// Common enums shared across the application
+export enum TokenType {
+  Instrument = 'instrument',
+  Operator = 'operator',
+  Value = 'value', 
+  Percentage = 'percentage',
+  OpenBracket = 'open_bracket',
+  CloseBracket = 'close_bracket',
+  FixedValue = 'fixedValue'
+}
+
 export interface DbParentTrade {
   id: string;
   trade_reference: string;
@@ -54,6 +65,7 @@ export interface MTMPriceDetail {
   }>;
   evaluatedPrice?: number;
   calculationDate?: Date;
+  fixedComponents?: Array<{ value: number; displayValue: string }>;
 }
 
 export interface PriceDetail {
@@ -71,7 +83,7 @@ export interface PriceDetail {
 export interface ProductRelationship {
   id: string;
   product: string;
-  relationship_type: PaperRelationshipType;
+  relationship_type: "FP" | "DIFF" | "SPREAD";
   paired_product: string | null;
   default_opposite: string | null;
   created_at?: string;
@@ -81,12 +93,13 @@ export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 export type DisplayProduct = string;
 export type Instrument = string;
 
-// Add missing types
+// Date range interface
 export interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
 }
 
+// Audit log interface for tracking changes
 export interface AuditLog {
   id: string;
   table_name: string;
@@ -98,17 +111,19 @@ export interface AuditLog {
   user_id?: string;
 }
 
+// Price point interface for price charts
 export interface PricePoint {
   date: Date;
   price: number;
 }
 
+// Price range interface for price filters
 export interface PriceRange {
   min: number;
   max: number;
 }
 
-// Add Trade type for backward compatibility
+// Basic Trade interface for backward compatibility
 export interface Trade {
   id: string;
   tradeReference: string;
@@ -118,3 +133,4 @@ export interface Trade {
   updatedAt: Date;
   [key: string]: any; // Allow additional properties
 }
+

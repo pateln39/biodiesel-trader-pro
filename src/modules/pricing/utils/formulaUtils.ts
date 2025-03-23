@@ -1,7 +1,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { FormulaToken, PricingFormula } from '@/modules/trade/types/pricing';
-import { TokenType } from '@/modules/trade/types/common';
+import { TokenType } from '@/core/types/common';
 
 /**
  * Create a new empty formula structure
@@ -142,3 +142,4 @@ export const formulaToString = (tokens: FormulaToken[]): string => {
   if (!tokens || !tokens.length) return '';
   return tokens.map(t => t.value).join(' ');
 };
+

@@ -92,13 +92,6 @@ export const tradeBaseSchema = z.object({
 
 export type TradeBase = z.infer<typeof tradeBaseSchema>;
 
-// Add TokenType enum for FormulaBuilder
-export enum TokenType {
-  Instrument = 'instrument',
-  Operator = 'operator',
-  Value = 'value',
-  Percentage = 'percentage',
-  OpenBracket = 'open_bracket',
-  CloseBracket = 'close_bracket',
-  FixedValue = 'fixedValue'
-}
+// Add TokenType enum for FormulaBuilder - importing from core types
+export { TokenType } from '@/core/types/common';
+
