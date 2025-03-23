@@ -21,11 +21,6 @@ export const cleanupPhysicalSubscriptions = (channelRefs: ChannelRef) => {
 };
 
 /**
- * Utility function to create a controlled delay between operations
- */
-export const physicalDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
  * Pause physical trade realtime subscriptions
  */
 export const pausePhysicalSubscriptions = (channelRefs: ChannelRef) => {

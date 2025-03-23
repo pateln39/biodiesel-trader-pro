@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { delay } from './subscriptionUtils';
 
 /**
  * Delete a physical trade and all its legs with proper sequencing
@@ -26,9 +25,6 @@ export const deletePhysicalTrade = async (
     
     onProgress?.(50);
     
-    // Add a small delay between operations to avoid database race conditions
-    await delay(300);
-    
     // Step 2: Delete the parent trade
     const { error: parentError } = await supabase
       .from('parent_trades')
@@ -41,14 +37,9 @@ export const deletePhysicalTrade = async (
       throw parentError;
     }
     
-    onProgress?.(90);
-    
-    // Allow UI to complete animations
-    await delay(200);
-    
-    console.log(`Successfully deleted physical trade: ${tradeId}`);
     onProgress?.(100);
     
+    console.log(`Successfully deleted physical trade: ${tradeId}`);
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTrade:', error);
@@ -107,14 +98,9 @@ export const deletePhysicalTradeLeg = async (
       throw error;
     }
     
-    onProgress?.(80);
-    
-    // Allow UI to complete animations
-    await delay(200);
-    
-    console.log(`Successfully deleted leg: ${legId}`);
     onProgress?.(100);
     
+    console.log(`Successfully deleted leg: ${legId}`);
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTradeLeg:', error);
