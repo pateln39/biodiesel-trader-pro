@@ -1,64 +1,73 @@
 
-import { RefObject } from 'react';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Setup Supabase real-time subscriptions for paper trades
+ * Setup realtime subscriptions for paper trades
  */
-export function setupPaperTradeSubscriptions(
-  realtimeChannelsRef: RefObject<{ [key: string]: any }>,
-  isProcessingRef: RefObject<boolean>,
-  debouncedRefetch: (fn: Function) => void,
+export const setupPaperTradeSubscriptions = (
+  realtimeChannelsRef: React.MutableRefObject<Record<string, any>>,
+  isProcessingRef: React.MutableRefObject<boolean>,
+  debouncedRefetch: (fn: () => void) => void,
   refetch: () => void
-): () => void {
+) => {
   console.log('[PAPER] Setting up paper trade subscriptions');
-
-  // Cleanup existing subscriptions first
-  if (realtimeChannelsRef.current.paperTradesChannel) {
-    realtimeChannelsRef.current.paperTradesChannel.unsubscribe();
+  
+  // Cleanup any existing subscriptions
+  if (realtimeChannelsRef.current.paperTrades) {
+    realtimeChannelsRef.current.paperTrades.unsubscribe();
   }
-  if (realtimeChannelsRef.current.paperTradeLegsChannel) {
-    realtimeChannelsRef.current.paperTradeLegsChannel.unsubscribe();
+  
+  if (realtimeChannelsRef.current.paperTradeLegs) {
+    realtimeChannelsRef.current.paperTradeLegs.unsubscribe();
   }
 
-  // Subscribe to paper_trades table
+  // Subscribe to paper_trades table changes
   const paperTradesChannel = supabase
-    .channel('paper_trades_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'paper_trades'
-    }, (payload) => {
-      console.log('[PAPER] Paper trade change detected:', payload);
-      debouncedRefetch(refetch);
-    })
+    .channel('paper-trades-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'paper_trades',
+      },
+      (payload: RealtimePostgresChangesPayload<any>) => {
+        console.log(`[PAPER] Change in paper_trades table:`, payload);
+        debouncedRefetch(refetch);
+      }
+    )
     .subscribe();
 
-  // Subscribe to paper_trade_legs table
+  // Subscribe to paper_trade_legs table changes
   const paperTradeLegsChannel = supabase
-    .channel('paper_trade_legs_changes')
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'paper_trade_legs'
-    }, (payload) => {
-      console.log('[PAPER] Paper trade leg change detected:', payload);
-      debouncedRefetch(refetch);
-    })
+    .channel('paper-trade-legs-changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'paper_trade_legs',
+      },
+      (payload: RealtimePostgresChangesPayload<any>) => {
+        console.log(`[PAPER] Change in paper_trade_legs table:`, payload);
+        debouncedRefetch(refetch);
+      }
+    )
     .subscribe();
 
-  // Store channels for cleanup
-  realtimeChannelsRef.current.paperTradesChannel = paperTradesChannel;
-  realtimeChannelsRef.current.paperTradeLegsChannel = paperTradeLegsChannel;
+  // Store the channel references for cleanup
+  realtimeChannelsRef.current.paperTrades = paperTradesChannel;
+  realtimeChannelsRef.current.paperTradeLegs = paperTradeLegsChannel;
 
-  // Return cleanup function
+  // Return a cleanup function
   return () => {
     console.log('[PAPER] Cleaning up paper trade subscriptions');
-    if (realtimeChannelsRef.current.paperTradesChannel) {
-      realtimeChannelsRef.current.paperTradesChannel.unsubscribe();
+    if (realtimeChannelsRef.current.paperTrades) {
+      realtimeChannelsRef.current.paperTrades.unsubscribe();
     }
-    if (realtimeChannelsRef.current.paperTradeLegsChannel) {
-      realtimeChannelsRef.current.paperTradeLegsChannel.unsubscribe();
+    if (realtimeChannelsRef.current.paperTradeLegs) {
+      realtimeChannelsRef.current.paperTradeLegs.unsubscribe();
     }
   };
-}
+};

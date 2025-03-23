@@ -1,22 +1,8 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import {
-  Trade,
-  TradeType,
-  PhysicalTrade,
-  BuySell,
-  Product,
-  IncoTerm,
-  Unit,
-  PaymentTerm,
-  CreditStatus,
-  DbParentTrade,
-  DbTradeLeg,
-} from '@/types';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { validateAndParsePricingFormula } from '@/modules/pricing/utils';
+import { setupPhysicalTradeSubscriptions } from '@/modules/trade/utils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;

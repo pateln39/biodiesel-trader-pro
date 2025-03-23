@@ -5,8 +5,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, X, Check, AlertCircle } from 'lucide-react';
 import { FormulaToken, Instrument, PricingFormula } from '@/modules/trade/types';
+import { TokenType } from '@/modules/trade/types/common';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -15,14 +18,14 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString
-} from '@/modules/pricing/utils/formulaUtils';
+} from '@/modules/pricing/utils';
 import { 
   canAddTokenType, 
   calculateExposures,
   calculatePhysicalExposure,
   calculatePricingExposure,
   createEmptyExposureResult
-} from '@/modules/pricing/utils/formulaCalculation';
+} from '@/modules/pricing/utils';
 
 interface FormulaBuilderProps {
   value: PricingFormula;
