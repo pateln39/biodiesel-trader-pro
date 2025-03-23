@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 // Counterparty schema
@@ -61,3 +60,6 @@ export const forwardPriceSchema = z.object({
 });
 
 export type ForwardPrice = z.infer<typeof forwardPriceSchema>;
+
+// Json type for Supabase
+export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];

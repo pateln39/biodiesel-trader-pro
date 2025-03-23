@@ -53,6 +53,20 @@ export enum Product {
   CME = 'CME',
 }
 
+// Add PhysicalTradeType for backward compatibility
+export type PhysicalTradeType = PhysicalType;
+
+// Also define PhysicalParentTrade for backward compatibility
+export interface PhysicalParentTrade {
+  id: string;
+  tradeReference: string;
+  tradeType: TradeType.Physical;
+  physicalType: PhysicalType;
+  counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export type DisplayProduct = string; // For displaying formatted product names
 export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 

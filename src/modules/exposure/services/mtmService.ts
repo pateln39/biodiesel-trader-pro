@@ -1,7 +1,7 @@
 
 import { MTMCalculation } from '../types/mtm';
 import { supabase } from '@/integrations/supabase/client';
-import { formulaToDisplayString } from '@/utils/formulaUtils';
+import { formulaToDisplayString } from '@/modules/pricing/utils/formulaUtils';
 
 export class MTMService {
   /**
@@ -42,11 +42,16 @@ export class MTMService {
           // Skip if formula is still null
           if (!formula) continue;
           
-          const formulaString = typeof formula === 'object' && formula.tokens 
-            ? formulaToDisplayString(formula.tokens) 
+          const formulaObj = typeof formula === 'string' ? JSON.parse(formula) : formula;
+          
+          const formulaString = formulaObj && formulaObj.tokens 
+            ? formulaToDisplayString(formulaObj.tokens) 
             : '';
             
+          const contractPrice = 750; // Mock price for example
+          const marketPrice = 780; // Mock current market price
           const mtmValue = this.calculateMTMValue(leg.quantity, formula);
+          const pnlValue = (marketPrice - contractPrice) * leg.quantity;
           
           mtmCalculations.push({
             tradeId: trade.id,
@@ -55,9 +60,11 @@ export class MTMService {
             counterparty: trade.counterparty,
             product: leg.product,
             quantity: leg.quantity,
-            contractPrice: 0, // This would come from the original trade price
-            marketPrice: 0, // This would be derived from current market data
+            contractPrice: contractPrice, 
+            marketPrice: marketPrice,
             mtmValue,
+            pnlValue,
+            tradePrice: contractPrice,
             calculationDate: new Date()
           });
         }
@@ -78,8 +85,10 @@ export class MTMService {
     // Simplified calculation for demo purposes
     // In a real system, this would evaluate the formula with current market prices
     try {
-      if (typeof formula === 'object' && formula.exposures && formula.exposures.physical) {
-        const exposureTotal = Object.values(formula.exposures.physical)
+      const formulaObj = typeof formula === 'string' ? JSON.parse(formula) : formula;
+      
+      if (formulaObj && formulaObj.exposures && formulaObj.exposures.physical) {
+        const exposureTotal = Object.values(formulaObj.exposures.physical)
           .reduce((sum: number, val: any) => sum + Number(val || 0), 0);
         
         return quantity * 10 + Math.abs(exposureTotal); // Simplified placeholder calculation

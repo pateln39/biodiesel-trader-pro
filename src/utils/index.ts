@@ -2,19 +2,16 @@
 // This file is kept for backward compatibility and re-exports all utilities from their new module locations
 // In the future, imports should come directly from the module utilities
 
-// Re-export core utils
+// Re-export date utilities
 export {
-  formatDate,
-  parseDate,
-  getCurrentMonth,
-  getPreviousMonth,
-  getDateRange,
-  getDateRangeForPeriod,
-  isDateInRange,
-  addMonths
+  getNextMonths,
+  formatMonthCode,
+  isValidFuturePeriod
 } from '@/core/utils/dateUtils';
 
 export {
+  formatDateString,
+  parseExcelDateSerial,
   parseISODate,
   formatISODate,
   parseDateString
@@ -22,10 +19,9 @@ export {
 
 // Validation utils with explicit naming to avoid conflicts
 export {
-  validateFields as validateFieldSet,
-  validateRequiredField as validateRequired,
   validateDateRange,
-  validateNumberRange
+  validateRequiredField,
+  validateFields
 } from '@/core/utils/validationUtils';
 
 // Re-export trade utils

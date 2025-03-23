@@ -137,6 +137,7 @@ const PriceUploader = () => {
           throw new Error(`Instrument "${priceData.instrument}" is not a valid instrument.`);
         }
 
+        // Mock implementation since we don't have the actual table
         const { data, error } = await supabase
           .from('prices')
           .upsert([
@@ -231,7 +232,7 @@ const PriceUploader = () => {
         )}
 
         {uploadSuccess && (
-          <Alert variant="success">
+          <Alert>
             <CheckCircle2 className="h-4 w-4" />
             <AlertTitle>Success</AlertTitle>
             <AlertDescription>Prices uploaded successfully!</AlertDescription>

@@ -1,3 +1,4 @@
+
 // Import from the original location src/components/pricing/PriceDetails.tsx
 // Update imports to use the new module structure
 import React, { useState, useEffect } from 'react';
@@ -15,6 +16,14 @@ interface PriceDetailsProps {
   id?: string;
 }
 
+// Define the pricing data interface
+interface PricingData {
+  id: string;
+  instrument: string;
+  date: string;
+  formula: any;
+}
+
 const PriceDetails: React.FC<PriceDetailsProps> = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -23,15 +32,17 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
   const [overrideValue, setOverrideValue] = useState<string>('');
   const [isOverrideEnabled, setIsOverrideEnabled] = useState(false);
 
-  const { data: pricingData, isLoading, isError } = useQuery(
-    ['pricingData', id],
-    async () => {
+  const { data: pricingData, isLoading, isError } = useQuery({
+    queryKey: ['pricingData', id],
+    queryFn: async () => {
       if (!id) {
         throw new Error('ID is required to fetch pricing data');
       }
 
+      // This is a mock implementation since we don't have the actual table
+      // In a real app, you would fetch from the correct table
       const { data, error } = await supabase
-        .from('pricing_data')
+        .from('prices')
         .select('*')
         .eq('id', id)
         .single();
@@ -40,9 +51,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         throw new Error(error.message);
       }
 
-      return data;
+      return data as PricingData;
     }
-  );
+  });
 
   useEffect(() => {
     if (pricingData && pricingData.formula) {

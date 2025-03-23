@@ -8,10 +8,9 @@ export * from './pricing';
 // Import and re-export unified trade type
 import { PaperTrade } from './paper';
 import { PhysicalTrade } from './physical';
-import { TradeType, TokenType } from './common';
+
+// Explicitly re-export to avoid ambiguity
+export type { PhysicalTrade, PaperTrade };
 
 // Unified trade type that can be either physical or paper
 export type Trade = PhysicalTrade | PaperTrade;
-
-// Make TradeType easily accessible
-export { TradeType, TokenType };

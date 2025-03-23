@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -12,53 +12,11 @@ import {
   Unit,
   PaymentTerm,
   CreditStatus,
-  PhysicalType
-} from '../types';
+  DbParentTrade,
+  DbTradeLeg,
+} from '@/modules/trade/types';
 import { validateAndParsePricingFormula } from '@/modules/pricing/utils/formulaUtils';
-import { setupPhysicalTradeSubscriptions } from '@/modules/operations/utils/physicalTradeSubscriptionUtils';
-
-// Database interfaces - should eventually be moved to a more appropriate location
-interface DbParentTrade {
-  id: string;
-  trade_reference: string;
-  trade_type: string;
-  physical_type?: string;
-  counterparty: string;
-  comment?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface DbTradeLeg {
-  id: string;
-  parent_trade_id: string;
-  leg_reference: string;
-  buy_sell: string;
-  product: string;
-  sustainability?: string;
-  inco_term?: string;
-  quantity: number;
-  tolerance?: number;
-  loading_period_start?: string;
-  loading_period_end?: string;
-  pricing_period_start?: string;
-  pricing_period_end?: string;
-  unit?: string;
-  payment_term?: string;
-  credit_status?: string;
-  pricing_formula?: any;
-  mtm_formula?: any;
-  broker?: string;
-  instrument?: string;
-  price?: number;
-  calculated_price?: number;
-  last_calculation_date?: string;
-  mtm_calculated_price?: number;
-  mtm_last_calculation_date?: string;
-  created_at: string;
-  updated_at: string;
-  trading_period?: string;
-}
+import { setupPhysicalTradeSubscriptions } from '@/modules/trade/utils/physicalTradeSubscriptionUtils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -68,81 +26,12 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
-const mapBuySell = (value: string): BuySell => {
-  if (value === 'buy') return BuySell.Buy;
-  return BuySell.Sell;
-};
-
-const mapPhysicalType = (value: string | undefined): PhysicalType => {
-  if (value === 'spot') return PhysicalType.Spot;
-  return PhysicalType.Term;
-};
-
-const mapTradeType = (value: string): TradeType => {
-  if (value === 'physical') return TradeType.Physical;
-  return TradeType.Paper;
-};
-
-const mapProduct = (value: string): Product => {
-  switch (value) {
-    case 'FAME0': return Product.FAME0;
-    case 'RME': return Product.RME;
-    case 'UCOME': return Product.UCOME;
-    case 'UCOME-5': return Product.UCOME5;
-    case 'RME DC': return Product.RMEDC;
-    default: return Product.UCOME;
-  }
-};
-
-const mapIncoTerm = (value: string | undefined): IncoTerm => {
-  if (!value) return IncoTerm.FOB;
-  switch (value) {
-    case 'FOB': return IncoTerm.FOB;
-    case 'CIF': return IncoTerm.CIF;
-    case 'DES': return IncoTerm.DES;
-    case 'DAP': return IncoTerm.DAP;
-    case 'FCA': return IncoTerm.FCA;
-    default: return IncoTerm.FOB;
-  }
-};
-
-const mapUnit = (value: string | undefined): Unit => {
-  if (!value) return Unit.MT;
-  switch (value) {
-    case 'MT': return Unit.MT;
-    case 'KG': return Unit.KG;
-    case 'LT': return Unit.LT;
-    default: return Unit.MT;
-  }
-};
-
-const mapPaymentTerm = (value: string | undefined): PaymentTerm => {
-  if (!value) return PaymentTerm.ThirtyDays;
-  switch (value) {
-    case 'advance': return PaymentTerm.Advance;
-    case '30 days': return PaymentTerm.ThirtyDays;
-    case '60 days': return PaymentTerm.SixtyDays;
-    case '90 days': return PaymentTerm.NinetyDays;
-    default: return PaymentTerm.ThirtyDays;
-  }
-};
-
-const mapCreditStatus = (value: string | undefined): CreditStatus => {
-  if (!value) return CreditStatus.Pending;
-  switch (value) {
-    case 'pending': return CreditStatus.Pending;
-    case 'approved': return CreditStatus.Approved;
-    case 'rejected': return CreditStatus.Rejected;
-    default: return CreditStatus.Pending;
-  }
-};
-
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
-      .eq('trade_type', 'physical')
+      .eq('trade_type', TradeType.Physical)
       .order('created_at', { ascending: false });
 
     if (parentTradesError) {
@@ -163,47 +52,47 @@ const fetchTrades = async (): Promise<Trade[]> => {
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
-      if (parent.trade_type === 'physical' && firstLeg) {
+      if (parent.trade_type === TradeType.Physical && firstLeg) {
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
-          tradeType: mapTradeType(parent.trade_type),
+          tradeType: TradeType.Physical, 
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
-          physicalType: mapPhysicalType(parent.physical_type),
+          physicalType: parent.physical_type === 'spot' ? 'spot' as const : 'term' as const,
           counterparty: parent.counterparty,
-          buySell: mapBuySell(firstLeg.buy_sell),
-          product: mapProduct(firstLeg.product),
+          buySell: firstLeg.buy_sell as BuySell,
+          product: firstLeg.product as Product,
           sustainability: firstLeg.sustainability || '',
-          incoTerm: mapIncoTerm(firstLeg.inco_term),
+          incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
           quantity: firstLeg.quantity,
           tolerance: firstLeg.tolerance || 0,
           loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
           loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
-          unit: mapUnit(firstLeg.unit),
-          paymentTerm: mapPaymentTerm(firstLeg.payment_term),
-          creditStatus: mapCreditStatus(firstLeg.credit_status),
+          unit: (firstLeg.unit || 'MT') as Unit,
+          paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
+          creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
             legReference: leg.leg_reference,
-            buySell: mapBuySell(leg.buy_sell),
-            product: mapProduct(leg.product),
+            buySell: leg.buy_sell as BuySell,
+            product: leg.product as Product,
             sustainability: leg.sustainability || '',
-            incoTerm: mapIncoTerm(leg.inco_term),
+            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
             quantity: leg.quantity,
             tolerance: leg.tolerance || 0,
             loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
             loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
             pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
             pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            unit: mapUnit(leg.unit),
-            paymentTerm: mapPaymentTerm(leg.payment_term),
-            creditStatus: mapCreditStatus(leg.credit_status),
+            unit: (leg.unit || 'MT') as Unit,
+            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
           }))
@@ -211,35 +100,18 @@ const fetchTrades = async (): Promise<Trade[]> => {
         return physicalTrade;
       } 
       
-      // If we can't properly map this trade, return a default structure
-      // This should be handled better in a production environment
-      const defaultTrade: PhysicalTrade = {
+      // Default fallback
+      return {
         id: parent.id,
         tradeReference: parent.trade_reference,
-        tradeType: mapTradeType(parent.trade_type),
+        tradeType: parent.trade_type as TradeType,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
         counterparty: parent.counterparty,
         buySell: BuySell.Buy,
         product: Product.UCOME,
-        physicalType: PhysicalType.Spot,
-        sustainability: '',
-        incoTerm: IncoTerm.FOB,
-        quantity: 0,
-        tolerance: 0,
-        loadingPeriodStart: new Date(),
-        loadingPeriodEnd: new Date(),
-        pricingPeriodStart: new Date(),
-        pricingPeriodEnd: new Date(),
-        unit: Unit.MT,
-        paymentTerm: PaymentTerm.ThirtyDays,
-        creditStatus: CreditStatus.Pending,
-        formula: validateAndParsePricingFormula(null),
-        mtmFormula: validateAndParsePricingFormula(null),
         legs: []
-      };
-      
-      return defaultTrade;
+      } as Trade;
     });
 
     return mappedTrades as Trade[];

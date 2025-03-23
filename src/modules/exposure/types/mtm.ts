@@ -12,6 +12,8 @@ export const mtmCalculationSchema = z.object({
   contractPrice: z.number(),
   marketPrice: z.number(),
   mtmValue: z.number(),
+  pnlValue: z.number().optional(),
+  tradePrice: z.number().optional(),
   calculationDate: z.date(),
 });
 
