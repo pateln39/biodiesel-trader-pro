@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Link2, Trash2, Edit } from 'lucide-react';
@@ -86,8 +85,18 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
             await pausePhysicalSubscriptions(realtimeChannelsRef.current);
             
             // Now actually perform the delete operation
-            if (deleteState.status === 'confirm_requested') {
-              const { itemId, itemReference, isLeg, parentId } = deleteState;
+            if (deleteState.status === 'pausing_subscriptions') {
+              // Store these variables since we'll need them after we've fetched the data
+              const isLeg = deleteState.status === 'confirm_requested' ? deleteState.isLeg : false;
+              const itemId = deleteState.status === 'confirm_requested' ? deleteState.itemId : '';
+              const parentId = deleteState.status === 'confirm_requested' ? deleteState.parentId : undefined;
+              const itemReference = deleteState.status === 'confirm_requested' ? deleteState.itemReference : '';
+              
+              // The itemId should be defined at this point
+              if (!itemId) {
+                throw new Error('Missing item ID for delete operation');
+              }
+              
               let success = false;
               
               if (isLeg && parentId) {
@@ -387,17 +396,16 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           size="sm" 
                           disabled={deleteState.status !== 'idle' && deleteState.status !== 'cancelled'}
                         >
-                          {deleteState.status === 'deleting' && 
-                           deleteState.status === 'confirm_requested' &&
-                           (hasMultipleLegs ? leg.id : trade.id) === 
-                           (deleteState.status === 'confirm_requested' ? deleteState.itemId : '') ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Deleting...
-                            </>
-                          ) : (
-                            'Actions'
-                          )}
+                          {(deleteState.status === 'deleting' || 
+                            deleteState.status === 'pausing_subscriptions') && 
+                            deleteState.status === 'confirm_requested' && (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Deleting...
+                              </>
+                            )}
+                          {(deleteState.status !== 'deleting' && 
+                             deleteState.status !== 'pausing_subscriptions') && 'Actions'}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
