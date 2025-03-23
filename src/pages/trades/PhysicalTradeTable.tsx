@@ -12,6 +12,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
@@ -50,6 +60,13 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [deletingTradeId, setDeletingTradeId] = useState<string>('');
   const [deletionProgress, setDeletionProgress] = useState(0);
   const isProcessingRef = useRef(false);
+  
+  // Delete confirmation dialog state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [pendingDeleteTradeId, setPendingDeleteTradeId] = useState<string>('');
+  const [pendingDeleteTradeRef, setPendingDeleteTradeRef] = useState<string>('');
+  const [pendingDeleteIsLeg, setIsPendingDeleteLeg] = useState(false);
+  const [pendingDeleteLegParentId, setPendingDeleteLegParentId] = useState<string>('');
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -79,8 +96,48 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
+  // Show delete confirmation dialog
+  const showDeleteConfirmation = (tradeId: string, tradeReference: string, isLeg = false, parentId = '') => {
+    console.log(`[PHYSICAL] Showing delete confirmation for ${isLeg ? 'leg' : 'trade'}: ${tradeId} (${tradeReference})`);
+    setPendingDeleteTradeId(tradeId);
+    setPendingDeleteTradeRef(tradeReference);
+    setIsPendingDeleteLeg(isLeg);
+    setPendingDeleteLegParentId(parentId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Cancel delete action
+  const cancelDelete = () => {
+    console.log('[PHYSICAL] Delete operation cancelled by user');
+    setIsDeleteDialogOpen(false);
+    // Reset pending delete state
+    setPendingDeleteTradeId('');
+    setPendingDeleteTradeRef('');
+    setIsPendingDeleteLeg(false);
+    setPendingDeleteLegParentId('');
+  };
+
+  // Confirm delete action
+  const confirmDelete = async () => {
+    console.log(`[PHYSICAL] Delete confirmed for ${pendingDeleteIsLeg ? 'leg' : 'trade'}: ${pendingDeleteTradeId}`);
+    setIsDeleteDialogOpen(false);
+    
+    if (pendingDeleteIsLeg) {
+      await handleDeleteTradeLeg(pendingDeleteTradeId, pendingDeleteTradeRef, pendingDeleteLegParentId);
+    } else {
+      await handleDeleteTrade(pendingDeleteTradeId, pendingDeleteTradeRef);
+    }
+    
+    // Reset pending delete state
+    setPendingDeleteTradeId('');
+    setPendingDeleteTradeRef('');
+    setIsPendingDeleteLeg(false);
+    setPendingDeleteLegParentId('');
+  };
+
   const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
     if (isProcessingRef.current) {
+      console.log('[PHYSICAL] A delete operation is already in progress, skipping');
       return;
     }
     
@@ -127,6 +184,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   const handleDeleteTradeLeg = async (legId: string, legReference: string, parentId: string) => {
     if (isProcessingRef.current) {
+      console.log('[PHYSICAL] A delete operation is already in progress, skipping');
       return;
     }
     
@@ -230,6 +288,28 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         </div>
       )}
 
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {pendingDeleteIsLeg ? 'leg' : 'trade'} "{pendingDeleteTradeRef}"?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -318,7 +398,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                         </Link>
                         {hasMultipleLegs && trade.physicalType === 'term' ? (
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
+                            onClick={() => showDeleteConfirmation(leg.id, leg.legReference, true, trade.id)}
                             className="text-destructive focus:text-destructive"
                             disabled={isDeleting}
                           >
@@ -327,7 +407,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
-                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
+                            onClick={() => showDeleteConfirmation(trade.id, trade.tradeReference)}
                             className="text-destructive focus:text-destructive"
                             disabled={isDeleting}
                           >
