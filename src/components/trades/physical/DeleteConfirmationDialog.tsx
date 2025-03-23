@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import {
   Dialog,
@@ -28,8 +28,29 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
+  // Handle animation completion on close
+  useEffect(() => {
+    if (!isOpen && isPerformingAction) {
+      // If dialog is closed but we're still performing an action,
+      // this is likely a forced close - let's ensure onClose is called
+      const timer = setTimeout(() => {
+        onClose();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isPerformingAction, onClose]);
+
+  const handleConfirm = () => {
+    onConfirm();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open && !isPerformingAction) {
+        // Only allow manual closing if we're not performing an action
+        onClose();
+      }
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>
@@ -42,7 +63,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <Button
             type="button"
             variant="destructive"
-            onClick={onConfirm}
+            onClick={handleConfirm}
             disabled={isPerformingAction}
           >
             {isPerformingAction ? (

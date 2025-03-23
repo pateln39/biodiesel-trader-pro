@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PhysicalTrade } from '@/types';
@@ -52,6 +51,24 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [itemToDeleteReference, setItemToDeleteReference] = useState<string>('');
   const [parentTradeId, setParentTradeId] = useState<string>('');
   const [isPerformingAction, setIsPerformingAction] = useState(false);
+  
+  // Cleanup timer ref
+  const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Effect to ensure cleanup of any lingering states
+  useEffect(() => {
+    return () => {
+      if (cleanupTimerRef.current) {
+        clearTimeout(cleanupTimerRef.current);
+      }
+      
+      // Ensure we resume subscriptions if component unmounts during an operation
+      if (realtimeChannelsRef && isProcessingRef.current) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+        isProcessingRef.current = false;
+      }
+    };
+  }, [realtimeChannelsRef]);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -83,7 +100,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   // Open the dialog instead of deleting immediately
   const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
-    if (isPerformingAction) {
+    if (isPerformingAction || isProcessingRef.current) {
       return;
     }
     
@@ -96,7 +113,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   // Open the dialog instead of deleting immediately
   const handleDeleteTradeLeg = (legId: string, legReference: string, parentId: string) => {
-    if (isPerformingAction) {
+    if (isPerformingAction || isProcessingRef.current) {
       return;
     }
     
@@ -107,11 +124,36 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     setIsDialogOpen(true);
   };
 
+  // Reset all delete-related states
+  const resetDeleteStates = () => {
+    // Allow a small delay for animation to complete
+    cleanupTimerRef.current = setTimeout(() => {
+      setIsDeleting(false);
+      setDeletingTradeId('');
+      setDeletionProgress(0);
+      setIsPerformingAction(false);
+      isProcessingRef.current = false;
+      
+      // Ensure subscriptions are resumed
+      if (realtimeChannelsRef) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      // Clear the timeout reference
+      cleanupTimerRef.current = null;
+    }, 300);
+  };
+
   // Close dialog safely
   const handleCloseDialog = () => {
     // Only allow closing if not in the middle of an action
     if (!isPerformingAction) {
       setIsDialogOpen(false);
+      
+      // Ensure all delete states are reset after dialog animation completes
+      cleanupTimerRef.current = setTimeout(() => {
+        resetDeleteStates();
+      }, 300);
     }
   };
 
@@ -126,10 +168,10 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       setIsPerformingAction(true);
       isProcessingRef.current = true;
       
-      // First close the dialog with a small delay to prevent UI jank
-      setIsDialogOpen(false);
+      // Keep the dialog open during the initial phase
+      // Let's control when to close it based on our progress
       
-      // Small delay to allow the dialog to close before starting the operation
+      // Small delay before starting the actual operation
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Now start the deletion process
@@ -137,10 +179,16 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       setIsDeleting(true);
       setDeletingTradeId(itemToDeleteId);
       
+      // Close the dialog now that we've started the deletion
+      setIsDialogOpen(false);
+      
       // Pause subscriptions to prevent race conditions during delete
       if (realtimeChannelsRef) {
         pausePhysicalSubscriptions(realtimeChannelsRef.current);
       }
+      
+      // Wait for dialog animation to complete
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const progress = (value: number) => {
         console.log(`[PHYSICAL] Delete progress: ${value}%`);
@@ -172,20 +220,8 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
-      // Allow a moment before resetting state to prevent UI jank
-      setTimeout(() => {
-        // Resume subscriptions
-        if (realtimeChannelsRef) {
-          resumePhysicalSubscriptions(realtimeChannelsRef.current);
-        }
-        
-        // Reset states in a single batch to minimize renders
-        setIsDeleting(false);
-        setDeletingTradeId('');
-        setDeletionProgress(0);
-        setIsPerformingAction(false);
-        isProcessingRef.current = false;
-      }, 300);
+      // Reset all states in a controlled manner
+      resetDeleteStates();
     }
   };
 
