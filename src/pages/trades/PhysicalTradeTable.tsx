@@ -1,31 +1,17 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Loader2, AlertCircle, Link2, Trash2, Edit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
-import { formulaToDisplayString } from '@/utils/formulaUtils';
+import { PhysicalTrade } from '@/types';
 import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
 import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 import { toast } from 'sonner';
-import { Progress } from '@/components/ui/progress';
+
+import DeleteConfirmationDialog from '@/components/trades/physical/DeleteConfirmationDialog';
+import DeleteProgressIndicator from '@/components/trades/physical/DeleteProgressIndicator';
+import TableLoadingState from '@/components/trades/physical/TableLoadingState';
+import TableErrorState from '@/components/trades/physical/TableErrorState';
+import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -203,64 +189,21 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     }
   };
 
-  const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
-    if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
-      return <span className="text-muted-foreground italic">No formula</span>;
-    }
-    
-    const displayText = formulaToDisplayString(trade.formula.tokens);
-    
-    return (
-      <div className="max-w-[300px] overflow-hidden">
-        <span 
-          className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-          title={displayText}
-        >
-          {displayText}
-        </span>
-      </div>
-    );
-  };
-
-  const isMultiLegTrade = (trade: PhysicalTrade) => {
-    return trade.legs && trade.legs.length > 1;
-  };
-
   if (loading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <TableLoadingState />;
   }
 
   if (error) {
-    return (
-      <div className="p-8 flex flex-col items-center text-center space-y-4">
-        <AlertCircle className="h-10 w-10 text-destructive" />
-        <div>
-          <h3 className="font-medium">Failed to load trades</h3>
-          <p className="text-muted-foreground text-sm">
-            {error instanceof Error ? error.message : 'Unknown error occurred'}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetchTrades()}>
-          Try Again
-        </Button>
-      </div>
-    );
+    return <TableErrorState error={error} onRetry={refetchTrades} />;
   }
 
   return (
     <>
-      {isDeleting && (
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground mb-1">
-            Deleting {deletingTradeId}... Please wait
-          </p>
-          <Progress value={deletionProgress} className="h-2" />
-        </div>
-      )}
+      <DeleteProgressIndicator 
+        isDeleting={isDeleting} 
+        deletingId={deletingTradeId} 
+        progress={deletionProgress} 
+      />
 
       <Table>
         <TableHeader>
@@ -279,98 +222,25 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         <TableBody>
           {trades.length > 0 ? (
             trades.flatMap((trade) => {
-              const hasMultipleLegs = isMultiLegTrade(trade);
               const legs = trade.legs || [];
               
               return legs.map((leg, legIndex) => (
-                <TableRow 
+                <TradeTableRow 
                   key={leg.id}
-                  className={legIndex > 0 ? "border-t-0" : undefined}
-                >
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
-                        {trade.physicalType === 'term' ? 
-                          `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
-                          trade.tradeReference
-                        }
-                      </Link>
-                      {hasMultipleLegs && trade.physicalType === 'term' && (
-                        <Badge variant="outline" className="h-5 text-xs">
-                          <Link2 className="mr-1 h-3 w-3" />
-                          {legIndex === 0 ? "Primary" : `Leg ${legIndex + 1}`}
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="capitalize">{leg.buySell}</TableCell>
-                  <TableCell>{leg.incoTerm}</TableCell>
-                  <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
-                  <TableCell>{leg.product}</TableCell>
-                  <TableCell>{trade.counterparty}</TableCell>
-                  <TableCell>{renderFormula(leg)}</TableCell>
-                  <TableCell>
-                    <div className="relative">
-                      <Textarea 
-                        placeholder="Add comments..."
-                        value={comments[leg.id] || ''}
-                        onChange={(e) => handleCommentChange(leg.id, e.target.value)}
-                        onBlur={() => handleCommentBlur(leg.id)}
-                        className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                        rows={1}
-                      />
-                      {savingComments[leg.id] && (
-                        <div className="absolute top-1 right-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isDeleting || isPerformingAction}>
-                          {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              Deleting...
-                            </>
-                          ) : (
-                            'Actions'
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditTrade(trade.id)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Trade
-                        </DropdownMenuItem>
-                        <Link to={`/trades/${trade.id}`}>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </Link>
-                        {hasMultipleLegs && trade.physicalType === 'term' ? (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
-                            className="text-destructive focus:text-destructive"
-                            disabled={isDeleting || isPerformingAction}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade Leg
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
-                            className="text-destructive focus:text-destructive"
-                            disabled={isDeleting || isPerformingAction}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Trade
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                  trade={trade}
+                  leg={leg}
+                  legIndex={legIndex}
+                  comments={comments}
+                  savingComments={savingComments}
+                  isDeleting={isDeleting}
+                  deletingTradeId={deletingTradeId}
+                  isProcessingRef={isProcessingRef}
+                  onCommentChange={handleCommentChange}
+                  onCommentBlur={handleCommentBlur}
+                  onEditTrade={handleEditTrade}
+                  onDeleteTrade={handleDeleteTrade}
+                  onDeleteTradeLeg={handleDeleteTradeLeg}
+                />
               ));
             })
           ) : (
@@ -383,46 +253,14 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         </TableBody>
       </Table>
 
-      {/* Confirmation Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {deleteItemType === 'trade' ? 'trade' : 'trade leg'} <span className="font-medium">{itemToDeleteReference}</span>?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-start gap-3">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isPerformingAction}
-            >
-              {isPerformingAction ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCloseDialog}
-              disabled={isPerformingAction}
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmationDialog
+        isOpen={isDialogOpen}
+        onClose={handleCloseDialog}
+        onConfirm={handleConfirmDelete}
+        itemType={deleteItemType}
+        itemReference={itemToDeleteReference}
+        isPerformingAction={isPerformingAction}
+      />
     </>
   );
 };
