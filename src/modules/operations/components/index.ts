@@ -1,6 +1,7 @@
 
-// Export all components from the operations module
-// Using explicit imports to avoid potential circular dependencies
-export { default as Layout } from '@/components/Layout';
-export { default as MovementList } from '@/components/operations/MovementList';
-export { default as MovementForm } from '@/components/operations/MovementForm';
+// Export all operations-related components
+export { default as ShipmentList } from './ShipmentList';
+export { default as ShipmentForm } from './ShipmentForm';
+export { default as ShipmentDetails } from './ShipmentDetails';
+export { default as MovementList } from './MovementList'; 
+export { default as MovementForm } from './MovementForm';

@@ -1,13 +1,15 @@
 
 import React from 'react';
-import { Route } from 'react-router-dom';
-import PricingAdminPage from '@/pages/pricing/PricingAdminPage';
+import { Routes, Route } from 'react-router-dom';
+import { PricingAdminPage } from '@/modules/admin/pages';
+import { PricesPage } from '@/modules/exposure/pages';
 
 const PricingRoutes = () => {
   return (
-    <Route path="/pricing">
+    <Routes>
+      <Route index element={<PricesPage />} />
       <Route path="admin" element={<PricingAdminPage />} />
-    </Route>
+    </Routes>
   );
 };
 

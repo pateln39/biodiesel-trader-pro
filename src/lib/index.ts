@@ -1,4 +1,4 @@
 
-// Export all third-party library wrappers
+import { queryClient } from './query-client';
+export { queryClient };
 export * from './utils';
-export * from './query-client';
