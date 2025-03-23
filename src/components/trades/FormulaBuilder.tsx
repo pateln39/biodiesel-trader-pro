@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,14 +15,14 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString
-} from '@/utils/formulaUtils';
+} from '@/modules/pricing/utils/formulaUtils';
 import { 
   canAddTokenType, 
   calculateExposures,
   calculatePhysicalExposure,
   calculatePricingExposure,
   createEmptyExposureResult
-} from '@/utils/formulaCalculation';
+} from '@/modules/pricing/utils/formulaCalculation';
 
 interface FormulaBuilderProps {
   value: PricingFormula;
