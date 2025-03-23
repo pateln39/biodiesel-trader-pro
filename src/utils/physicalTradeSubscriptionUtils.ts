@@ -7,14 +7,15 @@ type ChannelRef = { [key: string]: any };
  * Clean up physical trade subscriptions to avoid memory leaks
  */
 export const cleanupPhysicalSubscriptions = (channelRefs: ChannelRef) => {
-  console.log("[PHYSICAL] Cleaning up physical trade subscriptions");
+  console.log("[SUBSCRIPTION] Cleaning up physical trade subscriptions");
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {
         supabase.removeChannel(channelRefs[key]);
         channelRefs[key] = null;
+        console.log(`[SUBSCRIPTION] Removed channel: ${key}`);
       } catch (e) {
-        console.error(`[PHYSICAL] Error removing physical channel ${key}:`, e);
+        console.error(`[SUBSCRIPTION] Error removing physical channel ${key}:`, e);
       }
     }
   });
@@ -24,14 +25,14 @@ export const cleanupPhysicalSubscriptions = (channelRefs: ChannelRef) => {
  * Pause physical trade realtime subscriptions
  */
 export const pausePhysicalSubscriptions = (channelRefs: ChannelRef) => {
-  console.log("[PHYSICAL] Pausing physical trade subscriptions");
+  console.log("[SUBSCRIPTION] Pausing physical trade subscriptions");
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {
         channelRefs[key].isPaused = true;
-        console.log(`[PHYSICAL] Paused physical channel: ${key}`);
+        console.log(`[SUBSCRIPTION] Paused physical channel: ${key}`);
       } catch (e) {
-        console.error(`[PHYSICAL] Error pausing physical channel ${key}:`, e);
+        console.error(`[SUBSCRIPTION] Error pausing physical channel ${key}:`, e);
       }
     }
   });
@@ -41,14 +42,14 @@ export const pausePhysicalSubscriptions = (channelRefs: ChannelRef) => {
  * Resume physical trade realtime subscriptions
  */
 export const resumePhysicalSubscriptions = (channelRefs: ChannelRef) => {
-  console.log("[PHYSICAL] Resuming physical trade subscriptions");
+  console.log("[SUBSCRIPTION] Resuming physical trade subscriptions");
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {
         channelRefs[key].isPaused = false;
-        console.log(`[PHYSICAL] Resumed physical channel: ${key}`);
+        console.log(`[SUBSCRIPTION] Resumed physical channel: ${key}`);
       } catch (e) {
-        console.error(`[PHYSICAL] Error resuming physical channel ${key}:`, e);
+        console.error(`[SUBSCRIPTION] Error resuming physical channel ${key}:`, e);
       }
     }
   });
@@ -74,12 +75,12 @@ export const setupPhysicalTradeSubscriptions = (
       filter: 'trade_type=eq.physical'
     }, (payload) => {
       if (realtimeChannelsRef.current.parentTradesChannel?.isPaused) {
-        console.log('[PHYSICAL] Subscription paused, skipping update for parent_trades');
+        console.log('[SUBSCRIPTION] Subscription paused, skipping update for parent_trades');
         return;
       }
       
       if (!isProcessingRef.current) {
-        console.log('[PHYSICAL] Physical parent trades changed, debouncing refetch...', payload);
+        console.log('[SUBSCRIPTION] Physical parent trades changed, debouncing refetch...', payload);
         debouncedRefetch(refetch);
       }
     })
@@ -95,12 +96,12 @@ export const setupPhysicalTradeSubscriptions = (
       table: 'trade_legs' 
     }, (payload) => {
       if (realtimeChannelsRef.current.tradeLegsChannel?.isPaused) {
-        console.log('[PHYSICAL] Subscription paused, skipping update for trade_legs');
+        console.log('[SUBSCRIPTION] Subscription paused, skipping update for trade_legs');
         return;
       }
       
       if (!isProcessingRef.current) {
-        console.log('[PHYSICAL] Trade legs changed, debouncing refetch...', payload);
+        console.log('[SUBSCRIPTION] Trade legs changed, debouncing refetch...', payload);
         debouncedRefetch(refetch);
       }
     })

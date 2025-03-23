@@ -1,12 +1,11 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loader2, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Dialog,
   DialogPortal,
   DialogOverlay,
-  DialogClose,
   DialogHeader,
   DialogFooter,
   DialogTitle,
@@ -31,7 +30,10 @@ const NoAnimationDialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+      <DialogPrimitive.Close 
+        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+        disabled={props.disabled}
+      >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
@@ -44,8 +46,8 @@ interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  itemType: 'trade' | 'leg';
-  itemReference: string;
+  itemType: 'trade' | 'leg' | null;
+  itemReference: string | null;
   isPerformingAction: boolean;
 }
 
@@ -57,7 +59,14 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
-  // Removed animation timing-related useEffect
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (!isPerformingAction) {
+        onClose();
+      }
+    };
+  }, [isPerformingAction, onClose]);
 
   const handleConfirm = () => {
     onConfirm();
@@ -70,7 +79,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         onClose();
       }
     }}>
-      <NoAnimationDialogContent>
+      <NoAnimationDialogContent disabled={isPerformingAction}>
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>
           <DialogDescription>
