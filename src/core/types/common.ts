@@ -50,12 +50,13 @@ export interface ParentTrade {
 export interface MTMPriceDetail {
   instruments: Record<string, {
     price: number;
-    date: Date;
+    date: Date | null;
   }>;
-  calculationDate: Date;
+  evaluatedPrice?: number;
+  calculationDate?: Date;
 }
 
-export interface PriceDetail extends MTMPriceDetail {
+export interface PriceDetail {
   instruments: Record<string, {
     prices: Array<{
       date: Date;
@@ -63,6 +64,7 @@ export interface PriceDetail extends MTMPriceDetail {
     }>;
     average: number;
   }>;
+  calculationDate: Date;
 }
 
 // UI Types
@@ -78,3 +80,30 @@ export interface ProductRelationship {
 export type PaperRelationshipType = "FP" | "DIFF" | "SPREAD";
 export type DisplayProduct = string;
 export type Instrument = string;
+
+// Add missing types
+export interface DateRange {
+  from: Date | undefined;
+  to: Date | undefined;
+}
+
+export interface AuditLog {
+  id: string;
+  table_name: string;
+  record_id: string;
+  operation: string;
+  old_data?: any;
+  new_data?: any;
+  timestamp: Date;
+  user_id?: string;
+}
+
+export interface PricePoint {
+  date: Date;
+  price: number;
+}
+
+export interface PriceRange {
+  min: number;
+  max: number;
+}

@@ -1,6 +1,4 @@
 
-// Import from the original location src/components/pricing/PriceDetails.tsx
-// Update imports to use the new module structure
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,19 +37,49 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         throw new Error('ID is required to fetch pricing data');
       }
 
-      // This is a mock implementation since we don't have the actual table
-      // In a real app, you would fetch from the correct table
-      const { data, error } = await supabase
-        .from('prices')
-        .select('*')
+      // Fetch from historical_prices instead of the non-existent 'prices' table
+      const { data: histPrice, error: histPriceError } = await supabase
+        .from('historical_prices')
+        .select(`
+          id, 
+          price_date as date, 
+          price,
+          pricing_instruments(instrument_code, display_name)
+        `)
         .eq('id', id)
         .single();
 
-      if (error) {
-        throw new Error(error.message);
+      if (histPriceError) {
+        // Try forward prices table as an alternative
+        const { data: fwdPrice, error: fwdPriceError } = await supabase
+          .from('forward_prices')
+          .select(`
+            id, 
+            forward_month as date, 
+            price,
+            pricing_instruments(instrument_code, display_name)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (fwdPriceError) {
+          throw new Error('Price data not found');
+        }
+
+        return {
+          id: fwdPrice.id,
+          instrument: fwdPrice.pricing_instruments?.instrument_code || 'Unknown',
+          date: fwdPrice.date,
+          formula: null // Forward prices typically don't have formulas
+        };
       }
 
-      return data as PricingData;
+      return {
+        id: histPrice.id,
+        instrument: histPrice.pricing_instruments?.instrument_code || 'Unknown',
+        date: histPrice.date,
+        formula: null // Historical prices typically don't have formulas stored
+      };
     }
   });
 
@@ -66,6 +94,10 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         setPrice(null);
         setFormulaDisplay('Error in formula');
       }
+    } else if (pricingData) {
+      // If we don't have a formula, just use the price directly
+      setPrice(pricingData.price);
+      setFormulaDisplay('No formula available');
     } else {
       setPrice(null);
       setFormulaDisplay('');
