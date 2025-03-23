@@ -86,13 +86,23 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
             
             // Now actually perform the delete operation
             if (deleteState.status === 'pausing_subscriptions') {
-              // Store these variables since we'll need them after we've fetched the data
-              const isLeg = deleteState.status === 'confirm_requested' ? deleteState.isLeg : false;
-              const itemId = deleteState.status === 'confirm_requested' ? deleteState.itemId : '';
-              const parentId = deleteState.status === 'confirm_requested' ? deleteState.parentId : undefined;
-              const itemReference = deleteState.status === 'confirm_requested' ? deleteState.itemReference : '';
+              // We need to use the data that was stored in the previous confirm_requested state
+              // Check if we've received info from the previous state
+              const storageRef = useRef<{
+                isLeg: boolean;
+                itemId: string;
+                parentId?: string;
+                itemReference: string;
+              }>();
               
-              // The itemId should be defined at this point
+              // Since we're in pausing_subscriptions state, we should have stored the necessary values 
+              // when transitioning from confirm_requested to deleting
+              if (!storageRef.current) {
+                throw new Error('Missing delete information');
+              }
+              
+              const { isLeg, itemId, parentId, itemReference } = storageRef.current;
+              
               if (!itemId) {
                 throw new Error('Missing item ID for delete operation');
               }
@@ -178,6 +188,21 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
             console.error('[PHYSICAL] Error handling cancellation:', error);
             deleteActions.reset();
           }
+          break;
+          
+        case 'confirm_requested':
+          // Store the required data for when we transition to pausing_subscriptions state
+          useRef<{
+            isLeg: boolean;
+            itemId: string;
+            parentId?: string;
+            itemReference: string;
+          }>({
+            isLeg: deleteState.isLeg,
+            itemId: deleteState.itemId,
+            parentId: deleteState.parentId,
+            itemReference: deleteState.itemReference
+          });
           break;
       }
     };
@@ -397,15 +422,12 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           disabled={deleteState.status !== 'idle' && deleteState.status !== 'cancelled'}
                         >
                           {(deleteState.status === 'deleting' || 
-                            deleteState.status === 'pausing_subscriptions') && 
-                            deleteState.status === 'confirm_requested' && (
+                            deleteState.status === 'pausing_subscriptions') ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 Deleting...
                               </>
-                            )}
-                          {(deleteState.status !== 'deleting' && 
-                             deleteState.status !== 'pausing_subscriptions') && 'Actions'}
+                            ) : 'Actions'}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
