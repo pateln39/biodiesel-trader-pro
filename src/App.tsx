@@ -1,46 +1,68 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
-import { queryClient } from '@/lib';
-import { Layout } from '@/core/components';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import TradesPage from "./pages/trades/TradesPage";
+import TradeEntryPage from "./pages/trades/TradeEntryPage";
+import OperationsPage from "./pages/operations/OperationsPage";
+import ExposurePage from "./pages/risk/ExposurePage";
+import AuditLogPage from "./pages/audit/AuditLogPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+import PricingAdminPage from "./pages/pricing/PricingAdminPage";
+import MTMPage from "./pages/risk/MTMPage";
+import PNLPage from "./pages/risk/PNLPage";
+import PricesPage from "./pages/risk/PricesPage";
 
-// Import pages from their respective modules
-import { TradesPage, TradeEntryPage, TradeEditPage } from '@/modules/trade/pages';
-import { OperationsPage } from '@/modules/operations/pages';
-import { MTMPage, ExposurePage, PNLPage } from '@/modules/exposure/pages';
-import { AuditLogPage, PricingAdminPage, ProfilePage, NotFound } from '@/modules/admin/pages';
-import PricingRoutes from '@/routes/PricingRoutes';
-import Dashboard from '@/pages/Dashboard';
-import SettingsPage from '@/pages/SettingsPage';
+const queryClient = new QueryClient();
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Layout>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <HelmetProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Index />} />
+            
+            {/* Trade Routes */}
             <Route path="/trades" element={<TradesPage />} />
             <Route path="/trades/new" element={<TradeEntryPage />} />
-            <Route path="/trades/:id" element={<TradeEditPage />} />
+            <Route path="/trades/edit/:id" element={<NotFound />} />
+            <Route path="/trades/:id" element={<NotFound />} />
+            
+            {/* Operations Routes */}
             <Route path="/operations" element={<OperationsPage />} />
+            <Route path="/operations/:id" element={<NotFound />} />
+            
+            {/* Risk Routes */}
             <Route path="/risk/mtm" element={<MTMPage />} />
             <Route path="/risk/pnl" element={<PNLPage />} />
             <Route path="/risk/exposure" element={<ExposurePage />} />
-            <Route path="/risk/prices/*" element={<PricingRoutes />} />
-            <Route path="/admin/pricing" element={<PricingAdminPage />} />
+            <Route path="/risk/prices" element={<PricesPage />} />
+            
+            {/* Pricing Routes - Admin Section */}
+            <Route path="/pricing/admin" element={<PricingAdminPage />} />
+            
+            {/* Audit Log Routes */}
             <Route path="/audit" element={<AuditLogPage />} />
+            
+            {/* Profile and Settings */}
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/404" element={<NotFound />} />
-            <Route path="*" element={<Navigate to="/404" replace />} />
+            <Route path="/settings" element={<NotFound />} />
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
-        </Layout>
-        <Toaster position="top-right" />
-      </Router>
-    </QueryClientProvider>
-  );
-}
+        </BrowserRouter>
+      </TooltipProvider>
+    </HelmetProvider>
+  </QueryClientProvider>
+);
 
 export default App;

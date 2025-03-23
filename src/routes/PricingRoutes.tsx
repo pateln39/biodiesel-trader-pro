@@ -1,16 +1,13 @@
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { HistoricalPricesView } from '@/modules/pricing/components/historical';
-import { PriceDetails, PriceUploader } from '@/modules/pricing/components';
+import { Route } from 'react-router-dom';
+import PricingAdminPage from '@/pages/pricing/PricingAdminPage';
 
 const PricingRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<HistoricalPricesView />} />
-      <Route path="/upload" element={<PriceUploader />} />
-      <Route path="/:id" element={<PriceDetails />} />
-    </Routes>
+    <Route path="/pricing">
+      <Route path="admin" element={<PricingAdminPage />} />
+    </Route>
   );
 };
 

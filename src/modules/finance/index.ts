@@ -1,6 +1,0 @@
-
-// Finance module index
-// This file serves as the public API for the finance module
-export * from './hooks';
-export * from './services';
-export * from './types';

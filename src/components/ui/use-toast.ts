@@ -1,5 +1,13 @@
 
-// Redirect to the core hook implementation for consistency
-import { toast, useToast } from "@/core/hooks/use-toast";
+// Redirect to Sonner toast for consistency
+import { toast } from "sonner";
 
-export { toast, useToast };
+export { toast };
+
+// For backward compatibility with any existing useToast references
+export const useToast = () => {
+  return {
+    toast,
+    dismiss: () => {}
+  };
+};
