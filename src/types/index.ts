@@ -20,10 +20,10 @@ export {
   IncoTerm 
 } from '@/modules/trade/types/common';
 
-export { 
+export type { 
   DbParentTrade, 
   DbTradeLeg, 
-  Trade,
-  TokenType
+  Trade
 } from '@/core/types/common';
 
+export { TokenType } from '@/core/types/common';

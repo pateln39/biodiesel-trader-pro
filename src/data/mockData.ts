@@ -1,7 +1,7 @@
-
 // Import types from their correct locations
+import { TradeType, BuySell, Unit, PhysicalType } from '@/modules/trade/types/common';
+import { PhysicalTrade, Product, IncoTerm, PaymentTerm, CreditStatus } from '@/modules/trade/types/physical';
 import { PaperTrade } from '@/modules/trade/types/paper';
-import { PhysicalTrade, Product, IncoTerm, PaymentTerm, CreditStatus, BuySell } from '@/modules/trade/types/physical';
 import { AuditLog } from '@/core/types/common';
 import { MovementStatus } from '@/modules/operations/types/movement';
 
@@ -54,46 +54,46 @@ export const mockAuditLogs: AuditLog[] = [
 export const mockPhysicalTrades: PhysicalTrade[] = [
   {
     id: 'PT001',
-    tradeType: 'physical',
-    physicalType: 'spot',
+    tradeType: TradeType.Physical,
+    physicalType: PhysicalType.Spot,
     tradeReference: 'PHY-2023-001',
     counterparty: 'EcoFuels GmbH',
-    buySell: 'buy',
-    product: 'FAME0',
+    buySell: BuySell.Buy,
+    product: Product.FAME,
     sustainability: 'ISCC EU',
-    incoTerm: 'FOB',
+    incoTerm: IncoTerm.FOB,
     quantity: 1000,
-    unit: 'MT',
+    unit: Unit.MT,
     tolerance: 2.5,
     loadingPeriodStart: new Date('2023-04-01'),
     loadingPeriodEnd: new Date('2023-04-15'),
     pricingPeriodStart: new Date('2023-04-01'),
     pricingPeriodEnd: new Date('2023-04-15'),
-    paymentTerm: '30 days',
-    creditStatus: 'approved',
+    paymentTerm: PaymentTerm.ThirtyDays,
+    creditStatus: CreditStatus.Approved,
     createdAt: new Date('2023-03-10'),
     updatedAt: new Date('2023-03-10'),
     legs: []
   },
   {
     id: 'PT002',
-    tradeType: 'physical',
-    physicalType: 'spot',
+    tradeType: TradeType.Physical,
+    physicalType: PhysicalType.Spot,
     tradeReference: 'PHY-2023-002',
     counterparty: 'Renewable Energy Corp',
-    buySell: 'sell',
-    product: 'RME',
+    buySell: BuySell.Sell,
+    product: Product.RME,
     sustainability: 'ISCC EU',
-    incoTerm: 'CIF',
+    incoTerm: IncoTerm.CIF,
     quantity: 2000,
-    unit: 'MT',
+    unit: Unit.MT,
     tolerance: 5,
     loadingPeriodStart: new Date('2023-04-10'),
     loadingPeriodEnd: new Date('2023-04-20'),
     pricingPeriodStart: new Date('2023-04-10'),
     pricingPeriodEnd: new Date('2023-04-20'),
-    paymentTerm: '30 days',
-    creditStatus: 'approved',
+    paymentTerm: PaymentTerm.ThirtyDays,
+    creditStatus: CreditStatus.Approved,
     createdAt: new Date('2023-03-12'),
     updatedAt: new Date('2023-03-12'),
     legs: []
@@ -130,4 +130,3 @@ export const mockMovements: Movement[] = [
     status: 'in-progress'
   }
 ];
-

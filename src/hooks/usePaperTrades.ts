@@ -2,8 +2,8 @@ import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { BuySell, Product } from '@/types/trade';
-import { PaperTrade, PaperTradeLeg } from '@/types/paper';
+import { BuySell } from '@/modules/trade/types/common';
+import { PaperTrade, PaperTradeLeg, PaperProduct } from '@/modules/trade/types/paper';
 import { setupPaperTradeSubscriptions } from '@/modules/trade/utils';
 import { generateLegReference, generateInstrumentName } from '@/modules/trade/utils';
 
@@ -154,7 +154,7 @@ export const usePaperTrades = () => {
               paperTradeId: leg.paper_trade_id,
               legReference: leg.leg_reference,
               buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
+              product: leg.product as PaperProduct,
               quantity: leg.quantity,
               period: leg.period || leg.trading_period || '', 
               price: leg.price || 0,
