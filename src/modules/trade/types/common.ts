@@ -44,13 +44,17 @@ export enum IncoTerm {
   FCA = 'FCA',
 }
 
+// Common physical product enum
 export enum Product {
-  FAME0 = 'FAME0',
-  RME = 'RME',
   UCOME = 'UCOME',
-  UCOME5 = 'UCOME-5',
-  RMEDC = 'RME DC',
+  FAME = 'FAME0',
+  RME = 'RME',
+  SME = 'SME',
+  TME = 'TME',
+  PME = 'PME',
   CME = 'CME',
+  UCO = 'UCO',
+  TALLOW = 'TALLOW',
 }
 
 // Add PhysicalTradeType for backward compatibility
@@ -94,4 +98,3 @@ export type TradeBase = z.infer<typeof tradeBaseSchema>;
 
 // Add TokenType enum for FormulaBuilder - importing from core types
 export { TokenType } from '@/core/types/common';
-

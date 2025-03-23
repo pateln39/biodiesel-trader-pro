@@ -1,49 +1,7 @@
 
 import { z } from 'zod';
-import { BuySell, PhysicalType, TradeType, Unit, tradeBaseSchema } from './common';
+import { BuySell, PhysicalType, TradeType, Unit, tradeBaseSchema, Product, IncoTerm, PaymentTerm, CreditStatus } from './common';
 import { PricingFormula } from './pricing';
-
-// Product types
-export enum Product {
-  UCOME = 'UCOME',
-  FAME = 'FAME0',
-  RME = 'RME',
-  SME = 'SME',
-  TME = 'TME',
-  PME = 'PME',
-  CME = 'CME',
-  UCO = 'UCO',
-  TALLOW = 'TALLOW',
-}
-
-// INCO terms
-export enum IncoTerm {
-  FOB = 'FOB',
-  CIF = 'CIF',
-  CFR = 'CFR',
-  DDP = 'DDP',
-  DAP = 'DAP',
-  FCA = 'FCA',
-}
-
-// Payment terms
-export enum PaymentTerm {
-  ThirtyDays = '30 days',
-  SixtyDays = '60 days',
-  NinetyDays = '90 days',
-  OneHundredTwentyDays = '120 days',
-  Cash = 'cash',
-  CashAgainstDocuments = 'CAD',
-}
-
-// Credit status
-export enum CreditStatus {
-  Approved = 'approved',
-  Pending = 'pending',
-  Rejected = 'rejected',
-  InReview = 'in_review',
-  Prepay = 'prepay',
-}
 
 // Physical trade leg schema
 export const physicalTradeLegSchema = z.object({

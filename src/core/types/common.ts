@@ -42,6 +42,7 @@ export interface DbTradeLeg {
   payment_term: string;
   credit_status: string;
   formula: any;
+  pricing_formula?: any;
   mtm_formula?: any;
   created_at: string;
   updated_at: string;
@@ -133,4 +134,3 @@ export interface Trade {
   updatedAt: Date;
   [key: string]: any; // Allow additional properties
 }
-

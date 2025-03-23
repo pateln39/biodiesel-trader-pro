@@ -8,12 +8,13 @@ import {
   DbTradeLeg,
   TradeType,
   BuySell,
+  PhysicalType,
   PhysicalTrade,
-  Product,
   IncoTerm,
   Unit,
   PaymentTerm,
-  CreditStatus
+  CreditStatus,
+  Product
 } from '@/modules/trade/types';
 import { validateAndParsePricingFormula } from '@/modules/pricing/utils';
 import { setupPhysicalTradeSubscriptions } from '@/modules/trade/utils';
@@ -31,7 +32,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
-      .eq('trade_type', 'physical')
+      .eq('trade_type', TradeType.Physical)
       .order('created_at', { ascending: false });
 
     if (parentTradesError) {
@@ -48,23 +49,25 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
+      // Safely filter legs, handling potential API response inconsistencies
+      const parentId = parent.id;
+      const legs = tradeLegs ? tradeLegs.filter((leg: any) => leg.parent_trade_id === parentId) : [];
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
-      if (parent.trade_type === 'physical' && firstLeg) {
+      if (parent.trade_type === TradeType.Physical && firstLeg) {
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
-          tradeType: 'physical' as TradeType, 
+          tradeType: TradeType.Physical,
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
-          physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
+          physicalType: parent.physical_type === 'spot' ? PhysicalType.Spot : PhysicalType.Term,
           counterparty: parent.counterparty,
-          buySell: firstLeg.buy_sell as BuySell,
-          product: firstLeg.product as unknown as Product,
+          buySell: firstLeg.buy_sell === 'buy' ? BuySell.Buy : BuySell.Sell,
+          product: firstLeg.product as Product,
           sustainability: firstLeg.sustainability || '',
-          incoTerm: (firstLeg.inco_term || 'FOB') as unknown as IncoTerm,
+          incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
           quantity: firstLeg.quantity,
           tolerance: firstLeg.tolerance || 0,
           loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
@@ -72,9 +75,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
           unit: (firstLeg.unit || 'MT') as Unit,
-          paymentTerm: (firstLeg.payment_term || '30 days') as unknown as PaymentTerm,
-          creditStatus: (firstLeg.credit_status || 'pending') as unknown as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.formula),
+          paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
+          creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula || firstLeg.formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           legs: []
         };
@@ -84,17 +87,17 @@ const fetchTrades = async (): Promise<Trade[]> => {
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
-        tradeType: parent.trade_type,
+        tradeType: parent.trade_type as TradeType,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
         counterparty: parent.counterparty,
-        buySell: 'buy',
-        product: 'UCOME',
+        buySell: BuySell.Buy,
+        product: Product.UCOME,
         legs: []
       } as Trade;
     });
 
-    return mappedTrades;
+    return mappedTrades as Trade[];
   } catch (error: any) {
     console.error('[PHYSICAL] Error fetching trades:', error);
     throw new Error(error.message);

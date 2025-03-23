@@ -14,6 +14,7 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
+  PhysicalType
 } from '@/modules/trade/types';
 import { validateAndParsePricingFormula } from '@/modules/pricing/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/modules/trade/utils/physicalTradeSubscriptionUtils';
@@ -48,7 +49,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
+      // Safely filter legs, handling potential API response inconsistencies
+      const parentId = parent.id;
+      const legs = tradeLegs ? tradeLegs.filter((leg: any) => leg.parent_trade_id === parentId) : [];
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
@@ -59,9 +62,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
           tradeType: TradeType.Physical, 
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
-          physicalType: parent.physical_type === 'spot' ? 'spot' as const : 'term' as const,
+          physicalType: parent.physical_type === 'spot' ? PhysicalType.Spot : PhysicalType.Term,
           counterparty: parent.counterparty,
-          buySell: firstLeg.buy_sell as BuySell,
+          buySell: firstLeg.buy_sell === 'buy' ? BuySell.Buy : BuySell.Sell,
           product: firstLeg.product as Product,
           sustainability: firstLeg.sustainability || '',
           incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
@@ -74,13 +77,13 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula || firstLeg.formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
             legReference: leg.leg_reference,
-            buySell: leg.buy_sell as BuySell,
+            buySell: leg.buy_sell === 'buy' ? BuySell.Buy : BuySell.Sell,
             product: leg.product as Product,
             sustainability: leg.sustainability || '',
             incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
@@ -93,7 +96,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
+            formula: validateAndParsePricingFormula(leg.pricing_formula || leg.formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
           }))
         };

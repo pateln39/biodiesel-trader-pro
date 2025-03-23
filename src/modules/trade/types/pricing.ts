@@ -58,4 +58,3 @@ export const pricingDataSchema = z.object({
 
 // Export the pricing data type
 export type PricingData = z.infer<typeof pricingDataSchema>;
-

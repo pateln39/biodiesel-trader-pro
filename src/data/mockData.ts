@@ -1,7 +1,8 @@
+
 // Import types from their correct locations
-import { TradeType, BuySell, Unit, PhysicalType } from '@/modules/trade/types/common';
-import { PhysicalTrade, Product, IncoTerm, PaymentTerm, CreditStatus } from '@/modules/trade/types/physical';
-import { PaperTrade } from '@/modules/trade/types/paper';
+import { TradeType, BuySell, Unit, PhysicalType, Product } from '@/modules/trade/types/common';
+import { PhysicalTrade, IncoTerm, PaymentTerm, CreditStatus } from '@/modules/trade/types';
+import { PaperTrade } from '@/modules/trade/types';
 import { AuditLog } from '@/core/types/common';
 import { MovementStatus } from '@/modules/operations/types/movement';
 

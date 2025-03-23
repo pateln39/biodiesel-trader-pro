@@ -1,13 +1,22 @@
 
-// Re-export from core utils
-export * from '@/core/utils';
+// Export utility functions from the core modules
 
-// Re-export from other modules
-export * from '@/modules/trade/utils';
-export * from '@/modules/pricing/utils';
+// Re-export core date utilities 
+export * from '@/core/utils/dateUtils';
+export * from '@/core/utils/validationUtils';
 
-// Re-export specific utilities 
-export { deletePhysicalTrade, deletePaperTrade, deleteTrade } from '@/modules/trade/utils/tradeDeleteUtils';
+// Export other utility functions
+export * from '@/modules/pricing/utils/priceCalculationUtils';
 
-// Re-export from local files
-export * from './priceCalculationUtils';
+// Selectively export functions from trade utils to avoid ambiguity
+export { 
+  formulaToString,
+  validateAndParsePricingFormula,
+  createEmptyFormula,
+  createInstrumentToken,
+  createFixedValueToken,
+  createPercentageToken,
+  createOperatorToken,
+  createOpenBracketToken,
+  createCloseBracketToken
+} from '@/modules/trade/utils';

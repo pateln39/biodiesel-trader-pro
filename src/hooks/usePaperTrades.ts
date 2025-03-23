@@ -1,8 +1,9 @@
+
 import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { BuySell } from '@/modules/trade/types/common';
+import { BuySell, TradeType } from '@/modules/trade/types/common';
 import { PaperTrade, PaperTradeLeg, PaperProduct } from '@/modules/trade/types/paper';
 import { setupPaperTradeSubscriptions } from '@/modules/trade/utils';
 import { generateLegReference, generateInstrumentName } from '@/modules/trade/utils';
@@ -74,20 +75,20 @@ export const usePaperTrades = () => {
           return {
             id: paperTrade.id,
             tradeReference: paperTrade.trade_reference,
-            tradeType: 'paper' as const,
+            tradeType: TradeType.Paper,
             counterparty: paperTrade.counterparty,
             broker: paperTrade.broker || '',
             createdAt: new Date(paperTrade.created_at),
             updatedAt: new Date(paperTrade.updated_at),
             comment: paperTrade.comment,
             legs: []
-          };
+          } as PaperTrade;
         }
         
         return {
           id: paperTrade.id,
           tradeReference: paperTrade.trade_reference,
-          tradeType: 'paper' as const,
+          tradeType: TradeType.Paper,
           counterparty: paperTrade.counterparty,
           broker: paperTrade.broker || '',
           createdAt: new Date(paperTrade.created_at),
