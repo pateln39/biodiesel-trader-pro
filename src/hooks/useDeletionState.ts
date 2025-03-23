@@ -1,5 +1,5 @@
 
-import { useReducer, useCallback, useRef } from 'react';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
 import { deletionReducer, initialDeletionContext, DeletionAction, DeletionContext } from '@/utils/tradeStateMachine';
 import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
 import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
@@ -12,6 +12,11 @@ interface UseDeletionStateProps {
 export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDeletionStateProps) => {
   const [deletionContext, dispatch] = useReducer(deletionReducer, initialDeletionContext);
   const operationInProgressRef = useRef(false);
+  
+  // Debug logging for state changes
+  useEffect(() => {
+    console.log(`[DELETION_STATE] State changed to: ${deletionContext.state}`, deletionContext);
+  }, [deletionContext]);
   
   // Open confirmation dialog for deleting a trade or leg
   const openDeleteConfirmation = useCallback((
@@ -26,6 +31,8 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
       return;
     }
     
+    console.log(`[DELETION] Opening confirmation for ${itemType} ${itemId} (${itemReference})`);
+    
     dispatch({ 
       type: 'OPEN_CONFIRMATION', 
       itemType, 
@@ -37,6 +44,8 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
   
   // Cancel the delete operation
   const cancelDelete = useCallback(() => {
+    console.log(`[DELETION] Cancel requested, current state: ${deletionContext.state}`);
+    
     if (deletionContext.state === 'deleting') {
       console.log('[DELETION] Cannot cancel while deletion is in progress');
       return;
@@ -47,12 +56,20 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
   
   // Confirm and execute the deletion
   const confirmDelete = useCallback(async () => {
-    if (operationInProgressRef.current || !deletionContext.itemId || !deletionContext.itemType) {
-      console.log('[DELETION] Invalid state for deletion or operation in progress');
+    console.log(`[DELETION] Confirm requested, checking conditions...`);
+    
+    if (operationInProgressRef.current) {
+      console.log('[DELETION] Operation already in progress, ignoring request');
+      return;
+    }
+    
+    if (!deletionContext.itemId || !deletionContext.itemType) {
+      console.log('[DELETION] Invalid state for deletion, missing itemId or itemType');
       return;
     }
     
     try {
+      console.log('[DELETION] Setting operation in progress flag');
       operationInProgressRef.current = true;
       
       // Transition to deleting state
@@ -60,11 +77,13 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
       
       // Pause subscriptions to prevent race conditions
       if (realtimeChannelsRef) {
+        console.log('[DELETION] Pausing realtime subscriptions');
         pausePhysicalSubscriptions(realtimeChannelsRef.current);
       }
       
       // Set up progress tracking callback
       const trackProgress = (progress: number) => {
+        console.log(`[DELETION] Progress update: ${progress}%`);
         dispatch({ type: 'SET_PROGRESS', progress });
       };
       
@@ -72,8 +91,10 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
       let success = false;
       
       if (deletionContext.itemType === 'trade') {
+        console.log(`[DELETION] Deleting trade ${deletionContext.itemId}`);
         success = await deletePhysicalTrade(deletionContext.itemId, trackProgress);
       } else if (deletionContext.itemType === 'leg' && deletionContext.parentId) {
+        console.log(`[DELETION] Deleting leg ${deletionContext.itemId} of trade ${deletionContext.parentId}`);
         success = await deletePhysicalTradeLeg(
           deletionContext.itemId, 
           deletionContext.parentId, 
@@ -83,9 +104,16 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
       
       // Handle success or failure
       if (success) {
+        console.log('[DELETION] Operation completed successfully');
         dispatch({ type: 'SET_SUCCESS' });
-        refetchTrades();
+        
+        // Delay the refetch slightly to allow the UI to update
+        setTimeout(() => {
+          console.log('[DELETION] Triggering refetch after successful delete');
+          refetchTrades();
+        }, 500);
       } else {
+        console.log('[DELETION] Operation failed without throwing an error');
         throw new Error('Deletion operation failed');
       }
     } catch (error) {
@@ -95,13 +123,18 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
         error: error instanceof Error ? error : new Error('Unknown error occurred') 
       });
     } finally {
-      // Always resume subscriptions and reset operation flag
+      // Always resume subscriptions, but with a delay
       if (realtimeChannelsRef) {
+        console.log('[DELETION] Scheduling resumption of subscriptions');
         setTimeout(() => {
+          console.log('[DELETION] Resuming realtime subscriptions');
           resumePhysicalSubscriptions(realtimeChannelsRef.current);
+          
+          console.log('[DELETION] Clearing operation in progress flag');
           operationInProgressRef.current = false;
-        }, 500); // Small delay to prevent race conditions
+        }, 800); // Increased delay to prevent race conditions
       } else {
+        console.log('[DELETION] No channels ref, directly clearing operation flag');
         operationInProgressRef.current = false;
       }
     }
@@ -109,9 +142,13 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
   
   // Reset the state after completion or error
   const resetDeletionState = useCallback(() => {
-    if (deletionContext.state !== 'deleting') {
-      dispatch({ type: 'RESET' });
+    if (deletionContext.state === 'deleting') {
+      console.log('[DELETION] Refusing to reset while delete is in progress');
+      return;
     }
+    
+    console.log('[DELETION] Resetting state machine');
+    dispatch({ type: 'RESET' });
   }, [deletionContext.state]);
   
   return {

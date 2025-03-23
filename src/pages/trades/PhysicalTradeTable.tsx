@@ -41,7 +41,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   const isProcessingRef = useRef(false);
   
-  // Use our new deletion state hook
+  // Use our deletion state hook
   const { 
     deletionContext, 
     openDeleteConfirmation, 
@@ -55,11 +55,18 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   // Cleanup subscriptions when component unmounts
   useEffect(() => {
+    console.log('[PHYSICAL_TABLE] Component mounted');
     return () => {
+      console.log('[PHYSICAL_TABLE] Component unmounting, resetting deletion state');
       // Ensure we handle any pending state on unmount
       resetDeletionState();
     };
   }, [resetDeletionState]);
+
+  // Log when deletionContext changes
+  useEffect(() => {
+    console.log('[PHYSICAL_TABLE] deletionContext updated:', deletionContext.state);
+  }, [deletionContext]);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -89,32 +96,56 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  // Handler for deleting a trade - now uses state machine
+  // Handler for deleting a trade - uses state machine
   const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
+    console.log(`[PHYSICAL_TABLE] Request to delete trade ${tradeId} (${tradeReference})`);
+    
     if (deletionContext.isProcessing) {
+      console.log('[PHYSICAL_TABLE] Ignoring delete request, processing already in progress');
       return;
     }
     
     openDeleteConfirmation('trade', tradeId, tradeReference);
   };
 
-  // Handler for deleting a leg - now uses state machine
+  // Handler for deleting a leg - uses state machine
   const handleDeleteTradeLeg = (legId: string, legReference: string, parentId: string) => {
+    console.log(`[PHYSICAL_TABLE] Request to delete leg ${legId} (${legReference}) of trade ${parentId}`);
+    
     if (deletionContext.isProcessing) {
+      console.log('[PHYSICAL_TABLE] Ignoring delete request, processing already in progress');
       return;
     }
     
     openDeleteConfirmation('leg', legId, legReference, parentId);
   };
 
-  // Reset deletion state after successful completion
+  // Reset deletion state after successful completion with delay
   useEffect(() => {
     if (deletionContext.state === 'success') {
+      console.log('[PHYSICAL_TABLE] Success state detected, scheduling reset');
       const timer = setTimeout(() => {
+        console.log('[PHYSICAL_TABLE] Resetting state after success');
         resetDeletionState();
-      }, 1000);
+      }, 2000); // Increased timeout to ensure UI updates are complete
       
-      return () => clearTimeout(timer);
+      return () => {
+        console.log('[PHYSICAL_TABLE] Clearing success reset timer');
+        clearTimeout(timer);
+      };
+    }
+    
+    if (deletionContext.state === 'error') {
+      console.log('[PHYSICAL_TABLE] Error state detected, scheduling reset');
+      const timer = setTimeout(() => {
+        console.log('[PHYSICAL_TABLE] Resetting state after error');
+        resetDeletionState();
+      }, 3000); // Give more time to see error message
+      
+      return () => {
+        console.log('[PHYSICAL_TABLE] Clearing error reset timer');
+        clearTimeout(timer);
+      };
     }
   }, [deletionContext.state, resetDeletionState]);
 
@@ -189,8 +220,14 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
       <DeleteConfirmationDialog
         isOpen={deletionContext.state === 'confirming'}
-        onClose={cancelDelete}
-        onConfirm={confirmDelete}
+        onClose={() => {
+          console.log('[PHYSICAL_TABLE] Dialog onClose called');
+          cancelDelete();
+        }}
+        onConfirm={() => {
+          console.log('[PHYSICAL_TABLE] Dialog onConfirm called');
+          confirmDelete();
+        }}
         itemType={deletionContext.itemType}
         itemReference={deletionContext.itemReference}
         isPerformingAction={deletionContext.isProcessing}

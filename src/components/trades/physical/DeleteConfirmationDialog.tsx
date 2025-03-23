@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Loader2, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -61,26 +60,42 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
-  // Clean up on unmount
+  console.log(`[DeleteDialog] Render - isOpen: ${isOpen}, isPerformingAction: ${isPerformingAction}, itemType: ${itemType}, itemRef: ${itemReference}`);
+  
   useEffect(() => {
+    console.log(`[DeleteDialog] Effect setup - isPerformingAction: ${isPerformingAction}`);
+    
     return () => {
+      console.log(`[DeleteDialog] Effect cleanup - isPerformingAction: ${isPerformingAction}`);
       if (!isPerformingAction) {
+        console.log('[DeleteDialog] Calling onClose from cleanup');
         onClose();
+      } else {
+        console.log('[DeleteDialog] Not calling onClose because action is in progress');
       }
     };
   }, [isPerformingAction, onClose]);
 
   const handleConfirm = () => {
+    console.log('[DeleteDialog] Confirm button clicked');
     onConfirm();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open && !isPerformingAction) {
-        // Only allow manual closing if we're not performing an action
-        onClose();
-      }
-    }}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        console.log(`[DeleteDialog] onOpenChange: ${open}, isPerformingAction: ${isPerformingAction}`);
+        
+        if (!open && !isPerformingAction) {
+          console.log('[DeleteDialog] Calling onClose from onOpenChange');
+          onClose();
+        } else if (!open && isPerformingAction) {
+          console.log('[DeleteDialog] Preventing dialog from closing during operation');
+          return;
+        }
+      }}
+    >
       <NoAnimationDialogContent isProcessing={isPerformingAction}>
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>
@@ -111,7 +126,10 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            onClick={() => {
+              console.log('[DeleteDialog] Cancel button clicked');
+              onClose();
+            }}
             disabled={isPerformingAction}
           >
             Cancel

@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 
 /**
@@ -81,6 +80,10 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
           isProcessing: true
         };
       } else if (action.type === 'CANCEL') {
+        console.log('[STATE MACHINE] Explicitly canceling confirmation dialog');
+        return initialDeletionContext;
+      } else if (action.type === 'RESET') {
+        console.log('[STATE MACHINE] Resetting from confirming state');
         return initialDeletionContext;
       }
       break;
@@ -92,16 +95,29 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
           progress: action.progress
         };
       } else if (action.type === 'SET_SUCCESS') {
-        toast.success(`${context.itemType === 'trade' ? 'Trade' : 'Trade leg'} ${context.itemReference} deleted successfully`);
+        console.log('[STATE MACHINE] Setting success state');
+        const itemType = context.itemType === 'trade' ? 'Trade' : 'Trade leg';
+        const itemRef = context.itemReference;
+        
+        setTimeout(() => {
+          toast.success(`${itemType} ${itemRef} deleted successfully`);
+        }, 0);
+        
         return {
           ...context,
           state: 'success',
-          progress: 100
+          progress: 100,
+          isProcessing: false
         };
       } else if (action.type === 'SET_ERROR') {
-        toast.error(`Failed to delete ${context.itemType}`, {
-          description: action.error.message || 'Unknown error occurred'
-        });
+        console.error('[STATE MACHINE] Setting error state:', action.error);
+        
+        setTimeout(() => {
+          toast.error(`Failed to delete ${context.itemType}`, {
+            description: action.error.message || 'Unknown error occurred'
+          });
+        }, 0);
+        
         return {
           ...context,
           state: 'error',
@@ -114,11 +130,24 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
     case 'success':
     case 'error':
       if (action.type === 'RESET') {
+        console.log('[STATE MACHINE] Resetting after completion');
         return initialDeletionContext;
+      }
+      
+      if (action.type === 'OPEN_CONFIRMATION') {
+        console.log('[STATE MACHINE] Opening new confirmation from success/error state');
+        return {
+          ...initialDeletionContext,
+          state: 'confirming',
+          itemType: action.itemType,
+          itemId: action.itemId,
+          itemReference: action.itemReference,
+          parentId: action.parentId || null
+        };
       }
       break;
   }
   
-  // If no matching state transition, return current state
+  console.log(`[STATE MACHINE] Unhandled action ${action.type} in state ${context.state}`);
   return context;
 }
