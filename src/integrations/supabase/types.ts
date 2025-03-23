@@ -9,39 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      audit_logs: {
-        Row: {
-          id: string
-          new_data: Json | null
-          old_data: Json | null
-          operation: string
-          record_id: string
-          table_name: string
-          timestamp: string
-          user_id: string | null
-        }
-        Insert: {
-          id?: string
-          new_data?: Json | null
-          old_data?: Json | null
-          operation: string
-          record_id: string
-          table_name: string
-          timestamp?: string
-          user_id?: string | null
-        }
-        Update: {
-          id?: string
-          new_data?: Json | null
-          old_data?: Json | null
-          operation?: string
-          record_id?: string
-          table_name?: string
-          timestamp?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       brokers: {
         Row: {
           created_at: string | null
@@ -65,34 +32,19 @@ export type Database = {
       }
       counterparties: {
         Row: {
-          bank_details: Json | null
-          contact_details: Json | null
           created_at: string
           id: string
-          is_active: boolean | null
           name: string
-          updated_at: string
-          vat_number: string | null
         }
         Insert: {
-          bank_details?: Json | null
-          contact_details?: Json | null
           created_at?: string
           id?: string
-          is_active?: boolean | null
           name: string
-          updated_at?: string
-          vat_number?: string | null
         }
         Update: {
-          bank_details?: Json | null
-          contact_details?: Json | null
           created_at?: string
           id?: string
-          is_active?: boolean | null
           name?: string
-          updated_at?: string
-          vat_number?: string | null
         }
         Relationships: []
       }
@@ -201,148 +153,6 @@ export type Database = {
           name?: string
         }
         Relationships: []
-      }
-      invoices: {
-        Row: {
-          amount: number
-          calculated_price: number | null
-          comments: string | null
-          created_at: string
-          currency: string
-          due_date: string
-          id: string
-          invoice_date: string
-          invoice_reference: string
-          invoice_type: string
-          movement_id: string | null
-          quantity: number | null
-          status: string
-          total_amount: number | null
-          updated_at: string
-          vat_amount: number | null
-          vat_rate: number | null
-        }
-        Insert: {
-          amount: number
-          calculated_price?: number | null
-          comments?: string | null
-          created_at?: string
-          currency?: string
-          due_date: string
-          id?: string
-          invoice_date: string
-          invoice_reference: string
-          invoice_type: string
-          movement_id?: string | null
-          quantity?: number | null
-          status?: string
-          total_amount?: number | null
-          updated_at?: string
-          vat_amount?: number | null
-          vat_rate?: number | null
-        }
-        Update: {
-          amount?: number
-          calculated_price?: number | null
-          comments?: string | null
-          created_at?: string
-          currency?: string
-          due_date?: string
-          id?: string
-          invoice_date?: string
-          invoice_reference?: string
-          invoice_type?: string
-          movement_id?: string | null
-          quantity?: number | null
-          status?: string
-          total_amount?: number | null
-          updated_at?: string
-          vat_amount?: number | null
-          vat_rate?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_movement_id_fkey"
-            columns: ["movement_id"]
-            isOneToOne: false
-            referencedRelation: "movements"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      movements: {
-        Row: {
-          actualized: boolean | null
-          actualized_date: string | null
-          actualized_quantity: number | null
-          bl_date: string | null
-          bl_quantity: number | null
-          cash_flow_date: string | null
-          comments: string | null
-          created_at: string
-          disport: string | null
-          id: string
-          inspector: string | null
-          loadport: string | null
-          movement_reference: string
-          nominated_date: string | null
-          nomination_valid_date: string | null
-          status: string
-          trade_leg_id: string | null
-          updated_at: string
-          vessel_name: string | null
-        }
-        Insert: {
-          actualized?: boolean | null
-          actualized_date?: string | null
-          actualized_quantity?: number | null
-          bl_date?: string | null
-          bl_quantity?: number | null
-          cash_flow_date?: string | null
-          comments?: string | null
-          created_at?: string
-          disport?: string | null
-          id?: string
-          inspector?: string | null
-          loadport?: string | null
-          movement_reference: string
-          nominated_date?: string | null
-          nomination_valid_date?: string | null
-          status: string
-          trade_leg_id?: string | null
-          updated_at?: string
-          vessel_name?: string | null
-        }
-        Update: {
-          actualized?: boolean | null
-          actualized_date?: string | null
-          actualized_quantity?: number | null
-          bl_date?: string | null
-          bl_quantity?: number | null
-          cash_flow_date?: string | null
-          comments?: string | null
-          created_at?: string
-          disport?: string | null
-          id?: string
-          inspector?: string | null
-          loadport?: string | null
-          movement_reference?: string
-          nominated_date?: string | null
-          nomination_valid_date?: string | null
-          status?: string
-          trade_leg_id?: string | null
-          updated_at?: string
-          vessel_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "movements_trade_leg_id_fkey"
-            columns: ["trade_leg_id"]
-            isOneToOne: false
-            referencedRelation: "trade_legs"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       paper_trade_legs: {
         Row: {
@@ -528,53 +338,6 @@ export type Database = {
           name?: string
         }
         Relationships: []
-      }
-      payments: {
-        Row: {
-          amount: number
-          comments: string | null
-          created_at: string
-          currency: string
-          id: string
-          invoice_id: string | null
-          payment_date: string
-          payment_method: string | null
-          payment_reference: string
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          comments?: string | null
-          created_at?: string
-          currency?: string
-          id?: string
-          invoice_id?: string | null
-          payment_date: string
-          payment_method?: string | null
-          payment_reference: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          comments?: string | null
-          created_at?: string
-          currency?: string
-          id?: string
-          invoice_id?: string | null
-          payment_date?: string
-          payment_method?: string | null
-          payment_reference?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       pricing_instruments: {
         Row: {

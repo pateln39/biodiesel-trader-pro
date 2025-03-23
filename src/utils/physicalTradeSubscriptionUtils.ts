@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { pauseSubscriptions, resumeSubscriptions, cleanupSubscriptions, withPausedSubscriptions } from './subscriptionUtils';
 
 type ChannelRef = { [key: string]: any };
 
@@ -9,36 +8,55 @@ type ChannelRef = { [key: string]: any };
  */
 export const cleanupPhysicalSubscriptions = (channelRefs: ChannelRef) => {
   console.log("[PHYSICAL] Cleaning up physical trade subscriptions");
-  cleanupSubscriptions(channelRefs);
+  Object.keys(channelRefs).forEach(key => {
+    if (channelRefs[key]) {
+      try {
+        supabase.removeChannel(channelRefs[key]);
+        channelRefs[key] = null;
+      } catch (e) {
+        console.error(`[PHYSICAL] Error removing physical channel ${key}:`, e);
+      }
+    }
+  });
 };
 
 /**
- * Pause physical trade realtime subscriptions
- * @returns A promise that resolves when all subscriptions are paused
+ * Utility function to create a controlled delay between operations
  */
-export const pausePhysicalSubscriptions = async (channelRefs: ChannelRef) => {
+export const physicalDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Pause physical trade realtime subscriptions
+ */
+export const pausePhysicalSubscriptions = (channelRefs: ChannelRef) => {
   console.log("[PHYSICAL] Pausing physical trade subscriptions");
-  return await pauseSubscriptions(channelRefs);
+  Object.keys(channelRefs).forEach(key => {
+    if (channelRefs[key]) {
+      try {
+        channelRefs[key].isPaused = true;
+        console.log(`[PHYSICAL] Paused physical channel: ${key}`);
+      } catch (e) {
+        console.error(`[PHYSICAL] Error pausing physical channel ${key}:`, e);
+      }
+    }
+  });
 };
 
 /**
  * Resume physical trade realtime subscriptions
- * @returns A promise that resolves when all subscriptions are resumed
  */
-export const resumePhysicalSubscriptions = async (channelRefs: ChannelRef) => {
+export const resumePhysicalSubscriptions = (channelRefs: ChannelRef) => {
   console.log("[PHYSICAL] Resuming physical trade subscriptions");
-  return await resumeSubscriptions(channelRefs);
-};
-
-/**
- * Execute a critical operation with paused physical trade subscriptions
- */
-export const withPausedPhysicalSubscriptions = async <T>(
-  channelRefs: ChannelRef,
-  operation: () => Promise<T>
-): Promise<T> => {
-  console.log("[PHYSICAL] Starting controlled operation with paused physical subscriptions");
-  return await withPausedSubscriptions(channelRefs, operation);
+  Object.keys(channelRefs).forEach(key => {
+    if (channelRefs[key]) {
+      try {
+        channelRefs[key].isPaused = false;
+        console.log(`[PHYSICAL] Resumed physical channel: ${key}`);
+      } catch (e) {
+        console.error(`[PHYSICAL] Error resuming physical channel ${key}:`, e);
+      }
+    }
+  });
 };
 
 /**

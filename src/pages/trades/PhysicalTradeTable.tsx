@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+
+import React, { useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Link2, Trash2, Edit } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -11,23 +12,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 import { deletePhysicalTrade, deletePhysicalTradeLeg } from '@/utils/physicalTradeDeleteUtils';
-import { pausePhysicalSubscriptions, resumePhysicalSubscriptions, withPausedPhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { pausePhysicalSubscriptions, resumePhysicalSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 import { toast } from 'sonner';
 import { Progress } from '@/components/ui/progress';
-import { useDeleteStateMachine } from '@/hooks/useDeleteStateMachine';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -56,159 +46,10 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const navigate = useNavigate();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  
-  // State machine for delete operations
-  const { state: deleteState, actions: deleteActions } = useDeleteStateMachine();
-  
-  // Effect to handle state transitions
-  useEffect(() => {
-    if (!realtimeChannelsRef) return;
-
-    const handleDeleteState = async () => {
-      switch (deleteState.status) {
-        case 'deleting':
-          // Handle delete operation
-          try {
-            console.log(`[PHYSICAL] Starting delete operation in state machine`);
-            
-            // Pause subscriptions before deleting
-            deleteActions.pauseSubscriptions();
-          } catch (error) {
-            console.error('[PHYSICAL] Error preparing for deletion:', error);
-            deleteActions.deleteError(error instanceof Error ? error : String(error));
-          }
-          break;
-          
-        case 'pausing_subscriptions':
-          try {
-            console.log('[PHYSICAL] Pausing subscriptions...');
-            await pausePhysicalSubscriptions(realtimeChannelsRef.current);
-            
-            // Now actually perform the delete operation
-            if (deleteState.status === 'pausing_subscriptions') {
-              // We need to use the data that was stored in the previous confirm_requested state
-              // Check if we've received info from the previous state
-              const storageRef = useRef<{
-                isLeg: boolean;
-                itemId: string;
-                parentId?: string;
-                itemReference: string;
-              }>();
-              
-              // Since we're in pausing_subscriptions state, we should have stored the necessary values 
-              // when transitioning from confirm_requested to deleting
-              if (!storageRef.current) {
-                throw new Error('Missing delete information');
-              }
-              
-              const { isLeg, itemId, parentId, itemReference } = storageRef.current;
-              
-              if (!itemId) {
-                throw new Error('Missing item ID for delete operation');
-              }
-              
-              let success = false;
-              
-              if (isLeg && parentId) {
-                success = await deletePhysicalTradeLeg(
-                  itemId, 
-                  parentId,
-                  (progress) => deleteActions.updateProgress(progress)
-                );
-              } else {
-                success = await deletePhysicalTrade(
-                  itemId,
-                  (progress) => deleteActions.updateProgress(progress)
-                );
-              }
-              
-              if (success) {
-                deleteActions.deleteSuccess(
-                  `${isLeg ? 'Trade leg' : 'Trade'} ${itemReference} deleted successfully`
-                );
-              } else {
-                throw new Error(`Failed to delete ${isLeg ? 'leg' : 'trade'}`);
-              }
-            } else {
-              throw new Error('Invalid state for delete operation');
-            }
-          } catch (error) {
-            console.error('[PHYSICAL] Error during delete operation:', error);
-            deleteActions.deleteError(error instanceof Error ? error : String(error));
-          }
-          break;
-          
-        case 'resuming_subscriptions':
-          try {
-            console.log('[PHYSICAL] Resuming subscriptions...');
-            await resumePhysicalSubscriptions(realtimeChannelsRef.current);
-            
-            // After resuming subscriptions, trigger a refetch
-            console.log('[PHYSICAL] Refetching trades after subscriptions resumed');
-            setTimeout(() => {
-              refetchTrades();
-              deleteActions.reset();
-            }, 300);
-          } catch (error) {
-            console.error('[PHYSICAL] Error resuming subscriptions:', error);
-            // Still reset the state machine
-            deleteActions.reset();
-          }
-          break;
-          
-        case 'success':
-          // On success, show toast and resume subscriptions
-          toast.success(deleteState.message);
-          deleteActions.resumeSubscriptions();
-          break;
-          
-        case 'error':
-          // On error, show toast and resume subscriptions
-          toast.error('Delete operation failed', { 
-            description: deleteState.error instanceof Error 
-              ? deleteState.error.message 
-              : String(deleteState.error) 
-          });
-          deleteActions.resumeSubscriptions();
-          break;
-          
-        case 'cancelled':
-          // When cancelled, resume subscriptions and reset state
-          console.log('[PHYSICAL] Delete operation cancelled, resuming subscriptions');
-          
-          // Use withPausedPhysicalSubscriptions to safely resume
-          try {
-            await resumePhysicalSubscriptions(realtimeChannelsRef.current);
-            
-            // Reset state after resuming
-            setTimeout(() => {
-              deleteActions.reset();
-            }, 100);
-          } catch (error) {
-            console.error('[PHYSICAL] Error handling cancellation:', error);
-            deleteActions.reset();
-          }
-          break;
-          
-        case 'confirm_requested':
-          // Store the required data for when we transition to pausing_subscriptions state
-          useRef<{
-            isLeg: boolean;
-            itemId: string;
-            parentId?: string;
-            itemReference: string;
-          }>({
-            isLeg: deleteState.isLeg,
-            itemId: deleteState.itemId,
-            parentId: deleteState.parentId,
-            itemReference: deleteState.itemReference
-          });
-          break;
-      }
-    };
-    
-    handleDeleteState();
-  }, [deleteState, deleteActions, realtimeChannelsRef, refetchTrades]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingTradeId, setDeletingTradeId] = useState<string>('');
+  const [deletionProgress, setDeletionProgress] = useState(0);
+  const isProcessingRef = useRef(false);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -238,22 +79,96 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  // Show delete confirmation dialog
-  const showDeleteConfirmation = (tradeId: string, tradeReference: string, isLeg = false, parentId = '') => {
-    console.log(`[PHYSICAL] Showing delete confirmation for ${isLeg ? 'leg' : 'trade'}: ${tradeId} (${tradeReference})`);
-    deleteActions.openConfirmDialog(tradeId, tradeReference, isLeg, parentId);
+  const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
+    if (isProcessingRef.current) {
+      return;
+    }
+    
+    try {
+      console.log(`[PHYSICAL] Deleting trade: ${tradeId} (${tradeReference})`);
+      isProcessingRef.current = true;
+      setIsDeleting(true);
+      setDeletingTradeId(tradeId);
+      
+      // Pause subscriptions to prevent race conditions during delete
+      if (realtimeChannelsRef) {
+        pausePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      const progress = (value: number) => {
+        console.log(`[PHYSICAL] Delete progress: ${value}%`);
+        setDeletionProgress(value);
+      };
+      
+      const success = await deletePhysicalTrade(tradeId, progress);
+      
+      if (success) {
+        toast.success(`Trade ${tradeReference} deleted successfully`);
+        refetchTrades();
+      }
+    } catch (error) {
+      console.error('[PHYSICAL] Error during delete:', error);
+      toast.error('Failed to delete trade', { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred' 
+      });
+    } finally {
+      // Resume subscriptions
+      if (realtimeChannelsRef) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      // Reset state
+      setIsDeleting(false);
+      setDeletingTradeId('');
+      setDeletionProgress(0);
+      isProcessingRef.current = false;
+    }
   };
 
-  // Cancel delete action
-  const cancelDelete = () => {
-    console.log('[PHYSICAL] Delete operation cancelled by user');
-    deleteActions.cancelDelete();
-  };
-
-  // Confirm delete action
-  const confirmDelete = () => {
-    console.log(`[PHYSICAL] Delete confirmed, transitioning to deleting state`);
-    deleteActions.startDelete();
+  const handleDeleteTradeLeg = async (legId: string, legReference: string, parentId: string) => {
+    if (isProcessingRef.current) {
+      return;
+    }
+    
+    try {
+      console.log(`[PHYSICAL] Deleting trade leg: ${legId} (${legReference})`);
+      isProcessingRef.current = true;
+      setIsDeleting(true);
+      setDeletingTradeId(legId);
+      
+      // Pause subscriptions to prevent race conditions during delete
+      if (realtimeChannelsRef) {
+        pausePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      const progress = (value: number) => {
+        console.log(`[PHYSICAL] Delete progress: ${value}%`);
+        setDeletionProgress(value);
+      };
+      
+      const success = await deletePhysicalTradeLeg(legId, parentId, progress);
+      
+      if (success) {
+        toast.success(`Trade leg ${legReference} deleted successfully`);
+        refetchTrades();
+      }
+    } catch (error) {
+      console.error('[PHYSICAL] Error during delete:', error);
+      toast.error('Failed to delete trade leg', { 
+        description: error instanceof Error ? error.message : 'Unknown error occurred' 
+      });
+    } finally {
+      // Resume subscriptions
+      if (realtimeChannelsRef) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+      
+      // Reset state
+      setIsDeleting(false);
+      setDeletingTradeId('');
+      setDeletionProgress(0);
+      isProcessingRef.current = false;
+    }
   };
 
   const renderFormula = (trade: PhysicalTrade | PhysicalTradeLeg) => {
@@ -306,48 +221,14 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   return (
     <>
-      {deleteState.status === 'deleting' && (
+      {isDeleting && (
         <div className="mb-4">
           <p className="text-sm text-muted-foreground mb-1">
-            Deleting... Please wait
+            Deleting {deletingTradeId}... Please wait
           </p>
-          <Progress value={deleteState.progress} className="h-2" />
+          <Progress value={deletionProgress} className="h-2" />
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog 
-        open={deleteState.status === 'confirm_requested'} 
-        onOpenChange={(open) => {
-          // If dialog is being closed without user action, ensure clean state
-          if (!open) {
-            cancelDelete();
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteState.status === 'confirm_requested' && (
-                <>
-                  Are you sure you want to delete {deleteState.isLeg ? 'leg' : 'trade'} "{deleteState.itemReference}"?
-                  This action cannot be undone.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Table>
         <TableHeader>
@@ -416,18 +297,15 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          disabled={deleteState.status !== 'idle' && deleteState.status !== 'cancelled'}
-                        >
-                          {(deleteState.status === 'deleting' || 
-                            deleteState.status === 'pausing_subscriptions') ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                Deleting...
-                              </>
-                            ) : 'Actions'}
+                        <Button variant="ghost" size="sm" disabled={isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id)}>
+                          {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Actions'
+                          )}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -440,18 +318,18 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                         </Link>
                         {hasMultipleLegs && trade.physicalType === 'term' ? (
                           <DropdownMenuItem 
-                            onClick={() => showDeleteConfirmation(leg.id, leg.legReference, true, trade.id)}
+                            onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
                             className="text-destructive focus:text-destructive"
-                            disabled={deleteState.status !== 'idle'}
+                            disabled={isDeleting}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Trade Leg
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
-                            onClick={() => showDeleteConfirmation(trade.id, trade.tradeReference)}
+                            onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
                             className="text-destructive focus:text-destructive"
-                            disabled={deleteState.status !== 'idle'}
+                            disabled={isDeleting}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Trade
