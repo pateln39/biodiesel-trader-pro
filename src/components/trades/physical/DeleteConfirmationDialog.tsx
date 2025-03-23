@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
 // Create a non-animated version of DialogContent
 const NoAnimationDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { isProcessing?: boolean }
+>(({ className, children, isProcessing, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay className="fixed inset-0 z-50 bg-black/80" />
     <DialogPrimitive.Content
@@ -31,8 +31,10 @@ const NoAnimationDialogContent = React.forwardRef<
     >
       {children}
       <DialogPrimitive.Close 
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-        disabled={props.disabled}
+        className={cn(
+          "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          isProcessing ? "pointer-events-none opacity-30" : "opacity-70"
+        )}
       >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
@@ -79,7 +81,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         onClose();
       }
     }}>
-      <NoAnimationDialogContent disabled={isPerformingAction}>
+      <NoAnimationDialogContent isProcessing={isPerformingAction}>
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>
           <DialogDescription>
