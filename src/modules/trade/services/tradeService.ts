@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
-import { ParentTrade, TradeLeg, DbParentTrade, DbTradeLeg } from '@/types';
+import { ParentTrade, TradeLeg, DbParentTrade, DbTradeLeg } from '@/core/types/common';
 import { generateTradeReference, generateLegReference } from '@/modules/trade/utils/tradeUtils';
 
 export class TradeService {
@@ -216,15 +216,15 @@ export class TradeService {
       }
 
       // Transform the data to match the TradeLeg interface
-      const transformedTradeLegs: TradeLeg[] = tradeLegs.map((leg: DbTradeLeg) => ({
+      const transformedTradeLegs: TradeLeg[] = tradeLegs.map((leg: any) => ({
         id: leg.id,
         parentTradeId: leg.parent_trade_id,
         legReference: leg.leg_reference,
         buySell: leg.buy_sell,
         product: leg.product,
         quantity: leg.quantity,
-        unit: leg.unit,
-        price: leg.price,
+        unit: leg.unit || 'MT',
+        price: leg.price || 0,
         createdAt: new Date(leg.created_at),
         updatedAt: new Date(leg.updated_at),
       }));
@@ -301,7 +301,7 @@ export class TradeService {
       // Generate a unique leg reference
       const legReference = generateLegReference(parentTrade.tradeReference, existingLegs.length);
 
-      const newLeg: DbTradeLeg = {
+      const newLeg: any = {
         id: uuidv4(),
         parent_trade_id: leg.parentTradeId,
         leg_reference: legReference,
@@ -312,25 +312,6 @@ export class TradeService {
         price: leg.price,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        // TODO: Remove these optional fields once the database is updated
-        instrument: null,
-        pricing_formula: null,
-        mtm_formula: null,
-        tolerance: null,
-        loading_period_start: null,
-        loading_period_end: null,
-        pricing_period_start: null,
-        pricing_period_end: null,
-        payment_term: null,
-        credit_status: null,
-        broker: null,
-        calculated_price: null,
-        last_calculation_date: null,
-        mtm_calculated_price: null,
-        mtm_last_calculation_date: null,
-        sustainability: null,
-        inco_term: null,
-        trading_period: null,
       };
 
       const { data: createdLeg, error } = await supabase

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,7 +13,7 @@ import { TradeType } from '@/modules/trade/types';
 
 const TradeEntryPage: React.FC = () => {
   const navigate = useNavigate();
-  const [tradeType, setTradeType] = useState<TradeType>('physical');
+  const [tradeType, setTradeType] = useState<TradeType>(TradeType.Physical);
   const { refetchTrades } = useTrades();
 
   const handleTradeSubmit = async (success: boolean) => {
@@ -26,11 +27,11 @@ const TradeEntryPage: React.FC = () => {
   };
 
   return (
-    <Layout title="Enter New Trade">
+    <Layout>
       <Tabs defaultValue="physical" className="w-full">
         <TabsList>
-          <TabsTrigger value="physical" onClick={() => setTradeType('physical')}>Physical Trade</TabsTrigger>
-          <TabsTrigger value="paper" onClick={() => setTradeType('paper')}>Paper Trade</TabsTrigger>
+          <TabsTrigger value="physical" onClick={() => setTradeType(TradeType.Physical)}>Physical Trade</TabsTrigger>
+          <TabsTrigger value="paper" onClick={() => setTradeType(TradeType.Paper)}>Paper Trade</TabsTrigger>
         </TabsList>
         <TabsContent value="physical">
           <Card>
@@ -55,7 +56,11 @@ const TradeEntryPage: React.FC = () => {
               <CardDescription>Enter the details of the paper trade.</CardDescription>
             </CardHeader>
             <CardContent>
-              <PaperTradeForm onSubmit={handleTradeSubmit} />
+              <PaperTradeForm 
+                tradeReference=""
+                onSubmit={handleTradeSubmit}
+                onCancel={() => navigate('/trade')}
+              />
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => navigate('/trade')}>

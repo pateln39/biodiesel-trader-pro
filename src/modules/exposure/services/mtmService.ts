@@ -1,7 +1,7 @@
 
 import { MTMCalculation } from '../types/mtm';
 import { supabase } from '@/integrations/supabase/client';
-import { formulaToDisplayString } from '@/modules/pricing/utils/formulaUtils';
+import { formulaToString } from '@/modules/pricing/utils/formulaUtils';
 
 export class MTMService {
   /**
@@ -45,13 +45,13 @@ export class MTMService {
           const formulaObj = typeof formula === 'string' ? JSON.parse(formula) : formula;
           
           const formulaString = formulaObj && formulaObj.tokens 
-            ? formulaToDisplayString(formulaObj.tokens) 
+            ? formulaToString(formulaObj.tokens) 
             : '';
             
           const contractPrice = 750; // Mock price for example
           const marketPrice = 780; // Mock current market price
-          const mtmValue = this.calculateMTMValue(leg.quantity, formula);
-          const pnlValue = (marketPrice - contractPrice) * leg.quantity;
+          const mtmValue = this.calculateMTMValue(leg.quantity || 0, formula);
+          const pnlValue = (marketPrice - contractPrice) * (leg.quantity || 0);
           
           mtmCalculations.push({
             tradeId: trade.id,
@@ -59,7 +59,7 @@ export class MTMService {
             tradeReference: trade.trade_reference,
             counterparty: trade.counterparty,
             product: leg.product,
-            quantity: leg.quantity,
+            quantity: leg.quantity || 0,
             contractPrice: contractPrice, 
             marketPrice: marketPrice,
             mtmValue,

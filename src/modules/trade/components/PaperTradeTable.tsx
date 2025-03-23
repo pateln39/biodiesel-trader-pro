@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { Edit, Trash2, X, Filter, ChevronRight, Plus } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { useNavigate } from 'react-router-dom';
+import { PaperTrade } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useTrades } from '@/modules/trade/hooks';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
-import { deleteTrade } from '@/modules/trade/utils/tradeDeleteUtils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Trash2, Eye, Edit, CheckCircle, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { usePaperTrades } from '@/modules/trade/hooks/usePaperTrades';
+import { formulaToString } from '@/modules/trade/utils/formulaUtils';
+import { getNextMonths } from '@/core/utils/dateUtils';
 
 interface PaperTradeLeg {
   id: string;

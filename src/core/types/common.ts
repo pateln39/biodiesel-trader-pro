@@ -22,6 +22,7 @@ export interface DbParentTrade {
   counterparty: string;
   created_at: string;
   updated_at: string;
+  comment?: string;
 }
 
 export interface DbTradeLeg {
@@ -31,21 +32,29 @@ export interface DbTradeLeg {
   buy_sell: string;
   product: string;
   sustainability?: string;
-  inco_term: string;
+  inco_term?: string;
   quantity: number;
-  tolerance: number;
-  loading_period_start: string;
-  loading_period_end: string;
-  pricing_period_start: string;
-  pricing_period_end: string;
-  unit: string;
-  payment_term: string;
-  credit_status: string;
-  formula: any;
+  tolerance?: number;
+  loading_period_start?: string;
+  loading_period_end?: string;
+  pricing_period_start?: string;
+  pricing_period_end?: string;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  formula?: any;
   pricing_formula?: any;
   mtm_formula?: any;
   created_at: string;
   updated_at: string;
+  price?: number;
+  calculated_price?: number;
+  last_calculation_date?: string;
+  mtm_calculated_price?: number;
+  mtm_last_calculation_date?: string;
+  broker?: string;
+  instrument?: string;
+  trading_period?: string;
 }
 
 export interface ParentTrade {
@@ -54,6 +63,20 @@ export interface ParentTrade {
   tradeType: string;
   physicalType?: string;
   counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+  comment?: string;
+}
+
+export interface TradeLeg {
+  id: string;
+  parentTradeId: string;
+  legReference: string;
+  buySell: string;
+  product: string;
+  quantity: number;
+  unit: string;
+  price?: number;
   createdAt: Date;
   updatedAt: Date;
 }

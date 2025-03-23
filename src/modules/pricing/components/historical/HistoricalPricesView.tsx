@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HistoricalPriceFilter, HistoricalPriceFilters } from './HistoricalPriceFilter';
-import { useHistoricalPrices } from '@/hooks/useHistoricalPrices';
+import { useHistoricalPrices } from '@/modules/pricing/hooks/useHistoricalPrices';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TableView } from './tabs/TableView';
 import { GraphView } from './tabs/GraphView';

@@ -61,7 +61,7 @@ export class ExposureService {
         // Handle pricing exposure if formula exists
         if (leg.pricing_formula) {
           const formula = leg.pricing_formula;
-          if (typeof formula === 'object' && formula.exposures) {
+          if (typeof formula === 'object' && formula && 'exposures' in formula) {
             this.processExposures(exposureByMonth, exposureByGrade, formula.exposures, month, grade);
           }
         }
@@ -81,7 +81,7 @@ export class ExposureService {
         // Add any exposures from the formula if available
         if (leg.exposures) {
           const exposures = leg.exposures;
-          if (typeof exposures === 'object' && exposures.paper) {
+          if (typeof exposures === 'object' && exposures && 'paper' in exposures) {
             // Process paper exposures
             Object.entries(exposures.paper).forEach(([instrument, value]) => {
               this.addToExposure(exposureByMonth, month, 'paper', Number(value || 0), instrument);

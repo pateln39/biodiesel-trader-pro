@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,8 +76,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula || firstLeg.formula),
-          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula || null),
+          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula || null),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -96,8 +95,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula || leg.formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            formula: validateAndParsePricingFormula(leg.pricing_formula || null),
+            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula || null)
           }))
         };
         return physicalTrade;

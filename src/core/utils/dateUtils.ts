@@ -1,49 +1,65 @@
 
-import { format, addMonths, startOfMonth } from 'date-fns';
+import { addMonths, format } from 'date-fns';
 
 /**
- * Get an array of period strings for the next N months
+ * Get an array of the next N months from a given date
+ * @param startDate The date to start from
+ * @param count The number of months to generate
+ * @returns Array of date objects for the next N months
  */
-export const getNextMonths = (count: number): string[] => {
+export function getNextMonths(startDate: Date = new Date(), count: number = 12): Date[] {
   const months = [];
-  const today = new Date();
   
   for (let i = 0; i < count; i++) {
-    const date = addMonths(startOfMonth(today), i);
-    months.push(format(date, 'MMM yyyy'));
+    months.push(addMonths(startDate, i));
   }
   
   return months;
-};
+}
 
 /**
- * Parse an Excel date serial number to a JavaScript Date
+ * Format a date to a standard display format
+ * @param date The date to format
+ * @param formatString The format string to use (defaults to MM/dd/yyyy)
+ * @returns Formatted date string
  */
-export const parseExcelDateSerial = (serialNumber: number): Date => {
-  // Excel serial dates start from January 0, 1900
-  // 1 = January 1, 1900
-  // Need to adjust for the fact that Excel incorrectly thinks 1900 was a leap year
-  const adjustedSerial = serialNumber > 59 ? serialNumber - 1 : serialNumber;
+export function formatDate(date: Date | string | undefined, formatString: string = 'MM/dd/yyyy'): string {
+  if (!date) return 'N/A';
   
-  // Convert to milliseconds and adjust for Excel's start date
-  const msFromExcelStart = (adjustedSerial - 1) * 24 * 60 * 60 * 1000;
-  const excelStartDate = new Date(1900, 0, 1);
-  const excelStartTime = excelStartDate.getTime();
-  
-  return new Date(excelStartTime + msFromExcelStart);
-};
-
-/**
- * Format a date object to string in YYYY-MM-DD format
- */
-export const formatDateString = (date: Date): string => {
-  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    return '';
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return format(dateObj, formatString);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
   }
-  
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
-  return `${year}-${month}-${day}`;
-};
+}
+
+/**
+ * Check if a date is valid
+ * @param date The date to check
+ * @returns True if the date is valid
+ */
+export function isValidDate(date: any): boolean {
+  if (!date) return false;
+  const d = new Date(date);
+  return !isNaN(d.getTime());
+}
+
+/**
+ * Get the beginning of the current month
+ * @returns Date object for the first day of the current month
+ */
+export function getStartOfCurrentMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+/**
+ * Get the end of the current month
+ * @returns Date object for the last day of the current month
+ */
+export function getEndOfCurrentMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+}

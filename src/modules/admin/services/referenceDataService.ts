@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { BaseApiService } from '@/core/api';
 import type { 
@@ -26,8 +25,8 @@ class ReferenceDataService extends BaseApiService {
         id: counterparty.id,
         name: counterparty.name,
         vatNumber: counterparty.vat_number,
-        bankDetails: counterparty.bank_details,
-        contactDetails: counterparty.contact_details,
+        bankDetails: counterparty.bank_details as Record<string, any>,
+        contactDetails: counterparty.contact_details as Record<string, any>,
         isActive: counterparty.is_active,
         createdAt: new Date(counterparty.created_at),
         updatedAt: new Date(counterparty.updated_at),
@@ -44,8 +43,8 @@ class ReferenceDataService extends BaseApiService {
         .insert({
           name: counterparty.name,
           vat_number: counterparty.vatNumber,
-          bank_details: counterparty.bankDetails,
-          contact_details: counterparty.contactDetails,
+          bank_details: counterparty.bankDetails as Record<string, any>,
+          contact_details: counterparty.contactDetails as Record<string, any>,
           is_active: counterparty.isActive,
         })
         .select()
@@ -59,8 +58,8 @@ class ReferenceDataService extends BaseApiService {
         id: data.id,
         name: data.name,
         vatNumber: data.vat_number,
-        bankDetails: data.bank_details,
-        contactDetails: data.contact_details,
+        bankDetails: data.bank_details as Record<string, any>,
+        contactDetails: data.contact_details as Record<string, any>,
         isActive: data.is_active,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
@@ -77,8 +76,8 @@ class ReferenceDataService extends BaseApiService {
         .update({
           name: counterparty.name,
           vat_number: counterparty.vatNumber,
-          bank_details: counterparty.bankDetails,
-          contact_details: counterparty.contactDetails,
+          bank_details: counterparty.bankDetails as Record<string, any>,
+          contact_details: counterparty.contactDetails as Record<string, any>,
           is_active: counterparty.isActive,
         })
         .eq('id', counterparty.id)
@@ -93,8 +92,8 @@ class ReferenceDataService extends BaseApiService {
         id: data.id,
         name: data.name,
         vatNumber: data.vat_number,
-        bankDetails: data.bank_details,
-        contactDetails: data.contact_details,
+        bankDetails: data.bank_details as Record<string, any>,
+        contactDetails: data.contact_details as Record<string, any>,
         isActive: data.is_active,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),

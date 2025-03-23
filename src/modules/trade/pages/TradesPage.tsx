@@ -11,8 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PhysicalTradeTable, PaperTradeList } from '@/modules/trade/components';
 
 // Import isolated hooks
-import { useTrades } from '@/hooks/useTrades';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { useTrades } from '@/modules/trade/hooks/useTrades';
+import { usePaperTrades } from '@/modules/trade/hooks/usePaperTrades';
 import { PhysicalTrade } from '@/types';
 
 const TradesPage = () => {

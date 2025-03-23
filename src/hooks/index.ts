@@ -3,8 +3,8 @@
 // In the future, imports should come directly from the module hooks
 
 // Re-export from core hooks
-export { useIsMobile } from './use-mobile';
-export { useToast, toast } from './use-toast';
+export { useIsMobile } from '@/core/hooks/use-mobile';
+export { useToast, toast } from '@/core/hooks/use-toast';
 
 // Re-export from trade module
 export { useTrades } from '@/modules/trade/hooks/useTrades';

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -79,12 +80,12 @@ const TradeEditPage: React.FC = () => {
   }
 
   return (
-    <Layout title="Edit Trade">
+    <Layout>
       <div className="container mx-auto mt-8">
         <h1 className="text-2xl font-bold mb-4">Edit Physical Trade</h1>
         {trade && (
           <PhysicalTradeForm
-            initialValues={trade}
+            trade={trade}
             onSubmit={handleUpdateTrade}
             isEditMode={true}
           />

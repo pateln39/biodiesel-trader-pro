@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +40,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
       // Try fetching from historical_prices table
       const { data: histPrice, error: histPriceError } = await supabase
         .from('historical_prices')
-        .select('id, price_date, price')
+        .select('id, price_date, price, instrument_id')
         .eq('id', id)
         .single();
 
@@ -49,7 +48,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         // Try forward prices table as an alternative
         const { data: fwdPrice, error: fwdPriceError } = await supabase
           .from('forward_prices')
-          .select('id, forward_month, price')
+          .select('id, forward_month, price, instrument_id')
           .eq('id', id)
           .single();
 

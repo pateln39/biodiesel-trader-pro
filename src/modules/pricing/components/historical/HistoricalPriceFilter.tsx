@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw, Download } from 'lucide-react';
 import { subMonths, startOfDay } from 'date-fns';
 import { MultiInstrumentSelect } from './MultiInstrumentSelect';
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/core/hooks/use-toast";
 
 interface HistoricalPriceFilterProps {
   onFilterChange: (filters: HistoricalPriceFilters) => void;
@@ -37,7 +36,6 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = useState<Date>(defaultEndDate);
 
-  // Update local state when selected instruments from parent change
   useEffect(() => {
     if (selectedInstrumentIds && 
         selectedInstrumentIds.length > 0 && 
@@ -48,7 +46,6 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
 
   const handleFilterApply = () => {
     if (instrumentIds.length === 0 && instruments.length > 0) {
-      // Always ensure at least one instrument is selected
       const firstInstrumentId = instruments[0].id;
       const newInstrumentIds = [firstInstrumentId];
       setInstrumentIds(newInstrumentIds);
@@ -74,7 +71,6 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
     });
   };
 
-  // Apply initial filter on mount
   useEffect(() => {
     if (instruments && instruments.length > 0 && (!instrumentIds || instrumentIds.length === 0)) {
       const defaultIds = selectedInstrumentIds && selectedInstrumentIds.length > 0 
@@ -84,7 +80,6 @@ export const HistoricalPriceFilter: React.FC<HistoricalPriceFilterProps> = ({
       setInstrumentIds(defaultIds);
     }
     
-    // Only apply filter if we have instruments and at least one is selected
     if (instruments && instruments.length > 0 && instrumentIds && instrumentIds.length > 0) {
       handleFilterApply();
     }

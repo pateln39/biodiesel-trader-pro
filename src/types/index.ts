@@ -4,12 +4,8 @@
 
 // Re-export directly from the specific modules to avoid ambiguity
 export * from '@/core/types';
-export * from '@/modules/trade/types';
-export * from '@/modules/exposure/types';
-export * from '@/modules/operations/types';
-export * from '@/modules/finance/types';
 
-// Export specific enums with resolved names to avoid ambiguity
+// Export specific types from modules with explicit naming to avoid ambiguity
 export { 
   TradeType, 
   BuySell, 
@@ -28,3 +24,6 @@ export type {
 } from '@/core/types/common';
 
 export { TokenType } from '@/core/types/common';
+
+// Export exposure types
+export type { ExposureResult } from '@/modules/exposure/types/exposure';
