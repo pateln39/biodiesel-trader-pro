@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateLegReference } from '@/modules/trade/utils/tradeUtils';
-import PaperTradeTable from './PaperTradeTable';
+import { PaperTradeTable } from '@/modules/trade/components';
 import { createEmptyFormula } from '@/modules/pricing/utils/formulaUtils';
 import { validatePaperTradeForm } from '@/modules/trade/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -12,8 +11,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { PaperTrade } from '@/types/paper';
-import { formatProductDisplay } from '@/utils/tradeUtils';
+import { PaperTrade } from '@/modules/trade/types';
+import { formatProductDisplay } from '@/modules/trade/utils/tradeUtils';
 
 interface PaperTradeListProps {
   paperTrades: PaperTrade[];

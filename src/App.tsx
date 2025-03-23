@@ -4,36 +4,15 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { queryClient } from '@/lib';
 import { Layout } from '@/core/components';
+
+// Import pages from their respective modules
+import { TradesPage, TradeEntryPage, TradeEditPage } from '@/modules/trade/pages';
+import { OperationsPage } from '@/modules/operations/pages';
+import { MTMPage, ExposurePage, PNLPage } from '@/modules/exposure/pages';
+import { AuditLogPage, PricingAdminPage, ProfilePage, NotFound } from '@/modules/admin/pages';
 import PricingRoutes from '@/routes/PricingRoutes';
-
-// Import directly from their respective files for now
-import TradesPage from '@/modules/trade/pages/TradesPage';
-import TradeEntryPage from '@/modules/trade/pages/TradeEntryPage';
-import TradeEditPage from '@/modules/trade/pages/TradeEditPage';
-import OperationsPage from '@/modules/operations/pages/OperationsPage';
-import MTMPage from '@/modules/exposure/pages/MTMPage';
-import ExposurePage from '@/modules/exposure/pages/ExposurePage';
-import PNLPage from '@/modules/exposure/pages/PNLPage';
-import PricesPage from '@/modules/exposure/pages/PricesPage';
-import AuditLogPage from '@/modules/admin/pages/AuditLogPage';
-import PricingAdminPage from '@/modules/admin/pages/PricingAdminPage';
-import ProfilePage from '@/modules/admin/pages/ProfilePage';
-import NotFound from '@/modules/admin/pages/NotFound';
-
-// Create temporary Dashboard component
-import Dashboard from '@/modules/trade/pages/Index';
-
-// Create a basic Settings Page
-const SettingsPage = () => (
-  <Layout>
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-      <p className="text-muted-foreground">
-        Manage your account settings and preferences.
-      </p>
-    </div>
-  </Layout>
-);
+import Dashboard from '@/pages/Dashboard';
+import SettingsPage from '@/pages/SettingsPage';
 
 function App() {
   return (

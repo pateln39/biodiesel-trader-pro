@@ -1,10 +1,8 @@
 
-// Re-export all components from the pricing module
+// Export all components from the pricing module
 export { default as PricingInstruments } from './PricingInstruments';
+export { default as PriceDetails } from './PriceDetails';
+export { default as PriceUploader } from './PriceUploader';
 
-// Re-export components from historical
+// Export components from historical module
 export * from './historical';
-
-// Re-export pricing components from the original locations temporarily
-export { PriceDetails } from '../../../components/pricing/PriceDetails';
-export { PriceUploader } from '../../../components/pricing/PriceUploader';

@@ -2,6 +2,8 @@
 // Export all shared components
 export { default as DashboardCard } from './DashboardCard';
 export { default as Layout } from './Layout';
+
+// Export UI components
 export { Checkbox } from '@/components/ui/checkbox';
 export { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 export { Button } from '@/components/ui/button';
