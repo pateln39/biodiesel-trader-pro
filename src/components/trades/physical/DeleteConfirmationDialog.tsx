@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+
+import React from 'react';
 import { Loader2, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -13,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from "@/lib/utils";
 
-// Create a non-animated version of DialogContent
+// Create a stable non-animated version of DialogContent
 const NoAnimationDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { isProcessing?: boolean }
@@ -30,6 +31,7 @@ const NoAnimationDialogContent = React.forwardRef<
     >
       {children}
       <DialogPrimitive.Close 
+        disabled={isProcessing}
         className={cn(
           "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           isProcessing ? "pointer-events-none opacity-30" : "opacity-70"
@@ -60,39 +62,14 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
-  console.log(`[DeleteDialog] Render - isOpen: ${isOpen}, isPerformingAction: ${isPerformingAction}, itemType: ${itemType}, itemRef: ${itemReference}`);
-  
-  useEffect(() => {
-    console.log(`[DeleteDialog] Effect setup - isPerformingAction: ${isPerformingAction}`);
-    
-    return () => {
-      console.log(`[DeleteDialog] Effect cleanup - isPerformingAction: ${isPerformingAction}`);
-      if (!isPerformingAction) {
-        console.log('[DeleteDialog] Calling onClose from cleanup');
-        onClose();
-      } else {
-        console.log('[DeleteDialog] Not calling onClose because action is in progress');
-      }
-    };
-  }, [isPerformingAction, onClose]);
-
-  const handleConfirm = () => {
-    console.log('[DeleteDialog] Confirm button clicked');
-    onConfirm();
-  };
-
+  // Simplified dialog component with reliable behavior
   return (
     <Dialog 
       open={isOpen} 
       onOpenChange={(open) => {
-        console.log(`[DeleteDialog] onOpenChange: ${open}, isPerformingAction: ${isPerformingAction}`);
-        
+        // Only allow dialog to close when not performing an action
         if (!open && !isPerformingAction) {
-          console.log('[DeleteDialog] Calling onClose from onOpenChange');
           onClose();
-        } else if (!open && isPerformingAction) {
-          console.log('[DeleteDialog] Preventing dialog from closing during operation');
-          return;
         }
       }}
     >
@@ -108,7 +85,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <Button
             type="button"
             variant="destructive"
-            onClick={handleConfirm}
+            onClick={onConfirm}
             disabled={isPerformingAction}
           >
             {isPerformingAction ? (
@@ -126,10 +103,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              console.log('[DeleteDialog] Cancel button clicked');
-              onClose();
-            }}
+            onClick={onClose}
             disabled={isPerformingAction}
           >
             Cancel

@@ -53,28 +53,33 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     realtimeChannelsRef
   });
 
-  // Cleanup subscriptions when component unmounts
+  // Cleanup on unmount
   useEffect(() => {
-    console.log('[PHYSICAL_TABLE] Component mounted');
     return () => {
-      console.log('[PHYSICAL_TABLE] Component unmounting, resetting deletion state');
-      // Ensure we handle any pending state on unmount
-      resetDeletionState();
+      // Only reset if not in the middle of an operation
+      if (!deletionContext.isProcessing) {
+        resetDeletionState();
+      }
     };
-  }, [resetDeletionState]);
+  }, [resetDeletionState, deletionContext.isProcessing]);
 
-  // Log when deletionContext changes
+  // Auto-reset success and error states after a delay
   useEffect(() => {
-    console.log('[PHYSICAL_TABLE] deletionContext updated:', deletionContext.state);
-  }, [deletionContext]);
+    if (deletionContext.state === 'success' || deletionContext.state === 'error') {
+      const timer = setTimeout(() => {
+        resetDeletionState();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [deletionContext.state, resetDeletionState]);
 
+  // Comment handling logic
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
       setSavingComments(prev => ({ ...prev, [tradeId]: true }));
       
       setTimeout(() => {
-        console.log(`[COMMENT] Saving comment for trade ${tradeId}: ${comment}`);
-        // Add toast functionality here if needed
         setSavingComments(prev => ({ ...prev, [tradeId]: false }));
       }, 500);
     }, 1000),
@@ -97,57 +102,22 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   };
 
   // Handler for deleting a trade - uses state machine
-  const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
-    console.log(`[PHYSICAL_TABLE] Request to delete trade ${tradeId} (${tradeReference})`);
-    
+  const handleDeleteTrade = useCallback((tradeId: string, tradeReference: string) => {
     if (deletionContext.isProcessing) {
-      console.log('[PHYSICAL_TABLE] Ignoring delete request, processing already in progress');
       return;
     }
     
     openDeleteConfirmation('trade', tradeId, tradeReference);
-  };
+  }, [deletionContext.isProcessing, openDeleteConfirmation]);
 
   // Handler for deleting a leg - uses state machine
-  const handleDeleteTradeLeg = (legId: string, legReference: string, parentId: string) => {
-    console.log(`[PHYSICAL_TABLE] Request to delete leg ${legId} (${legReference}) of trade ${parentId}`);
-    
+  const handleDeleteTradeLeg = useCallback((legId: string, legReference: string, parentId: string) => {
     if (deletionContext.isProcessing) {
-      console.log('[PHYSICAL_TABLE] Ignoring delete request, processing already in progress');
       return;
     }
     
     openDeleteConfirmation('leg', legId, legReference, parentId);
-  };
-
-  // Reset deletion state after successful completion with delay
-  useEffect(() => {
-    if (deletionContext.state === 'success') {
-      console.log('[PHYSICAL_TABLE] Success state detected, scheduling reset');
-      const timer = setTimeout(() => {
-        console.log('[PHYSICAL_TABLE] Resetting state after success');
-        resetDeletionState();
-      }, 2000); // Increased timeout to ensure UI updates are complete
-      
-      return () => {
-        console.log('[PHYSICAL_TABLE] Clearing success reset timer');
-        clearTimeout(timer);
-      };
-    }
-    
-    if (deletionContext.state === 'error') {
-      console.log('[PHYSICAL_TABLE] Error state detected, scheduling reset');
-      const timer = setTimeout(() => {
-        console.log('[PHYSICAL_TABLE] Resetting state after error');
-        resetDeletionState();
-      }, 3000); // Give more time to see error message
-      
-      return () => {
-        console.log('[PHYSICAL_TABLE] Clearing error reset timer');
-        clearTimeout(timer);
-      };
-    }
-  }, [deletionContext.state, resetDeletionState]);
+  }, [deletionContext.isProcessing, openDeleteConfirmation]);
 
   if (loading) {
     return <TableLoadingState />;
@@ -159,6 +129,9 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
   // Determine if delete progress indicator should be shown
   const showProgressIndicator = deletionContext.state === 'deleting';
+
+  // Share processing state with row actions
+  isProcessingRef.current = deletionContext.isProcessing;
 
   return (
     <>
@@ -197,7 +170,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                   legIndex={legIndex}
                   comments={comments}
                   savingComments={savingComments}
-                  isDeleting={showProgressIndicator}
+                  isDeleting={deletionContext.state === 'deleting'}
                   deletingTradeId={deletionContext.itemId || ''}
                   isProcessingRef={isProcessingRef}
                   onCommentChange={handleCommentChange}
@@ -220,14 +193,8 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 
       <DeleteConfirmationDialog
         isOpen={deletionContext.state === 'confirming'}
-        onClose={() => {
-          console.log('[PHYSICAL_TABLE] Dialog onClose called');
-          cancelDelete();
-        }}
-        onConfirm={() => {
-          console.log('[PHYSICAL_TABLE] Dialog onConfirm called');
-          confirmDelete();
-        }}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
         itemType={deletionContext.itemType}
         itemReference={deletionContext.itemReference}
         isPerformingAction={deletionContext.isProcessing}

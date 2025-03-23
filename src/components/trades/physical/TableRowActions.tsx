@@ -37,11 +37,17 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   onDeleteTrade,
   onDeleteLeg,
 }) => {
+  // Determine if this row is being deleted
+  const isThisRowDeleting = isDeleting && deletingId === (isMultiLeg && legId ? legId : tradeId);
+  
+  // Determine if the dropdown should be disabled
+  const isDropdownDisabled = isDeleting || isProcessing;
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" disabled={isDeleting || isProcessing}>
-          {isDeleting && deletingId === (isMultiLeg ? legId : tradeId) ? (
+        <Button variant="ghost" size="sm" disabled={isDropdownDisabled}>
+          {isThisRowDeleting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
               Deleting...
@@ -63,7 +69,7 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
           <DropdownMenuItem 
             onClick={() => onDeleteLeg(legId, legReference, tradeId)}
             className="text-destructive focus:text-destructive"
-            disabled={isDeleting || isProcessing}
+            disabled={isDropdownDisabled}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete Trade Leg
@@ -72,7 +78,7 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
           <DropdownMenuItem 
             onClick={() => onDeleteTrade(tradeId, tradeReference)}
             className="text-destructive focus:text-destructive"
-            disabled={isDeleting || isProcessing}
+            disabled={isDropdownDisabled}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete Trade

@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 
 /**
@@ -56,6 +57,12 @@ export const initialDeletionContext: DeletionContext = {
 export function deletionReducer(context: DeletionContext, action: DeletionAction): DeletionContext {
   console.log(`[STATE MACHINE] Current state: ${context.state}, Action: ${action.type}`);
   
+  // If we're in the middle of processing and trying to cancel or reset, ignore it
+  if (context.isProcessing && (action.type === 'CANCEL' || action.type === 'RESET')) {
+    console.log(`[STATE MACHINE] Ignoring ${action.type} action during active processing`);
+    return context;
+  }
+  
   switch (context.state) {
     case 'idle':
       if (action.type === 'OPEN_CONFIRMATION') {
@@ -80,7 +87,7 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
           isProcessing: true
         };
       } else if (action.type === 'CANCEL') {
-        console.log('[STATE MACHINE] Explicitly canceling confirmation dialog');
+        console.log('[STATE MACHINE] Canceling confirmation dialog');
         return initialDeletionContext;
       } else if (action.type === 'RESET') {
         console.log('[STATE MACHINE] Resetting from confirming state');
@@ -99,9 +106,10 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
         const itemType = context.itemType === 'trade' ? 'Trade' : 'Trade leg';
         const itemRef = context.itemReference;
         
+        // Show success toast outside the reducer
         setTimeout(() => {
           toast.success(`${itemType} ${itemRef} deleted successfully`);
-        }, 0);
+        }, 100);
         
         return {
           ...context,
@@ -112,11 +120,12 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
       } else if (action.type === 'SET_ERROR') {
         console.error('[STATE MACHINE] Setting error state:', action.error);
         
+        // Show error toast outside the reducer
         setTimeout(() => {
           toast.error(`Failed to delete ${context.itemType}`, {
             description: action.error.message || 'Unknown error occurred'
           });
-        }, 0);
+        }, 100);
         
         return {
           ...context,
@@ -148,6 +157,6 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
       break;
   }
   
-  console.log(`[STATE MACHINE] Unhandled action ${action.type} in state ${context.state}`);
+  console.log(`[STATE MACHINE] No state transition for action ${action.type} in state ${context.state}`);
   return context;
 }

@@ -46,20 +46,25 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
   const cancelDelete = useCallback(() => {
     console.log(`[DELETION] Cancel requested, current state: ${deletionContext.state}`);
     
-    if (deletionContext.state === 'deleting') {
+    if (deletionContext.isProcessing) {
       console.log('[DELETION] Cannot cancel while deletion is in progress');
       return;
     }
     
     dispatch({ type: 'CANCEL' });
-  }, [deletionContext.state]);
+  }, [deletionContext.state, deletionContext.isProcessing]);
   
   // Confirm and execute the deletion
   const confirmDelete = useCallback(async () => {
-    console.log(`[DELETION] Confirm requested, checking conditions...`);
+    console.log(`[DELETION] Confirm requested, current state: ${deletionContext.state}`);
     
     if (operationInProgressRef.current) {
       console.log('[DELETION] Operation already in progress, ignoring request');
+      return;
+    }
+    
+    if (deletionContext.isProcessing) {
+      console.log('[DELETION] Already processing, ignoring duplicate confirm request');
       return;
     }
     
@@ -138,18 +143,18 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
         operationInProgressRef.current = false;
       }
     }
-  }, [deletionContext.itemId, deletionContext.itemType, deletionContext.parentId, refetchTrades, realtimeChannelsRef]);
+  }, [deletionContext, refetchTrades, realtimeChannelsRef]);
   
   // Reset the state after completion or error
   const resetDeletionState = useCallback(() => {
-    if (deletionContext.state === 'deleting') {
+    if (deletionContext.isProcessing) {
       console.log('[DELETION] Refusing to reset while delete is in progress');
       return;
     }
     
     console.log('[DELETION] Resetting state machine');
     dispatch({ type: 'RESET' });
-  }, [deletionContext.state]);
+  }, [deletionContext.isProcessing]);
   
   return {
     deletionContext,
