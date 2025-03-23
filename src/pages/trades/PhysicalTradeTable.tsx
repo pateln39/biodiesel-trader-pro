@@ -96,9 +96,35 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
+  // Safe method to ensure subscriptions are resumed regardless of errors
+  const safelyResumeSubscriptions = () => {
+    if (!realtimeChannelsRef || !realtimeChannelsRef.current) return;
+    
+    try {
+      console.log('[PHYSICAL] Safely resuming subscriptions after operation');
+      resumePhysicalSubscriptions(realtimeChannelsRef.current);
+    } catch (error) {
+      console.error('[PHYSICAL] Error resuming subscriptions:', error);
+    }
+  };
+
+  // Safe method to reset processing state
+  const resetProcessingState = () => {
+    console.log('[PHYSICAL] Resetting processing state');
+    isProcessingRef.current = false;
+    setIsDeleting(false);
+    setDeletingTradeId('');
+    setDeletionProgress(0);
+  };
+
   // Show delete confirmation dialog
   const showDeleteConfirmation = (tradeId: string, tradeReference: string, isLeg = false, parentId = '') => {
     console.log(`[PHYSICAL] Showing delete confirmation for ${isLeg ? 'leg' : 'trade'}: ${tradeId} (${tradeReference})`);
+    
+    // Make sure processing state is reset when showing dialog
+    resetProcessingState();
+    
+    // Set pending delete state
     setPendingDeleteTradeId(tradeId);
     setPendingDeleteTradeRef(tradeReference);
     setIsPendingDeleteLeg(isLeg);
@@ -109,8 +135,15 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   // Cancel delete action
   const cancelDelete = () => {
     console.log('[PHYSICAL] Delete operation cancelled by user');
+    
+    // Ensure processing state is reset on cancel
+    resetProcessingState();
+    
+    // Ensure subscriptions are resumed on cancel
+    safelyResumeSubscriptions();
+    
+    // Close dialog and reset pending delete state
     setIsDeleteDialogOpen(false);
-    // Reset pending delete state
     setPendingDeleteTradeId('');
     setPendingDeleteTradeRef('');
     setIsPendingDeleteLeg(false);
@@ -120,19 +153,31 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   // Confirm delete action
   const confirmDelete = async () => {
     console.log(`[PHYSICAL] Delete confirmed for ${pendingDeleteIsLeg ? 'leg' : 'trade'}: ${pendingDeleteTradeId}`);
+    
+    // Close dialog first to prevent UI freezes
     setIsDeleteDialogOpen(false);
     
-    if (pendingDeleteIsLeg) {
-      await handleDeleteTradeLeg(pendingDeleteTradeId, pendingDeleteTradeRef, pendingDeleteLegParentId);
-    } else {
-      await handleDeleteTrade(pendingDeleteTradeId, pendingDeleteTradeRef);
+    try {
+      if (pendingDeleteIsLeg) {
+        await handleDeleteTradeLeg(pendingDeleteTradeId, pendingDeleteTradeRef, pendingDeleteLegParentId);
+      } else {
+        await handleDeleteTrade(pendingDeleteTradeId, pendingDeleteTradeRef);
+      }
+    } catch (error) {
+      // Handle any unexpected errors
+      console.error('[PHYSICAL] Unexpected error in delete confirmation:', error);
+      toast.error('An unexpected error occurred');
+      
+      // Ensure state is reset and subscriptions are resumed
+      resetProcessingState();
+      safelyResumeSubscriptions();
+    } finally {
+      // Reset pending delete state after operation completes or fails
+      setPendingDeleteTradeId('');
+      setPendingDeleteTradeRef('');
+      setIsPendingDeleteLeg(false);
+      setPendingDeleteLegParentId('');
     }
-    
-    // Reset pending delete state
-    setPendingDeleteTradeId('');
-    setPendingDeleteTradeRef('');
-    setIsPendingDeleteLeg(false);
-    setPendingDeleteLegParentId('');
   };
 
   const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
@@ -149,7 +194,11 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       
       // Pause subscriptions to prevent race conditions during delete
       if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
+        try {
+          pausePhysicalSubscriptions(realtimeChannelsRef.current);
+        } catch (err) {
+          console.error('[PHYSICAL] Error pausing subscriptions:', err);
+        }
       }
       
       const progress = (value: number) => {
@@ -161,7 +210,15 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       
       if (success) {
         toast.success(`Trade ${tradeReference} deleted successfully`);
-        refetchTrades();
+        
+        // Use setTimeout to ensure UI updates before refetching
+        setTimeout(() => {
+          try {
+            refetchTrades();
+          } catch (refetchError) {
+            console.error('[PHYSICAL] Error during refetch:', refetchError);
+          }
+        }, 300);
       }
     } catch (error) {
       console.error('[PHYSICAL] Error during delete:', error);
@@ -169,16 +226,12 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
+      // Always resume subscriptions and reset state in finally block
+      // Use setTimeout to ensure this happens after other operations
+      setTimeout(() => {
+        safelyResumeSubscriptions();
+        resetProcessingState();
+      }, 200);
     }
   };
 
@@ -196,7 +249,11 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       
       // Pause subscriptions to prevent race conditions during delete
       if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
+        try {
+          pausePhysicalSubscriptions(realtimeChannelsRef.current);
+        } catch (err) {
+          console.error('[PHYSICAL] Error pausing subscriptions:', err);
+        }
       }
       
       const progress = (value: number) => {
@@ -208,7 +265,15 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       
       if (success) {
         toast.success(`Trade leg ${legReference} deleted successfully`);
-        refetchTrades();
+        
+        // Use setTimeout to ensure UI updates before refetching
+        setTimeout(() => {
+          try {
+            refetchTrades();
+          } catch (refetchError) {
+            console.error('[PHYSICAL] Error during refetch:', refetchError);
+          }
+        }, 300);
       }
     } catch (error) {
       console.error('[PHYSICAL] Error during delete:', error);
@@ -216,16 +281,12 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
+      // Always resume subscriptions and reset state in finally block
+      // Use setTimeout to ensure this happens after other operations
+      setTimeout(() => {
+        safelyResumeSubscriptions();
+        resetProcessingState();
+      }, 200);
     }
   };
 
@@ -289,7 +350,16 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={(open) => {
+          // If dialog is being closed without user action, ensure clean state
+          if (!open) {
+            cancelDelete();
+          }
+          setIsDeleteDialogOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
