@@ -1,111 +1,99 @@
 
 import React from 'react';
-import { format } from 'date-fns';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-
-export interface MultiTablePriceDataPoint {
-  id: string;
-  price_date: string;
-  price: number;
-  instrumentName: string;
-  previousPrice?: number;
-  percentChange?: number;
-}
+import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { PricePoint } from '@/core/types/common';
 
 interface MultiInstrumentPriceTableProps {
-  data: MultiTablePriceDataPoint[];
-  isLoading: boolean;
+  instrumentPrices: Record<string, PricePoint[]>;
+  title?: string;
 }
 
 export const MultiInstrumentPriceTable: React.FC<MultiInstrumentPriceTableProps> = ({
-  data,
-  isLoading,
+  instrumentPrices,
+  title = 'Price Data'
 }) => {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} className="h-10 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const navigate = useNavigate();
+  const instruments = Object.keys(instrumentPrices);
 
-  if (data.length === 0) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col items-center justify-center p-4 text-muted-foreground">
-            <p>No historical price data available for the selected criteria.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const formatDate = (date: Date) => {
+    return format(date, 'yyyy-MM-dd');
+  };
 
-  // Group data by date for better display
-  const dataByDate = data.reduce((acc, item) => {
-    const date = item.price_date;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(item);
-    return acc;
-  }, {} as Record<string, MultiTablePriceDataPoint[]>);
+  // Get all unique dates across all instruments
+  const allDates = new Set<string>();
+  Object.values(instrumentPrices).forEach(prices => {
+    prices.forEach(price => {
+      allDates.add(formatDate(price.date));
+    });
+  });
 
-  const sortedDates = Object.keys(dataByDate).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
-  );
+  // Sort dates
+  const sortedDates = Array.from(allDates).sort();
+
+  // Create a map of date -> instrument -> price for easier lookup
+  const priceMap: Record<string, Record<string, number>> = {};
+  sortedDates.forEach(date => {
+    priceMap[date] = {};
+    instruments.forEach(instrument => {
+      const pricePoint = instrumentPrices[instrument]?.find(
+        p => formatDate(p.date) === date
+      );
+      if (pricePoint) {
+        priceMap[date][instrument] = pricePoint.price;
+      }
+    });
+  });
+
+  const handleViewDetails = (instrument: string, date: string) => {
+    // Would need to implement lookup of actual price ID here for a real implementation
+    navigate(`/risk/prices/${instrument}/${date}`);
+  };
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Instrument</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Change</TableHead>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              {instruments.map(instrument => (
+                <TableHead key={instrument}>{instrument}</TableHead>
+              ))}
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedDates.map(date => (
+              <TableRow key={date}>
+                <TableCell>{date}</TableCell>
+                {instruments.map(instrument => (
+                  <TableCell key={`${date}-${instrument}`}>
+                    {priceMap[date][instrument] !== undefined
+                      ? priceMap[date][instrument].toFixed(2)
+                      : '-'}
+                  </TableCell>
+                ))}
+                <TableCell>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleViewDetails(instruments[0], date)}
+                  >
+                    View
+                  </Button>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedDates.flatMap(date => 
-                dataByDate[date].map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell>{format(new Date(item.price_date), 'PPP')}</TableCell>
-                    <TableCell>{item.instrumentName}</TableCell>
-                    <TableCell className="text-right font-mono">${item.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      {item.percentChange !== undefined ? (
-                        <Badge variant={item.percentChange >= 0 ? "default" : "destructive"} className="font-mono">
-                          {item.percentChange >= 0 ? '+' : ''}{item.percentChange.toFixed(2)}%
-                        </Badge>
-                      ) : (
-                        '—'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );

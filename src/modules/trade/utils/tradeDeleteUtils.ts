@@ -1,7 +1,12 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { TradeType } from '@/modules/trade/types';
+
+// Define TradeType enum for this file to avoid circular references
+enum TradeType {
+  Physical = 'physical',
+  Paper = 'paper'
+}
 
 /**
  * Delete a physical trade and its associated legs
@@ -94,7 +99,7 @@ export const deletePaperTrade = async (tradeId: string): Promise<boolean> => {
 /**
  * Generic trade delete function that routes to the appropriate delete method
  */
-export const deleteTrade = async (tradeId: string, tradeType: TradeType): Promise<boolean> => {
+export const deleteTrade = async (tradeId: string, tradeType: string): Promise<boolean> => {
   if (tradeType === TradeType.Physical) {
     return deletePhysicalTrade(tradeId);
   } else if (tradeType === TradeType.Paper) {

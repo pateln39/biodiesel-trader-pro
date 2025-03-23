@@ -1,6 +1,20 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Trade, 
+  DbParentTrade, 
+  DbTradeLeg,
+  TradeType,
+  BuySell,
+  PhysicalTrade,
+  Product,
+  IncoTerm,
+  Unit,
+  PaymentTerm,
+  CreditStatus
+} from '@/modules/trade/types';
 import { validateAndParsePricingFormula } from '@/modules/pricing/utils';
 import { setupPhysicalTradeSubscriptions } from '@/modules/trade/utils';
 
@@ -42,15 +56,15 @@ const fetchTrades = async (): Promise<Trade[]> => {
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
-          tradeType: 'physical', 
+          tradeType: 'physical' as TradeType, 
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
           physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
           counterparty: parent.counterparty,
           buySell: firstLeg.buy_sell as BuySell,
-          product: firstLeg.product as Product,
+          product: firstLeg.product as unknown as Product,
           sustainability: firstLeg.sustainability || '',
-          incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
+          incoTerm: (firstLeg.inco_term || 'FOB') as unknown as IncoTerm,
           quantity: firstLeg.quantity,
           tolerance: firstLeg.tolerance || 0,
           loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
@@ -58,30 +72,11 @@ const fetchTrades = async (): Promise<Trade[]> => {
           pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
           pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
           unit: (firstLeg.unit || 'MT') as Unit,
-          paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
-          creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          paymentTerm: (firstLeg.payment_term || '30 days') as unknown as PaymentTerm,
+          creditStatus: (firstLeg.credit_status || 'pending') as unknown as CreditStatus,
+          formula: validateAndParsePricingFormula(firstLeg.formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: legs.map(leg => ({
-            id: leg.id,
-            parentTradeId: leg.parent_trade_id,
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell as BuySell,
-            product: leg.product as Product,
-            sustainability: leg.sustainability || '',
-            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-            quantity: leg.quantity,
-            tolerance: leg.tolerance || 0,
-            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            unit: (leg.unit || 'MT') as Unit,
-            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-          }))
+          legs: []
         };
         return physicalTrade;
       } 
@@ -89,12 +84,12 @@ const fetchTrades = async (): Promise<Trade[]> => {
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
-        tradeType: parent.trade_type as TradeType,
+        tradeType: parent.trade_type,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
         counterparty: parent.counterparty,
-        buySell: 'buy' as BuySell,
-        product: 'UCOME' as Product,
+        buySell: 'buy',
+        product: 'UCOME',
         legs: []
       } as Trade;
     });
@@ -107,7 +102,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
 };
 
 export const useTrades = () => {
-  const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   

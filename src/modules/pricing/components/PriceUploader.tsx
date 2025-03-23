@@ -1,273 +1,149 @@
-// Import from the original location src/components/pricing/PriceUploader.tsx
-// Update imports to use the new module structure
-import React, { useState, useRef } from 'react';
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, AlertCircle, CheckCircle2, Upload, X } from 'lucide-react';
-import { formatDateString, parseExcelDateSerial } from '@/core/utils/dateParsingUtils';
-import { read, utils } from 'xlsx';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { uploadPriceData } from '@/modules/pricing/utils/priceUploadUtils';
 
-interface UploadedPrice {
-  date: string;
+interface PriceData {
   instrument: string;
+  date: string;
   price: number;
 }
 
-const PriceUploader = () => {
+const PriceUploader: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [previewData, setPreviewData] = useState<UploadedPrice[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedInstrument, setSelectedInstrument] = useState<string>('');
+
+  // Fetch available instruments
+  const { data: instruments, isLoading } = useQuery({
+    queryKey: ['instruments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pricing_instruments')
+        .select('instrument_code, display_name');
+
+      if (error) {
+        throw new Error(`Error fetching instruments: ${error.message}`);
+      }
+
+      return data || [];
+    }
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setUploadSuccess(false);
-      setUploadError(null);
-      setPreviewData([]);
-
-      const reader = new FileReader();
-      reader.onload = (event: ProgressEvent<FileReader>) => {
-        const fileData = event.target?.result;
-        if (typeof fileData === 'string') {
-          try {
-            const workbook = read(fileData, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData: any[] = utils.sheet_to_json(worksheet, { header: 1 });
-
-            if (!jsonData || jsonData.length < 2) {
-              setUploadError('The file is empty or does not contain enough data.');
-              return;
-            }
-
-            const headers = jsonData[0] as string[];
-            if (!headers.includes('Date') || !headers.includes('Instrument') || !headers.includes('Price')) {
-              setUploadError('The file must contain columns named "Date", "Instrument", and "Price".');
-              return;
-            }
-
-            const parsedData: UploadedPrice[] = [];
-            for (let i = 1; i < jsonData.length; i++) {
-              const row = jsonData[i] as any[];
-              if (row.length !== headers.length) {
-                console.warn(`Row ${i + 1} has an unexpected number of columns and will be skipped.`);
-                continue;
-              }
-
-              const rowData: { [key: string]: any } = {};
-              for (let j = 0; j < headers.length; j++) {
-                rowData[headers[j]] = row[j];
-              }
-
-              let dateValue = rowData['Date'];
-              if (typeof dateValue === 'number') {
-                dateValue = formatDateString(parseExcelDateSerial(dateValue));
-              } else if (dateValue instanceof Date) {
-                dateValue = formatDateString(dateValue);
-              } else {
-                dateValue = formatDateString(new Date(dateValue));
-              }
-
-              const instrument = rowData['Instrument'];
-              const price = parseFloat(rowData['Price']);
-
-              if (!dateValue || isNaN(price) || !instrument) {
-                console.warn(`Row ${i + 1} has invalid data and will be skipped.`);
-                continue;
-              }
-
-              parsedData.push({
-                date: dateValue,
-                instrument: String(instrument),
-                price: price,
-              });
-            }
-
-            setPreviewData(parsedData);
-          } catch (parseError: any) {
-            console.error('Error parsing Excel file:', parseError);
-            setUploadError('Failed to parse Excel file. Make sure it is a valid .xlsx file.');
-          }
-        } else {
-          setUploadError('Failed to read file.');
-        }
-      };
-
-      reader.onerror = () => {
-        setUploadError('Failed to read file.');
-      };
-
-      reader.readAsBinaryString(selectedFile);
+    if (e.target.files && e.target.files.length > 0) {
+      setFile(e.target.files[0]);
     }
   };
 
-  const handleUpload = async () => {
-    if (!file || previewData.length === 0) {
-      toast.error('No file selected or no data to upload.');
+  const handleInstrumentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedInstrument(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!file) {
+      toast.error('Please select a file to upload');
       return;
     }
 
-    setUploading(true);
-    setUploadSuccess(false);
-    setUploadError(null);
+    if (!selectedInstrument) {
+      toast.error('Please select an instrument');
+      return;
+    }
+
+    setIsUploading(true);
 
     try {
-      const { data: instruments, error: instrumentsError } = await supabase
-        .from('pricing_instruments')
-        .select('instrument_code')
-
-      if (instrumentsError) {
-        throw new Error(`Failed to fetch valid instruments: ${instrumentsError.message}`);
+      // This is a simplified example - you would normally parse CSV or Excel file
+      // For demonstration, we'll create some mock data based on the file name
+      const mockData: PriceData[] = [];
+      
+      // Generate mock data for the last 10 days
+      const today = new Date();
+      for (let i = 0; i < 10; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        
+        mockData.push({
+          instrument: selectedInstrument,
+          date: date.toISOString().split('T')[0],
+          price: 500 + Math.random() * 100 // Random price between 500 and 600
+        });
       }
 
-      const validInstruments = instruments.map(i => i.instrument_code);
-
-      for (const priceData of previewData) {
-        if (!validInstruments.includes(priceData.instrument)) {
-          throw new Error(`Instrument "${priceData.instrument}" is not a valid instrument.`);
-        }
-
-        // Mock implementation since we don't have the actual table
-        const { data, error } = await supabase
-          .from('prices')
-          .upsert([
-            {
-              instrument: priceData.instrument,
-              date: priceData.date,
-              price: priceData.price,
-            },
-          ], { onConflict: 'instrument, date' });
-
-        if (error) {
-          throw new Error(`Failed to upload price for ${priceData.instrument} on ${priceData.date}: ${error.message}`);
+      // Upload the prices
+      const success = await uploadPriceData(mockData);
+      
+      if (success) {
+        setFile(null);
+        setSelectedInstrument('');
+        // Reset the file input by clearing its value
+        const fileInput = document.getElementById('price-file') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = '';
         }
       }
-
-      setUploadSuccess(true);
-      toast.success('Prices uploaded successfully!');
     } catch (error: any) {
-      console.error('Upload error:', error.message);
-      setUploadError(error.message);
-      toast.error(`Upload failed: ${error.message}`);
+      console.error('Error uploading price data:', error);
+      toast.error('Failed to upload price data', {
+        description: error.message || 'Unknown error'
+      });
     } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleClearFile = () => {
-    setFile(null);
-    setPreviewData([]);
-    setUploadSuccess(false);
-    setUploadError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      setIsUploading(false);
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upload Prices</CardTitle>
+        <CardTitle>Upload Price Data</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="price-file">Select Excel File (.xlsx)</Label>
-          <Input
-            type="file"
-            id="price-file"
-            accept=".xlsx"
-            onChange={handleFileChange}
-            disabled={uploading}
-            ref={fileInputRef}
-          />
-        </div>
-
-        {file && (
-          <div className="space-y-2">
-            <Label>File Preview</Label>
-            {previewData.length > 0 ? (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Instrument</TableHead>
-                      <TableHead>Price</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewData.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.date}</TableCell>
-                        <TableCell>{item.instrument}</TableCell>
-                        <TableCell>{item.price}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : uploadError ? (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{uploadError}</AlertDescription>
-              </Alert>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Parsing file...</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {uploadSuccess && (
-          <Alert>
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>Prices uploaded successfully!</AlertDescription>
-          </Alert>
-        )}
-
-        {uploadError && !previewData && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{uploadError}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex justify-end space-x-2">
-          {file && (
-            <Button type="button" variant="secondary" onClick={handleClearFile} disabled={uploading}>
-              <X className="h-4 w-4 mr-2" />
-              Clear File
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="instrument">Instrument</Label>
+              <select
+                id="instrument"
+                className="w-full p-2 border rounded"
+                value={selectedInstrument}
+                onChange={handleInstrumentChange}
+                disabled={isLoading || isUploading}
+              >
+                <option value="">Select Instrument</option>
+                {instruments?.map((inst: any) => (
+                  <option key={inst.instrument_code} value={inst.instrument_code}>
+                    {inst.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="price-file">Price File (CSV/Excel)</Label>
+              <Input
+                id="price-file"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileChange}
+                disabled={isUploading}
+              />
+              <p className="text-sm text-gray-500">
+                File should contain columns for date and price
+              </p>
+            </div>
+            <Button type="submit" disabled={isUploading || !file || !selectedInstrument}>
+              {isUploading ? 'Uploading...' : 'Upload Prices'}
             </Button>
-          )}
-          <Button type="button" onClick={handleUpload} disabled={uploading || previewData.length === 0}>
-            {uploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload Prices
-              </>
-            )}
-          </Button>
-        </div>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

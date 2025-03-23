@@ -9,6 +9,19 @@ export * from '@/modules/exposure/types';
 export * from '@/modules/operations/types';
 export * from '@/modules/finance/types';
 
-// Re-export specific types to avoid ambiguity using 'export type' syntax
-export type { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm } from '@/modules/trade/types';
-export type { DbParentTrade, DbTradeLeg } from '@/core/types';
+// Export specific enums with resolved names to avoid ambiguity
+export { 
+  TradeType, 
+  BuySell, 
+  PhysicalType, 
+  Unit, 
+  PaymentTerm, 
+  CreditStatus, 
+  IncoTerm 
+} from '@/modules/trade/types/common';
+
+export { 
+  DbParentTrade, 
+  DbTradeLeg, 
+  Trade
+} from '@/core/types/common';

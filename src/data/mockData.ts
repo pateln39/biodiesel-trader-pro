@@ -1,40 +1,51 @@
 
 // Import types from their correct locations
-import { PaperTrade } from '@/types/paper';
-import { PhysicalTrade } from '@/types/physical';
-import { Movement, AuditLog } from '@/types/common';
+import { PaperTrade } from '@/modules/trade/types/paper';
+import { PhysicalTrade } from '@/modules/trade/types/physical';
+import { AuditLog } from '@/core/types/common';
+
+// Add Movement type 
+export interface Movement {
+  id: string;
+  tradeId: string;
+  vesselName: string;
+  scheduledQuantity: number;
+  nominatedDate: Date;
+  loadport: string;
+  status: string;
+}
 
 // Mock data for audit logs
 export const mockAuditLogs: AuditLog[] = [
   {
     id: '1',
+    table_name: 'trade',
+    record_id: 'TR-1234',
+    operation: 'UPDATE',
+    old_data: { quantity: '100' },
+    new_data: { quantity: '150' },
     timestamp: new Date('2023-03-15T10:30:00'),
-    entityType: 'trade',
-    entityId: 'TR-1234',
-    field: 'quantity',
-    oldValue: '100',
-    newValue: '150',
-    userId: 'user1@example.com'
+    user_id: 'user1@example.com'
   },
   {
     id: '2',
+    table_name: 'trade',
+    record_id: 'TR-1236',
+    operation: 'UPDATE',
+    old_data: { counterparty: 'Acme Corp' },
+    new_data: { counterparty: 'Beta Industries' },
     timestamp: new Date('2023-03-14T14:22:00'),
-    entityType: 'trade',
-    entityId: 'TR-1236',
-    field: 'counterparty',
-    oldValue: 'Acme Corp',
-    newValue: 'Beta Industries',
-    userId: 'user2@example.com'
+    user_id: 'user2@example.com'
   },
   {
     id: '3',
+    table_name: 'trade',
+    record_id: 'PAY-789',
+    operation: 'UPDATE',
+    old_data: { status: 'pending' },
+    new_data: { status: 'completed' },
     timestamp: new Date('2023-03-12T09:45:00'),
-    entityType: 'trade', // Changed from 'payment' to 'trade'
-    entityId: 'PAY-789',
-    field: 'status',
-    oldValue: 'pending',
-    newValue: 'completed',
-    userId: 'user1@example.com'
+    user_id: 'user1@example.com'
   }
 ];
 
@@ -115,6 +126,6 @@ export const mockMovements: Movement[] = [
     scheduledQuantity: 1000,
     nominatedDate: new Date('2023-04-15'),
     loadport: 'Hamburg',
-    status: 'in-progress' // Changed from 'nominated' to 'in-progress'
+    status: 'in-progress'
   }
 ];

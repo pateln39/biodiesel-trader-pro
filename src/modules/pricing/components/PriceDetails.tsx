@@ -8,7 +8,7 @@ import { calculatePriceFromFormula } from '@/modules/pricing/utils/priceCalculat
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { formulaToDisplayString } from '@/modules/pricing/utils/formulaUtils';
+import { formulaToString } from '@/modules/pricing/utils/formulaUtils';
 
 interface PriceDetailsProps {
   id?: string;
@@ -19,6 +19,7 @@ interface PricingData {
   id: string;
   instrument: string;
   date: string;
+  price: number;
   formula: any;
 }
 
@@ -37,15 +38,10 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         throw new Error('ID is required to fetch pricing data');
       }
 
-      // Fetch from historical_prices instead of the non-existent 'prices' table
+      // Try fetching from historical_prices table
       const { data: histPrice, error: histPriceError } = await supabase
         .from('historical_prices')
-        .select(`
-          id, 
-          price_date as date, 
-          price,
-          pricing_instruments(instrument_code, display_name)
-        `)
+        .select('id, price_date, price')
         .eq('id', id)
         .single();
 
@@ -53,12 +49,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
         // Try forward prices table as an alternative
         const { data: fwdPrice, error: fwdPriceError } = await supabase
           .from('forward_prices')
-          .select(`
-            id, 
-            forward_month as date, 
-            price,
-            pricing_instruments(instrument_code, display_name)
-          `)
+          .select('id, forward_month, price')
           .eq('id', id)
           .single();
 
@@ -66,20 +57,36 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
           throw new Error('Price data not found');
         }
 
+        // Get instrument details
+        const { data: instrument } = await supabase
+          .from('pricing_instruments')
+          .select('instrument_code')
+          .eq('id', fwdPrice.instrument_id)
+          .single();
+
         return {
           id: fwdPrice.id,
-          instrument: fwdPrice.pricing_instruments?.instrument_code || 'Unknown',
-          date: fwdPrice.date,
+          instrument: instrument?.instrument_code || 'Unknown',
+          date: fwdPrice.forward_month,
+          price: fwdPrice.price,
           formula: null // Forward prices typically don't have formulas
-        };
+        } as PricingData;
       }
+
+      // Get instrument details
+      const { data: instrument } = await supabase
+        .from('pricing_instruments')
+        .select('instrument_code')
+        .eq('id', histPrice.instrument_id)
+        .single();
 
       return {
         id: histPrice.id,
-        instrument: histPrice.pricing_instruments?.instrument_code || 'Unknown',
-        date: histPrice.date,
-        formula: null // Historical prices typically don't have formulas stored
-      };
+        instrument: instrument?.instrument_code || 'Unknown',
+        date: histPrice.price_date,
+        price: histPrice.price,
+        formula: null // Historical prices typically don't have formulas
+      } as PricingData;
     }
   });
 
@@ -88,7 +95,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = () => {
       try {
         const calculatedPrice = calculatePriceFromFormula(pricingData.formula);
         setPrice(calculatedPrice);
-        setFormulaDisplay(formulaToDisplayString(pricingData.formula.tokens));
+        setFormulaDisplay(formulaToString(pricingData.formula.tokens));
       } catch (error) {
         console.error("Error calculating price:", error);
         setPrice(null);

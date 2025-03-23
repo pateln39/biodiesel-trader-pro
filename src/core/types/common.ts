@@ -107,3 +107,14 @@ export interface PriceRange {
   min: number;
   max: number;
 }
+
+// Add Trade type for backward compatibility
+export interface Trade {
+  id: string;
+  tradeReference: string;
+  tradeType: string;
+  counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+  [key: string]: any; // Allow additional properties
+}
