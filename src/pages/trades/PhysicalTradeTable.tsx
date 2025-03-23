@@ -7,6 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,6 +58,13 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [deletingTradeId, setDeletingTradeId] = useState<string>('');
   const [deletionProgress, setDeletionProgress] = useState(0);
   const isProcessingRef = useRef(false);
+  
+  // New dialog related state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteItemType, setDeleteItemType] = useState<'trade' | 'leg'>('trade');
+  const [itemToDeleteId, setItemToDeleteId] = useState<string>('');
+  const [itemToDeleteReference, setItemToDeleteReference] = useState<string>('');
+  const [parentTradeId, setParentTradeId] = useState<string>('');
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -79,62 +94,37 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  const handleDeleteTrade = async (tradeId: string, tradeReference: string) => {
-    if (isProcessingRef.current) {
-      return;
-    }
-    
-    try {
-      console.log(`[PHYSICAL] Deleting trade: ${tradeId} (${tradeReference})`);
-      isProcessingRef.current = true;
-      setIsDeleting(true);
-      setDeletingTradeId(tradeId);
-      
-      // Pause subscriptions to prevent race conditions during delete
-      if (realtimeChannelsRef) {
-        pausePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      const progress = (value: number) => {
-        console.log(`[PHYSICAL] Delete progress: ${value}%`);
-        setDeletionProgress(value);
-      };
-      
-      const success = await deletePhysicalTrade(tradeId, progress);
-      
-      if (success) {
-        toast.success(`Trade ${tradeReference} deleted successfully`);
-        refetchTrades();
-      }
-    } catch (error) {
-      console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade', { 
-        description: error instanceof Error ? error.message : 'Unknown error occurred' 
-      });
-    } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
-    }
+  // Modified to open the dialog instead of deleting immediately
+  const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
+    setDeleteItemType('trade');
+    setItemToDeleteId(tradeId);
+    setItemToDeleteReference(tradeReference);
+    setParentTradeId(''); // Not needed for trade deletion
+    setIsDialogOpen(true);
   };
 
-  const handleDeleteTradeLeg = async (legId: string, legReference: string, parentId: string) => {
+  // Modified to open the dialog instead of deleting immediately
+  const handleDeleteTradeLeg = (legId: string, legReference: string, parentId: string) => {
+    setDeleteItemType('leg');
+    setItemToDeleteId(legId);
+    setItemToDeleteReference(legReference);
+    setParentTradeId(parentId);
+    setIsDialogOpen(true);
+  };
+
+  // New handler for confirmed deletion
+  const handleConfirmDelete = async () => {
     if (isProcessingRef.current) {
       return;
     }
     
+    setIsDialogOpen(false);
+    
     try {
-      console.log(`[PHYSICAL] Deleting trade leg: ${legId} (${legReference})`);
+      console.log(`[PHYSICAL] Deleting ${deleteItemType}: ${itemToDeleteId} (${itemToDeleteReference})`);
       isProcessingRef.current = true;
       setIsDeleting(true);
-      setDeletingTradeId(legId);
+      setDeletingTradeId(itemToDeleteId);
       
       // Pause subscriptions to prevent race conditions during delete
       if (realtimeChannelsRef) {
@@ -146,15 +136,26 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         setDeletionProgress(value);
       };
       
-      const success = await deletePhysicalTradeLeg(legId, parentId, progress);
+      let success = false;
+      
+      if (deleteItemType === 'trade') {
+        success = await deletePhysicalTrade(itemToDeleteId, progress);
+        if (success) {
+          toast.success(`Trade ${itemToDeleteReference} deleted successfully`);
+        }
+      } else {
+        success = await deletePhysicalTradeLeg(itemToDeleteId, parentTradeId, progress);
+        if (success) {
+          toast.success(`Trade leg ${itemToDeleteReference} deleted successfully`);
+        }
+      }
       
       if (success) {
-        toast.success(`Trade leg ${legReference} deleted successfully`);
         refetchTrades();
       }
     } catch (error) {
       console.error('[PHYSICAL] Error during delete:', error);
-      toast.error('Failed to delete trade leg', { 
+      toast.error(`Failed to delete ${deleteItemType}`, { 
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
@@ -350,8 +351,39 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
           )}
         </TableBody>
       </Table>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {deleteItemType === 'trade' ? 'trade' : 'trade leg'} <span className="font-medium">{itemToDeleteReference}</span>?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-start gap-3">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
 
 export default PhysicalTradeTable;
+
