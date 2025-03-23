@@ -1,81 +1,64 @@
 
 /**
- * Utility functions for date operations
+ * Get an array of the next N months in format 'MMM-YY'
+ * Example: ['Jan-23', 'Feb-23', ...]
  */
-
-/**
- * Generates an array of month codes for the next N months starting from the current month
- * Format: MMM-YY (e.g., "Mar-24")
- * 
- * @param count Number of months to generate
- * @returns Array of month codes
- */
-export function getNextMonths(count: number = 8): string[] {
-  const months = [];
-  const currentDate = new Date();
+export function getNextMonths(count: number = 12): string[] {
+  const result: string[] = [];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
-  // Start with current month
+  const now = new Date();
+  let currentMonth = now.getMonth();
+  let currentYear = now.getFullYear();
+
   for (let i = 0; i < count; i++) {
-    const targetDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + i,
-      1
-    );
+    // Format the two-digit year (YY)
+    const twoDigitYear = (currentYear % 100).toString().padStart(2, '0');
     
-    // Format as MMM-YY (e.g., "Mar-24")
-    const monthCode = targetDate.toLocaleDateString('en-US', { 
-      month: 'short'
-    });
+    // Add to result array
+    result.push(`${months[currentMonth]}-${twoDigitYear}`);
     
-    const yearCode = targetDate.getFullYear().toString().slice(2);
-    months.push(`${monthCode}-${yearCode}`);
+    // Move to next month
+    currentMonth++;
+    if (currentMonth > 11) {
+      currentMonth = 0;
+      currentYear++;
+    }
   }
   
-  return months;
+  return result;
 }
 
 /**
- * Formats a date into a month code (MMM-YY)
- * 
- * @param date The date to format
- * @returns Formatted month code
+ * Format a date into a standardized month code (e.g., 'Jan-23')
  */
 export function formatMonthCode(date: Date): string {
-  const monthCode = date.toLocaleDateString('en-US', { month: 'short' });
-  const yearCode = date.getFullYear().toString().slice(2);
-  return `${monthCode}-${yearCode}`;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[date.getMonth()];
+  const year = (date.getFullYear() % 100).toString().padStart(2, '0');
+  
+  return `${month}-${year}`;
 }
 
 /**
- * Checks if a period code is valid and is in the future (or current month)
- * 
- * @param periodCode The period code to check
- * @returns True if period is valid and not in the past
+ * Check if a period code represents a valid future period
  */
 export function isValidFuturePeriod(periodCode: string): boolean {
-  try {
-    // Parse the period code (e.g., "Mar-24")
-    const [month, yearShort] = periodCode.split('-');
-    const year = 2000 + parseInt(yearShort);
-    
-    // Get the month number (0-11)
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthIndex = monthNames.findIndex(m => m === month);
-    
-    if (monthIndex === -1) return false;
-    
-    // Create Date objects
-    const periodDate = new Date(year, monthIndex, 1);
-    const currentDate = new Date();
-    const currentMonth = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1
-    );
-    
-    // Check if the period is current month or future
-    return periodDate >= currentMonth;
-  } catch (e) {
-    return false;
-  }
+  if (!periodCode || !periodCode.includes('-')) return false;
+  
+  const [monthStr, yearStr] = periodCode.split('-');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const monthIndex = months.findIndex(m => m === monthStr);
+  if (monthIndex === -1) return false;
+  
+  const year = parseInt('20' + yearStr);
+  if (isNaN(year)) return false;
+  
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  
+  // Check if the period is in the future
+  return (year > currentYear) || (year === currentYear && monthIndex >= currentMonth);
 }

@@ -1,54 +1,24 @@
 
-/**
- * Utility functions for form validation
- */
-
-import { toast } from "sonner";
+import { toast } from 'sonner';
 
 /**
- * Validates that a date range is valid (start date is before end date)
+ * Validate that a date range is valid (start <= end)
  */
 export const validateDateRange = (
   startDate: Date | null | undefined,
   endDate: Date | null | undefined,
-  rangeName: string
-): boolean => {
-  if (!startDate || !endDate) {
-    toast.error(`${rangeName} missing`, {
-      description: `Please select both start and end dates for ${rangeName}.`
-    });
-    return false;
-  }
-
-  if (startDate >= endDate) {
-    toast.error(`Invalid ${rangeName}`, {
-      description: `${rangeName} end date must be after start date.`
-    });
-    return false;
-  }
-
-  return true;
-};
-
-/**
- * Validates that a required field has a value
- */
-export const validateRequiredField = (
-  value: string | number | undefined | null,
   fieldName: string
 ): boolean => {
-  // Check for empty strings, undefined, null, or zero values
-  if (value === undefined || value === null || value === '') {
-    toast.error(`${fieldName} required`, {
-      description: `Please select or enter a value for ${fieldName}.`
+  if (!startDate || !endDate) {
+    toast.error(`${fieldName} dates required`, {
+      description: `Please set both start and end dates for ${fieldName}.`
     });
     return false;
   }
-  
-  // Allow zero for price fields but not for other numeric fields
-  if (typeof value === 'number' && value < 0) {
-    toast.error(`Invalid ${fieldName}`, {
-      description: `${fieldName} must be zero or greater.`
+
+  if (startDate > endDate) {
+    toast.error(`Invalid ${fieldName} date range`, {
+      description: `${fieldName} start date must be before end date.`
     });
     return false;
   }
@@ -57,8 +27,58 @@ export const validateRequiredField = (
 };
 
 /**
- * Validates a form with multiple fields at once and returns overall result
+ * Validate that a required field has a value
  */
-export const validateFields = (validations: boolean[]): boolean => {
+export const validateRequiredField = (
+  value: any,
+  fieldName: string
+): boolean => {
+  // Check various empty values
+  if (
+    value === undefined ||
+    value === null ||
+    value === '' ||
+    (Array.isArray(value) && value.length === 0)
+  ) {
+    toast.error(`${fieldName} required`, {
+      description: `Please enter a value for ${fieldName}.`
+    });
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Validate multiple fields and return combined result
+ */
+export const validateFields = (
+  validations: boolean[]
+): boolean => {
   return validations.every(isValid => isValid);
+};
+
+/**
+ * Validate an email address
+ */
+export const validateEmail = (
+  email: string,
+  fieldName: string = 'Email'
+): boolean => {
+  if (!email) {
+    toast.error(`${fieldName} required`, {
+      description: `Please enter an email address.`
+    });
+    return false;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast.error(`Invalid ${fieldName}`, {
+      description: `Please enter a valid email address.`
+    });
+    return false;
+  }
+
+  return true;
 };

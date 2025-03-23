@@ -1,57 +1,59 @@
 
 import { z } from 'zod';
-import { Instrument, OperatorType } from '@/core/types/common';
 
-// Formula token type
+// Define the token types
+export type TokenType = 'instrument' | 'fixedValue' | 'percentage' | 'operator' | 'openBracket' | 'closeBracket';
+
+// Define the instrument type
+export type Instrument = 'Argus UCOME' | 'Argus RME' | 'Argus FAME0' | 'Platts LSGO' | 'Platts diesel';
+
+// Formula token schema
 export const formulaTokenSchema = z.object({
-  id: z.string().uuid(),
-  type: z.enum(['instrument', 'fixedValue', 'operator', 'percentage', 'openBracket', 'closeBracket']),
-  value: z.string(),
+  id: z.string(),
+  type: z.enum(['instrument', 'fixedValue', 'percentage', 'operator', 'openBracket', 'closeBracket']),
+  value: z.string()
 });
 
+// Export the token type
 export type FormulaToken = z.infer<typeof formulaTokenSchema>;
 
-// Formula node for hierarchical representation
-export interface FormulaNode {
-  id: string;
-  type: "instrument" | "fixedValue" | "operator" | "group" | "percentage" | "openBracket" | "closeBracket";
-  value: string;
-  children?: FormulaNode[];
-}
-
-// Exposure result interfaces
+// Exposure tracking
 export interface ExposureResult {
-  physical: Record<Instrument, number>;
-  pricing: Record<Instrument, number>;
+  physical: Record<string, number>;
+  pricing: Record<string, number>;
 }
 
-// Pricing formula with tokens and exposures
-export interface PricingFormula {
-  tokens: FormulaToken[];
-  exposures: ExposureResult;
-}
+// Pricing formula schema
+export const pricingFormulaSchema = z.object({
+  tokens: z.array(formulaTokenSchema),
+  exposures: z.object({
+    physical: z.record(z.string(), z.number()),
+    pricing: z.record(z.string(), z.number())
+  })
+});
 
-// Utility type to handle potentially incomplete data from the database
-export type PartialExposureResult = {
-  physical?: Partial<Record<Instrument, number>>;
-  pricing?: Partial<Record<Instrument, number>>;
-  paper?: Partial<Record<Instrument, number>>;
-};
+// Export the pricing formula type
+export type PricingFormula = z.infer<typeof pricingFormulaSchema>;
 
-export type PartialPricingFormula = {
-  tokens: FormulaToken[];
-  exposures?: PartialExposureResult;
-};
+// Price calculation schema
+export const priceCalculationSchema = z.object({
+  formula: pricingFormulaSchema,
+  basePrice: z.number().optional(),
+  calculatedPrice: z.number(),
+  calculationDate: z.date(),
+  marketPrices: z.record(z.string(), z.number())
+});
 
-// Fixed component for formula analysis
-export interface FixedComponent {
-  value: number;
-  displayValue: string;
-}
+// Export the price calculation type
+export type PriceCalculation = z.infer<typeof priceCalculationSchema>;
 
-// Price detail interface for detailed price information
-export interface PriceDetail {
-  instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
-  evaluatedPrice: number;
-  fixedComponents?: FixedComponent[];
-}
+// Price data schema
+export const pricingDataSchema = z.object({
+  instrument: z.string(),
+  date: z.date(),
+  price: z.number(),
+  formula: pricingFormulaSchema.optional()
+});
+
+// Export the pricing data type
+export type PricingData = z.infer<typeof pricingDataSchema>;

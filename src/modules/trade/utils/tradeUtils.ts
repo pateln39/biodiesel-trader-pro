@@ -46,3 +46,57 @@ export function formatPrice(price: number | undefined, currency: string = '€')
     minimumFractionDigits: 2
   })}`;
 }
+
+/**
+ * Generate an instrument name based on product and relationship type
+ */
+export function generateInstrumentName(
+  product: string,
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD',
+  oppositeProduct?: string
+): string {
+  if (relationshipType === 'FP') {
+    return `${product} FP`;
+  } else if (relationshipType === 'DIFF' && product) {
+    return `${product} DIFF`;
+  } else if (relationshipType === 'SPREAD' && product && oppositeProduct) {
+    return `${product}-${oppositeProduct} SPREAD`;
+  }
+  return '';
+}
+
+/**
+ * Format product display for UI
+ */
+export function formatProductDisplay(
+  product: string,
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD' | string,
+  oppositeProduct?: string
+): string {
+  if (relationshipType === 'FP') {
+    return product;
+  } else if (relationshipType === 'DIFF') {
+    return `${product} DIFF`;
+  } else if (relationshipType === 'SPREAD' && oppositeProduct) {
+    return `${product}-${oppositeProduct}`;
+  }
+  return product;
+}
+
+/**
+ * Format MTM display for UI
+ */
+export function formatMTMDisplay(
+  product: string,
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD' | string,
+  oppositeProduct?: string
+): string {
+  if (relationshipType === 'FP') {
+    return `${product}`;
+  } else if (relationshipType === 'DIFF') {
+    return `${product} DIFF`;
+  } else if (relationshipType === 'SPREAD' && oppositeProduct) {
+    return `${product}-${oppositeProduct}`;
+  }
+  return product;
+}

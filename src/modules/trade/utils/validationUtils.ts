@@ -8,7 +8,7 @@ export {
 
 // Additional validation utilities specific to trades
 import { toast } from 'sonner';
-import { TokenType } from '@/modules/trade/types/common';
+import { TokenType } from '@/modules/trade/types/pricing';
 import { FormulaToken } from '@/modules/trade/types/pricing';
 
 /**
@@ -91,6 +91,85 @@ export const validateFormula = (
       description: `Formula must include at least one price instrument.`
     });
     return false;
+  }
+  
+  return true;
+};
+
+/**
+ * Validate a physical trade form before submission
+ */
+export const validatePhysicalTradeForm = (formData: any): boolean => {
+  // Validate basic fields
+  if (!formData.counterparty) {
+    toast.error('Missing counterparty', {
+      description: 'Please select a counterparty for this trade.'
+    });
+    return false;
+  }
+  
+  // Validate legs
+  if (!formData.legs || formData.legs.length === 0) {
+    toast.error('No trade legs', {
+      description: 'At least one trade leg is required.'
+    });
+    return false;
+  }
+  
+  // For each leg, validate required fields
+  for (let i = 0; i < formData.legs.length; i++) {
+    const leg = formData.legs[i];
+    const legNumber = i + 1;
+    
+    if (!leg.product) {
+      toast.error(`Missing product in leg ${legNumber}`, {
+        description: 'Please select a product for each trade leg.'
+      });
+      return false;
+    }
+    
+    if (!leg.buySell) {
+      toast.error(`Missing buy/sell in leg ${legNumber}`, {
+        description: 'Please specify buy or sell for each trade leg.'
+      });
+      return false;
+    }
+    
+    if (!leg.quantity || leg.quantity <= 0) {
+      toast.error(`Invalid quantity in leg ${legNumber}`, {
+        description: 'Please enter a valid positive quantity for each trade leg.'
+      });
+      return false;
+    }
+    
+    // Validate dates
+    if (leg.loadingPeriodStart && leg.loadingPeriodEnd) {
+      if (new Date(leg.loadingPeriodStart) > new Date(leg.loadingPeriodEnd)) {
+        toast.error(`Invalid loading period in leg ${legNumber}`, {
+          description: 'Loading period end date must be after start date.'
+        });
+        return false;
+      }
+    } else {
+      toast.error(`Missing loading period in leg ${legNumber}`, {
+        description: 'Please specify both start and end dates for loading period.'
+      });
+      return false;
+    }
+    
+    if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+      if (new Date(leg.pricingPeriodStart) > new Date(leg.pricingPeriodEnd)) {
+        toast.error(`Invalid pricing period in leg ${legNumber}`, {
+          description: 'Pricing period end date must be after start date.'
+        });
+        return false;
+      }
+    } else {
+      toast.error(`Missing pricing period in leg ${legNumber}`, {
+        description: 'Please specify both start and end dates for pricing period.'
+      });
+      return false;
+    }
   }
   
   return true;
