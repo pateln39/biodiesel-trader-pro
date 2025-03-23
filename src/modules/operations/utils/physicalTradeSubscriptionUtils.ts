@@ -71,11 +71,12 @@ export const setupPhysicalTradeSubscriptions = (
   cleanupPhysicalSubscriptions(realtimeChannelsRef.current);
   
   const parentTradesChannel = supabase
-    .channel('parent_trades_isolated')
+    .channel('physical_parent_trades_isolated')
     .on('postgres_changes', { 
       event: '*', 
       schema: 'public', 
-      table: 'parent_trades'
+      table: 'parent_trades',
+      filter: 'trade_type=eq.physical'
     }, (payload) => {
       if (realtimeChannelsRef.current.parentTradesChannel?.isPaused) {
         console.log('[PHYSICAL] Subscription paused, skipping update for parent_trades');
@@ -83,16 +84,16 @@ export const setupPhysicalTradeSubscriptions = (
       }
       
       if (!isProcessingRef.current) {
-        console.log('[PHYSICAL] Parent trades changed, debouncing refetch...', payload);
+        console.log('[PHYSICAL] Physical parent trades changed, debouncing refetch...', payload);
         debouncedRefetch(refetch);
       }
     })
     .subscribe();
-
+  
   realtimeChannelsRef.current.parentTradesChannel = parentTradesChannel;
 
   const tradeLegsChannel = supabase
-    .channel('trade_legs_isolated')
+    .channel('trade_legs_for_physical_isolated')
     .on('postgres_changes', { 
       event: '*', 
       schema: 'public', 
@@ -109,7 +110,7 @@ export const setupPhysicalTradeSubscriptions = (
       }
     })
     .subscribe();
-
+  
   realtimeChannelsRef.current.tradeLegsChannel = tradeLegsChannel;
   
   return () => {

@@ -1,15 +1,17 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { delay } from '@/core/utils/subscriptionUtils';
 
 /**
- * Delete a physical trade and all its legs
- * @param tradeId ID of the physical trade to delete
+ * Delete a physical trade and all its legs with proper sequencing
  */
-export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => {
+export const deletePhysicalTrade = async (
+  tradeId: string,
+  onProgress?: (progress: number) => void
+): Promise<boolean> => {
   try {
     console.log(`Starting deletion process for physical trade: ${tradeId}`);
+    onProgress?.(10);
     
     // Step 1: Delete all legs for this trade
     const { error: legsError } = await supabase
@@ -18,95 +20,107 @@ export const deletePhysicalTrade = async (tradeId: string): Promise<boolean> => 
       .eq('parent_trade_id', tradeId);
       
     if (legsError) {
-      console.error('Error deleting physical trade legs:', legsError);
+      console.error('Error deleting trade legs:', legsError);
       throw legsError;
     }
+    
+    onProgress?.(50);
     
     // Add a small delay between operations to avoid database race conditions
     await delay(300);
     
     // Step 2: Delete the parent trade
-    const { error: tradeError } = await supabase
+    const { error: parentError } = await supabase
       .from('parent_trades')
       .delete()
-      .eq('id', tradeId);
+      .eq('id', tradeId)
+      .eq('trade_type', 'physical');
       
-    if (tradeError) {
-      console.error('Error deleting parent trade:', tradeError);
-      throw tradeError;
+    if (parentError) {
+      console.error('Error deleting parent trade:', parentError);
+      throw parentError;
     }
     
+    onProgress?.(90);
+    
+    // Allow UI to complete animations
+    await delay(200);
+    
     console.log(`Successfully deleted physical trade: ${tradeId}`);
+    onProgress?.(100);
+    
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTrade:', error);
     toast.error("Physical trade deletion failed", {
       description: error instanceof Error ? error.message : 'Unknown error occurred'
     });
-    throw error;
+    return false;
   }
 };
 
 /**
- * Delete a single leg from a physical trade
- * If it's the last leg, the entire trade will be deleted
- * @param legId ID of the leg to delete
- * @param parentTradeId ID of the parent trade
+ * Delete a single leg from a physical trade, handling the case where it's the last leg
  */
-export const deletePhysicalTradeLeg = async (legId: string, parentTradeId: string): Promise<boolean> => {
+export const deletePhysicalTradeLeg = async (
+  legId: string, 
+  parentTradeId: string,
+  onProgress?: (progress: number) => void
+): Promise<boolean> => {
   try {
-    console.log(`Starting deletion process for physical trade leg: ${legId} (parent: ${parentTradeId})`);
+    console.log(`Starting deletion process for leg: ${legId} of trade: ${parentTradeId}`);
+    onProgress?.(10);
     
-    // Step 1: Check how many legs this trade has
-    const { data: legCount, error: countError } = await supabase
+    // First, check if this is the only leg for the parent trade
+    const { data: legsCount, error: countError } = await supabase
       .from('trade_legs')
       .select('id', { count: 'exact' })
       .eq('parent_trade_id', parentTradeId);
-      
+    
     if (countError) {
-      console.error('Error counting physical trade legs:', countError);
+      console.error('Error checking remaining legs:', countError);
       throw countError;
     }
     
-    const totalLegs = legCount?.length || 0;
-    console.log(`Trade has ${totalLegs} legs in total`);
+    onProgress?.(30);
     
-    // Step 2: Delete the specific leg
-    const { error: legError } = await supabase
+    const isLastLeg = legsCount?.length === 1;
+    
+    // If it's the last leg, delete both the leg and the parent trade
+    if (isLastLeg) {
+      console.log(`This is the last leg for trade ${parentTradeId}, deleting entire trade`);
+      onProgress?.(40);
+      return await deletePhysicalTrade(parentTradeId, (progress) => {
+        // Scale progress to fit within our 40%-100% range
+        onProgress?.(40 + (progress * 0.6));
+      });
+    }
+    
+    // Otherwise, just delete the leg
+    const { error } = await supabase
       .from('trade_legs')
       .delete()
       .eq('id', legId);
-      
-    if (legError) {
-      console.error('Error deleting physical trade leg:', legError);
-      throw legError;
+    
+    if (error) {
+      console.error('Error deleting trade leg:', error);
+      throw error;
     }
     
-    // Step 3: If this was the last leg, also delete the parent trade
-    if (totalLegs <= 1) {
-      console.log(`Deleting parent trade ${parentTradeId} as this was the last leg`);
-      
-      // Add a small delay to avoid database race conditions
-      await delay(300);
-      
-      const { error: parentError } = await supabase
-        .from('parent_trades')
-        .delete()
-        .eq('id', parentTradeId);
-        
-      if (parentError) {
-        console.error('Error deleting parent trade:', parentError);
-        throw parentError;
-      }
-    }
+    onProgress?.(80);
     
-    console.log(`Successfully deleted physical trade leg: ${legId}`);
+    // Allow UI to complete animations
+    await delay(200);
+    
+    console.log(`Successfully deleted leg: ${legId}`);
+    onProgress?.(100);
+    
     return true;
   } catch (error) {
     console.error('Error in deletePhysicalTradeLeg:', error);
-    toast.error("Physical trade leg deletion failed", {
+    toast.error("Trade leg deletion failed", {
       description: error instanceof Error ? error.message : 'Unknown error occurred'
     });
-    throw error;
+    return false;
   }
 };
