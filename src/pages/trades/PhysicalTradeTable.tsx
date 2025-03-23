@@ -59,12 +59,13 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   const [deletionProgress, setDeletionProgress] = useState(0);
   const isProcessingRef = useRef(false);
   
-  // New dialog related state
+  // Dialog related state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteItemType, setDeleteItemType] = useState<'trade' | 'leg'>('trade');
   const [itemToDeleteId, setItemToDeleteId] = useState<string>('');
   const [itemToDeleteReference, setItemToDeleteReference] = useState<string>('');
   const [parentTradeId, setParentTradeId] = useState<string>('');
+  const [isPerformingAction, setIsPerformingAction] = useState(false);
 
   const debouncedSaveComment = useCallback(
     debounce((tradeId: string, comment: string) => {
@@ -94,8 +95,12 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     navigate(`/trades/${tradeId}`);
   };
 
-  // Modified to open the dialog instead of deleting immediately
+  // Open the dialog instead of deleting immediately
   const handleDeleteTrade = (tradeId: string, tradeReference: string) => {
+    if (isPerformingAction) {
+      return;
+    }
+    
     setDeleteItemType('trade');
     setItemToDeleteId(tradeId);
     setItemToDeleteReference(tradeReference);
@@ -103,8 +108,12 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     setIsDialogOpen(true);
   };
 
-  // Modified to open the dialog instead of deleting immediately
+  // Open the dialog instead of deleting immediately
   const handleDeleteTradeLeg = (legId: string, legReference: string, parentId: string) => {
+    if (isPerformingAction) {
+      return;
+    }
+    
     setDeleteItemType('leg');
     setItemToDeleteId(legId);
     setItemToDeleteReference(legReference);
@@ -112,17 +121,33 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
     setIsDialogOpen(true);
   };
 
-  // New handler for confirmed deletion
+  // Close dialog safely
+  const handleCloseDialog = () => {
+    // Only allow closing if not in the middle of an action
+    if (!isPerformingAction) {
+      setIsDialogOpen(false);
+    }
+  };
+
+  // Handler for confirmed deletion - separated from dialog close
   const handleConfirmDelete = async () => {
-    if (isProcessingRef.current) {
+    if (isProcessingRef.current || isPerformingAction) {
       return;
     }
     
-    setIsDialogOpen(false);
-    
     try {
-      console.log(`[PHYSICAL] Deleting ${deleteItemType}: ${itemToDeleteId} (${itemToDeleteReference})`);
+      // Set states to indicate processing
+      setIsPerformingAction(true);
       isProcessingRef.current = true;
+      
+      // First close the dialog with a small delay to prevent UI jank
+      setIsDialogOpen(false);
+      
+      // Small delay to allow the dialog to close before starting the operation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Now start the deletion process
+      console.log(`[PHYSICAL] Deleting ${deleteItemType}: ${itemToDeleteId} (${itemToDeleteReference})`);
       setIsDeleting(true);
       setDeletingTradeId(itemToDeleteId);
       
@@ -151,6 +176,8 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       }
       
       if (success) {
+        // Small delay before refetching
+        await new Promise(resolve => setTimeout(resolve, 200));
         refetchTrades();
       }
     } catch (error) {
@@ -159,16 +186,20 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
         description: error instanceof Error ? error.message : 'Unknown error occurred' 
       });
     } finally {
-      // Resume subscriptions
-      if (realtimeChannelsRef) {
-        resumePhysicalSubscriptions(realtimeChannelsRef.current);
-      }
-      
-      // Reset state
-      setIsDeleting(false);
-      setDeletingTradeId('');
-      setDeletionProgress(0);
-      isProcessingRef.current = false;
+      // Allow a moment before resetting state to prevent UI jank
+      setTimeout(() => {
+        // Resume subscriptions
+        if (realtimeChannelsRef) {
+          resumePhysicalSubscriptions(realtimeChannelsRef.current);
+        }
+        
+        // Reset states in a single batch to minimize renders
+        setIsDeleting(false);
+        setDeletingTradeId('');
+        setDeletionProgress(0);
+        setIsPerformingAction(false);
+        isProcessingRef.current = false;
+      }, 300);
     }
   };
 
@@ -298,7 +329,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                   <TableCell className="text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id)}>
+                        <Button variant="ghost" size="sm" disabled={isDeleting || isPerformingAction}>
                           {isDeleting && deletingTradeId === (hasMultipleLegs ? leg.id : trade.id) ? (
                             <>
                               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -321,7 +352,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           <DropdownMenuItem 
                             onClick={() => handleDeleteTradeLeg(leg.id, leg.legReference, trade.id)}
                             className="text-destructive focus:text-destructive"
-                            disabled={isDeleting}
+                            disabled={isDeleting || isPerformingAction}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Trade Leg
@@ -330,7 +361,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
                           <DropdownMenuItem 
                             onClick={() => handleDeleteTrade(trade.id, trade.tradeReference)}
                             className="text-destructive focus:text-destructive"
-                            disabled={isDeleting}
+                            disabled={isDeleting || isPerformingAction}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Trade
@@ -353,7 +384,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
       </Table>
 
       {/* Confirmation Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
@@ -367,14 +398,25 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
               type="button"
               variant="destructive"
               onClick={handleConfirmDelete}
+              disabled={isPerformingAction}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              {isPerformingAction ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </>
+              )}
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsDialogOpen(false)}
+              onClick={handleCloseDialog}
+              disabled={isPerformingAction}
             >
               Cancel
             </Button>
@@ -386,4 +428,3 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
 };
 
 export default PhysicalTradeTable;
-
