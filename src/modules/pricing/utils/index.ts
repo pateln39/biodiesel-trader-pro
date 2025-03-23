@@ -2,12 +2,15 @@
 // Export formula utils with specific individual exports to avoid name conflicts
 export {
   createEmptyFormula,
-  addToken,
-  removeToken,
-  updateToken,
-  validateFormula,
   validateAndParsePricingFormula,
-  formulaToDisplayString
+  formulaToDisplayString,
+  createInstrumentToken,
+  createFixedValueToken,
+  createOperatorToken,
+  createPercentageToken,
+  createOpenBracketToken, 
+  createCloseBracketToken,
+  formulaToString
 } from './formulaUtils';
 
 // Export calculation functions while avoiding name conflicts

@@ -7,7 +7,10 @@ export * from '@/core/types';
 export * from '@/modules/trade/types';
 export * from '@/modules/exposure/types';
 export * from '@/modules/operations/types';
-export * from '@/modules/finance/types'; 
+export * from '@/modules/finance/types';
 
-// Re-export TradeType directly to avoid circular dependency
-export { TradeType } from '@/modules/trade/types';
+// Re-export specific types to avoid ambiguity
+export { TradeType, BuySell, PhysicalType, Unit, PaymentTerm, CreditStatus, IncoTerm, Product } from '@/modules/trade/types/common';
+
+// Re-export database interfaces from core
+export { DbParentTrade, DbTradeLeg, ParentTrade } from '@/core/types/common';

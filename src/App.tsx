@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
-import { queryClient } from '@/lib/query-client';
+import { queryClient } from '@/lib';
 import { Layout } from '@/core/components';
 import PricingRoutes from '@/routes/PricingRoutes';
 

@@ -3,7 +3,30 @@
 // In the future, imports should come directly from the module utilities
 
 // Re-export core utils
-export * from '@/core/utils';
+export {
+  formatDate,
+  parseDate,
+  getCurrentMonth,
+  getPreviousMonth,
+  getDateRange,
+  getDateRangeForPeriod,
+  isDateInRange,
+  addMonths
+} from '@/core/utils/dateUtils';
+
+export {
+  parseISODate,
+  formatISODate,
+  parseDateString
+} from '@/core/utils/dateParsingUtils';
+
+// Validation utils with explicit naming to avoid conflicts
+export {
+  validateFields as validateFieldSet,
+  validateRequiredField as validateRequired,
+  validateDateRange,
+  validateNumberRange
+} from '@/core/utils/validationUtils';
 
 // Re-export trade utils
 export * from '@/modules/trade/utils';

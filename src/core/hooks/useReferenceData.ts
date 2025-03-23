@@ -41,17 +41,22 @@ const fetchReferenceData = async (
       throw new Error(`Error fetching ${tableName}: ${error.message}`);
     }
     
-    // Extract the appropriate field from each item to return a simple string array
-    // This is what most components expect for dropdowns
-    if (tableName === 'pricing_instruments') {
-      return (data || []).map(item => item.display_name || '');
-    } else if (tableName === 'paper_trade_products') {
-      return (data || []).map(item => item.product_code ? item.product_code : (item.display_name || ''));
-    } else if (tableName === 'trading_periods') {
-      return (data || []).map(item => item.period_code || '');
-    } else {
-      return (data || []).map(item => item.name || '');
-    }
+    // Extract the appropriate field based on table structure
+    return (data || []).map(item => {
+      if (tableName === 'pricing_instruments' && 'display_name' in item) {
+        return item.display_name || '';
+      } else if (tableName === 'paper_trade_products') {
+        if ('product_code' in item) {
+          return item.product_code || (('display_name' in item) ? item.display_name : '');
+        }
+        return '';
+      } else if (tableName === 'trading_periods' && 'period_code' in item) {
+        return item.period_code || '';
+      } else if ('name' in item) {
+        return item.name || '';
+      }
+      return '';
+    });
   } catch (error: any) {
     console.error(`Error in fetchReferenceData for ${tableName}:`, error);
     throw new Error(error.message);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,11 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { PricingFormula, FormulaToken, TokenType } from '@/modules/trade/types/pricing';
+import { PricingFormula, FormulaToken } from '@/modules/trade/types/pricing';
+import { TokenType } from '@/modules/trade/types/common';
 import { 
   createInstrumentToken, 
   createOperatorToken, 
-  createValueToken, 
+  createFixedValueToken, 
   createPercentageToken,
   createOpenBracketToken,
   createCloseBracketToken,
@@ -30,6 +32,9 @@ interface FormulaBuilderProps {
   formulaType?: 'pricing' | 'mtm';
   instrumentOptions: Array<{ id: string; label: string; value: string }>;
   allowEmptyFormula?: boolean;
+  tradeQuantity?: number;
+  buySell?: string;
+  selectedProduct?: string;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
@@ -37,7 +42,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   onChange, 
   formulaType = 'pricing',
   instrumentOptions,
-  allowEmptyFormula = false
+  allowEmptyFormula = false,
+  tradeQuantity = 0,
+  buySell = 'buy',
+  selectedProduct
 }) => {
   const [formula, setFormula] = useState<PricingFormula>(value);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -51,10 +59,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     if (formula && formula.tokens && formula.tokens.length > 0) {
       try {
         if (formulaType === 'pricing') {
-          const result = calculatePricingExposure(formula);
+          const result = calculatePricingExposure(formula.tokens, tradeQuantity, buySell as any);
           setExposureResult(result);
         } else {
-          const result = calculatePhysicalExposure(formula);
+          const result = calculatePhysicalExposure(formula.tokens, tradeQuantity, buySell as any);
           setExposureResult(result);
         }
       } catch (error: any) {
@@ -65,12 +73,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     } else {
       setExposureResult(createEmptyExposureResult());
     }
-  }, [formula, formulaType]);
+  }, [formula, formulaType, tradeQuantity, buySell]);
   
   const handleTokenAdd = (tokenType: TokenType, tokenValue: any = null) => {
     if (!formula) return;
     
-    if (!canAddTokenType(formula.tokens, tokenType)) {
+    if (!canAddTokenType(formula.tokens, tokenType as any)) {
       setValidationError(`Cannot add ${tokenType} at this position`);
       return;
     }
@@ -78,23 +86,24 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     let newToken: FormulaToken;
     
     switch (tokenType) {
-      case 'instrument':
+      case TokenType.Instrument:
         if (!tokenValue) return;
-        newToken = createInstrumentToken(tokenValue.id, tokenValue.label);
+        newToken = createInstrumentToken(tokenValue.value, tokenValue.label);
         break;
-      case 'operator':
+      case TokenType.Operator:
         newToken = createOperatorToken(tokenValue);
         break;
-      case 'value':
-        newToken = createValueToken(tokenValue || 0);
+      case TokenType.Value:
+      case TokenType.FixedValue:
+        newToken = createFixedValueToken(tokenValue || 0);
         break;
-      case 'percentage':
+      case TokenType.Percentage:
         newToken = createPercentageToken(tokenValue || 0);
         break;
-      case 'open_bracket':
+      case TokenType.OpenBracket:
         newToken = createOpenBracketToken();
         break;
-      case 'close_bracket':
+      case TokenType.CloseBracket:
         newToken = createCloseBracketToken();
         break;
       default:
@@ -129,20 +138,20 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     
     switch (token.type) {
       case 'instrument':
-        displayValue = token.label;
+        displayValue = token.value;
         badgeColor = "blue";
         break;
       case 'operator':
         badgeColor = "secondary";
         break;
-      case 'value':
+      case 'fixedValue':
         badgeColor = "green";
         break;
       case 'percentage':
         badgeColor = "orange";
         break;
-      case 'open_bracket':
-      case 'close_bracket':
+      case 'openBracket':
+      case 'closeBracket':
         badgeColor = "slate";
         break;
     }
@@ -225,7 +234,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                     key={instrument.id}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleTokenAdd('instrument', instrument)}
+                    onClick={() => handleTokenAdd(TokenType.Instrument, instrument)}
                   >
                     {instrument.label}
                   </Button>
@@ -245,7 +254,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                   key={operator}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleTokenAdd('operator', operator)}
+                  onClick={() => handleTokenAdd(TokenType.Operator, operator)}
                 >
                   {operator}
                 </Button>
@@ -258,35 +267,35 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleTokenAdd('value', 1)}
+                onClick={() => handleTokenAdd(TokenType.Value, 1)}
               >
                 1
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleTokenAdd('value', 10)}
+                onClick={() => handleTokenAdd(TokenType.Value, 10)}
               >
                 10
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleTokenAdd('percentage', 100)}
+                onClick={() => handleTokenAdd(TokenType.Percentage, 100)}
               >
                 100%
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleTokenAdd('open_bracket')}
+                onClick={() => handleTokenAdd(TokenType.OpenBracket)}
               >
                 (
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleTokenAdd('close_bracket')}
+                onClick={() => handleTokenAdd(TokenType.CloseBracket)}
               >
                 )
               </Button>

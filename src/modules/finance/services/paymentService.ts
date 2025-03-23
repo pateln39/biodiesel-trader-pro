@@ -70,7 +70,7 @@ class PaymentService extends BaseApiService {
         .insert({
           invoice_id: payment.invoiceId,
           payment_reference: payment.paymentReference,
-          payment_date: payment.paymentDate,
+          payment_date: payment.paymentDate.toISOString().split('T')[0],
           amount: payment.amount,
           currency: payment.currency,
           payment_method: payment.paymentMethod,
@@ -108,7 +108,7 @@ class PaymentService extends BaseApiService {
         .update({
           invoice_id: payment.invoiceId,
           payment_reference: payment.paymentReference,
-          payment_date: payment.paymentDate,
+          payment_date: payment.paymentDate.toISOString().split('T')[0],
           amount: payment.amount,
           currency: payment.currency,
           payment_method: payment.paymentMethod,
