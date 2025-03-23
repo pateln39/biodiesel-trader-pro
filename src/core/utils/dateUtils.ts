@@ -1,64 +1,49 @@
 
-/**
- * Get an array of the next N months in format 'MMM-YY'
- * Example: ['Jan-23', 'Feb-23', ...]
- */
-export function getNextMonths(count: number = 12): string[] {
-  const result: string[] = [];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  const now = new Date();
-  let currentMonth = now.getMonth();
-  let currentYear = now.getFullYear();
+import { format, addMonths, startOfMonth } from 'date-fns';
 
+/**
+ * Get an array of period strings for the next N months
+ */
+export const getNextMonths = (count: number): string[] => {
+  const months = [];
+  const today = new Date();
+  
   for (let i = 0; i < count; i++) {
-    // Format the two-digit year (YY)
-    const twoDigitYear = (currentYear % 100).toString().padStart(2, '0');
-    
-    // Add to result array
-    result.push(`${months[currentMonth]}-${twoDigitYear}`);
-    
-    // Move to next month
-    currentMonth++;
-    if (currentMonth > 11) {
-      currentMonth = 0;
-      currentYear++;
-    }
+    const date = addMonths(startOfMonth(today), i);
+    months.push(format(date, 'MMM yyyy'));
   }
   
-  return result;
-}
+  return months;
+};
 
 /**
- * Format a date into a standardized month code (e.g., 'Jan-23')
+ * Parse an Excel date serial number to a JavaScript Date
  */
-export function formatMonthCode(date: Date): string {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const month = months[date.getMonth()];
-  const year = (date.getFullYear() % 100).toString().padStart(2, '0');
+export const parseExcelDateSerial = (serialNumber: number): Date => {
+  // Excel serial dates start from January 0, 1900
+  // 1 = January 1, 1900
+  // Need to adjust for the fact that Excel incorrectly thinks 1900 was a leap year
+  const adjustedSerial = serialNumber > 59 ? serialNumber - 1 : serialNumber;
   
-  return `${month}-${year}`;
-}
+  // Convert to milliseconds and adjust for Excel's start date
+  const msFromExcelStart = (adjustedSerial - 1) * 24 * 60 * 60 * 1000;
+  const excelStartDate = new Date(1900, 0, 1);
+  const excelStartTime = excelStartDate.getTime();
+  
+  return new Date(excelStartTime + msFromExcelStart);
+};
 
 /**
- * Check if a period code represents a valid future period
+ * Format a date object to string in YYYY-MM-DD format
  */
-export function isValidFuturePeriod(periodCode: string): boolean {
-  if (!periodCode || !periodCode.includes('-')) return false;
+export const formatDateString = (date: Date): string => {
+  if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+    return '';
+  }
   
-  const [monthStr, yearStr] = periodCode.split('-');
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   
-  const monthIndex = months.findIndex(m => m === monthStr);
-  if (monthIndex === -1) return false;
-  
-  const year = parseInt('20' + yearStr);
-  if (isNaN(year)) return false;
-  
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  
-  // Check if the period is in the future
-  return (year > currentYear) || (year === currentYear && monthIndex >= currentMonth);
-}
+  return `${year}-${month}-${day}`;
+};

@@ -1,6 +1,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
-import { FormulaToken, FormulaNode, PricingFormula } from '@/modules/trade/types/pricing';
+import { FormulaToken, PricingFormula } from '@/modules/trade/types/pricing';
 import { TokenType } from '@/modules/trade/types/common';
 
 /**
@@ -38,22 +38,22 @@ export const createOperatorToken = (operator: string): FormulaToken => {
 /**
  * Create a new fixed value token
  */
-export const createFixedValueToken = (value: string): FormulaToken => {
+export const createFixedValueToken = (value: number): FormulaToken => {
   return {
     id: uuidv4(),
     type: 'fixedValue',
-    value
+    value: value.toString()
   };
 };
 
 /**
  * Create a new percentage token
  */
-export const createPercentageToken = (value: string): FormulaToken => {
+export const createPercentageToken = (value: number): FormulaToken => {
   return {
     id: uuidv4(),
     type: 'percentage',
-    value
+    value: value.toString()
   };
 };
 

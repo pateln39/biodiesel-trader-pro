@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula } from '@/types';
+import { FormulaToken, PricingFormula } from '@/modules/trade/types/pricing';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -15,7 +15,7 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString
-} from '@/modules/pricing/utils/formulaUtils';
+} from '@/utils/index';
 import { 
   canAddTokenType, 
   calculateExposures,
@@ -100,7 +100,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 
@@ -110,7 +110,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 
@@ -120,7 +120,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 
@@ -130,7 +130,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 
@@ -140,7 +140,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 
@@ -148,7 +148,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = value.tokens.filter(token => token.id !== tokenId);
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
     });
   };
 

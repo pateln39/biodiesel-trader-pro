@@ -1,82 +1,53 @@
 
 import { toast } from 'sonner';
-import { PaperTrade } from '@/modules/trade/types/paper';
 
 /**
- * Validate a paper trade form
+ * Validate paper trade form before submission
  */
-export const validatePaperTradeForm = (formData: Partial<PaperTrade>): boolean => {
-  // Validate broker
-  if (!formData.broker) {
-    toast.error('Missing broker', {
-      description: 'Please select a broker for this trade.'
-    });
+export const validatePaperTradeForm = (
+  broker: string,
+  legs: any[]
+): boolean => {
+  // Check if broker is selected
+  if (!broker) {
+    toast.error('Please select a broker');
     return false;
   }
-  
-  // Validate legs
-  if (!formData.legs || formData.legs.length === 0) {
-    toast.error('No trade legs', {
-      description: 'At least one trade leg is required.'
-    });
+
+  // Check if at least one leg is added
+  if (legs.length === 0) {
+    toast.error('Please add at least one trade leg');
     return false;
   }
-  
-  // For each leg, validate required fields
-  for (let i = 0; i < formData.legs.length; i++) {
-    const leg = formData.legs[i];
-    const legNumber = i + 1;
+
+  // Validate each leg
+  for (let i = 0; i < legs.length; i++) {
+    const leg = legs[i];
     
+    // Check required fields
     if (!leg.product) {
-      toast.error(`Missing product in leg ${legNumber}`, {
-        description: 'Please select a product for each trade leg.'
-      });
-      return false;
-    }
-    
-    if (!leg.buySell) {
-      toast.error(`Missing buy/sell in leg ${legNumber}`, {
-        description: 'Please specify buy or sell for each trade leg.'
-      });
+      toast.error(`Leg ${i+1}: Please select a product`);
       return false;
     }
     
     if (!leg.quantity || leg.quantity <= 0) {
-      toast.error(`Invalid quantity in leg ${legNumber}`, {
-        description: 'Please enter a valid positive quantity for each trade leg.'
-      });
+      toast.error(`Leg ${i+1}: Please enter a valid quantity`);
       return false;
     }
     
     if (!leg.period) {
-      toast.error(`Missing period in leg ${legNumber}`, {
-        description: 'Please select a trading period for each leg.'
-      });
+      toast.error(`Leg ${i+1}: Please select a period`);
       return false;
     }
-  }
-  
-  return true;
-};
-
-/**
- * Check if legs are properly paired (for DIFF and SPREAD trades)
- */
-export const validatePaperTradePairing = (formData: Partial<PaperTrade>): boolean => {
-  if (!formData.legs || formData.legs.length === 0) return false;
-  
-  for (let i = 0; i < formData.legs.length; i++) {
-    const leg = formData.legs[i];
     
+    // If it's a spread or diff, check the right side
     if (leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') {
       if (!leg.rightSide || !leg.rightSide.product) {
-        toast.error(`Incomplete pairing in leg ${i + 1}`, {
-          description: `${leg.relationshipType} trades require a paired product.`
-        });
+        toast.error(`Leg ${i+1}: Right side product is required for ${leg.relationshipType}`);
         return false;
       }
     }
   }
-  
+
   return true;
 };

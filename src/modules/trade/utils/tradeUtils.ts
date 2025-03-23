@@ -1,102 +1,87 @@
 
 /**
- * Generate a leg reference for a trade
- * Format: TR-XXXXXXXX-L1, TR-XXXXXXXX-L2, etc.
+ * Generate a unique reference for a trade leg
  */
-export function generateLegReference(
-  tradeReference: string,
-  legIndex: number
-): string {
-  return `${tradeReference}-L${legIndex + 1}`;
-}
+export const generateLegReference = (parentTradeReference: string, legIndex: number): string => {
+  return `${parentTradeReference}-L${legIndex + 1}`;
+};
 
 /**
- * Generate a new trade reference
- * Format: TR-YYYYMMDD-XXXX where XXXX is a random 4-digit number
+ * Generate a unique trade reference
  */
-export function generateTradeReference(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+export const generateTradeReference = (tradeType: 'physical' | 'paper'): string => {
+  const prefix = tradeType === 'physical' ? 'PHY' : 'PAP';
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   
-  return `TR-${year}${month}${day}-${random}`;
-}
+  return `${prefix}-${timestamp}-${random}`;
+};
 
 /**
- * Format a trade quantity with unit for display
+ * Format quantity for display
  */
-export function formatQuantity(quantity: number | undefined, unit: string | undefined): string {
-  if (quantity === undefined) return '0';
-  const formattedQty = Number(quantity).toLocaleString('en-US', { 
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0
+export const formatQuantity = (quantity: number): string => {
+  return quantity.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
   });
-  return `${formattedQty} ${unit || 'MT'}`;
-}
+};
 
 /**
- * Format a price for display
+ * Format price for display
  */
-export function formatPrice(price: number | undefined, currency: string = '€'): string {
-  if (price === undefined) return '-';
-  return `${currency}${Number(price).toLocaleString('en-US', {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2
-  })}`;
-}
+export const formatPrice = (price: number): string => {
+  return price.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
 
 /**
- * Generate an instrument name based on product and relationship type
+ * Generate instrument name based on product and pricing method
  */
-export function generateInstrumentName(
-  product: string,
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD',
-  oppositeProduct?: string
-): string {
-  if (relationshipType === 'FP') {
-    return `${product} FP`;
-  } else if (relationshipType === 'DIFF' && product) {
-    return `${product} DIFF`;
-  } else if (relationshipType === 'SPREAD' && product && oppositeProduct) {
-    return `${product}-${oppositeProduct} SPREAD`;
-  }
-  return '';
-}
+export const generateInstrumentName = (product: string, pricingMethod: string): string => {
+  return `${product} ${pricingMethod}`;
+};
 
 /**
  * Format product display for UI
  */
-export function formatProductDisplay(
+export const formatProductDisplay = (
   product: string,
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD' | string,
-  oppositeProduct?: string
-): string {
-  if (relationshipType === 'FP') {
-    return product;
-  } else if (relationshipType === 'DIFF') {
-    return `${product} DIFF`;
-  } else if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}-${oppositeProduct}`;
+  relationshipType?: string,
+  rightSideProduct?: string
+): string => {
+  if (!product) return "";
+  
+  if (relationshipType === 'DIFF' || relationshipType === 'SPREAD') {
+    if (rightSideProduct) {
+      return relationshipType === 'DIFF' 
+        ? `${product} DIFF` 
+        : `${product}-${rightSideProduct} SPREAD`;
+    }
   }
+  
   return product;
-}
+};
 
 /**
  * Format MTM display for UI
  */
-export function formatMTMDisplay(
+export const formatMTMDisplay = (
   product: string,
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD' | string,
-  oppositeProduct?: string
-): string {
-  if (relationshipType === 'FP') {
-    return `${product}`;
-  } else if (relationshipType === 'DIFF') {
-    return `${product} DIFF`;
-  } else if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}-${oppositeProduct}`;
+  relationshipType?: string,
+  rightSideProduct?: string
+): string => {
+  if (!product) return "";
+  
+  if (relationshipType === 'DIFF' || relationshipType === 'SPREAD') {
+    if (rightSideProduct) {
+      return relationshipType === 'DIFF' 
+        ? `${product} - ${rightSideProduct}` 
+        : `${product} - ${rightSideProduct}`;
+    }
   }
+  
   return product;
-}
+};
