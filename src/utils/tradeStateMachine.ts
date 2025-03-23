@@ -57,12 +57,6 @@ export const initialDeletionContext: DeletionContext = {
 export function deletionReducer(context: DeletionContext, action: DeletionAction): DeletionContext {
   console.log(`[STATE MACHINE] Current state: ${context.state}, Action: ${action.type}`);
   
-  // If we're in the middle of processing and trying to cancel or reset, ignore it
-  if (context.isProcessing && (action.type === 'CANCEL' || action.type === 'RESET')) {
-    console.log(`[STATE MACHINE] Ignoring ${action.type} action during active processing`);
-    return context;
-  }
-  
   switch (context.state) {
     case 'idle':
       if (action.type === 'OPEN_CONFIRMATION') {
@@ -86,11 +80,8 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
           progress: 0,
           isProcessing: true
         };
-      } else if (action.type === 'CANCEL') {
+      } else if (action.type === 'CANCEL' || action.type === 'RESET') {
         console.log('[STATE MACHINE] Canceling confirmation dialog');
-        return initialDeletionContext;
-      } else if (action.type === 'RESET') {
-        console.log('[STATE MACHINE] Resetting from confirming state');
         return initialDeletionContext;
       }
       break;
@@ -106,10 +97,8 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
         const itemType = context.itemType === 'trade' ? 'Trade' : 'Trade leg';
         const itemRef = context.itemReference;
         
-        // Show success toast outside the reducer
-        setTimeout(() => {
-          toast.success(`${itemType} ${itemRef} deleted successfully`);
-        }, 100);
+        // Show success toast
+        toast.success(`${itemType} ${itemRef} deleted successfully`);
         
         return {
           ...context,
@@ -120,12 +109,10 @@ export function deletionReducer(context: DeletionContext, action: DeletionAction
       } else if (action.type === 'SET_ERROR') {
         console.error('[STATE MACHINE] Setting error state:', action.error);
         
-        // Show error toast outside the reducer
-        setTimeout(() => {
-          toast.error(`Failed to delete ${context.itemType}`, {
-            description: action.error.message || 'Unknown error occurred'
-          });
-        }, 100);
+        // Show error toast
+        toast.error(`Failed to delete ${context.itemType}`, {
+          description: action.error.message || 'Unknown error occurred'
+        });
         
         return {
           ...context,

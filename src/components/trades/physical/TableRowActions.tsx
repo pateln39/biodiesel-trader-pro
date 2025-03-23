@@ -43,6 +43,39 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   // Determine if the dropdown should be disabled
   const isDropdownDisabled = isDeleting || isProcessing;
   
+  // Handle row delete action with proper precautions
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isDropdownDisabled) {
+      console.log('[ROW_ACTIONS] Delete action ignored - operations in progress');
+      return;
+    }
+    
+    if (isMultiLeg && legId && legReference) {
+      console.log(`[ROW_ACTIONS] Requesting leg deletion: ${legId}`);
+      onDeleteLeg(legId, legReference, tradeId);
+    } else {
+      console.log(`[ROW_ACTIONS] Requesting trade deletion: ${tradeId}`);
+      onDeleteTrade(tradeId, tradeReference);
+    }
+  };
+  
+  // Handle edit action with proper precautions
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isDropdownDisabled) {
+      console.log('[ROW_ACTIONS] Edit action ignored - operations in progress');
+      return;
+    }
+    
+    console.log(`[ROW_ACTIONS] Requesting edit for trade: ${tradeId}`);
+    onEdit(tradeId);
+  };
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -58,16 +91,16 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onEdit(tradeId)}>
+        <DropdownMenuItem onClick={handleEdit} disabled={isDropdownDisabled}>
           <Edit className="mr-2 h-4 w-4" />
           Edit Trade
         </DropdownMenuItem>
         <Link to={`/trades/${tradeId}`}>
-          <DropdownMenuItem>View Details</DropdownMenuItem>
+          <DropdownMenuItem disabled={isDropdownDisabled}>View Details</DropdownMenuItem>
         </Link>
         {isMultiLeg && legId && legReference ? (
           <DropdownMenuItem 
-            onClick={() => onDeleteLeg(legId, legReference, tradeId)}
+            onClick={handleDelete}
             className="text-destructive focus:text-destructive"
             disabled={isDropdownDisabled}
           >
@@ -76,7 +109,7 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
           </DropdownMenuItem>
         ) : (
           <DropdownMenuItem 
-            onClick={() => onDeleteTrade(tradeId, tradeReference)}
+            onClick={handleDelete}
             className="text-destructive focus:text-destructive"
             disabled={isDropdownDisabled}
           >

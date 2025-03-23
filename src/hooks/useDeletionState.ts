@@ -18,6 +18,16 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
     console.log(`[DELETION_STATE] State changed to: ${deletionContext.state}`, deletionContext);
   }, [deletionContext]);
   
+  // Reset when component unmounts to prevent lingering state
+  useEffect(() => {
+    return () => {
+      // Resume any paused subscriptions to ensure they're not left in a paused state
+      if (realtimeChannelsRef && realtimeChannelsRef.current) {
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
+      }
+    };
+  }, [realtimeChannelsRef]);
+  
   // Open confirmation dialog for deleting a trade or leg
   const openDeleteConfirmation = useCallback((
     itemType: 'trade' | 'leg',
@@ -52,7 +62,12 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
     }
     
     dispatch({ type: 'CANCEL' });
-  }, [deletionContext.state, deletionContext.isProcessing]);
+    
+    // Ensure subscriptions are resumed after cancel
+    if (realtimeChannelsRef && realtimeChannelsRef.current) {
+      resumePhysicalSubscriptions(realtimeChannelsRef.current);
+    }
+  }, [deletionContext.state, deletionContext.isProcessing, realtimeChannelsRef]);
   
   // Confirm and execute the deletion
   const confirmDelete = useCallback(async () => {
@@ -81,7 +96,7 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
       dispatch({ type: 'CONFIRM_DELETE' });
       
       // Pause subscriptions to prevent race conditions
-      if (realtimeChannelsRef) {
+      if (realtimeChannelsRef && realtimeChannelsRef.current) {
         console.log('[DELETION] Pausing realtime subscriptions');
         pausePhysicalSubscriptions(realtimeChannelsRef.current);
       }
@@ -112,11 +127,9 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
         console.log('[DELETION] Operation completed successfully');
         dispatch({ type: 'SET_SUCCESS' });
         
-        // Delay the refetch slightly to allow the UI to update
-        setTimeout(() => {
-          console.log('[DELETION] Triggering refetch after successful delete');
-          refetchTrades();
-        }, 500);
+        // Schedule a refetch without relying on timeout
+        console.log('[DELETION] Triggering refetch after successful delete');
+        refetchTrades();
       } else {
         console.log('[DELETION] Operation failed without throwing an error');
         throw new Error('Deletion operation failed');
@@ -128,20 +141,14 @@ export const useDeletionState = ({ refetchTrades, realtimeChannelsRef }: UseDele
         error: error instanceof Error ? error : new Error('Unknown error occurred') 
       });
     } finally {
-      // Always resume subscriptions, but with a delay
-      if (realtimeChannelsRef) {
-        console.log('[DELETION] Scheduling resumption of subscriptions');
-        setTimeout(() => {
-          console.log('[DELETION] Resuming realtime subscriptions');
-          resumePhysicalSubscriptions(realtimeChannelsRef.current);
-          
-          console.log('[DELETION] Clearing operation in progress flag');
-          operationInProgressRef.current = false;
-        }, 800); // Increased delay to prevent race conditions
-      } else {
-        console.log('[DELETION] No channels ref, directly clearing operation flag');
-        operationInProgressRef.current = false;
+      // Always resume subscriptions without delay
+      if (realtimeChannelsRef && realtimeChannelsRef.current) {
+        console.log('[DELETION] Resuming realtime subscriptions');
+        resumePhysicalSubscriptions(realtimeChannelsRef.current);
       }
+      
+      console.log('[DELETION] Clearing operation in progress flag');
+      operationInProgressRef.current = false;
     }
   }, [deletionContext, refetchTrades, realtimeChannelsRef]);
   

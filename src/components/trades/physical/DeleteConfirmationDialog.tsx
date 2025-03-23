@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loader2, Trash2, X } from 'lucide-react';
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -62,6 +62,15 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
+  // Clean up when dialog closes
+  useEffect(() => {
+    if (!isOpen && !isPerformingAction) {
+      // Ensure we only call onClose when dialog is actually closed
+      // and not during an operation
+      console.log('[DIALOG] Dialog is now completely closed, performing cleanup');
+    }
+  }, [isOpen, isPerformingAction, onClose]);
+
   // Simplified dialog component with reliable behavior
   return (
     <Dialog 
@@ -69,7 +78,12 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
       onOpenChange={(open) => {
         // Only allow dialog to close when not performing an action
         if (!open && !isPerformingAction) {
+          console.log('[DIALOG] Dialog closing requested, executing onClose');
           onClose();
+        } else if (!open && isPerformingAction) {
+          console.log('[DIALOG] Cannot close during operation');
+          // Force dialog to stay open during operations
+          return false;
         }
       }}
     >
