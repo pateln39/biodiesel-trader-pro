@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,7 @@ import PaperTradeTable from './PaperTradeTable';
 import { createEmptyFormula } from '@/modules/pricing/utils/formulaUtils';
 import { validatePaperTradeForm } from '@/modules/trade/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { getNextMonths } from '@/core/utils/dateUtils';
+import { getNextMonths, formatDate } from '@/core/utils/dateUtils';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -42,7 +43,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   const [tradeLegs, setTradeLegs] = useState<any[]>([]);
   
-  const availableMonths = useMemo(() => getNextMonths(8), []);
+  // Get next months as strings in format MMM YY
+  const availableMonths = useMemo(() => {
+    const dates = getNextMonths(8);
+    return dates.map(date => formatDate(date, 'MMM yy'));
+  }, []);
   
   const [exposureData, setExposureData] = useState<any[]>(() => {
     return availableMonths.map(month => ({
