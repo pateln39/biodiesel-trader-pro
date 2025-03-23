@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Trash2, Copy } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { createEmptyFormula } from '@/modules/pricing/utils/formulaUtils';
 import { toast } from 'sonner';
+import { PaperRelationshipType, BuySell } from '@/modules/trade/types/common';
 import { getNextMonths } from '@/core/utils/dateUtils';
+import { formatProductDisplay, formatMTMDisplay } from '@/modules/trade/utils/tradeUtils';
+import { ProductRelationship } from '@/core/types/common';
 
 interface PaperTradeLeg {
   id: string;
@@ -89,10 +94,8 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     const updatedLegs = legs.map(leg => {
       if (leg.id === legId) {
         if (value === null) {
-          // If relationship type is removed, also remove right side
           return { ...leg, relationshipType: null, rightSide: null };
         } else {
-          // If relationship type is added, initialize right side if it doesn't exist
           const rightSide = leg.rightSide || { product: '', quantity: 0, price: 0 };
           return { ...leg, relationshipType: value, rightSide };
         }

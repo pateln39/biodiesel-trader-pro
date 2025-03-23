@@ -1,322 +1,315 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
+// Update imports with the new module structure
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { 
-  PhysicalTrade, PhysicalTradeLeg, TradeType, BuySell, Product, 
-  IncoTerm, Unit, PaymentTerm, CreditStatus
-} from '@/modules/trade/types';
-import { FormulaBuilder } from '@/modules/trade/components';
-import { generateLegReference } from '@/modules/trade/utils/tradeUtils';
+import { Switch } from '@/components/ui/switch';
+import { Toggle } from '@/components/ui/toggle';
 import { toast } from 'sonner';
-import { 
-  createEmptyFormula 
-} from '@/modules/pricing/utils/formulaUtils';
-import { 
-  validatePhysicalTradeForm 
-} from '@/modules/trade/utils/validationUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { PhysicalTrade } from '@/modules/trade/types';
 
 interface PhysicalTradeFormProps {
-  tradeReference: string;
-  onSubmit: (trade: any) => void;
+  onSubmit: (data: PhysicalTrade) => void;
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: PhysicalTrade;
 }
 
-const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
-  tradeReference,
-  onSubmit,
-  onCancel,
-  isEditMode = false,
-  initialData
-}) => {
-  const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
-  const [comments, setComments] = useState(initialData?.comment || '');
-  const [physicalType, setPhysicalType] = useState<PhysicalType>(initialData?.physicalType || 'spot');
-  const [tradeLegs, setTradeLegs] = useState<PhysicalTradeLeg[]>(initialData?.legs || [
-    {
-      legReference: generateLegReference(tradeReference, 0),
-      buySell: 'buy',
-      product: '',
-      quantity: 0,
-      unit: 'MT',
-      price: 0,
-      incoTerm: 'FCA',
-      period: '',
-      broker: '',
-      formula: createEmptyFormula(),
-      mtmFormula: createEmptyFormula()
-    }
-  ]);
+const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ onSubmit, onCancel, isEditMode = false, initialData }) => {
+  const [tradeReference, setTradeReference] = React.useState(initialData?.tradeReference || '');
+  const [counterparty, setCounterparty] = React.useState(initialData?.counterparty || '');
+  const [product, setProduct] = React.useState(initialData?.product || '');
+  const [quantity, setQuantity] = React.useState(initialData?.quantity || 0);
+  const [unit, setUnit] = React.useState(initialData?.unit || 'MT');
+  const [price, setPrice] = React.useState(initialData?.price || 0);
+  const [currency, setCurrency] = React.useState(initialData?.currency || 'USD');
+  const [deliveryLocation, setDeliveryLocation] = React.useState(initialData?.deliveryLocation || '');
+  const [deliveryStartDate, setDeliveryStartDate] = React.useState(initialData?.deliveryStartDate || '');
+  const [deliveryEndDate, setDeliveryEndDate] = React.useState(initialData?.deliveryEndDate || '');
+  const [paymentTerms, setPaymentTerms] = React.useState(initialData?.paymentTerms || '');
+  const [incoterms, setIncoterms] = React.useState(initialData?.incoterms || '');
+  const [shippingCompany, setShippingCompany] = React.useState(initialData?.shippingCompany || '');
+  const [vessel, setVessel] = React.useState(initialData?.vessel || '');
+  const [laycanStartDate, setLaycanStartDate] = React.useState(initialData?.laycanStartDate || '');
+  const [laycanEndDate, setLaycanEndDate] = React.useState(initialData?.laycanEndDate || '');
+  const [attachments, setAttachments] = React.useState<File[]>([]);
+  const [isConfirmed, setIsConfirmed] = React.useState(initialData?.isConfirmed || false);
+  const [isCancelled, setIsCancelled] = React.useState(initialData?.isCancelled || false);
 
-  const handleLegsChange = (newLegs: PhysicalTradeLeg[]) => {
-    setTradeLegs(newLegs);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validatePhysicalTradeForm(counterparty, tradeLegs)) {
-      return;
-    }
-
-    const tradeData: PhysicalTrade = {
-      id: initialData?.id || '',
+    const tradeData = {
       tradeReference,
-      tradeType: 'physical',
-      physicalType,
       counterparty,
-      comment: comments,
-      legs: tradeLegs.map((leg, index) => ({
-        ...leg,
-        legReference: initialData?.legs?.[index]?.legReference || generateLegReference(tradeReference, index)
-      }))
+      product,
+      quantity,
+      unit,
+      price,
+      currency,
+      deliveryLocation,
+      deliveryStartDate,
+      deliveryEndDate,
+      paymentTerms,
+      incoterms,
+      shippingCompany,
+      vessel,
+      laycanStartDate,
+      laycanEndDate,
+      attachments,
+      isConfirmed,
+      isCancelled,
     };
 
     onSubmit(tradeData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="counterparty">Counterparty</Label>
-          <Input
-            id="counterparty"
-            value={counterparty}
-            onChange={(e) => setCounterparty(e.target.value)}
-            placeholder="Enter counterparty name"
-          />
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{isEditMode ? 'Edit Physical Trade' : 'Create Physical Trade'}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="tradeReference">Trade Reference</Label>
+              <Input
+                type="text"
+                id="tradeReference"
+                value={tradeReference}
+                onChange={(e) => setTradeReference(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="counterparty">Counterparty</Label>
+              <Input
+                type="text"
+                id="counterparty"
+                value={counterparty}
+                onChange={(e) => setCounterparty(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="comment">Comment</Label>
-          <Textarea
-            id="comment"
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            placeholder="Enter optional comment"
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="product">Product</Label>
+              <Input
+                type="text"
+                id="product"
+                value={product}
+                onChange={(e) => setProduct(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input
+                type="number"
+                id="quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                required
+              />
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="physical-type">Physical Type</Label>
-          <Select value={physicalType} onValueChange={(value) => setPhysicalType(value as PhysicalType)}>
-            <SelectTrigger id="physical-type">
-              <SelectValue placeholder="Select physical type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="spot">Spot</SelectItem>
-              <SelectItem value="term">Term</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="unit">Unit</Label>
+              <Select value={unit} onValueChange={setUnit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MT">MT</SelectItem>
+                  <SelectItem value="BBL">BBL</SelectItem>
+                  <SelectItem value="GAL">GAL</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="price">Price</Label>
+              <Input
+                type="number"
+                id="price"
+                value={price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+                required
+              />
+            </div>
+          </div>
 
-      <Separator />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="GBP">GBP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="deliveryLocation">Delivery Location</Label>
+              <Input
+                type="text"
+                id="deliveryLocation"
+                value={deliveryLocation}
+                onChange={(e) => setDeliveryLocation(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Trade Legs</h3>
-        <PhysicalTradeLegsTable
-          legs={tradeLegs}
-          onLegsChange={handleLegsChange}
-          tradeReference={tradeReference}
-        />
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="deliveryStartDate">Delivery Start Date</Label>
+              <Input
+                type="date"
+                id="deliveryStartDate"
+                value={deliveryStartDate}
+                onChange={(e) => setDeliveryStartDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="deliveryEndDate">Delivery End Date</Label>
+              <Input
+                type="date"
+                id="deliveryEndDate"
+                value={deliveryEndDate}
+                onChange={(e) => setDeliveryEndDate(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-      <Separator />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="paymentTerms">Payment Terms</Label>
+              <Input
+                type="text"
+                id="paymentTerms"
+                value={paymentTerms}
+                onChange={(e) => setPaymentTerms(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="incoterms">Incoterms</Label>
+              <Input
+                type="text"
+                id="incoterms"
+                value={incoterms}
+                onChange={(e) => setIncoterms(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">
-          {isEditMode ? 'Update Trade' : 'Create Trade'}
-        </Button>
-      </div>
-    </form>
-  );
-};
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="shippingCompany">Shipping Company</Label>
+              <Input
+                type="text"
+                id="shippingCompany"
+                value={shippingCompany}
+                onChange={(e) => setShippingCompany(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="vessel">Vessel</Label>
+              <Input
+                type="text"
+                id="vessel"
+                value={vessel}
+                onChange={(e) => setVessel(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-interface PhysicalTradeLegsTableProps {
-  legs: PhysicalTradeLeg[];
-  onLegsChange: (legs: PhysicalTradeLeg[]) => void;
-  tradeReference: string;
-}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="laycanStartDate">Laycan Start Date</Label>
+              <Input
+                type="date"
+                id="laycanStartDate"
+                value={laycanStartDate}
+                onChange={(e) => setLaycanStartDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="laycanEndDate">Laycan End Date</Label>
+              <Input
+                type="date"
+                id="laycanEndDate"
+                value={laycanEndDate}
+                onChange={(e) => setLaycanEndDate(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-const PhysicalTradeLegsTable: React.FC<PhysicalTradeLegsTableProps> = ({ legs, onLegsChange, tradeReference }) => {
-  const [tradeLegs, setTradeLegs] = useState<PhysicalTradeLeg[]>(legs);
+          <div>
+            <Label htmlFor="attachments">Attachments</Label>
+            <Input
+              type="file"
+              id="attachments"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) {
+                  setAttachments(Array.from(e.target.files));
+                }
+              }}
+            />
+          </div>
 
-  useEffect(() => {
-    setTradeLegs(legs);
-  }, [legs]);
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="isConfirmed">Confirmed</Label>
+            <Switch
+              id="isConfirmed"
+              checked={isConfirmed}
+              onCheckedChange={(checked) => setIsConfirmed(checked)}
+            />
+          </div>
 
-  const handleAddLeg = () => {
-    const newLeg: PhysicalTradeLeg = {
-      legReference: generateLegReference(tradeReference, tradeLegs.length),
-      buySell: 'buy',
-      product: '',
-      quantity: 0,
-      unit: 'MT',
-      price: 0,
-      incoTerm: 'FCA',
-      period: '',
-      broker: '',
-      formula: createEmptyFormula(),
-      mtmFormula: createEmptyFormula()
-    };
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="isCancelled">Cancelled</Label>
+            <Switch
+              id="isCancelled"
+              checked={isCancelled}
+              onCheckedChange={(checked) => setIsCancelled(checked)}
+            />
+          </div>
 
-    setTradeLegs([...tradeLegs, newLeg]);
-    onLegsChange([...tradeLegs, newLeg]);
-  };
+          <Separator />
 
-  const handleRemoveLeg = (index: number) => {
-    const newLegs = [...tradeLegs];
-    newLegs.splice(index, 1);
-    setTradeLegs(newLegs);
-    onLegsChange(newLegs);
-  };
-
-  const handleLegChange = (index: number, field: string, value: any) => {
-    const newLegs = [...tradeLegs];
-    newLegs[index][field] = value;
-    setTradeLegs(newLegs);
-    onLegsChange(newLegs);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Reference
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Buy/Sell
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Product
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Quantity
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Unit
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Inco Term
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Period
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Broker
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {tradeLegs.map((leg, index) => (
-              <tr key={index}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {leg.legReference}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Select value={leg.buySell} onValueChange={(value) => handleLegChange(index, 'buySell', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="buy">Buy</SelectItem>
-                      <SelectItem value="sell">Sell</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Input
-                    type="text"
-                    value={leg.product}
-                    onChange={(e) => handleLegChange(index, 'product', e.target.value)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Input
-                    type="number"
-                    value={leg.quantity}
-                    onChange={(e) => handleLegChange(index, 'quantity', e.target.value)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Select value={leg.unit} onValueChange={(value) => handleLegChange(index, 'unit', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MT">MT</SelectItem>
-                      <SelectItem value="BBL">BBL</SelectItem>
-                      <SelectItem value="GAL">GAL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Input
-                    type="number"
-                    value={leg.price}
-                    onChange={(e) => handleLegChange(index, 'price', e.target.value)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Select value={leg.incoTerm} onValueChange={(value) => handleLegChange(index, 'incoTerm', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="FCA">FCA</SelectItem>
-                      <SelectItem value="CIF">CIF</SelectItem>
-                      <SelectItem value="DAP">DAP</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Input
-                    type="text"
-                    value={leg.period}
-                    onChange={(e) => handleLegChange(index, 'period', e.target.value)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <Input
-                    type="text"
-                    value={leg.broker}
-                    onChange={(e) => handleLegChange(index, 'broker', e.target.value)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button variant="outline" size="sm" onClick={() => handleRemoveLeg(index)}>
-                    Remove
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <Button type="button" variant="outline" onClick={handleAddLeg}>
-        Add Leg
-      </Button>
-    </div>
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              {isEditMode ? 'Update Trade' : 'Create Trade'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 };
 

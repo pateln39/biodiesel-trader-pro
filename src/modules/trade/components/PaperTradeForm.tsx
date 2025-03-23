@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateLegReference } from '@/modules/trade/utils/tradeUtils';
-import { PaperTradeTable } from '@/modules/trade/components';
+import PaperTradeTable from './PaperTradeTable';
 import { createEmptyFormula } from '@/modules/pricing/utils/formulaUtils';
 import { validatePaperTradeForm } from '@/modules/trade/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';

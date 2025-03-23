@@ -5,11 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, X, Check, AlertCircle } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula } from '@/modules/trade/types';
-import { TokenType } from '@/modules/trade/types/common';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, X } from 'lucide-react';
+import { FormulaToken, PricingFormula } from '@/modules/trade/types/pricing';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -18,315 +15,418 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString
-} from '@/modules/pricing/utils';
+} from '@/utils/index';
 import { 
   canAddTokenType, 
   calculateExposures,
   calculatePhysicalExposure,
   calculatePricingExposure,
   createEmptyExposureResult
-} from '@/modules/pricing/utils';
+} from '@/modules/pricing/utils/formulaCalculation';
 
 interface FormulaBuilderProps {
   value: PricingFormula;
   onChange: (formula: PricingFormula) => void;
-  formulaType?: 'pricing' | 'mtm';
-  instrumentOptions: Array<{ id: string; label: string; value: string }>;
-  allowEmptyFormula?: boolean;
-  tradeQuantity?: number;
-  buySell?: string;
+  tradeQuantity: number;
+  buySell?: 'buy' | 'sell';
   selectedProduct?: string;
+  formulaType: 'price' | 'mtm';
+  otherFormula?: PricingFormula;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
   value, 
-  onChange, 
-  formulaType = 'pricing',
-  instrumentOptions,
-  allowEmptyFormula = false,
-  tradeQuantity = 0,
+  onChange,
+  tradeQuantity,
   buySell = 'buy',
-  selectedProduct
+  selectedProduct,
+  formulaType,
+  otherFormula
 }) => {
-  const [formula, setFormula] = useState<PricingFormula>(value);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [exposureResult, setExposureResult] = useState<any>(createEmptyExposureResult());
-  
+  const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
+  const [fixedValue, setFixedValue] = useState<string>('0');
+  const [percentageValue, setPercentageValue] = useState<string>('0');
+
   useEffect(() => {
-    setFormula(value);
-  }, [value]);
-  
-  useEffect(() => {
-    if (formula && formula.tokens && formula.tokens.length > 0) {
-      try {
-        if (formulaType === 'pricing') {
-          const result = calculatePricingExposure(formula.tokens, tradeQuantity, buySell as any);
-          setExposureResult(result);
-        } else {
-          const result = calculatePhysicalExposure(formula.tokens, tradeQuantity, buySell as any);
-          setExposureResult(result);
+    if (value.tokens.length > 0 && tradeQuantity !== 0) {
+      if (formulaType === 'price') {
+        const pricingExposure = calculatePricingExposure(value.tokens, tradeQuantity, buySell);
+        const physicalExposure = otherFormula && otherFormula.tokens.length > 0 
+          ? calculatePhysicalExposure(otherFormula.tokens, tradeQuantity, buySell)
+          : createEmptyExposureResult().physical;
+        
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
+          onChange({
+            ...value,
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
+          });
         }
-      } catch (error: any) {
-        console.error("Error calculating exposure:", error);
-        setValidationError(error.message || 'Error calculating exposure');
-        setExposureResult(createEmptyExposureResult());
+      } 
+      else if (formulaType === 'mtm') {
+        const physicalExposure = calculatePhysicalExposure(value.tokens, tradeQuantity, buySell);
+        const pricingExposure = otherFormula && otherFormula.tokens.length > 0
+          ? calculatePricingExposure(otherFormula.tokens, tradeQuantity, buySell)
+          : createEmptyExposureResult().pricing;
+        
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
+          onChange({
+            ...value,
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
+          });
+        }
       }
-    } else {
-      setExposureResult(createEmptyExposureResult());
     }
-  }, [formula, formulaType, tradeQuantity, buySell]);
-  
-  const handleTokenAdd = (tokenType: TokenType, tokenValue: any = null) => {
-    if (!formula) return;
-    
-    if (!canAddTokenType(formula.tokens, tokenType as any)) {
-      setValidationError(`Cannot add ${tokenType} at this position`);
-      return;
+  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType]);
+
+  const handleAddInstrument = () => {
+    if (!canAddTokenType(value.tokens, 'instrument')) return;
+    const newToken = createInstrumentToken(selectedInstrument);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
+    });
+  };
+
+  const handleAddFixedValue = () => {
+    if (!canAddTokenType(value.tokens, 'fixedValue')) return;
+    const newToken = createFixedValueToken(Number(fixedValue) || 0);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const handleAddPercentage = () => {
+    if (!canAddTokenType(value.tokens, 'percentage')) return;
+    const newToken = createPercentageToken(Number(percentageValue) || 0);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const handleAddOpenBracket = () => {
+    if (!canAddTokenType(value.tokens, 'openBracket')) return;
+    const newToken = createOpenBracketToken();
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const handleAddCloseBracket = () => {
+    if (!canAddTokenType(value.tokens, 'closeBracket')) return;
+    const newToken = createCloseBracketToken();
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const handleAddOperator = (operator: string) => {
+    if (!canAddTokenType(value.tokens, 'operator')) return;
+    const newToken = createOperatorToken(operator);
+    const newTokens = [...value.tokens, newToken];
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const handleRemoveToken = (tokenId: string) => {
+    const newTokens = value.tokens.filter(token => token.id !== tokenId);
+    onChange({
+      tokens: newTokens,
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell)
+    });
+  };
+
+  const resetFormula = () => {
+    onChange({
+      tokens: [],
+      exposures: {
+        physical: {
+          'Argus UCOME': 0,
+          'Argus RME': 0,
+          'Argus FAME0': 0,
+          'Platts LSGO': 0,
+          'Platts diesel': 0,
+        },
+        pricing: {
+          'Argus UCOME': 0,
+          'Argus RME': 0,
+          'Argus FAME0': 0,
+          'Platts LSGO': 0,
+          'Platts diesel': 0,
+        }
+      }
+    });
+  };
+
+  const getTokenDisplay = (token: FormulaToken): string => {
+    if (token.type === 'percentage') {
+      return `${token.value}%`;
     }
-    
-    let newToken: FormulaToken;
-    
-    switch (tokenType) {
-      case TokenType.Instrument:
-        if (!tokenValue) return;
-        newToken = createInstrumentToken(tokenValue.value, tokenValue.label);
-        break;
-      case TokenType.Operator:
-        newToken = createOperatorToken(tokenValue);
-        break;
-      case TokenType.Value:
-      case TokenType.FixedValue:
-        newToken = createFixedValueToken(tokenValue || 0);
-        break;
-      case TokenType.Percentage:
-        newToken = createPercentageToken(tokenValue || 0);
-        break;
-      case TokenType.OpenBracket:
-        newToken = createOpenBracketToken();
-        break;
-      case TokenType.CloseBracket:
-        newToken = createCloseBracketToken();
-        break;
-      default:
-        return;
-    }
-    
-    const newTokens = [...formula.tokens, newToken];
-    setFormula({ ...formula, tokens: newTokens });
-    onChange({ ...formula, tokens: newTokens });
-    setValidationError(null);
+    return token.value;
   };
-  
-  const handleTokenRemove = (index: number) => {
-    if (!formula) return;
-    
-    const newTokens = [...formula.tokens];
-    newTokens.splice(index, 1);
-    setFormula({ ...formula, tokens: newTokens });
-    onChange({ ...formula, tokens: newTokens });
-    setValidationError(null);
+
+  const formatExposure = (value: number): string => {
+    return Math.round(value).toLocaleString('en-US');
   };
-  
-  const handleClearFormula = () => {
-    setFormula({ ...formula, tokens: [] });
-    onChange({ ...formula, tokens: [] });
-    setValidationError(null);
+
+  const getExposureColorClass = (value: number): string => {
+    if (value > 0) return 'text-green-600 border-green-200 bg-green-50';
+    if (value < 0) return 'text-red-600 border-red-200 bg-red-50';
+    return '';
   };
-  
-  const renderToken = (token: FormulaToken, index: number) => {
-    let displayValue = token.value;
-    let badgeColor = "muted";
-    
-    switch (token.type) {
-      case 'instrument':
-        displayValue = token.value;
-        badgeColor = "blue";
-        break;
-      case 'operator':
-        badgeColor = "secondary";
-        break;
-      case 'fixedValue':
-        badgeColor = "green";
-        break;
-      case 'percentage':
-        badgeColor = "orange";
-        break;
-      case 'openBracket':
-      case 'closeBracket':
-        badgeColor = "slate";
-        break;
-    }
-    
-    return (
-      <Badge 
-        key={index} 
-        variant="outline" 
-        className={`mr-1.5 mb-1.5 text-sm font-medium capitalize text-muted-foreground border-${badgeColor}-500`}
-      >
-        {displayValue}
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="ml-1 -mr-1 h-4 w-4 rounded-full hover:bg-muted"
-          onClick={() => handleTokenRemove(index)}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </Badge>
-    );
-  };
-  
-  const isValid = () => {
-    if (allowEmptyFormula && (!formula || !formula.tokens || formula.tokens.length === 0)) {
-      return true;
-    }
-    
-    return exposureResult.isValid;
-  };
-  
+
   return (
-    <Card>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold">Formula Builder</h4>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleClearFormula}
-            disabled={!formula || !formula.tokens || formula.tokens.length === 0}
-          >
-            Clear Formula
-          </Button>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label className="text-base font-medium">
+          {formulaType === 'price' ? 'Pricing Formula' : 'MTM Formula'}
+        </Label>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onClick={resetFormula}
+        >
+          Reset Formula
+        </Button>
+      </div>
+      
+      <Card className="border border-muted">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 flex-wrap min-h-[2.5rem]">
+            {value.tokens.length > 0 ? (
+              value.tokens.map((token) => (
+                <Badge 
+                  key={token.id} 
+                  variant="outline" 
+                  className={`text-sm py-1 px-3 flex items-center gap-2 ${
+                    token.type === 'openBracket' || token.type === 'closeBracket' 
+                      ? 'bg-gray-100' 
+                      : token.type === 'operator' 
+                        ? 'bg-blue-50' 
+                        : token.type === 'percentage' 
+                          ? 'bg-green-50' 
+                          : token.type === 'instrument' 
+                            ? 'bg-purple-50' 
+                            : 'bg-orange-50'
+                  }`}
+                >
+                  {getTokenDisplay(token)}
+                  <button 
+                    onClick={() => handleRemoveToken(token.id)}
+                    className="hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))
+            ) : (
+              <div className="text-muted-foreground">No formula defined</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2 flex-1 min-w-[150px]">
+          <Label>Operators & Brackets</Label>
+          <div className="flex gap-2 flex-wrap">
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('+')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              +
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('-')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              -
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('*')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              ×
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => handleAddOperator('/')} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'operator')}
+            >
+              ÷
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddOpenBracket} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'openBracket')}
+            >
+              (
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleAddCloseBracket} 
+              size="sm" 
+              variant="outline"
+              disabled={!canAddTokenType(value.tokens, 'closeBracket')}
+            >
+              )
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label>Add Instrument</Label>
+          <div className="flex gap-2">
+            <Select 
+              value={selectedInstrument} 
+              onValueChange={(value) => setSelectedInstrument(value as Instrument)}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select instrument" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
+                <SelectItem value="Argus RME">Argus RME</SelectItem>
+                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
+                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              type="button" 
+              onClick={handleAddInstrument} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'instrument')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
-        <div className="border rounded-md p-2.5 bg-muted/50">
-          <div className="flex flex-wrap">
-            {formula && formula.tokens && formula.tokens.length > 0 ? (
-              formula.tokens.map((token, index) => renderToken(token, index))
-            ) : (
-              <span className="text-sm text-muted-foreground italic">
-                No formula added. Start building your formula below.
-              </span>
+        <div className="space-y-2">
+          <Label>Add Fixed Value</Label>
+          <div className="flex gap-2">
+            <Input 
+              type="number"
+              value={fixedValue}
+              onChange={(e) => setFixedValue(e.target.value)}
+              className="flex-1"
+            />
+            <Button 
+              type="button" 
+              onClick={handleAddFixedValue} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'fixedValue')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label>Add Percentage</Label>
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 flex items-center">
+              <Input 
+                type="number"
+                value={percentageValue}
+                onChange={(e) => setPercentageValue(e.target.value)}
+                className="flex-1"
+              />
+              <div className="pl-2 pr-1">%</div>
+            </div>
+            <Button 
+              type="button" 
+              onClick={handleAddPercentage} 
+              size="sm"
+              disabled={!canAddTokenType(value.tokens, 'percentage')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4 space-y-4">
+        <div>
+          <Label className="text-base font-medium">Physical Exposure</Label>
+          <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
+            {Object.entries(value.exposures.physical).map(([instrument, exposure]) => {
+              if (exposure === 0) return null;
+              
+              return (
+                <Badge 
+                  key={instrument} 
+                  variant="outline" 
+                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
+                >
+                  {instrument}: {formatExposure(exposure)} MT
+                </Badge>
+              );
+            })}
+            
+            {!Object.values(value.exposures.physical).some(v => v !== 0) && (
+              <div className="text-muted-foreground">No physical exposures</div>
             )}
           </div>
         </div>
         
-        {validationError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {validationError}
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        <Tabs defaultValue="instruments" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="instruments">Instruments</TabsTrigger>
-            <TabsTrigger value="operators">Operators</TabsTrigger>
-            <TabsTrigger value="values">Values</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="instruments" className="space-y-2">
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
-              {instrumentOptions && instrumentOptions.length > 0 ? (
-                instrumentOptions.map(instrument => (
-                  <Button
-                    key={instrument.id}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleTokenAdd(TokenType.Instrument, instrument)}
-                  >
-                    {instrument.label}
-                  </Button>
-                ))
-              ) : (
-                <span className="text-sm text-muted-foreground italic">
-                  No instruments available.
-                </span>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="operators" className="space-y-2">
-            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
-              {['+', '-', '*', '/'].map(operator => (
-                <Button
-                  key={operator}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleTokenAdd(TokenType.Operator, operator)}
+        <div>
+          <Label className="text-base font-medium">Pricing Exposure</Label>
+          <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
+            {Object.entries(value.exposures.pricing).map(([instrument, exposure]) => {
+              if (exposure === 0) return null;
+              
+              return (
+                <Badge 
+                  key={instrument} 
+                  variant="outline" 
+                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
                 >
-                  {operator}
-                </Button>
-              ))}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="values" className="space-y-2">
-            <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTokenAdd(TokenType.Value, 1)}
-              >
-                1
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTokenAdd(TokenType.Value, 10)}
-              >
-                10
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTokenAdd(TokenType.Percentage, 100)}
-              >
-                100%
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTokenAdd(TokenType.OpenBracket)}
-              >
-                (
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleTokenAdd(TokenType.CloseBracket)}
-              >
-                )
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-        
-        <div className="flex items-center justify-end space-x-2">
-          {isValid() ? (
-            <Badge variant="outline" className="border-green-500 text-green-500">
-              <Check className="h-3 w-3 mr-1" />
-              Valid Formula
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-red-500 text-red-500">
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Invalid Formula
-            </Badge>
-          )}
-          
-          <span className="text-sm text-muted-foreground">
-            {formula && formula.tokens && formula.tokens.length > 0 ? (
-              <span className="font-mono">{formulaToString(formula.tokens)}</span>
-            ) : (
-              'No formula'
+                  {instrument}: {formatExposure(exposure)} MT
+                </Badge>
+              );
+            })}
+            
+            {!Object.values(value.exposures.pricing).some(v => v !== 0) && (
+              <div className="text-muted-foreground">No pricing exposures</div>
             )}
-          </span>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
