@@ -29,9 +29,12 @@ export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, 
  * Pause realtime subscriptions without removing them completely
  * This prevents the costly cycle of removing and recreating subscriptions
  * @param channelRefs Record containing channel references to be paused
+ * @returns A promise that resolves when all subscriptions are paused
  */
-export const pauseSubscriptions = (channelRefs: Record<string, any>) => {
+export const pauseSubscriptions = async (channelRefs: Record<string, any>) => {
   console.log("Pausing realtime subscriptions");
+  
+  // Set pause flag on all channels
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {
@@ -43,14 +46,21 @@ export const pauseSubscriptions = (channelRefs: Record<string, any>) => {
       }
     }
   });
+  
+  // Add a small delay to ensure any in-flight messages are processed
+  await delay(50);
+  return channelRefs;
 };
 
 /**
  * Resume realtime subscriptions that were previously paused
  * @param channelRefs Record containing channel references to be resumed
+ * @returns A promise that resolves when all subscriptions are resumed
  */
-export const resumeSubscriptions = (channelRefs: Record<string, any>) => {
+export const resumeSubscriptions = async (channelRefs: Record<string, any>) => {
   console.log("Resuming realtime subscriptions");
+  
+  // Remove pause flag from all channels
   Object.keys(channelRefs).forEach(key => {
     if (channelRefs[key]) {
       try {
@@ -62,4 +72,39 @@ export const resumeSubscriptions = (channelRefs: Record<string, any>) => {
       }
     }
   });
+  
+  // Add a small delay to allow the system to stabilize after resuming
+  await delay(50);
+  return channelRefs;
+};
+
+/**
+ * A transactional approach to subscription management for critical operations
+ * @param channelRefs Record containing channel references
+ * @param operation Function containing the critical operation to perform
+ * @returns Result of the operation
+ */
+export const withPausedSubscriptions = async <T>(
+  channelRefs: Record<string, any>,
+  operation: () => Promise<T>
+): Promise<T> => {
+  console.log("Starting controlled operation with paused subscriptions");
+  
+  try {
+    // Step 1: Pause all subscriptions
+    await pauseSubscriptions(channelRefs);
+    
+    // Step 2: Execute the critical operation
+    const result = await operation();
+    
+    // Step 3: Resume all subscriptions
+    await resumeSubscriptions(channelRefs);
+    
+    return result;
+  } catch (error) {
+    // Ensure subscriptions are resumed even if the operation fails
+    console.error("Error during controlled operation:", error);
+    await resumeSubscriptions(channelRefs);
+    throw error;
+  }
 };
