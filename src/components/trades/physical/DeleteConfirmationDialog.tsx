@@ -1,15 +1,44 @@
 
-import React, { useEffect } from 'react';
-import { Loader2, Trash2 } from 'lucide-react';
+import React from 'react';
+import { Loader2, Trash2, X } from 'lucide-react';
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { cn } from "@/lib/utils";
+
+// Create a non-animated version of DialogContent
+const NoAnimationDialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay className="fixed inset-0 z-50 bg-black/80" />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
+NoAnimationDialogContent.displayName = "NoAnimationDialogContent";
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
@@ -28,17 +57,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
   itemReference,
   isPerformingAction,
 }) => {
-  // Handle animation completion on close
-  useEffect(() => {
-    if (!isOpen && isPerformingAction) {
-      // If dialog is closed but we're still performing an action,
-      // this is likely a forced close - let's ensure onClose is called
-      const timer = setTimeout(() => {
-        onClose();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, isPerformingAction, onClose]);
+  // Removed animation timing-related useEffect
 
   const handleConfirm = () => {
     onConfirm();
@@ -51,7 +70,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
         onClose();
       }
     }}>
-      <DialogContent className="sm:max-w-md">
+      <NoAnimationDialogContent>
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>
           <DialogDescription>
@@ -87,7 +106,7 @@ const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> = ({
             Cancel
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </NoAnimationDialogContent>
     </Dialog>
   );
 };
