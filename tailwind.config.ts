@@ -13,6 +13,7 @@ export default {
 		'text-green-600',
 		'text-red-600',
 		'text-white',
+		'text-black',
 		'text-muted-foreground',
 		'bg-orange-800',
 		'bg-green-800',
@@ -30,7 +31,8 @@ export default {
 		'font-bold',
 		'text-lg',
 		'text-xl',
-		'text-2xl'
+		'text-2xl',
+		'text-3xl'
 	],
 	prefix: "",
 	theme: {
