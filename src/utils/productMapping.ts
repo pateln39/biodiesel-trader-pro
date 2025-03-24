@@ -1,3 +1,4 @@
+
 /**
  * Maps paper product names to standardized pricing instrument names
  * Ensures exposures are consolidated under the correct product columns
