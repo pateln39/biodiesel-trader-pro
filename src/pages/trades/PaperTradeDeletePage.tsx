@@ -92,7 +92,7 @@ const PaperTradeDeletePage = () => {
 
     return (
       <>
-        <Alert variant="warning" className="mb-6 bg-amber-50 border-amber-200">
+        <Alert className="mb-6 bg-amber-50 border-amber-200">
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           <AlertTitle className="text-amber-600">Warning</AlertTitle>
           <AlertDescription>
