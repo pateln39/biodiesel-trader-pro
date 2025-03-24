@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -69,7 +70,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       'Argus UCOME': 0,
       'Argus FAME0': 0,
       'Argus RME': 0,
-      'Platts LSGO': 0
+      'Platts LSGO': 0,
+      'Argus HVO': 0,
+      'ICE GASOIL FUTURES': 0
     }));
   });
   
@@ -159,7 +162,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const calculateExposures = (legs: any[]) => {
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
-      ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Platts LSGO'].forEach(product => {
+      ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Platts LSGO', 'Argus HVO', 'ICE GASOIL FUTURES'].forEach(product => {
         entry[product] = 0;
       });
       return entry;
@@ -298,6 +301,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FAME0</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RME</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LSGO</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HVO</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GASOIL</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -309,11 +314,13 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus FAME0'] || 0}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus RME'] || 0}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Platts LSGO'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus HVO'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                     No exposure data available. Add trade legs to see the exposure table.
                   </td>
                 </tr>

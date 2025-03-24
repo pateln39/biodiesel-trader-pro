@@ -10,7 +10,9 @@ export const CANONICAL_PRODUCTS = {
   RME: 'Argus RME',
   FAME0: 'Argus FAME0',
   LSGO: 'Platts LSGO',
-  DIESEL: 'Platts Diesel'
+  DIESEL: 'Platts Diesel',
+  HVO: 'Argus HVO',
+  GASOIL: 'ICE GASOIL FUTURES'
 };
 
 // Maps paper product names and codes to their canonical pricing instrument name
@@ -36,6 +38,15 @@ export const mapProductToCanonical = (product: string): string => {
     return CANONICAL_PRODUCTS.DIESEL;
   }
   
+  // Handle new products
+  if (product === 'HVO' || product === 'HVO FP' || product.includes('HVO-')) {
+    return CANONICAL_PRODUCTS.HVO;
+  }
+  
+  if (product === 'ICE GASOIL FUTURES' || product.includes('ICE GASOIL')) {
+    return CANONICAL_PRODUCTS.GASOIL;
+  }
+  
   // If no mapping found, return the original product name
   return product;
 };
@@ -52,10 +63,12 @@ export const parsePaperInstrument = (
   if (instrument.includes('DIFF')) {
     // For DIFFs, the format is usually "{product} DIFF"
     const baseProduct = instrument.replace(' DIFF', '');
-    // DIFFs are typically against LSGO
+    // DIFFs are typically against LSGO or ICE GASOIL FUTURES
+    const oppositeProduct = baseProduct === 'HVO' ? CANONICAL_PRODUCTS.GASOIL : CANONICAL_PRODUCTS.LSGO;
+    
     return {
       baseProduct: mapProductToCanonical(baseProduct),
-      oppositeProduct: CANONICAL_PRODUCTS.LSGO,
+      oppositeProduct: oppositeProduct,
       relationshipType: 'DIFF'
     };
   }
