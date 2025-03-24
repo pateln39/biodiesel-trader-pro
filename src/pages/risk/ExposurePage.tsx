@@ -182,8 +182,8 @@ const ExposurePage = () => {
                 exposuresByMonth[month][prodName] = {
                   physical: 0,
                   pricing: 0,
-                  paper: 0,
-                  netExposure: 0
+                  netExposure: 0,
+                  paper: 0
                 };
               }
               
