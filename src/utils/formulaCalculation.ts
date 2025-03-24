@@ -1,4 +1,3 @@
-
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
@@ -410,8 +409,10 @@ export const calculatePhysicalExposure = (
     'Argus UCOME': 0,
     'Argus RME': 0,
     'Argus FAME0': 0,
+    'Argus HVO': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
+    'ICE GASOIL FUTURES': 0,
   };
   
   if (!tokens.length || tradeQuantity === 0) {
@@ -451,8 +452,10 @@ export const calculatePricingExposure = (
     'Argus UCOME': 0,
     'Argus RME': 0,
     'Argus FAME0': 0,
+    'Argus HVO': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
+    'ICE GASOIL FUTURES': 0,
   };
   
   if (!tokens.length || tradeQuantity === 0) {
