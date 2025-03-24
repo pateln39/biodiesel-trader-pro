@@ -380,7 +380,7 @@ const ExposurePage = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead 
                       rowSpan={2} 
-                      className="border-[3px] border-black text-left p-3 font-bold text-black bg-white sticky left-0 z-10"
+                      className="border-[3px] border-black text-left p-3 font-bold text-black text-2xl bg-white sticky left-0 z-10"
                     >
                       Month
                     </TableHead>
@@ -388,7 +388,7 @@ const ExposurePage = () => {
                       <TableHead 
                         key={category} 
                         colSpan={allProducts.length} 
-                        className={`text-center p-2 font-bold text-black border-[3px] border-black ${
+                        className={`text-center p-2 font-bold text-black text-2xl border-[3px] border-black ${
                           catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
@@ -414,6 +414,7 @@ const ExposurePage = () => {
                     )}
                   </TableRow>
                 </TableHeader>
+                
                 <TableBody>
                   {exposureData.map((monthData) => (
                     <TableRow key={monthData.month} className="bg-white border-[3px] border-black">
