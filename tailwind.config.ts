@@ -24,22 +24,15 @@ export default {
 		'bg-gray-300',
 		'bg-gray-700',
 		'bg-white',
-		'border-r-[1px]',
 		'border-r-[3px]',
-		'border-[1px]',
 		'border-[2px]',
 		'border-[3px]',
 		'border-black',
-		'border-r',
-		'border-t',
 		'font-bold',
-		'text-xs',
-		'text-sm',
 		'text-lg',
 		'text-xl',
 		'text-2xl',
-		'text-3xl',
-		'h-[calc(100vh-250px)]'
+		'text-3xl'
 	],
 	prefix: "",
 	theme: {
