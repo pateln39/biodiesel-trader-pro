@@ -5,42 +5,40 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
   CardContent 
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
-import { PricingFormula, PartialPricingFormula, PartialExposureResult } from '@/types/pricing';
+import { PricingFormula, PartialPricingFormula } from '@/types/pricing';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getNextMonths } from '@/utils/dateUtils';
 
-interface ExposureItem {
-  month: string;
-  grade: string;
+// Types for exposure data
+interface ExposureData {
   physical: number;
   pricing: number;
   paper: number;
   netExposure: number;
 }
 
-interface GradeExposures {
-  [grade: string]: {
-    physical: number;
-    pricing: number;
-    paper: number;
-    netExposure: number;
-  };
-}
-
-interface MonthlyExposures {
-  [month: string]: GradeExposures;
+interface MonthlyExposure {
+  month: string;
+  products: Record<string, ExposureData>;
+  totals: ExposureData;
 }
 
 const ExposurePage = () => {
   const [showAllGrades, setShowAllGrades] = useState(false);
-  const [periods, setPeriods] = useState<string[]>(getNextMonths(8));
+  const [periods] = useState<string[]>(getNextMonths(8));
 
   const { data: tradeData, isLoading } = useQuery({
     queryKey: ['exposure-data'],
@@ -87,16 +85,22 @@ const ExposurePage = () => {
     }
   });
 
+  // Process trade data into monthly exposures by product
   const exposureData = useMemo(() => {
-    if (!tradeData) return {};
+    if (!tradeData) return [];
 
     const { physicalTradeLegs, paperTradeLegs } = tradeData;
-    const exposures: MonthlyExposures = {};
     
-    periods.forEach(period => {
-      exposures[period] = {};
+    // Initialize exposure data structure for each month
+    const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
+    const allProducts = new Set<string>();
+    
+    // Initialize data structure for all months
+    periods.forEach(month => {
+      exposuresByMonth[month] = {};
     });
     
+    // Process physical trade legs
     if (physicalTradeLegs && physicalTradeLegs.length > 0) {
       physicalTradeLegs.forEach(leg => {
         let month = leg.trading_period || '';
@@ -112,16 +116,14 @@ const ExposurePage = () => {
           return;
         }
         
-        const grade = leg.product || 'Unknown';
+        const product = leg.product || 'Unknown';
+        allProducts.add(product);
+        
         const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
         const quantity = (leg.quantity || 0) * quantityMultiplier;
         
-        if (!exposures[month]) {
-          exposures[month] = {};
-        }
-        
-        if (!exposures[month][grade]) {
-          exposures[month][grade] = {
+        if (!exposuresByMonth[month][product]) {
+          exposuresByMonth[month][product] = {
             physical: 0,
             pricing: 0,
             paper: 0,
@@ -129,13 +131,16 @@ const ExposurePage = () => {
           };
         }
         
-        exposures[month][grade].physical += quantity;
+        exposuresByMonth[month][product].physical += quantity;
         
+        // Process pricing formula for exposure
         const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
         if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
           Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-            if (!exposures[month][instrument]) {
-              exposures[month][instrument] = {
+            allProducts.add(instrument);
+            
+            if (!exposuresByMonth[month][instrument]) {
+              exposuresByMonth[month][instrument] = {
                 physical: 0,
                 pricing: 0,
                 paper: 0,
@@ -143,12 +148,13 @@ const ExposurePage = () => {
               };
             }
             
-            exposures[month][instrument].pricing += Number(value) || 0;
+            exposuresByMonth[month][instrument].pricing += Number(value) || 0;
           });
         }
       });
     }
     
+    // Process paper trade legs
     if (paperTradeLegs && paperTradeLegs.length > 0) {
       paperTradeLegs.forEach(leg => {
         const month = leg.period || leg.trading_period || '';
@@ -158,14 +164,10 @@ const ExposurePage = () => {
         }
         
         const product = leg.product || 'Unknown';
-        const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+        allProducts.add(product);
         
-        if (!exposures[month]) {
-          exposures[month] = {};
-        }
-        
-        if (!exposures[month][product]) {
-          exposures[month][product] = {
+        if (!exposuresByMonth[month][product]) {
+          exposuresByMonth[month][product] = {
             physical: 0,
             pricing: 0,
             paper: 0,
@@ -173,15 +175,17 @@ const ExposurePage = () => {
           };
         }
         
-        // Check for new explicit exposures field first
+        // Check for explicit exposures field first
         if (leg.exposures && typeof leg.exposures === 'object') {
           const exposuresData = leg.exposures as Record<string, any>;
           
           // Handle physical exposures
           if (exposuresData.physical && typeof exposuresData.physical === 'object') {
             Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-              if (!exposures[month][prodName]) {
-                exposures[month][prodName] = {
+              allProducts.add(prodName);
+              
+              if (!exposuresByMonth[month][prodName]) {
+                exposuresByMonth[month][prodName] = {
                   physical: 0,
                   pricing: 0,
                   paper: 0,
@@ -189,15 +193,17 @@ const ExposurePage = () => {
                 };
               }
               
-              exposures[month][prodName].paper += Number(value) || 0;
+              exposuresByMonth[month][prodName].paper += Number(value) || 0;
             });
           }
           
           // Handle pricing exposures
           if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
             Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
-              if (!exposures[month][instrument]) {
-                exposures[month][instrument] = {
+              allProducts.add(instrument);
+              
+              if (!exposuresByMonth[month][instrument]) {
+                exposuresByMonth[month][instrument] = {
                   physical: 0,
                   pricing: 0,
                   paper: 0,
@@ -205,7 +211,7 @@ const ExposurePage = () => {
                 };
               }
               
-              exposures[month][instrument].pricing += Number(value) || 0;
+              exposuresByMonth[month][instrument].pricing += Number(value) || 0;
             });
           }
         }
@@ -218,8 +224,10 @@ const ExposurePage = () => {
             
             if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
               Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
-                if (!exposures[month][prodName]) {
-                  exposures[month][prodName] = {
+                allProducts.add(prodName);
+                
+                if (!exposuresByMonth[month][prodName]) {
+                  exposuresByMonth[month][prodName] = {
                     physical: 0,
                     pricing: 0,
                     paper: 0,
@@ -227,82 +235,69 @@ const ExposurePage = () => {
                   };
                 }
                 
-                exposures[month][prodName].paper += Number(value) || 0;
+                exposuresByMonth[month][prodName].paper += Number(value) || 0;
               });
             }
           }
         }
-        // Default fallback if no structured exposure data is available
+        // Default fallback for paper trades
         else {
-          exposures[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
+          const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+          exposuresByMonth[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
         }
       });
     }
     
-    // Calculate net exposures
-    Object.keys(exposures).forEach(month => {
-      Object.keys(exposures[month]).forEach(grade => {
-        const { physical, pricing, paper } = exposures[month][grade];
-        exposures[month][grade].netExposure = physical + pricing + paper;
-      });
-    });
-    
-    return exposures;
-  }, [tradeData, periods]);
-
-  const exposureItems = useMemo(() => {
-    const items: ExposureItem[] = [];
-    
-    Object.entries(exposureData).forEach(([month, grades]) => {
-      Object.entries(grades).forEach(([grade, values]) => {
-        if (!showAllGrades && 
-            values.physical === 0 && 
-            values.pricing === 0 && 
-            values.paper === 0 &&
-            values.netExposure === 0) {
-          return;
-        }
+    // Calculate net exposures and create the final data structure
+    const monthlyExposures: MonthlyExposure[] = periods.map(month => {
+      const monthData = exposuresByMonth[month];
+      const productsData: Record<string, ExposureData> = {};
+      const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+      
+      // Filter out products with no exposure if showAllGrades is false
+      Array.from(allProducts).forEach(product => {
+        const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
-        items.push({
-          month,
-          grade,
-          physical: values.physical,
-          pricing: values.pricing,
-          paper: values.paper,
-          netExposure: values.netExposure
-        });
+        // Calculate net exposure
+        productExposure.netExposure = productExposure.physical + productExposure.pricing + productExposure.paper;
+        
+        // Only include products with non-zero exposures if showAllGrades is false
+        if (showAllGrades || 
+            productExposure.physical !== 0 || 
+            productExposure.pricing !== 0 || 
+            productExposure.paper !== 0) {
+          productsData[product] = productExposure;
+          
+          // Add to totals
+          totals.physical += productExposure.physical;
+          totals.pricing += productExposure.pricing;
+          totals.paper += productExposure.paper;
+          totals.netExposure += productExposure.netExposure;
+        }
+      });
+      
+      return {
+        month,
+        products: productsData,
+        totals
+      };
+    });
+    
+    return monthlyExposures;
+  }, [tradeData, periods, showAllGrades]);
+
+  // Get sorted list of all products/grades from the exposure data
+  const allProducts = useMemo(() => {
+    const productSet = new Set<string>();
+    
+    exposureData.forEach(monthData => {
+      Object.keys(monthData.products).forEach(product => {
+        productSet.add(product);
       });
     });
     
-    return items.sort((a, b) => {
-      const monthIndexA = periods.indexOf(a.month);
-      const monthIndexB = periods.indexOf(b.month);
-      
-      if (monthIndexA !== monthIndexB) return monthIndexA - monthIndexB;
-      
-      return a.grade.localeCompare(b.grade);
-    });
-  }, [exposureData, showAllGrades, periods]);
-
-  const groupedByMonth = useMemo(() => {
-    const grouped: Record<string, ExposureItem[]> = {};
-    
-    exposureItems.forEach(item => {
-      if (!grouped[item.month]) {
-        grouped[item.month] = [];
-      }
-      grouped[item.month].push(item);
-    });
-    
-    const orderedGrouped: Record<string, ExposureItem[]> = {};
-    periods.forEach(period => {
-      if (grouped[period]) {
-        orderedGrouped[period] = grouped[period];
-      }
-    });
-    
-    return orderedGrouped;
-  }, [exposureItems, periods]);
+    return Array.from(productSet).sort();
+  }, [exposureData]);
 
   const getValueColorClass = (value: number): string => {
     if (value > 0) return 'text-green-600';
@@ -348,7 +343,7 @@ const ExposurePage = () => {
               </div>
             </CardContent>
           </Card>
-        ) : Object.keys(groupedByMonth).length === 0 ? (
+        ) : exposureData.length === 0 || allProducts.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
               <div className="flex justify-center items-center h-40">
@@ -357,65 +352,76 @@ const ExposurePage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedByMonth).map(([month, items]) => (
-              <Card key={month} className="overflow-hidden">
-                <CardHeader className="bg-muted/30 py-3">
-                  <CardTitle className="text-lg font-medium">{month}</CardTitle>
-                </CardHeader>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-muted/50">
-                        <th className="text-left p-3 font-medium">Grade</th>
-                        <th className="text-right p-3 font-medium">Physical (MT)</th>
-                        <th className="text-right p-3 font-medium">Pricing (MT)</th>
-                        <th className="text-right p-3 font-medium">Paper (MT)</th>
-                        <th className="text-right p-3 font-medium">Net Exposure (MT)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item, index) => (
-                        <tr key={`${item.month}-${item.grade}-${index}`} className="border-t hover:bg-muted/50">
-                          <td className="p-3 font-medium">{item.grade}</td>
-                          <td className={`p-3 text-right ${getValueColorClass(item.physical)}`}>
-                            {formatValue(item.physical)}
-                          </td>
-                          <td className={`p-3 text-right ${getValueColorClass(item.pricing)}`}>
-                            {formatValue(item.pricing)}
-                          </td>
-                          <td className={`p-3 text-right ${getValueColorClass(item.paper)}`}>
-                            {formatValue(item.paper)}
-                          </td>
-                          <td className={`p-3 text-right font-medium ${getValueColorClass(item.netExposure)}`}>
-                            {formatValue(item.netExposure)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t bg-muted/30">
-                        <td className="p-3 font-medium">Total</td>
-                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.physical, 0))}`}>
-                          {formatValue(items.reduce((sum, item) => sum + item.physical, 0))}
-                        </td>
-                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.pricing, 0))}`}>
-                          {formatValue(items.reduce((sum, item) => sum + item.pricing, 0))}
-                        </td>
-                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.paper, 0))}`}>
-                          {formatValue(items.reduce((sum, item) => sum + item.paper, 0))}
-                        </td>
-                        <td className={`p-3 text-right font-medium ${getValueColorClass(items.reduce((sum, item) => sum + item.netExposure, 0))}`}>
-                          {formatValue(items.reduce((sum, item) => sum + item.netExposure, 0))}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead rowSpan={2} className="border-r border-b text-left p-3 font-medium">Month</TableHead>
+                    {allProducts.map(product => (
+                      <TableHead key={product} colSpan={4} className="text-center p-2 font-medium border-r border-b">
+                        {product}
+                      </TableHead>
+                    ))}
+                    <TableHead colSpan={4} className="text-center p-2 font-medium border-b">
+                      Total
+                    </TableHead>
+                  </TableRow>
+                  <TableRow className="bg-muted/30">
+                    {allProducts.flatMap(product => [
+                      <TableHead key={`${product}-physical`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Physical</TableHead>,
+                      <TableHead key={`${product}-pricing`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Pricing</TableHead>,
+                      <TableHead key={`${product}-paper`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Paper</TableHead>,
+                      <TableHead key={`${product}-net`} className="text-right p-2 font-medium text-sm whitespace-nowrap border-r">Net</TableHead>
+                    ])}
+                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Physical</TableHead>
+                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Pricing</TableHead>
+                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Paper</TableHead>
+                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Net</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exposureData.map((monthData) => (
+                    <TableRow key={monthData.month} className="hover:bg-muted/50">
+                      <TableCell className="font-medium border-r">{monthData.month}</TableCell>
+                      
+                      {allProducts.flatMap(product => {
+                        const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                        return [
+                          <TableCell key={`${monthData.month}-${product}-physical`} className={`text-right ${getValueColorClass(productData.physical)}`}>
+                            {formatValue(productData.physical)}
+                          </TableCell>,
+                          <TableCell key={`${monthData.month}-${product}-pricing`} className={`text-right ${getValueColorClass(productData.pricing)}`}>
+                            {formatValue(productData.pricing)}
+                          </TableCell>,
+                          <TableCell key={`${monthData.month}-${product}-paper`} className={`text-right ${getValueColorClass(productData.paper)}`}>
+                            {formatValue(productData.paper)}
+                          </TableCell>,
+                          <TableCell key={`${monthData.month}-${product}-net`} className={`text-right font-medium border-r ${getValueColorClass(productData.netExposure)}`}>
+                            {formatValue(productData.netExposure)}
+                          </TableCell>
+                        ];
+                      })}
+                      
+                      {/* Month totals */}
+                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.physical)}`}>
+                        {formatValue(monthData.totals.physical)}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.pricing)}`}>
+                        {formatValue(monthData.totals.pricing)}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.paper)}`}>
+                        {formatValue(monthData.totals.paper)}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.netExposure)}`}>
+                        {formatValue(monthData.totals.netExposure)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
         )}
       </div>
     </Layout>
