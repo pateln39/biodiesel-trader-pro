@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 
-interface TableRowActionsProps {
+interface PaperTradeRowActionsProps {
   tradeId: string;
   legId?: string;
   isMultiLeg: boolean;
@@ -18,7 +18,7 @@ interface TableRowActionsProps {
   tradeReference: string;
 }
 
-const TableRowActions: React.FC<TableRowActionsProps> = ({
+const PaperTradeRowActions: React.FC<PaperTradeRowActionsProps> = ({
   tradeId,
   legId,
   isMultiLeg,
@@ -33,11 +33,11 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     e.stopPropagation();
     
     if (isMultiLeg && legId) {
-      console.log(`[ROW_ACTIONS] Navigating to leg deletion: ${legId}`);
-      navigate(`/trades/delete/${tradeId}/leg/${legId}`);
+      console.log(`[PAPER_ROW_ACTIONS] Navigating to leg deletion: ${legId}`);
+      navigate(`/trades/paper/delete/${tradeId}/leg/${legId}`);
     } else {
-      console.log(`[ROW_ACTIONS] Navigating to trade deletion: ${tradeId}`);
-      navigate(`/trades/delete/${tradeId}`);
+      console.log(`[PAPER_ROW_ACTIONS] Navigating to trade deletion: ${tradeId}`);
+      navigate(`/trades/paper/delete/${tradeId}`);
     }
   };
   
@@ -46,8 +46,8 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    console.log(`[ROW_ACTIONS] Requesting edit for trade: ${tradeId}`);
-    navigate(`/trades/edit/${tradeId}`);
+    console.log(`[PAPER_ROW_ACTIONS] Requesting edit for paper trade: ${tradeId}`);
+    navigate(`/trades/paper/edit/${tradeId}`);
   };
   
   return (
@@ -84,4 +84,4 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   );
 };
 
-export default TableRowActions;
+export default PaperTradeRowActions;

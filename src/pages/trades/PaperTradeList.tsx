@@ -1,19 +1,15 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+import { Loader2 } from 'lucide-react';
 import { PaperTrade } from '@/types/paper';
 import { formatProductDisplay } from '@/utils/tradeUtils';
+import TableLoadingState from '@/components/trades/TableLoadingState';
+import TableErrorState from '@/components/trades/TableErrorState';
+import PaperTradeRowActions from '@/components/trades/paper/PaperTradeRowActions';
 
 interface PaperTradeListProps {
   paperTrades: PaperTrade[];
@@ -49,28 +45,11 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   };
 
   if (isLoading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <TableLoadingState />;
   }
 
   if (error) {
-    return (
-      <div className="p-8 flex flex-col items-center text-center space-y-4">
-        <AlertCircle className="h-10 w-10 text-destructive" />
-        <div>
-          <h3 className="font-medium">Failed to load paper trades</h3>
-          <p className="text-muted-foreground text-sm">
-            {error instanceof Error ? error.message : 'Unknown error occurred'}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetchPaperTrades()}>
-          Try Again
-        </Button>
-      </div>
-    );
+    return <TableErrorState error={error} onRetry={refetchPaperTrades} />;
   }
 
   return (
@@ -99,6 +78,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
               );
               
               const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
+              const isMultiLeg = trade.legs.length > 1;
               
               return (
                 <TableRow key={`${trade.id}-${leg.id}`}>
@@ -131,16 +111,13 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">Actions</Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <Link to={`/trades/${trade.id}`}>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                        </Link>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <PaperTradeRowActions
+                      tradeId={trade.id}
+                      legId={leg.id}
+                      isMultiLeg={isMultiLeg}
+                      legReference={leg.legReference}
+                      tradeReference={trade.tradeReference}
+                    />
                   </TableCell>
                 </TableRow>
               );

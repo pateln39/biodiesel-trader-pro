@@ -11,6 +11,8 @@ import TradesPage from "./pages/trades/TradesPage";
 import TradeEntryPage from "./pages/trades/TradeEntryPage";
 import TradeEditPage from "./pages/trades/TradeEditPage";
 import TradeDeletePage from "./pages/trades/TradeDeletePage";
+import PaperTradeEditPage from "./pages/trades/PaperTradeEditPage";
+import PaperTradeDeletePage from "./pages/trades/PaperTradeDeletePage";
 import OperationsPage from "./pages/operations/OperationsPage";
 import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
@@ -35,10 +37,17 @@ const App = () => (
             {/* Trade Routes */}
             <Route path="/trades" element={<TradesPage />} />
             <Route path="/trades/new" element={<TradeEntryPage />} />
+            
+            {/* Physical Trade Routes */}
             <Route path="/trades/edit/:id" element={<TradeEditPage />} />
             <Route path="/trades/:id" element={<TradeEditPage />} />
             <Route path="/trades/delete/:id" element={<TradeDeletePage />} />
             <Route path="/trades/delete/:id/leg/:legId" element={<TradeDeletePage />} />
+            
+            {/* Paper Trade Routes */}
+            <Route path="/trades/paper/edit/:id" element={<PaperTradeEditPage />} />
+            <Route path="/trades/paper/delete/:id" element={<PaperTradeDeletePage />} />
+            <Route path="/trades/paper/delete/:id/leg/:legId" element={<PaperTradeDeletePage />} />
             
             {/* Operations Routes */}
             <Route path="/operations" element={<OperationsPage />} />
