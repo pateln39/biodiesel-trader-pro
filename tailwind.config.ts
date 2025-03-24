@@ -30,6 +30,8 @@ export default {
 		'border-[2px]',
 		'border-[3px]',
 		'border-black',
+		'border-r',
+		'border-t',
 		'font-bold',
 		'text-xs',
 		'text-sm',

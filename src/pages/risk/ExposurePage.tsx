@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -384,195 +383,193 @@ const ExposurePage = () => {
           </Card>
         ) : (
           <Card className="overflow-hidden">
-            <ResizablePanelGroup direction="vertical">
-              <ResizablePanel defaultSize={100}>
-                <ScrollArea className="h-[calc(100vh-250px)] w-full">
-                  <div className="w-full p-1">
-                    <Table compact className="border-collapse [&_*]:border-black [&_*]:border-[1px]">
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
+            <CardContent className="p-1">
+              <ScrollArea className="h-[calc(100vh-250px)]">
+                <div className="w-full overflow-auto">
+                  <Table compact className="border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead 
+                          rowSpan={2} 
+                          className="text-left p-1 font-bold text-black text-xs bg-white sticky left-0 z-10"
+                          compact
+                        >
+                          Month
+                        </TableHead>
+                        {exposureCategories.map((category, catIndex) => (
                           <TableHead 
-                            rowSpan={2} 
-                            className="border-[1px] border-black text-left p-1 font-bold text-black text-sm bg-white sticky left-0 z-10"
+                            key={category} 
+                            colSpan={allProducts.length} 
+                            className={`text-center p-1 font-bold text-black text-xs ${
+                              catIndex < exposureCategories.length - 1 ? 'border-r' : ''
+                            }`}
                             compact
                           >
-                            Month
+                            {category}
                           </TableHead>
-                          {exposureCategories.map((category, catIndex) => (
+                        ))}
+                      </TableRow>
+                      
+                      <TableRow className="bg-muted/30">
+                        {exposureCategories.flatMap((category, catIndex) => 
+                          allProducts.map((product, index) => (
                             <TableHead 
-                              key={category} 
-                              colSpan={allProducts.length} 
-                              className={`text-center p-1 font-bold text-black text-sm border-[1px] border-black ${
-                                catIndex < exposureCategories.length - 1 ? 'border-r-[1px]' : ''
+                              key={`${category}-${product}`} 
+                              className={`text-right p-1 text-xs whitespace-nowrap text-white font-bold ${
+                                getCategoryColorClass(category)
+                              } ${
+                                index === allProducts.length - 1 && catIndex < exposureCategories.length - 1 ? 'border-r' : ''
                               }`}
                               compact
                             >
-                              {category}
+                              {product}
                             </TableHead>
-                          ))}
-                        </TableRow>
-                        
-                        <TableRow className="bg-muted/30">
-                          {exposureCategories.flatMap((category, catIndex) => 
-                            allProducts.map((product, index) => (
-                              <TableHead 
-                                key={`${category}-${product}`} 
-                                className={`text-right p-1 text-xs whitespace-nowrap border-[1px] border-black text-white font-bold ${
-                                  getCategoryColorClass(category)
-                                } ${
-                                  index === allProducts.length - 1 && catIndex < exposureCategories.length - 1 ? 'border-r-[1px]' : ''
+                          ))
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    
+                    <TableBody>
+                      {exposureData.map((monthData) => (
+                        <TableRow key={monthData.month} className="bg-white border-t">
+                          <TableCell 
+                            className="font-medium sticky left-0 bg-white z-10"
+                            compact
+                          >
+                            {monthData.month}
+                          </TableCell>
+                          
+                          {allProducts.map((product, index) => {
+                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-physical-${product}`} 
+                                className={`text-right ${getValueColorClass(productData.physical)} ${
+                                  index === allProducts.length - 1 ? 'border-r' : ''
                                 }`}
                                 compact
                               >
-                                {product}
-                              </TableHead>
-                            ))
-                          )}
+                                {formatValue(productData.physical)}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          {allProducts.map((product, index) => {
+                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-pricing-${product}`} 
+                                className={`text-right ${getValueColorClass(productData.pricing)} ${
+                                  index === allProducts.length - 1 ? 'border-r' : ''
+                                }`}
+                                compact
+                              >
+                                {formatValue(productData.pricing)}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          {allProducts.map((product, index) => {
+                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-paper-${product}`} 
+                                className={`text-right ${getValueColorClass(productData.paper)} ${
+                                  index === allProducts.length - 1 ? 'border-r' : ''
+                                }`}
+                                compact
+                              >
+                                {formatValue(productData.paper)}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          {allProducts.map((product, index) => {
+                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-net-${product}`} 
+                                className={`text-right font-medium ${getValueColorClass(productData.netExposure)}`}
+                                compact
+                              >
+                                {formatValue(productData.netExposure)}
+                              </TableCell>
+                            );
+                          })}
                         </TableRow>
-                      </TableHeader>
+                      ))}
                       
-                      <TableBody>
-                        {exposureData.map((monthData) => (
-                          <TableRow key={monthData.month} className="bg-white border-[1px] border-black">
-                            <TableCell 
-                              className="font-medium border-[1px] border-black sticky left-0 bg-white z-10"
-                              compact
-                            >
-                              {monthData.month}
-                            </TableCell>
-                            
-                            {allProducts.map((product, index) => {
-                              const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                              return (
-                                <TableCell 
-                                  key={`${monthData.month}-physical-${product}`} 
-                                  className={`text-right ${getValueColorClass(productData.physical)} border-[1px] border-black ${
-                                    index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                                  }`}
-                                  compact
-                                >
-                                  {formatValue(productData.physical)}
-                                </TableCell>
-                              );
-                            })}
-                            
-                            {allProducts.map((product, index) => {
-                              const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                              return (
-                                <TableCell 
-                                  key={`${monthData.month}-pricing-${product}`} 
-                                  className={`text-right ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
-                                    index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                                  }`}
-                                  compact
-                                >
-                                  {formatValue(productData.pricing)}
-                                </TableCell>
-                              );
-                            })}
-                            
-                            {allProducts.map((product, index) => {
-                              const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                              return (
-                                <TableCell 
-                                  key={`${monthData.month}-paper-${product}`} 
-                                  className={`text-right ${getValueColorClass(productData.paper)} border-[1px] border-black ${
-                                    index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                                  }`}
-                                  compact
-                                >
-                                  {formatValue(productData.paper)}
-                                </TableCell>
-                              );
-                            })}
-                            
-                            {allProducts.map((product, index) => {
-                              const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                              return (
-                                <TableCell 
-                                  key={`${monthData.month}-net-${product}`} 
-                                  className={`text-right font-medium ${getValueColorClass(productData.netExposure)} border-[1px] border-black`}
-                                  compact
-                                >
-                                  {formatValue(productData.netExposure)}
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
+                      <TableRow className="bg-gray-700 text-white font-bold">
+                        <TableCell 
+                          className="sticky left-0 bg-gray-700 z-10 text-white text-xs"
+                          compact
+                        >
+                          Total
+                        </TableCell>
                         
-                        <TableRow className="bg-gray-700 text-white font-bold border-[1px] border-black">
+                        {allProducts.map((product, index) => (
                           <TableCell 
-                            className="border-[1px] border-black sticky left-0 bg-gray-700 z-10 text-white text-sm"
+                            key={`total-physical-${product}`} 
+                            className={`text-right ${
+                              grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
+                              grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
+                            } font-bold ${
+                              index === allProducts.length - 1 ? 'border-r' : ''
+                            }`}
                             compact
                           >
-                            Total
+                            {formatValue(grandTotals.productTotals[product]?.physical || 0)}
                           </TableCell>
-                          
-                          {allProducts.map((product, index) => (
-                            <TableCell 
-                              key={`total-physical-${product}`} 
-                              className={`text-right ${
-                                grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
-                                grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
-                              } border-[1px] border-black font-bold ${
-                                index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                              }`}
-                              compact
-                            >
-                              {formatValue(grandTotals.productTotals[product]?.physical || 0)}
-                            </TableCell>
-                          ))}
-                          
-                          {allProducts.map((product, index) => (
-                            <TableCell 
-                              key={`total-pricing-${product}`} 
-                              className={`text-right ${
-                                grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
-                                grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
-                              } border-[1px] border-black font-bold ${
-                                index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                              }`}
-                              compact
-                            >
-                              {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
-                            </TableCell>
-                          ))}
-                          
-                          {allProducts.map((product, index) => (
-                            <TableCell 
-                              key={`total-paper-${product}`} 
-                              className={`text-right ${
-                                grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
-                                grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
-                              } border-[1px] border-black font-bold ${
-                                index === allProducts.length - 1 ? 'border-r-[1px]' : ''
-                              }`}
-                              compact
-                            >
-                              {formatValue(grandTotals.productTotals[product]?.paper || 0)}
-                            </TableCell>
-                          ))}
-                          
-                          {allProducts.map((product, index) => (
-                            <TableCell 
-                              key={`total-net-${product}`} 
-                              className={`text-right ${
-                                grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
-                                grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
-                              } border-[1px] border-black font-bold`}
-                              compact
-                            >
-                              {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </div>
-                </ScrollArea>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+                        ))}
+                        
+                        {allProducts.map((product, index) => (
+                          <TableCell 
+                            key={`total-pricing-${product}`} 
+                            className={`text-right ${
+                              grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
+                              grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
+                            } font-bold ${
+                              index === allProducts.length - 1 ? 'border-r' : ''
+                            }`}
+                            compact
+                          >
+                            {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                          </TableCell>
+                        ))}
+                        
+                        {allProducts.map((product, index) => (
+                          <TableCell 
+                            key={`total-paper-${product}`} 
+                            className={`text-right ${
+                              grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
+                              grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
+                            } font-bold ${
+                              index === allProducts.length - 1 ? 'border-r' : ''
+                            }`}
+                            compact
+                          >
+                            {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                          </TableCell>
+                        ))}
+                        
+                        {allProducts.map((product, index) => (
+                          <TableCell 
+                            key={`total-net-${product}`} 
+                            className={`text-right ${
+                              grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
+                              grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
+                            } font-bold`}
+                            compact
+                          >
+                            {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </CardContent>
           </Card>
         )}
       </div>
