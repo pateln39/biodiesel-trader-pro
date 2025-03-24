@@ -40,7 +40,28 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
   
-  const [tradeLegs, setTradeLegs] = useState<any[]>([]);
+  const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
+    // Initialize tradeLegs from initialData if provided
+    if (initialData && initialData.legs && initialData.legs.length > 0) {
+      return initialData.legs.map((leg: any) => ({
+        ...leg,
+        // Ensure all required properties are present
+        buySell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        period: leg.period,
+        price: leg.price,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationshipType: leg.relationshipType,
+        rightSide: leg.rightSide,
+        formula: leg.formula,
+        mtmFormula: leg.mtmFormula,
+        exposures: leg.exposures
+      }));
+    }
+    return [];
+  });
   
   const availableMonths = useMemo(() => getNextMonths(8), []);
   
@@ -55,6 +76,26 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       'ICE GASOIL FUTURES': 0
     }));
   });
+  
+  // Initialize selectedBroker from initialData if provided
+  useEffect(() => {
+    if (initialData && initialData.broker) {
+      // We'll need to find the broker ID that matches the name
+      const fetchBrokerIdByName = async () => {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('id')
+          .eq('name', initialData.broker)
+          .single();
+          
+        if (data && !error) {
+          setSelectedBroker(data.id);
+        }
+      };
+      
+      fetchBrokerIdByName();
+    }
+  }, [initialData]);
   
   useEffect(() => {
     const fetchBrokers = async () => {
@@ -79,6 +120,13 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     
     fetchBrokers();
   }, []);
+  
+  // Calculate exposures when initialData or tradeLegs changes
+  useEffect(() => {
+    if (tradeLegs.length > 0) {
+      calculateExposures(tradeLegs);
+    }
+  }, [tradeLegs]);
   
   const handleAddBroker = async () => {
     if (!newBrokerName.trim()) {
@@ -112,7 +160,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   const handleLegsChange = (newLegs: any[]) => {
     setTradeLegs(newLegs);
-    
     calculateExposures(newLegs);
   };
   

@@ -59,7 +59,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
               return (
                 <TableRow key={`${trade.id}-${leg.id}`}>
                   <TableCell>
-                    <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+                    <Link to={`/trades/paper/edit/${trade.id}`} className="text-primary hover:underline">
                       {displayReference}
                     </Link>
                   </TableCell>

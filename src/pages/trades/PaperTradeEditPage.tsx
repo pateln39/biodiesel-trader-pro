@@ -21,6 +21,8 @@ const PaperTradeEditPage = () => {
   // Find the trade from fetched trades
   const trade = paperTrades.find(t => t.id === id);
   
+  console.log('[PAPER_EDIT] Current trade data:', trade);
+  
   // Update mutation
   const { mutate: updatePaperTrade, isPending: isUpdating } = useMutation({
     mutationFn: async (updatedTrade: any) => {
@@ -32,8 +34,7 @@ const PaperTradeEditPage = () => {
       const { error: tradeUpdateError } = await supabase
         .from('paper_trades')
         .update({
-          broker: updatedTrade.broker,
-          comment: updatedTrade.comment || null
+          broker: updatedTrade.broker
         })
         .eq('id', id);
         
