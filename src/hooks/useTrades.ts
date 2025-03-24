@@ -1,6 +1,5 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Trade,
@@ -17,14 +16,6 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-
-const debounce = (fn: Function, ms = 300) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return function(...args: any[]) {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  };
-};
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -121,19 +112,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
 };
 
 export const useTrades = () => {
-  const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
-  const isProcessingRef = useRef<boolean>(false);
   
-  const debouncedRefetch = useRef(debounce((fn: Function) => {
-    if (isProcessingRef.current) {
-      console.log("[PHYSICAL] Skipping refetch as an operation is in progress");
-      return;
-    }
-    console.log("[PHYSICAL] Executing debounced refetch for physical trades");
-    fn();
-  }, 500)).current;
-
   const { 
     data: trades = [], 
     isLoading: loading, 
@@ -150,11 +130,9 @@ export const useTrades = () => {
   const setupRealtimeSubscriptions = useCallback(() => {
     return setupPhysicalTradeSubscriptions(
       realtimeChannelsRef,
-      isProcessingRef,
-      debouncedRefetch,
       refetch
     );
-  }, [refetch, debouncedRefetch]);
+  }, [refetch]);
 
   useEffect(() => {
     const cleanup = setupRealtimeSubscriptions();

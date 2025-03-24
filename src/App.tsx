@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import TradesPage from "./pages/trades/TradesPage";
 import TradeEntryPage from "./pages/trades/TradeEntryPage";
 import TradeEditPage from "./pages/trades/TradeEditPage";
+import TradeDeletePage from "./pages/trades/TradeDeletePage";
 import OperationsPage from "./pages/operations/OperationsPage";
 import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
@@ -36,6 +37,8 @@ const App = () => (
             <Route path="/trades/new" element={<TradeEntryPage />} />
             <Route path="/trades/edit/:id" element={<TradeEditPage />} />
             <Route path="/trades/:id" element={<TradeEditPage />} />
+            <Route path="/trades/delete/:id" element={<TradeDeletePage />} />
+            <Route path="/trades/delete/:id/leg/:legId" element={<TradeDeletePage />} />
             
             {/* Operations Routes */}
             <Route path="/operations" element={<OperationsPage />} />

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,12 +16,6 @@ interface TableRowActionsProps {
   isMultiLeg: boolean;
   legReference?: string;
   tradeReference: string;
-  isDeleting: boolean;
-  deletingId: string;
-  isProcessing: boolean;
-  onEdit: (tradeId: string) => void;
-  onDeleteTrade: (tradeId: string, reference: string) => void;
-  onDeleteLeg: (legId: string, legReference: string, parentId: string) => void;
 }
 
 const TableRowActions: React.FC<TableRowActionsProps> = ({
@@ -30,49 +24,27 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   isMultiLeg,
   legReference,
   tradeReference,
-  isDeleting,
-  deletingId,
-  isProcessing,
-  onEdit,
-  onDeleteTrade,
-  onDeleteLeg,
 }) => {
   const navigate = useNavigate();
   
-  // Determine if this row is being deleted
-  const isThisRowDeleting = isDeleting && deletingId === (isMultiLeg && legId ? legId : tradeId);
-  
-  // Determine if the dropdown should be disabled
-  const isDropdownDisabled = isDeleting || isProcessing;
-  
-  // Handle row delete action with proper precautions
+  // Handle row delete action
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isDropdownDisabled) {
-      console.log('[ROW_ACTIONS] Delete action ignored - operations in progress');
-      return;
-    }
-    
-    if (isMultiLeg && legId && legReference) {
-      console.log(`[ROW_ACTIONS] Requesting leg deletion: ${legId}`);
-      onDeleteLeg(legId, legReference, tradeId);
+    if (isMultiLeg && legId) {
+      console.log(`[ROW_ACTIONS] Navigating to leg deletion: ${legId}`);
+      navigate(`/trades/delete/${tradeId}/leg/${legId}`);
     } else {
-      console.log(`[ROW_ACTIONS] Requesting trade deletion: ${tradeId}`);
-      onDeleteTrade(tradeId, tradeReference);
+      console.log(`[ROW_ACTIONS] Navigating to trade deletion: ${tradeId}`);
+      navigate(`/trades/delete/${tradeId}`);
     }
   };
   
-  // Handle edit action with proper precautions
+  // Handle edit action
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (isDropdownDisabled) {
-      console.log('[ROW_ACTIONS] Edit action ignored - operations in progress');
-      return;
-    }
     
     console.log(`[ROW_ACTIONS] Requesting edit for trade: ${tradeId}`);
     navigate(`/trades/edit/${tradeId}`);
@@ -83,41 +55,28 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    if (isDropdownDisabled) {
-      console.log('[ROW_ACTIONS] View details ignored - operations in progress');
-      return;
-    }
-    
     navigate(`/trades/${tradeId}`);
   };
   
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" disabled={isDropdownDisabled}>
-          {isThisRowDeleting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Deleting...
-            </>
-          ) : (
-            'Actions'
-          )}
+        <Button variant="ghost" size="sm">
+          Actions
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleEdit} disabled={isDropdownDisabled}>
+        <DropdownMenuItem onClick={handleEdit}>
           <Edit className="mr-2 h-4 w-4" />
           Edit Trade
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleViewDetails} disabled={isDropdownDisabled}>
+        <DropdownMenuItem onClick={handleViewDetails}>
           View Details
         </DropdownMenuItem>
         {isMultiLeg && legId && legReference ? (
           <DropdownMenuItem 
             onClick={handleDelete}
             className="text-destructive focus:text-destructive"
-            disabled={isDropdownDisabled}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete Trade Leg
@@ -126,7 +85,6 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
           <DropdownMenuItem 
             onClick={handleDelete}
             className="text-destructive focus:text-destructive"
-            disabled={isDropdownDisabled}
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete Trade

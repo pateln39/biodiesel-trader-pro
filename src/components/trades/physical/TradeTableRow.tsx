@@ -15,14 +15,8 @@ interface TradeTableRowProps {
   legIndex: number;
   comments: Record<string, string>;
   savingComments: Record<string, boolean>;
-  isDeleting: boolean;
-  deletingTradeId: string;
-  isProcessingRef: React.MutableRefObject<boolean>;
   onCommentChange: (id: string, comment: string) => void;
   onCommentBlur: (id: string) => void;
-  onEditTrade: (id: string) => void;
-  onDeleteTrade: (id: string, reference: string) => void;
-  onDeleteTradeLeg: (legId: string, legReference: string, parentId: string) => void;
 }
 
 const TradeTableRow: React.FC<TradeTableRowProps> = ({
@@ -31,14 +25,8 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
   legIndex,
   comments,
   savingComments,
-  isDeleting,
-  deletingTradeId,
-  isProcessingRef,
   onCommentChange,
   onCommentBlur,
-  onEditTrade,
-  onDeleteTrade,
-  onDeleteTradeLeg,
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
@@ -84,12 +72,6 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
           isMultiLeg={hasMultipleLegs && trade.physicalType === 'term'}
           legReference={leg.legReference}
           tradeReference={trade.tradeReference}
-          isDeleting={isDeleting}
-          deletingId={deletingTradeId}
-          isProcessing={isProcessingRef.current}
-          onEdit={onEditTrade}
-          onDeleteTrade={onDeleteTrade}
-          onDeleteLeg={onDeleteTradeLeg}
         />
       </TableCell>
     </TableRow>

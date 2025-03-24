@@ -1,205 +1,173 @@
-
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { PhysicalTrade } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-import { useDeletionState } from '@/hooks/useDeletionState';
-import DeleteConfirmationDialog from '@/components/trades/physical/DeleteConfirmationDialog';
-import DeleteProgressIndicator from '@/components/trades/physical/DeleteProgressIndicator';
-import TableLoadingState from '@/components/trades/physical/TableLoadingState';
-import TableErrorState from '@/components/trades/physical/TableErrorState';
+import { PhysicalTrade } from '@/types';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
+import TableLoadingState from '@/components/trades/TableLoadingState';
+import TableErrorState from '@/components/trades/TableErrorState';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
   loading: boolean;
   error: Error | null;
   refetchTrades: () => void;
-  realtimeChannelsRef?: React.MutableRefObject<{ [key: string]: any }>;
 }
 
-// Helper functions
-const debounce = (func: Function, delay: number) => {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return (...args: any[]) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-};
-
-const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
-  trades,
-  loading,
-  error,
-  refetchTrades,
-  realtimeChannelsRef
-}) => {
+const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  const isProcessingRef = useRef(false);
   
-  // Use our deletion state hook
-  const { 
-    deletionContext, 
-    openDeleteConfirmation, 
-    cancelDelete, 
-    confirmDelete, 
-    resetDeletionState 
-  } = useDeletionState({
-    refetchTrades,
-    realtimeChannelsRef
-  });
-
-  // Cleanup on unmount
+  // Initialize comments from trades
   useEffect(() => {
-    return () => {
-      // Only reset if not in the middle of an operation
-      if (!deletionContext.isProcessing) {
-        resetDeletionState();
-      }
-    };
-  }, [resetDeletionState, deletionContext.isProcessing]);
-
-  // Auto-reset success and error states after a delay
-  useEffect(() => {
-    if (deletionContext.state === 'success' || deletionContext.state === 'error') {
-      const timer = setTimeout(() => {
-        resetDeletionState();
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [deletionContext.state, resetDeletionState]);
-
-  // Comment handling logic
-  const debouncedSaveComment = useCallback(
-    debounce((tradeId: string, comment: string) => {
-      setSavingComments(prev => ({ ...prev, [tradeId]: true }));
-      
-      setTimeout(() => {
-        setSavingComments(prev => ({ ...prev, [tradeId]: false }));
-      }, 500);
-    }, 1000),
-    []
-  );
-
-  const handleCommentChange = (tradeId: string, comment: string) => {
+    const initialComments: Record<string, string> = {};
+    
+    trades.forEach(trade => {
+      trade.legs.forEach(leg => {
+        if (leg.id) {
+          initialComments[leg.id] = leg.comment || '';
+        }
+      });
+    });
+    
+    setComments(initialComments);
+  }, [trades]);
+  
+  // Handle comment change
+  const handleCommentChange = (id: string, comment: string) => {
     setComments(prev => ({
       ...prev,
-      [tradeId]: comment
+      [id]: comment
     }));
   };
-
-  const handleCommentBlur = (tradeId: string) => {
-    debouncedSaveComment(tradeId, comments[tradeId] || '');
+  
+  // Handle comment save on blur
+  const handleCommentBlur = async (id: string) => {
+    // Don't save if unchanged
+    const leg = trades.flatMap(t => t.legs).find(l => l.id === id);
+    if (!leg || leg.comment === comments[id]) {
+      return;
+    }
+    
+    // Mark as saving
+    setSavingComments(prev => ({
+      ...prev,
+      [id]: true
+    }));
+    
+    try {
+      const { error } = await supabase
+        .from('trade_legs')
+        .update({ comment: comments[id] })
+        .eq('id', id);
+        
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error saving comment:', error);
+      toast.error('Failed to save comment');
+    } finally {
+      setSavingComments(prev => ({
+        ...prev,
+        [id]: false
+      }));
+    }
   };
 
   const handleEditTrade = (tradeId: string) => {
     navigate(`/trades/edit/${tradeId}`);
   };
 
-  // Handler for deleting a trade - uses state machine
-  const handleDeleteTrade = useCallback((tradeId: string, tradeReference: string) => {
-    if (deletionContext.isProcessing) {
-      return;
-    }
-    
-    openDeleteConfirmation('trade', tradeId, tradeReference);
-  }, [deletionContext.isProcessing, openDeleteConfirmation]);
-
-  // Handler for deleting a leg - uses state machine
-  const handleDeleteTradeLeg = useCallback((legId: string, legReference: string, parentId: string) => {
-    if (deletionContext.isProcessing) {
-      return;
-    }
-    
-    openDeleteConfirmation('leg', legId, legReference, parentId);
-  }, [deletionContext.isProcessing, openDeleteConfirmation]);
-
+  // Show loading state
   if (loading) {
     return <TableLoadingState />;
   }
-
+  
+  // Show error state
   if (error) {
-    return <TableErrorState error={error} onRetry={refetchTrades} />;
+    return (
+      <TableErrorState
+        error={error instanceof Error ? error.message : 'Unknown error'}
+        onRetry={refetchTrades}
+      />
+    );
   }
-
-  // Determine if delete progress indicator should be shown
-  const showProgressIndicator = deletionContext.state === 'deleting';
-
-  // Share processing state with row actions
-  isProcessingRef.current = deletionContext.isProcessing;
+  
+  // Show empty state
+  if (trades.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-muted-foreground mb-4">No trades found</p>
+        <Link to="/trades/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> New Trade
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+  
+  // Group trades by trade reference for display
+  const rows: JSX.Element[] = [];
+  
+  trades.forEach(trade => {
+    // Sort legs to ensure consistent display
+    const sortedLegs = [...trade.legs].sort((a, b) => {
+      // Primary leg first, then by legReference
+      if (a.legReference === trade.tradeReference) return -1;
+      if (b.legReference === trade.tradeReference) return 1;
+      return a.legReference.localeCompare(b.legReference);
+    });
+    
+    sortedLegs.forEach((leg, legIndex) => {
+      rows.push(
+        <TradeTableRow
+          key={leg.id}
+          trade={trade}
+          leg={leg}
+          legIndex={legIndex}
+          comments={comments}
+          savingComments={savingComments}
+          onCommentChange={handleCommentChange}
+          onCommentBlur={handleCommentBlur}
+        />
+      );
+    });
+  });
 
   return (
-    <>
-      {showProgressIndicator && (
-        <DeleteProgressIndicator 
-          isDeleting={true} 
-          deletingId={deletionContext.itemId || ''} 
-          progress={deletionContext.progress} 
-        />
-      )}
-
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Reference</TableHead>
             <TableHead>Buy/Sell</TableHead>
-            <TableHead>INCO</TableHead>
+            <TableHead>Incoterm</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
             <TableHead>Product</TableHead>
             <TableHead>Counterparty</TableHead>
-            <TableHead>Price Formula</TableHead>
+            <TableHead>Formula</TableHead>
             <TableHead>Comments</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {trades.length > 0 ? (
-            trades.flatMap((trade) => {
-              const legs = trade.legs || [];
-              
-              return legs.map((leg, legIndex) => (
-                <TradeTableRow 
-                  key={leg.id}
-                  trade={trade}
-                  leg={leg}
-                  legIndex={legIndex}
-                  comments={comments}
-                  savingComments={savingComments}
-                  isDeleting={deletionContext.state === 'deleting'}
-                  deletingTradeId={deletionContext.itemId || ''}
-                  isProcessingRef={isProcessingRef}
-                  onCommentChange={handleCommentChange}
-                  onCommentBlur={handleCommentBlur}
-                  onEditTrade={handleEditTrade}
-                  onDeleteTrade={handleDeleteTrade}
-                  onDeleteTradeLeg={handleDeleteTradeLeg}
-                />
-              ));
-            })
-          ) : (
-            <TableRow>
-              <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
-                No physical trades found.
-              </TableCell>
-            </TableRow>
-          )}
+          {rows}
         </TableBody>
       </Table>
-
-      <DeleteConfirmationDialog
-        isOpen={deletionContext.state === 'confirming'}
-        onClose={cancelDelete}
-        onConfirm={confirmDelete}
-        itemType={deletionContext.itemType}
-        itemReference={deletionContext.itemReference}
-        isPerformingAction={deletionContext.isProcessing}
-      />
-    </>
+    </div>
   );
 };
 
