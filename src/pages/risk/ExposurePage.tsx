@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -23,6 +24,7 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { mapProductToCanonical, parsePaperInstrument } from '@/utils/productMapping';
 
 interface ExposureData {
   physical: number;
@@ -80,7 +82,8 @@ const ExposurePage = () => {
           mtm_formula,
           exposures,
           period,
-          trading_period
+          trading_period,
+          instrument
         `)
         .order('period', { ascending: true });
         
@@ -105,6 +108,7 @@ const ExposurePage = () => {
       exposuresByMonth[month] = {};
     });
     
+    // Process physical trades
     if (physicalTradeLegs && physicalTradeLegs.length > 0) {
       physicalTradeLegs.forEach(leg => {
         let month = leg.trading_period || '';
@@ -120,7 +124,8 @@ const ExposurePage = () => {
           return;
         }
         
-        const product = leg.product || 'Unknown';
+        // Map the product to its canonical name
+        const product = mapProductToCanonical(leg.product || 'Unknown');
         allProducts.add(product);
         
         const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
@@ -140,10 +145,12 @@ const ExposurePage = () => {
         const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
         if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
           Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-            allProducts.add(instrument);
+            // Map the instrument to its canonical name
+            const canonicalInstrument = mapProductToCanonical(instrument);
+            allProducts.add(canonicalInstrument);
             
-            if (!exposuresByMonth[month][instrument]) {
-              exposuresByMonth[month][instrument] = {
+            if (!exposuresByMonth[month][canonicalInstrument]) {
+              exposuresByMonth[month][canonicalInstrument] = {
                 physical: 0,
                 pricing: 0,
                 paper: 0,
@@ -151,12 +158,13 @@ const ExposurePage = () => {
               };
             }
             
-            exposuresByMonth[month][instrument].pricing += Number(value) || 0;
+            exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
           });
         }
       });
     }
     
+    // Process paper trades
     if (paperTradeLegs && paperTradeLegs.length > 0) {
       paperTradeLegs.forEach(leg => {
         const month = leg.period || leg.trading_period || '';
@@ -165,44 +173,35 @@ const ExposurePage = () => {
           return;
         }
         
-        const product = leg.product || 'Unknown';
-        allProducts.add(product);
-        
-        if (!exposuresByMonth[month][product]) {
-          exposuresByMonth[month][product] = {
-            physical: 0,
-            pricing: 0,
-            paper: 0,
-            netExposure: 0
-          };
-        }
-        
-        if (leg.exposures && typeof leg.exposures === 'object') {
-          const exposuresData = leg.exposures as Record<string, any>;
+        // Determine exposure based on the instrument
+        if (leg.instrument) {
+          // Parse the instrument to get involved products
+          const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
           
-          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-            Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-              allProducts.add(prodName);
+          if (baseProduct) {
+            allProducts.add(baseProduct);
+            
+            if (!exposuresByMonth[month][baseProduct]) {
+              exposuresByMonth[month][baseProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+            const quantity = (leg.quantity || 0) * buySellMultiplier;
+            
+            // Add base product exposure
+            exposuresByMonth[month][baseProduct].paper += quantity;
+            
+            // For DIFF and SPREAD, also add opposite product exposure with inverse sign
+            if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
+              allProducts.add(oppositeProduct);
               
-              if (!exposuresByMonth[month][prodName]) {
-                exposuresByMonth[month][prodName] = {
-                  physical: 0,
-                  pricing: 0,
-                  netExposure: 0,
-                  paper: 0
-                };
-              }
-              
-              exposuresByMonth[month][prodName].paper += Number(value) || 0;
-            });
-          }
-          
-          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
-            Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
-              allProducts.add(instrument);
-              
-              if (!exposuresByMonth[month][instrument]) {
-                exposuresByMonth[month][instrument] = {
+              if (!exposuresByMonth[month][oppositeProduct]) {
+                exposuresByMonth[month][oppositeProduct] = {
                   physical: 0,
                   pricing: 0,
                   paper: 0,
@@ -210,10 +209,54 @@ const ExposurePage = () => {
                 };
               }
               
-              exposuresByMonth[month][instrument].pricing += Number(value) || 0;
+              // Opposite product gets opposite exposure
+              exposuresByMonth[month][oppositeProduct].paper += -quantity;
+            }
+          }
+        }
+        // If no instrument, use exposures data
+        else if (leg.exposures && typeof leg.exposures === 'object') {
+          const exposuresData = leg.exposures as Record<string, any>;
+          
+          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+            Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
+              // Map product to canonical name
+              const canonicalProduct = mapProductToCanonical(prodName);
+              allProducts.add(canonicalProduct);
+              
+              if (!exposuresByMonth[month][canonicalProduct]) {
+                exposuresByMonth[month][canonicalProduct] = {
+                  physical: 0,
+                  pricing: 0,
+                  netExposure: 0,
+                  paper: 0
+                };
+              }
+              
+              exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
+            });
+          }
+          
+          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+            Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
+              // Map instrument to canonical name
+              const canonicalInstrument = mapProductToCanonical(instrument);
+              allProducts.add(canonicalInstrument);
+              
+              if (!exposuresByMonth[month][canonicalInstrument]) {
+                exposuresByMonth[month][canonicalInstrument] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
             });
           }
         }
+        // If no instrument and no exposures, use mtm_formula
         else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
           const mtmFormula = leg.mtm_formula as Record<string, any>;
           
@@ -222,10 +265,12 @@ const ExposurePage = () => {
             
             if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
               Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
-                allProducts.add(prodName);
+                // Map product to canonical name
+                const canonicalProduct = mapProductToCanonical(prodName);
+                allProducts.add(canonicalProduct);
                 
-                if (!exposuresByMonth[month][prodName]) {
-                  exposuresByMonth[month][prodName] = {
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
                     physical: 0,
                     pricing: 0,
                     paper: 0,
@@ -233,14 +278,27 @@ const ExposurePage = () => {
                   };
                 }
                 
-                exposuresByMonth[month][prodName].paper += Number(value) || 0;
+                exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
               });
             }
           }
         }
+        // Default fallback using product and quantity
         else {
+          const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+          allProducts.add(canonicalProduct);
+          
+          if (!exposuresByMonth[month][canonicalProduct]) {
+            exposuresByMonth[month][canonicalProduct] = {
+              physical: 0,
+              pricing: 0,
+              paper: 0,
+              netExposure: 0
+            };
+          }
+          
           const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-          exposuresByMonth[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
+          exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
         }
       });
     }
