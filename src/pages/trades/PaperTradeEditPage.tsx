@@ -23,6 +23,28 @@ const PaperTradeEditPage = () => {
   
   console.log('[PAPER_EDIT] Current trade data:', trade);
   
+  // Make sure all trade legs have properly configured rightSide data
+  const processedTrade = React.useMemo(() => {
+    if (!trade) return null;
+    
+    return {
+      ...trade,
+      legs: trade.legs.map(leg => {
+        // Ensure that DIFF and SPREAD have proper rightSide quantities
+        if (leg.relationshipType !== 'FP' && leg.rightSide) {
+          return {
+            ...leg,
+            rightSide: {
+              ...leg.rightSide,
+              quantity: -leg.quantity // Ensure rightSide quantity is negative of left side
+            }
+          };
+        }
+        return leg;
+      })
+    };
+  }, [trade]);
+  
   // Update mutation
   const { mutate: updatePaperTrade, isPending: isUpdating } = useMutation({
     mutationFn: async (updatedTrade: any) => {
@@ -200,15 +222,15 @@ const PaperTradeEditPage = () => {
           </Alert>
         )}
         
-        {trade && (
+        {processedTrade && (
           <Card>
             <CardContent className="pt-6">
               <PaperTradeForm
-                tradeReference={trade.tradeReference}
+                tradeReference={processedTrade.tradeReference}
                 onSubmit={handleSubmit}
                 onCancel={() => navigate('/trades')}
                 isEditMode={true}
-                initialData={trade}
+                initialData={processedTrade}
               />
             </CardContent>
           </Card>

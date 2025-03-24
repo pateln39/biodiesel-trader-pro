@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,36 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     fetchProductRelationships();
   }, []);
+  
+  // Ensure all legs have proper rightSide quantities after loading
+  useEffect(() => {
+    if (legs.length > 0) {
+      const updatedLegs = legs.map(leg => {
+        if (leg.relationshipType !== 'FP' && leg.rightSide) {
+          // Ensure right side quantity is negative of left side
+          if (leg.rightSide.quantity !== -leg.quantity) {
+            return {
+              ...leg,
+              rightSide: {
+                ...leg.rightSide,
+                quantity: -leg.quantity
+              }
+            };
+          }
+        }
+        return leg;
+      });
+      
+      // Only update if there were changes
+      const needsUpdate = updatedLegs.some((leg, index) => 
+        leg.rightSide?.quantity !== legs[index].rightSide?.quantity
+      );
+      
+      if (needsUpdate) {
+        onLegsChange(updatedLegs);
+      }
+    }
+  }, [legs]);
   
   const addLeg = () => {
     const newLeg = {
