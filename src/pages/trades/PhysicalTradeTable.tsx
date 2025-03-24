@@ -98,7 +98,7 @@ const PhysicalTradeTable: React.FC<PhysicalTradeTableProps> = ({
   };
 
   const handleEditTrade = (tradeId: string) => {
-    navigate(`/trades/${tradeId}`);
+    navigate(`/trades/edit/${tradeId}`);
   };
 
   // Handler for deleting a trade - uses state machine

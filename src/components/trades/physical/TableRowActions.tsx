@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, Edit, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -37,6 +37,8 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   onDeleteTrade,
   onDeleteLeg,
 }) => {
+  const navigate = useNavigate();
+  
   // Determine if this row is being deleted
   const isThisRowDeleting = isDeleting && deletingId === (isMultiLeg && legId ? legId : tradeId);
   
@@ -73,7 +75,20 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     }
     
     console.log(`[ROW_ACTIONS] Requesting edit for trade: ${tradeId}`);
-    onEdit(tradeId);
+    navigate(`/trades/edit/${tradeId}`);
+  };
+  
+  // Handle view details
+  const handleViewDetails = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isDropdownDisabled) {
+      console.log('[ROW_ACTIONS] View details ignored - operations in progress');
+      return;
+    }
+    
+    navigate(`/trades/${tradeId}`);
   };
   
   return (
@@ -95,9 +110,9 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
           <Edit className="mr-2 h-4 w-4" />
           Edit Trade
         </DropdownMenuItem>
-        <Link to={`/trades/${tradeId}`}>
-          <DropdownMenuItem disabled={isDropdownDisabled}>View Details</DropdownMenuItem>
-        </Link>
+        <DropdownMenuItem onClick={handleViewDetails} disabled={isDropdownDisabled}>
+          View Details
+        </DropdownMenuItem>
         {isMultiLeg && legId && legReference ? (
           <DropdownMenuItem 
             onClick={handleDelete}
