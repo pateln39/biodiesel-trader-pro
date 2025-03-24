@@ -1,6 +1,6 @@
 
-import React, { useMemo } from 'react';
-import { Download, Calendar } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { 
@@ -15,7 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
@@ -23,6 +22,9 @@ import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getNextMonths } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 interface ExposureData {
   physical: number;
@@ -43,6 +45,8 @@ interface MonthlyExposure {
 
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
+  const [visibleCategories, setVisibleCategories] = useState<string[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -334,6 +338,21 @@ const ExposurePage = () => {
     }
   };
 
+  const toggleCategory = (category: string) => {
+    setVisibleCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(cat => cat !== category) 
+        : [...prev, category]
+    );
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (selectedProduct === 'all') {
+      return allProducts;
+    }
+    return allProducts.filter(product => product === selectedProduct);
+  }, [allProducts, selectedProduct]);
+
   return (
     <Layout>
       <Helmet>
@@ -344,14 +363,52 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
-              <Calendar className="mr-2 h-3 w-3" /> Change Period
-            </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <Download className="mr-2 h-3 w-3" /> Export
             </Button>
           </div>
         </div>
+
+        <Card className="mb-4">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Category Filters</label>
+                <div className="flex flex-wrap gap-2">
+                  {exposureCategories.map(category => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category}`} 
+                        checked={visibleCategories.includes(category)} 
+                        onCheckedChange={() => toggleCategory(category)}
+                      />
+                      <label 
+                        htmlFor={`category-${category}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {category}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Product Filter</label>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Products</SelectItem>
+                    {allProducts.map(product => (
+                      <SelectItem key={product} value={product}>{product}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading ? (
           <Card>
@@ -365,7 +422,7 @@ const ExposurePage = () => {
               <TableErrorState error={error as Error} onRetry={refetch} />
             </CardContent>
           </Card>
-        ) : exposureData.length === 0 || allProducts.length === 0 ? (
+        ) : exposureData.length === 0 || filteredProducts.length === 0 ? (
           <Card>
             <CardContent className="pt-4">
               <div className="flex justify-center items-center h-40">
@@ -387,12 +444,12 @@ const ExposurePage = () => {
                         >
                           Month
                         </TableHead>
-                        {exposureCategories.map((category, catIndex) => (
+                        {visibleCategories.map((category, catIndex) => (
                           <TableHead 
                             key={category} 
-                            colSpan={allProducts.length} 
+                            colSpan={filteredProducts.length} 
                             className={`text-center p-1 font-bold text-black text-xs border-[1px] border-black ${
-                              catIndex < exposureCategories.length - 1 ? 'border-r-[1px]' : ''
+                              catIndex < visibleCategories.length - 1 ? 'border-r-[1px]' : ''
                             }`}
                           >
                             {category}
@@ -401,14 +458,14 @@ const ExposurePage = () => {
                       </TableRow>
                       
                       <TableRow className="bg-muted/30">
-                        {exposureCategories.flatMap((category, catIndex) => 
-                          allProducts.map((product, index) => (
+                        {visibleCategories.flatMap((category, catIndex) => 
+                          filteredProducts.map((product, index) => (
                             <TableHead 
                               key={`${category}-${product}`} 
                               className={`text-right p-1 text-xs whitespace-nowrap border-[1px] border-black text-white font-bold ${
                                 getCategoryColorClass(category)
                               } ${
-                                index === allProducts.length - 1 && catIndex < exposureCategories.length - 1 ? 'border-r-[1px]' : ''
+                                index === filteredProducts.length - 1 && catIndex < visibleCategories.length - 1 ? 'border-r-[1px]' : ''
                               }`}
                             >
                               {product}
@@ -425,13 +482,13 @@ const ExposurePage = () => {
                             {monthData.month}
                           </TableCell>
                           
-                          {allProducts.map((product, index) => {
+                          {visibleCategories.includes('Physical') && filteredProducts.map((product, index) => {
                             const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                             return (
                               <TableCell 
                                 key={`${monthData.month}-physical-${product}`} 
                                 className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} border-[1px] border-black ${
-                                  index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                                 }`}
                               >
                                 {formatValue(productData.physical)}
@@ -439,13 +496,13 @@ const ExposurePage = () => {
                             );
                           })}
                           
-                          {allProducts.map((product, index) => {
+                          {visibleCategories.includes('Pricing') && filteredProducts.map((product, index) => {
                             const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                             return (
                               <TableCell 
                                 key={`${monthData.month}-pricing-${product}`} 
                                 className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
-                                  index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                                 }`}
                               >
                                 {formatValue(productData.pricing)}
@@ -453,13 +510,13 @@ const ExposurePage = () => {
                             );
                           })}
                           
-                          {allProducts.map((product, index) => {
+                          {visibleCategories.includes('Paper') && filteredProducts.map((product, index) => {
                             const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                             return (
                               <TableCell 
                                 key={`${monthData.month}-paper-${product}`} 
                                 className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} border-[1px] border-black ${
-                                  index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                                 }`}
                               >
                                 {formatValue(productData.paper)}
@@ -467,7 +524,7 @@ const ExposurePage = () => {
                             );
                           })}
                           
-                          {allProducts.map((product, index) => {
+                          {visibleCategories.includes('Exposure') && filteredProducts.map((product, index) => {
                             const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                             return (
                               <TableCell 
@@ -486,49 +543,49 @@ const ExposurePage = () => {
                           Total
                         </TableCell>
                         
-                        {allProducts.map((product, index) => (
+                        {visibleCategories.includes('Physical') && filteredProducts.map((product, index) => (
                           <TableCell 
                             key={`total-physical-${product}`} 
                             className={`text-right text-xs p-1 ${
                               grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
                               grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
                             } border-[1px] border-black font-bold ${
-                              index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                             }`}
                           >
                             {formatValue(grandTotals.productTotals[product]?.physical || 0)}
                           </TableCell>
                         ))}
                         
-                        {allProducts.map((product, index) => (
+                        {visibleCategories.includes('Pricing') && filteredProducts.map((product, index) => (
                           <TableCell 
                             key={`total-pricing-${product}`} 
                             className={`text-right text-xs p-1 ${
                               grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
                               grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
                             } border-[1px] border-black font-bold ${
-                              index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                             }`}
                           >
                             {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
                           </TableCell>
                         ))}
                         
-                        {allProducts.map((product, index) => (
+                        {visibleCategories.includes('Paper') && filteredProducts.map((product, index) => (
                           <TableCell 
                             key={`total-paper-${product}`} 
                             className={`text-right text-xs p-1 ${
                               grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
                               grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
                             } border-[1px] border-black font-bold ${
-                              index === allProducts.length - 1 ? 'border-r-[1px]' : ''
+                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
                             }`}
                           >
                             {formatValue(grandTotals.productTotals[product]?.paper || 0)}
                           </TableCell>
                         ))}
                         
-                        {allProducts.map((product, index) => (
+                        {visibleCategories.includes('Exposure') && filteredProducts.map((product, index) => (
                           <TableCell 
                             key={`total-net-${product}`} 
                             className={`text-right text-xs p-1 ${
