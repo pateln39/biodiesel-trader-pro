@@ -101,25 +101,48 @@ export const usePaperTrades = () => {
               relationshipType = 'SPREAD';
             }
             
-            let rightSide;
+            // Extract rightSide data
+            let rightSide = undefined;
+            
+            // First try to get rightSide from mtm_formula
             if (leg.mtm_formula && 
                 typeof leg.mtm_formula === 'object' && 
                 'rightSide' in leg.mtm_formula) {
               rightSide = leg.mtm_formula.rightSide;
             }
             
+            // Build exposures object
             let exposuresObj: PaperTradeLeg['exposures'] = {
               physical: {},
               pricing: {},
               paper: {}
             };
             
+            // Extract exposures data
             if (leg.exposures) {
               if (typeof leg.exposures === 'object') {
                 const exposuresData = leg.exposures as Record<string, any>;
                 
                 if (exposuresData.physical && typeof exposuresData.physical === 'object') {
                   exposuresObj.physical = exposuresData.physical as Record<string, number>;
+                  
+                  // If rightSide is not set from mtm_formula but exposures has two products,
+                  // build rightSide from exposures data
+                  if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
+                    const products = Object.keys(exposuresData.physical);
+                    if (products.length === 2) {
+                      const mainProduct = leg.product;
+                      const secondProduct = products.find(p => p !== mainProduct);
+                      
+                      if (secondProduct) {
+                        rightSide = {
+                          product: secondProduct,
+                          quantity: exposuresData.physical[secondProduct],
+                          period: leg.period || '',
+                        };
+                      }
+                    }
+                  }
                 }
                 
                 if (exposuresData.paper && typeof exposuresData.paper === 'object') {
@@ -130,7 +153,9 @@ export const usePaperTrades = () => {
                   exposuresObj.pricing = exposuresData.pricing as Record<string, number>;
                 }
               }
-            } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+            } 
+            // If exposures is not set but mtm_formula has exposures, use those
+            else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
               const mtmData = leg.mtm_formula as Record<string, any>;
               
               if (mtmData.exposures && typeof mtmData.exposures === 'object') {
@@ -139,12 +164,39 @@ export const usePaperTrades = () => {
                 if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
                   exposuresObj.physical = mtmExposures.physical as Record<string, number>;
                   exposuresObj.paper = mtmExposures.physical as Record<string, number>;
+                  
+                  // Try to build rightSide from mtm_formula exposures
+                  if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
+                    const products = Object.keys(mtmExposures.physical);
+                    if (products.length === 2) {
+                      const mainProduct = leg.product;
+                      const secondProduct = products.find(p => p !== mainProduct);
+                      
+                      if (secondProduct) {
+                        rightSide = {
+                          product: secondProduct,
+                          quantity: mtmExposures.physical[secondProduct],
+                          period: leg.period || '',
+                        };
+                      }
+                    }
+                  }
                 }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
                   exposuresObj.pricing = mtmExposures.pricing as Record<string, number>;
                 }
               }
+            }
+            
+            // Make sure rightSide has the same period as leftSide 
+            if (rightSide && !rightSide.period && leg.period) {
+              rightSide.period = leg.period;
+            }
+            
+            // Add price if missing for rightSide
+            if (rightSide && rightSide.price === undefined) {
+              rightSide.price = 0;
             }
             
             return {

@@ -65,6 +65,29 @@ const PaperTradeEditPage = () => {
       
       // 4. Insert all legs from the form
       for (const leg of updatedTrade.legs) {
+        // Make sure rightSide data is properly formatted for the database
+        let mtmFormula = leg.mtmFormula || {};
+        if (leg.rightSide && leg.relationshipType !== 'FP') {
+          mtmFormula.rightSide = leg.rightSide;
+        }
+        
+        // Make sure exposures are properly updated
+        let exposures = leg.exposures || { physical: {}, pricing: {}, paper: {} };
+        
+        if (leg.relationshipType === 'FP' && leg.product) {
+          exposures.physical = { [leg.product]: leg.quantity };
+          exposures.paper = { [leg.product]: leg.quantity };
+        } else if (leg.rightSide && leg.product) {
+          exposures.physical = { 
+            [leg.product]: leg.quantity,
+            [leg.rightSide.product]: leg.rightSide.quantity 
+          };
+          exposures.paper = { 
+            [leg.product]: leg.quantity,
+            [leg.rightSide.product]: leg.rightSide.quantity 
+          };
+        }
+        
         // Create each leg
         const legData = {
           paper_trade_id: id,
@@ -78,8 +101,8 @@ const PaperTradeEditPage = () => {
           instrument: leg.instrument,
           trading_period: leg.period,
           formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
-          exposures: leg.exposures
+          mtm_formula: mtmFormula,
+          exposures: exposures
         };
         
         const { error: createLegError } = await supabase

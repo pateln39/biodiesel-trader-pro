@@ -9,6 +9,14 @@ export interface PaperParentTrade extends ParentTrade {
   broker: string;
 }
 
+// Paper trade right side
+export interface PaperTradeRightSide {
+  product: Product;
+  quantity: number;
+  period?: string;
+  price?: number;
+}
+
 // Paper trade leg
 export interface PaperTradeLeg {
   id: string;
@@ -22,11 +30,7 @@ export interface PaperTradeLeg {
   broker: string;
   instrument: string;
   relationshipType: 'FP' | 'DIFF' | 'SPREAD';
-  rightSide?: {
-    product: Product;
-    quantity: number;
-    period?: string;
-  };
+  rightSide?: PaperTradeRightSide;
   // Using Record<string, any> for formula and mtmFormula to be compatible with JSON
   formula?: Record<string, any>;
   mtmFormula?: Record<string, any>;
