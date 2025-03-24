@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,6 +13,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getNextMonths } from '@/utils/dateUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -41,11 +41,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [newBrokerName, setNewBrokerName] = useState('');
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
-    // Initialize tradeLegs from initialData if provided
     if (initialData && initialData.legs && initialData.legs.length > 0) {
       return initialData.legs.map((leg: any) => ({
         ...leg,
-        // Ensure all required properties are present
         buySell: leg.buySell,
         product: leg.product,
         quantity: leg.quantity,
@@ -77,10 +75,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }));
   });
   
-  // Initialize selectedBroker from initialData if provided
   useEffect(() => {
     if (initialData && initialData.broker) {
-      // We'll need to find the broker ID that matches the name
       const fetchBrokerIdByName = async () => {
         const { data, error } = await supabase
           .from('brokers')
@@ -121,7 +117,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     fetchBrokers();
   }, []);
   
-  // Calculate exposures when initialData or tradeLegs changes
   useEffect(() => {
     if (tradeLegs.length > 0) {
       calculateExposures(tradeLegs);
@@ -178,15 +173,18 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       const monthIndex = exposures.findIndex(e => e.month === leg.period);
       if (monthIndex === -1) return;
       
-      if (exposures[monthIndex][leg.product] !== undefined) {
+      const canonicalProduct = mapProductToCanonical(leg.product);
+      
+      if (exposures[monthIndex][canonicalProduct] !== undefined) {
         const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
-        exposures[monthIndex][leg.product] += quantity || 0;
+        exposures[monthIndex][canonicalProduct] += quantity || 0;
       }
       
       if (leg.rightSide && leg.rightSide.product) {
-        const rightProduct = leg.rightSide.product;
-        if (exposures[monthIndex][rightProduct] !== undefined) {
-          exposures[monthIndex][rightProduct] += leg.rightSide.quantity || 0;
+        const rightCanonicalProduct = mapProductToCanonical(leg.rightSide.product);
+        if (exposures[monthIndex][rightCanonicalProduct] !== undefined) {
+          const rightQuantity = leg.rightSide.quantity || 0;
+          exposures[monthIndex][rightCanonicalProduct] += rightQuantity;
         }
       }
     });
