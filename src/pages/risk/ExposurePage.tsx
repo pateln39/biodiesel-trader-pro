@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -374,10 +375,9 @@ const ExposurePage = () => {
           </Card>
         ) : (
           <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              {/* Set a fixed height for vertical scrolling */}
-              <ScrollArea className="h-[calc(100vh-12rem)]">
-                <div style={{ minWidth: "100%", width: "max-content" }}>
+            <CardContent className="p-0 overflow-auto">
+              <div className="w-full overflow-auto">
+                <div style={{ width: "max-content", minWidth: "100%" }}>
                   <Table className="border-collapse [&_*]:border-black [&_*]:border-[1px]">
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -543,7 +543,7 @@ const ExposurePage = () => {
                     </TableBody>
                   </Table>
                 </div>
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
         )}
