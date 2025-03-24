@@ -34,7 +34,8 @@ export interface DbTradeLeg {
   broker?: string;
   instrument?: string;
   price?: number;
-  comment?: string;
+  comment?: string | null;
+  mtm_formula?: any | null;
 }
 
 // Base trade interface (parent trade)

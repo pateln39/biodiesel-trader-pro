@@ -87,7 +87,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-            comment: leg.comment
+            comment: leg.comment || ''
           }))
         };
         return physicalTrade;
