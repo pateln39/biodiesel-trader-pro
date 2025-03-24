@@ -47,3 +47,54 @@ export const formatProductDisplay = (
   
   return product;
 };
+
+/**
+ * Parse a paper trade instrument name to determine the products involved
+ */
+export const parsePaperInstrument = (
+  instrument: string
+): { baseProduct: string; oppositeProduct: string | null; relationshipType: 'FP' | 'DIFF' | 'SPREAD' } => {
+  if (!instrument) {
+    return { baseProduct: '', oppositeProduct: null, relationshipType: 'FP' };
+  }
+  
+  // Check for DIFF relationship
+  if (instrument.includes('DIFF')) {
+    // For DIFFs, the format is usually "{product} DIFF"
+    const baseProduct = instrument.replace(' DIFF', '');
+    // DIFFs are typically against LSGO
+    const oppositeProduct = 'LSGO';
+    
+    return {
+      baseProduct: mapProductToCanonical(baseProduct),
+      oppositeProduct: oppositeProduct,
+      relationshipType: 'DIFF'
+    };
+  }
+  
+  // Check for SPREAD relationship
+  if (instrument.includes('SPREAD') || instrument.includes('-')) {
+    // For SPREADs, the format is usually "{product1}-{product2} SPREAD" or just "{product1}-{product2}"
+    const products = instrument
+      .replace(' SPREAD', '')
+      .split('-')
+      .map(p => p.trim());
+    
+    if (products.length >= 2) {
+      return {
+        baseProduct: mapProductToCanonical(products[0]),
+        oppositeProduct: mapProductToCanonical(products[1]),
+        relationshipType: 'SPREAD'
+      };
+    }
+  }
+  
+  // Default to FP, extract the product name
+  let baseProduct = instrument.replace(' FP', '');
+  
+  return {
+    baseProduct: mapProductToCanonical(baseProduct),
+    oppositeProduct: null,
+    relationshipType: 'FP'
+  };
+};
