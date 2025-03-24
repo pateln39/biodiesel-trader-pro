@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download, Calendar, Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -23,7 +22,6 @@ import { getNextMonths } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 
-// Types for exposure data
 interface ExposureData {
   physical: number;
   pricing: number;
@@ -90,22 +88,18 @@ const ExposurePage = () => {
     }
   });
 
-  // Process trade data into monthly exposures by product
   const exposureData = useMemo(() => {
     if (!tradeData) return [];
 
     const { physicalTradeLegs, paperTradeLegs } = tradeData;
     
-    // Initialize exposure data structure for each month
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     const allProducts = new Set<string>();
     
-    // Initialize data structure for all months
     periods.forEach(month => {
       exposuresByMonth[month] = {};
     });
     
-    // Process physical trade legs
     if (physicalTradeLegs && physicalTradeLegs.length > 0) {
       physicalTradeLegs.forEach(leg => {
         let month = leg.trading_period || '';
@@ -138,7 +132,6 @@ const ExposurePage = () => {
         
         exposuresByMonth[month][product].physical += quantity;
         
-        // Process pricing formula for exposure
         const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
         if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
           Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
@@ -159,7 +152,6 @@ const ExposurePage = () => {
       });
     }
     
-    // Process paper trade legs
     if (paperTradeLegs && paperTradeLegs.length > 0) {
       paperTradeLegs.forEach(leg => {
         const month = leg.period || leg.trading_period || '';
@@ -180,11 +172,9 @@ const ExposurePage = () => {
           };
         }
         
-        // Check for explicit exposures field first
         if (leg.exposures && typeof leg.exposures === 'object') {
           const exposuresData = leg.exposures as Record<string, any>;
           
-          // Handle physical exposures
           if (exposuresData.physical && typeof exposuresData.physical === 'object') {
             Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
               allProducts.add(prodName);
@@ -202,7 +192,6 @@ const ExposurePage = () => {
             });
           }
           
-          // Handle pricing exposures
           if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
             Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
               allProducts.add(instrument);
@@ -220,7 +209,6 @@ const ExposurePage = () => {
             });
           }
         }
-        // Fall back to mtm_formula if no explicit exposures
         else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
           const mtmFormula = leg.mtm_formula as Record<string, any>;
           
@@ -245,7 +233,6 @@ const ExposurePage = () => {
             }
           }
         }
-        // Default fallback for paper trades
         else {
           const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
           exposuresByMonth[month][product].paper += (leg.quantity || 0) * buySellMultiplier;
@@ -253,27 +240,22 @@ const ExposurePage = () => {
       });
     }
     
-    // Calculate net exposures and create the final data structure
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
       const monthData = exposuresByMonth[month];
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Filter out products with no exposure if showAllGrades is false
       Array.from(allProducts).forEach(product => {
         const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
-        // Calculate net exposure
         productExposure.netExposure = productExposure.physical + productExposure.pricing + productExposure.paper;
         
-        // Only include products with non-zero exposures if showAllGrades is false
         if (showAllGrades || 
             productExposure.physical !== 0 || 
             productExposure.pricing !== 0 || 
             productExposure.paper !== 0) {
           productsData[product] = productExposure;
           
-          // Add to totals
           totals.physical += productExposure.physical;
           totals.pricing += productExposure.pricing;
           totals.paper += productExposure.paper;
@@ -291,7 +273,6 @@ const ExposurePage = () => {
     return monthlyExposures;
   }, [tradeData, periods, showAllGrades]);
 
-  // Get sorted list of all products/grades
   const allProducts = useMemo(() => {
     const productSet = new Set<string>();
     
@@ -304,25 +285,20 @@ const ExposurePage = () => {
     return Array.from(productSet).sort();
   }, [exposureData]);
 
-  // Calculate grand totals for all months
   const grandTotals = useMemo(() => {
     const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
     const productTotals: Record<string, ExposureData> = {};
     
-    // Initialize product totals
     allProducts.forEach(product => {
       productTotals[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
     });
     
-    // Sum up all exposures
     exposureData.forEach(monthData => {
-      // Add month totals to grand totals
       totals.physical += monthData.totals.physical;
       totals.pricing += monthData.totals.pricing;
       totals.paper += monthData.totals.paper;
       totals.netExposure += monthData.totals.netExposure;
       
-      // Add product exposures to product totals
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         productTotals[product].physical += exposure.physical;
         productTotals[product].pricing += exposure.pricing;
@@ -344,20 +320,18 @@ const ExposurePage = () => {
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
 
-  // Exposure categories
   const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Net'];
 
-  // Get background color class for each category header
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
       case 'Physical':
-        return 'bg-orange-100';
+        return 'bg-orange-800';
       case 'Pricing':
-        return 'bg-green-100';
+        return 'bg-green-800';
       case 'Paper':
-        return 'bg-blue-100';
+        return 'bg-blue-800';
       case 'Net':
-        return 'bg-green-50';
+        return 'bg-green-600';
       default:
         return '';
     }
@@ -412,13 +386,12 @@ const ExposurePage = () => {
         ) : (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <Table className="border-collapse [&_*]:border-black [&_*]:border-[2px]">
+              <Table className="border-collapse [&_*]:border-black [&_*]:border-[3px]">
                 <TableHeader>
-                  {/* First header row: Main exposure categories */}
                   <TableRow className="bg-muted/50">
                     <TableHead 
                       rowSpan={2} 
-                      className="border-[3px] border-black text-left p-3 font-medium sticky left-0 bg-muted/50 z-10"
+                      className="border-[3px] border-black text-left p-3 font-bold text-2xl bg-white sticky left-0 z-10"
                     >
                       Month
                     </TableHead>
@@ -426,7 +399,7 @@ const ExposurePage = () => {
                       <TableHead 
                         key={category} 
                         colSpan={allProducts.length} 
-                        className={`text-center p-2 font-medium border-[3px] border-black ${
+                        className={`text-center p-2 font-bold text-2xl border-[3px] border-black ${
                           catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
@@ -435,13 +408,12 @@ const ExposurePage = () => {
                     ))}
                   </TableRow>
                   
-                  {/* Second header row: Products under each category */}
                   <TableRow className="bg-muted/30">
                     {exposureCategories.flatMap((category, catIndex) => 
                       allProducts.map((product, index) => (
                         <TableHead 
                           key={`${category}-${product}`} 
-                          className={`text-right p-2 text-sm whitespace-nowrap border-[3px] border-black ${
+                          className={`text-right p-2 text-sm whitespace-nowrap border-[3px] border-black text-white font-bold ${
                             getCategoryColorClass(category)
                           } ${
                             index === allProducts.length - 1 && catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
@@ -454,14 +426,12 @@ const ExposurePage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Data rows for each month */}
                   {exposureData.map((monthData) => (
-                    <TableRow key={monthData.month} className="bg-gray-100 border-[3px] border-black">
-                      <TableCell className="font-medium border-[3px] border-black sticky left-0 bg-gray-100 z-10">
+                    <TableRow key={monthData.month} className="bg-white border-[3px] border-black">
+                      <TableCell className="font-medium border-[3px] border-black sticky left-0 bg-white z-10">
                         {monthData.month}
                       </TableCell>
                       
-                      {/* Physical exposure values */}
                       {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
@@ -476,7 +446,6 @@ const ExposurePage = () => {
                         );
                       })}
                       
-                      {/* Pricing exposure values */}
                       {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
@@ -491,7 +460,6 @@ const ExposurePage = () => {
                         );
                       })}
                       
-                      {/* Paper exposure values */}
                       {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
@@ -506,7 +474,6 @@ const ExposurePage = () => {
                         );
                       })}
                       
-                      {/* Net exposure values */}
                       {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
@@ -521,13 +488,11 @@ const ExposurePage = () => {
                     </TableRow>
                   ))}
                   
-                  {/* Grand Total row */}
                   <TableRow className="bg-gray-700 text-white font-bold border-[3px] border-black">
-                    <TableCell className="border-[3px] border-black sticky left-0 bg-gray-700 z-10 text-white">
+                    <TableCell className="border-[3px] border-black sticky left-0 bg-gray-700 z-10 text-white text-xl">
                       Total
                     </TableCell>
                     
-                    {/* Physical totals by product */}
                     {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-physical-${product}`} 
@@ -542,7 +507,6 @@ const ExposurePage = () => {
                       </TableCell>
                     ))}
                     
-                    {/* Pricing totals by product */}
                     {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-pricing-${product}`} 
@@ -557,7 +521,6 @@ const ExposurePage = () => {
                       </TableCell>
                     ))}
                     
-                    {/* Paper totals by product */}
                     {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-paper-${product}`} 
@@ -572,7 +535,6 @@ const ExposurePage = () => {
                       </TableCell>
                     ))}
                     
-                    {/* Net totals by product */}
                     {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-net-${product}`} 
