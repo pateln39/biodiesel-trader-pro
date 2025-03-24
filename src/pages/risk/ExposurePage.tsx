@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -23,7 +22,6 @@ import { getNextMonths } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mapProductToCanonical, parsePaperInstrument } from '@/utils/productMapping';
 
 interface ExposureData {
@@ -48,7 +46,7 @@ const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
-  const [selectedProduct, setSelectedProduct] = useState<string>('all');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -108,7 +106,6 @@ const ExposurePage = () => {
       exposuresByMonth[month] = {};
     });
     
-    // Process physical trades
     if (physicalTradeLegs && physicalTradeLegs.length > 0) {
       physicalTradeLegs.forEach(leg => {
         let month = leg.trading_period || '';
@@ -124,7 +121,6 @@ const ExposurePage = () => {
           return;
         }
         
-        // Map the product to its canonical name
         const product = mapProductToCanonical(leg.product || 'Unknown');
         allProducts.add(product);
         
@@ -145,7 +141,6 @@ const ExposurePage = () => {
         const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
         if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
           Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-            // Map the instrument to its canonical name
             const canonicalInstrument = mapProductToCanonical(instrument);
             allProducts.add(canonicalInstrument);
             
@@ -164,7 +159,6 @@ const ExposurePage = () => {
       });
     }
     
-    // Process paper trades
     if (paperTradeLegs && paperTradeLegs.length > 0) {
       paperTradeLegs.forEach(leg => {
         const month = leg.period || leg.trading_period || '';
@@ -173,9 +167,7 @@ const ExposurePage = () => {
           return;
         }
         
-        // Determine exposure based on the instrument
         if (leg.instrument) {
-          // Parse the instrument to get involved products
           const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
           
           if (baseProduct) {
@@ -193,10 +185,8 @@ const ExposurePage = () => {
             const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
             const quantity = (leg.quantity || 0) * buySellMultiplier;
             
-            // Add base product exposure
             exposuresByMonth[month][baseProduct].paper += quantity;
             
-            // For DIFF and SPREAD, also add opposite product exposure with inverse sign
             if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
               allProducts.add(oppositeProduct);
               
@@ -209,18 +199,14 @@ const ExposurePage = () => {
                 };
               }
               
-              // Opposite product gets opposite exposure
               exposuresByMonth[month][oppositeProduct].paper += -quantity;
             }
           }
-        }
-        // If no instrument, use exposures data
-        else if (leg.exposures && typeof leg.exposures === 'object') {
+        } else if (leg.exposures && typeof leg.exposures === 'object') {
           const exposuresData = leg.exposures as Record<string, any>;
           
           if (exposuresData.physical && typeof exposuresData.physical === 'object') {
             Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-              // Map product to canonical name
               const canonicalProduct = mapProductToCanonical(prodName);
               allProducts.add(canonicalProduct);
               
@@ -239,7 +225,6 @@ const ExposurePage = () => {
           
           if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
             Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
-              // Map instrument to canonical name
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProducts.add(canonicalInstrument);
               
@@ -255,9 +240,7 @@ const ExposurePage = () => {
               exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
             });
           }
-        }
-        // If no instrument and no exposures, use mtm_formula
-        else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+        } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
           const mtmFormula = leg.mtm_formula as Record<string, any>;
           
           if (mtmFormula.exposures && typeof mtmFormula.exposures === 'object') {
@@ -265,7 +248,6 @@ const ExposurePage = () => {
             
             if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
               Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
-                // Map product to canonical name
                 const canonicalProduct = mapProductToCanonical(prodName);
                 allProducts.add(canonicalProduct);
                 
@@ -282,9 +264,7 @@ const ExposurePage = () => {
               });
             }
           }
-        }
-        // Default fallback using product and quantity
-        else {
+        } else {
           const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
           allProducts.add(canonicalProduct);
           
@@ -342,6 +322,12 @@ const ExposurePage = () => {
     
     return Array.from(productSet).sort();
   }, [exposureData]);
+
+  React.useEffect(() => {
+    if (allProducts.length > 0 && selectedProducts.length === 0) {
+      setSelectedProducts([...allProducts]);
+    }
+  }, [allProducts, selectedProducts.length]);
 
   const grandTotals = useMemo(() => {
     const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
@@ -404,12 +390,27 @@ const ExposurePage = () => {
     });
   };
 
-  const filteredProducts = useMemo(() => {
-    if (selectedProduct === 'all') {
-      return allProducts;
+  const toggleProduct = (product: string) => {
+    setSelectedProducts(prev => {
+      if (prev.includes(product)) {
+        return prev.filter(p => p !== product);
+      } else {
+        return [...prev, product];
+      }
+    });
+  };
+
+  const toggleAllProducts = () => {
+    if (selectedProducts.length === allProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts([...allProducts]);
     }
-    return allProducts.filter(product => product === selectedProduct);
-  }, [allProducts, selectedProduct]);
+  };
+
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter(product => selectedProducts.includes(product));
+  }, [allProducts, selectedProducts]);
 
   const orderedVisibleCategories = useMemo(() => {
     return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
@@ -455,18 +456,37 @@ const ExposurePage = () => {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Product Filter</label>
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Products</SelectItem>
-                    {allProducts.map(product => (
-                      <SelectItem key={product} value={product}>{product}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium mb-2 block">Product Filters</label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Checkbox 
+                    id="select-all-products" 
+                    checked={selectedProducts.length === allProducts.length && allProducts.length > 0} 
+                    onCheckedChange={toggleAllProducts}
+                  />
+                  <label 
+                    htmlFor="select-all-products"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Select All
+                  </label>
+                </div>
+                <div className="max-h-[180px] overflow-y-auto pr-2 flex flex-wrap gap-2">
+                  {allProducts.map(product => (
+                    <div key={product} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`product-${product}`} 
+                        checked={selectedProducts.includes(product)} 
+                        onCheckedChange={() => toggleProduct(product)}
+                      />
+                      <label 
+                        htmlFor={`product-${product}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {product}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -686,3 +706,4 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
+
