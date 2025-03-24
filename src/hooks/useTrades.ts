@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,7 +86,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+            comment: leg.comment
           }))
         };
         return physicalTrade;

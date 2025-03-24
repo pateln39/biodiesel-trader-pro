@@ -31,6 +31,7 @@ export interface PhysicalTradeLeg {
   creditStatus: CreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
+  comment?: string;
 }
 
 // For backward compatibility

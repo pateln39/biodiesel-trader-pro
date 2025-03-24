@@ -1,4 +1,3 @@
-
 export type Instrument = string;
 export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
 
@@ -35,6 +34,7 @@ export interface DbTradeLeg {
   broker?: string;
   instrument?: string;
   price?: number;
+  comment?: string;
 }
 
 // Base trade interface (parent trade)

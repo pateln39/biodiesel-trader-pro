@@ -29,7 +29,6 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
   const [comments, setComments] = useState<Record<string, string>>({});
   const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
   
-  // Initialize comments from trades
   useEffect(() => {
     const initialComments: Record<string, string> = {};
     
@@ -44,7 +43,6 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
     setComments(initialComments);
   }, [trades]);
   
-  // Handle comment change
   const handleCommentChange = (id: string, comment: string) => {
     setComments(prev => ({
       ...prev,
@@ -52,15 +50,12 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
     }));
   };
   
-  // Handle comment save on blur
   const handleCommentBlur = async (id: string) => {
-    // Don't save if unchanged
     const leg = trades.flatMap(t => t.legs).find(l => l.id === id);
     if (!leg || leg.comment === comments[id]) {
       return;
     }
     
-    // Mark as saving
     setSavingComments(prev => ({
       ...prev,
       [id]: true
@@ -90,22 +85,19 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
     navigate(`/trades/edit/${tradeId}`);
   };
 
-  // Show loading state
   if (loading) {
     return <TableLoadingState />;
   }
   
-  // Show error state
   if (error) {
     return (
       <TableErrorState
-        error={error instanceof Error ? error.message : 'Unknown error'}
+        error={error}
         onRetry={refetchTrades}
       />
     );
   }
   
-  // Show empty state
   if (trades.length === 0) {
     return (
       <div className="py-8 text-center">
@@ -119,13 +111,10 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
     );
   }
   
-  // Group trades by trade reference for display
   const rows: JSX.Element[] = [];
   
   trades.forEach(trade => {
-    // Sort legs to ensure consistent display
     const sortedLegs = [...trade.legs].sort((a, b) => {
-      // Primary leg first, then by legReference
       if (a.legReference === trade.tradeReference) return -1;
       if (b.legReference === trade.tradeReference) return 1;
       return a.legReference.localeCompare(b.legReference);
