@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { Download, Calendar, Filter } from 'lucide-react';
+
+import React, { useMemo } from 'react';
+import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { 
@@ -40,8 +41,7 @@ interface MonthlyExposure {
 }
 
 const ExposurePage = () => {
-  const [showAllGrades, setShowAllGrades] = useState(false);
-  const [periods] = useState<string[]>(getNextMonths(8));
+  const [periods] = React.useState<string[]>(getNextMonths(8));
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -250,17 +250,13 @@ const ExposurePage = () => {
         
         productExposure.netExposure = productExposure.physical + productExposure.pricing + productExposure.paper;
         
-        if (showAllGrades || 
-            productExposure.physical !== 0 || 
-            productExposure.pricing !== 0 || 
-            productExposure.paper !== 0) {
-          productsData[product] = productExposure;
-          
-          totals.physical += productExposure.physical;
-          totals.pricing += productExposure.pricing;
-          totals.paper += productExposure.paper;
-          totals.netExposure += productExposure.netExposure;
-        }
+        // Always include all products, even with zero values
+        productsData[product] = productExposure;
+        
+        totals.physical += productExposure.physical;
+        totals.pricing += productExposure.pricing;
+        totals.paper += productExposure.paper;
+        totals.netExposure += productExposure.netExposure;
       });
       
       return {
@@ -271,7 +267,7 @@ const ExposurePage = () => {
     });
     
     return monthlyExposures;
-  }, [tradeData, periods, showAllGrades]);
+  }, [tradeData, periods]);
 
   const allProducts = useMemo(() => {
     const productSet = new Set<string>();
@@ -347,13 +343,6 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
-            <Button 
-              variant="outline"
-              onClick={() => setShowAllGrades(!showAllGrades)}
-            >
-              <Filter className="mr-2 h-4 w-4" /> 
-              {showAllGrades ? 'Hide Empty' : 'Show All'}
-            </Button>
             <Button variant="outline">
               <Calendar className="mr-2 h-4 w-4" /> Change Period
             </Button>
@@ -391,7 +380,7 @@ const ExposurePage = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead 
                       rowSpan={2} 
-                      className="border-[3px] border-black text-left p-3 font-bold text-2xl bg-white sticky left-0 z-10"
+                      className="border-[3px] border-black text-left p-3 font-bold text-3xl bg-white sticky left-0 z-10"
                     >
                       Month
                     </TableHead>
@@ -399,7 +388,7 @@ const ExposurePage = () => {
                       <TableHead 
                         key={category} 
                         colSpan={allProducts.length} 
-                        className={`text-center p-2 font-bold text-2xl border-[3px] border-black ${
+                        className={`text-center p-2 font-bold text-3xl border-[3px] border-black ${
                           catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
