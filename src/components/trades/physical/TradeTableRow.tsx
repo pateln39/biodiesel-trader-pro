@@ -6,27 +6,18 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import FormulaCellDisplay from './FormulaCellDisplay';
-import CommentField from './CommentField';
 import TableRowActions from './TableRowActions';
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
   leg: PhysicalTradeLeg;
   legIndex: number;
-  comments: Record<string, string>;
-  savingComments: Record<string, boolean>;
-  onCommentChange: (id: string, comment: string) => void;
-  onCommentBlur: (id: string) => void;
 }
 
 const TradeTableRow: React.FC<TradeTableRowProps> = ({
   trade,
   leg,
   legIndex,
-  comments,
-  savingComments,
-  onCommentChange,
-  onCommentBlur,
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
@@ -55,15 +46,6 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
       <TableCell>{trade.counterparty}</TableCell>
       <TableCell>
         <FormulaCellDisplay trade={leg} />
-      </TableCell>
-      <TableCell>
-        <CommentField
-          id={leg.id}
-          value={comments[leg.id] || ''}
-          onChange={onCommentChange}
-          onBlur={onCommentBlur}
-          isSaving={savingComments[leg.id] || false}
-        />
       </TableCell>
       <TableCell className="text-center">
         <TableRowActions

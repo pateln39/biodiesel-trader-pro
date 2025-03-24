@@ -94,7 +94,6 @@ const TradeEntryPage = () => {
   const handlePaperSubmit = async (tradeData: any) => {
     try {
       // Use the createPaperTrade from usePaperTrades hook
-      // This will now use the new paper_trades and paper_trade_legs tables
       createPaperTrade(tradeData, {
         onSuccess: () => {
           navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });

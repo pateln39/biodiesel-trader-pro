@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,7 +35,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   isEditMode = false,
   initialData
 }) => {
-  const [comment, setComment] = useState(initialData?.comment || '');
   const [selectedBroker, setSelectedBroker] = useState('');
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
   const [isAddingBroker, setIsAddingBroker] = useState(false);
@@ -160,7 +160,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     const tradeData = {
       tradeReference,
       tradeType: 'paper',
-      comment,
       broker: brokerName,
       legs: tradeLegs.map((leg, index) => {
         const legReference = initialData?.legs?.[index]?.legReference || 
@@ -181,18 +180,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="comment">Comment</Label>
-          <Input
-            id="comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Enter optional comment"
-          />
-        </div>
-      </div>
-      
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="broker">Broker</Label>

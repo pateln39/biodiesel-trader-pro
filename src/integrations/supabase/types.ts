@@ -451,7 +451,6 @@ export type Database = {
       paper_trades: {
         Row: {
           broker: string | null
-          comment: string | null
           counterparty: string
           created_at: string
           id: string
@@ -460,7 +459,6 @@ export type Database = {
         }
         Insert: {
           broker?: string | null
-          comment?: string | null
           counterparty: string
           created_at?: string
           id?: string
@@ -469,7 +467,6 @@ export type Database = {
         }
         Update: {
           broker?: string | null
-          comment?: string | null
           counterparty?: string
           created_at?: string
           id?: string
@@ -480,7 +477,6 @@ export type Database = {
       }
       parent_trades: {
         Row: {
-          comment: string | null
           counterparty: string
           created_at: string
           id: string
@@ -490,7 +486,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          comment?: string | null
           counterparty: string
           created_at?: string
           id?: string
@@ -500,7 +495,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          comment?: string | null
           counterparty?: string
           created_at?: string
           id?: string

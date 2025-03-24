@@ -43,5 +43,4 @@ export interface PaperTrade extends Trade {
   tradeType: "paper";
   broker: string;
   legs: PaperTradeLeg[];
-  comment?: string;
 }

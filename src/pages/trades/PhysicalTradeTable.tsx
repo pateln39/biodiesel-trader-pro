@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { PhysicalTrade } from '@/types';
 import {
   Table,
@@ -27,60 +26,6 @@ interface PhysicalTradeTableProps {
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [savingComments, setSavingComments] = useState<Record<string, boolean>>({});
-  
-  useEffect(() => {
-    const initialComments: Record<string, string> = {};
-    
-    trades.forEach(trade => {
-      trade.legs.forEach(leg => {
-        if (leg.id) {
-          initialComments[leg.id] = leg.comment || '';
-        }
-      });
-    });
-    
-    setComments(initialComments);
-  }, [trades]);
-  
-  const handleCommentChange = (id: string, comment: string) => {
-    setComments(prev => ({
-      ...prev,
-      [id]: comment
-    }));
-  };
-  
-  const handleCommentBlur = async (id: string) => {
-    const leg = trades.flatMap(t => t.legs).find(l => l.id === id);
-    if (!leg || leg.comment === comments[id]) {
-      return;
-    }
-    
-    setSavingComments(prev => ({
-      ...prev,
-      [id]: true
-    }));
-    
-    try {
-      const { error } = await supabase
-        .from('trade_legs')
-        .update({ comment: comments[id] })
-        .eq('id', id);
-        
-      if (error) {
-        throw error;
-      }
-    } catch (error) {
-      console.error('Error saving comment:', error);
-      toast.error('Failed to save comment');
-    } finally {
-      setSavingComments(prev => ({
-        ...prev,
-        [id]: false
-      }));
-    }
-  };
 
   const handleEditTrade = (tradeId: string) => {
     navigate(`/trades/edit/${tradeId}`);
@@ -128,10 +73,6 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
           trade={trade}
           leg={leg}
           legIndex={legIndex}
-          comments={comments}
-          savingComments={savingComments}
-          onCommentChange={handleCommentChange}
-          onCommentBlur={handleCommentBlur}
         />
       );
     });
@@ -149,7 +90,6 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
             <TableHead>Product</TableHead>
             <TableHead>Counterparty</TableHead>
             <TableHead>Formula</TableHead>
-            <TableHead>Comments</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>

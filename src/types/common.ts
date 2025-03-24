@@ -35,7 +35,6 @@ export interface DbTradeLeg {
   broker?: string;
   instrument?: string;
   price?: number;
-  comment?: string | null;
   mtm_formula?: any | null;
 }
 

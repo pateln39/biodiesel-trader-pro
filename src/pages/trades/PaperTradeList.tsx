@@ -1,10 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
 import { PaperTrade } from '@/types/paper';
 import { formatProductDisplay } from '@/utils/tradeUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
@@ -24,26 +21,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   error,
   refetchPaperTrades
 }) => {
-  const [paperComments, setPaperComments] = useState<Record<string, string>>({});
-  const [savingPaperComments, setSavingPaperComments] = useState<Record<string, boolean>>({});
-
-  const handlePaperCommentChange = (tradeId: string, comment: string) => {
-    setPaperComments(prev => ({
-      ...prev,
-      [tradeId]: comment
-    }));
-  };
-
-  const handlePaperCommentBlur = (tradeId: string) => {
-    setSavingPaperComments(prev => ({ ...prev, [tradeId]: true }));
-    
-    setTimeout(() => {
-      console.log(`[PAPER] Saving comment for paper trade ${tradeId}: ${paperComments[tradeId]}`);
-      toast.success("Comment saved");
-      setSavingPaperComments(prev => ({ ...prev, [tradeId]: false }));
-    }, 500);
-  };
-
   if (isLoading) {
     return <TableLoadingState />;
   }
@@ -63,7 +40,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
           <TableHead>Buy/Sell</TableHead>
           <TableHead className="text-right">Quantity</TableHead>
           <TableHead className="text-right">Price</TableHead>
-          <TableHead>Comments</TableHead>
           <TableHead className="text-center">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -93,23 +69,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                   <TableCell className="capitalize">{leg.buySell}</TableCell>
                   <TableCell className="text-right">{leg.quantity}</TableCell>
                   <TableCell className="text-right">{leg.price}</TableCell>
-                  <TableCell>
-                    <div className="relative">
-                      <Textarea 
-                        placeholder="Add comments..."
-                        value={paperComments[trade.id] || trade.comment || ''}
-                        onChange={(e) => handlePaperCommentChange(trade.id, e.target.value)}
-                        onBlur={() => handlePaperCommentBlur(trade.id)}
-                        className="min-h-[40px] text-sm resize-none border-transparent hover:border-input focus:border-input transition-colors"
-                        rows={1}
-                      />
-                      {savingPaperComments[trade.id] && (
-                        <div className="absolute top-1 right-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
                   <TableCell className="text-center">
                     <PaperTradeRowActions
                       tradeId={trade.id}
@@ -125,7 +84,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+            <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
               No paper trades found.
             </TableCell>
           </TableRow>

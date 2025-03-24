@@ -45,7 +45,6 @@ export const usePaperTrades = () => {
         trade_reference,
         counterparty,
         broker,
-        comment,
         created_at,
         updated_at
       `)
@@ -80,7 +79,6 @@ export const usePaperTrades = () => {
             broker: paperTrade.broker || '',
             createdAt: new Date(paperTrade.created_at),
             updatedAt: new Date(paperTrade.updated_at),
-            comment: paperTrade.comment,
             legs: []
           };
         }
@@ -93,7 +91,6 @@ export const usePaperTrades = () => {
           broker: paperTrade.broker || '',
           createdAt: new Date(paperTrade.created_at),
           updatedAt: new Date(paperTrade.updated_at),
-          comment: paperTrade.comment,
           legs: (legs || []).map((leg) => {
             const instrument = leg.instrument || '';
             let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
@@ -199,8 +196,7 @@ export const usePaperTrades = () => {
         .insert({
           trade_reference: trade.tradeReference,
           counterparty: trade.broker || 'Paper Trade',
-          broker: trade.broker,
-          comment: trade.comment || ''
+          broker: trade.broker
         })
         .select('id')
         .single();
