@@ -18,9 +18,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
-import { PricingFormula, PartialPricingFormula } from '@/types/pricing';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getNextMonths } from '@/utils/dateUtils';
+import TableLoadingState from '@/components/trades/TableLoadingState';
+import TableErrorState from '@/components/trades/TableErrorState';
 
 // Types for exposure data
 interface ExposureData {
@@ -30,9 +31,13 @@ interface ExposureData {
   netExposure: number;
 }
 
+interface ProductExposure {
+  [product: string]: ExposureData;
+}
+
 interface MonthlyExposure {
   month: string;
-  products: Record<string, ExposureData>;
+  products: ProductExposure;
   totals: ExposureData;
 }
 
@@ -40,7 +45,7 @@ const ExposurePage = () => {
   const [showAllGrades, setShowAllGrades] = useState(false);
   const [periods] = useState<string[]>(getNextMonths(8));
 
-  const { data: tradeData, isLoading } = useQuery({
+  const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
     queryFn: async () => {
       const { data: physicalTradeLegs, error: physicalError } = await supabase
@@ -286,7 +291,7 @@ const ExposurePage = () => {
     return monthlyExposures;
   }, [tradeData, periods, showAllGrades]);
 
-  // Get sorted list of all products/grades from the exposure data
+  // Get sorted list of all products/grades
   const allProducts = useMemo(() => {
     const productSet = new Set<string>();
     
@@ -299,6 +304,36 @@ const ExposurePage = () => {
     return Array.from(productSet).sort();
   }, [exposureData]);
 
+  // Calculate grand totals for all months
+  const grandTotals = useMemo(() => {
+    const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+    const productTotals: Record<string, ExposureData> = {};
+    
+    // Initialize product totals
+    allProducts.forEach(product => {
+      productTotals[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+    });
+    
+    // Sum up all exposures
+    exposureData.forEach(monthData => {
+      // Add month totals to grand totals
+      totals.physical += monthData.totals.physical;
+      totals.pricing += monthData.totals.pricing;
+      totals.paper += monthData.totals.paper;
+      totals.netExposure += monthData.totals.netExposure;
+      
+      // Add product exposures to product totals
+      Object.entries(monthData.products).forEach(([product, exposure]) => {
+        productTotals[product].physical += exposure.physical;
+        productTotals[product].pricing += exposure.pricing;
+        productTotals[product].paper += exposure.paper;
+        productTotals[product].netExposure += exposure.netExposure;
+      });
+    });
+    
+    return { totals, productTotals };
+  }, [exposureData, allProducts]);
+
   const getValueColorClass = (value: number): string => {
     if (value > 0) return 'text-green-600';
     if (value < 0) return 'text-red-600';
@@ -308,6 +343,9 @@ const ExposurePage = () => {
   const formatValue = (value: number): string => {
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
+
+  // Exposure categories
+  const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Net'];
 
   return (
     <Layout>
@@ -338,9 +376,13 @@ const ExposurePage = () => {
         {isLoading ? (
           <Card>
             <CardContent className="pt-6">
-              <div className="flex justify-center items-center h-40">
-                <p className="text-muted-foreground">Loading exposure data...</p>
-              </div>
+              <TableLoadingState />
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card>
+            <CardContent className="pt-6">
+              <TableErrorState error={error as Error} onRetry={refetch} />
             </CardContent>
           </Card>
         ) : exposureData.length === 0 || allProducts.length === 0 ? (
@@ -356,68 +398,154 @@ const ExposurePage = () => {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
+                  {/* First header row: Main exposure categories */}
                   <TableRow className="bg-muted/50">
-                    <TableHead rowSpan={2} className="border-r border-b text-left p-3 font-medium">Month</TableHead>
-                    {allProducts.map(product => (
-                      <TableHead key={product} colSpan={4} className="text-center p-2 font-medium border-r border-b">
-                        {product}
+                    <TableHead rowSpan={2} className="border-r border-b text-left p-3 font-medium sticky left-0 bg-muted/50 z-10">
+                      Month
+                    </TableHead>
+                    {exposureCategories.map(category => (
+                      <TableHead 
+                        key={category} 
+                        colSpan={allProducts.length} 
+                        className="text-center p-2 font-medium border-r border-b"
+                      >
+                        {category}
                       </TableHead>
                     ))}
-                    <TableHead colSpan={4} className="text-center p-2 font-medium border-b">
-                      Total
-                    </TableHead>
                   </TableRow>
+                  
+                  {/* Second header row: Products under each category */}
                   <TableRow className="bg-muted/30">
-                    {allProducts.flatMap(product => [
-                      <TableHead key={`${product}-physical`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Physical</TableHead>,
-                      <TableHead key={`${product}-pricing`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Pricing</TableHead>,
-                      <TableHead key={`${product}-paper`} className="text-right p-2 font-medium text-sm whitespace-nowrap">Paper</TableHead>,
-                      <TableHead key={`${product}-net`} className="text-right p-2 font-medium text-sm whitespace-nowrap border-r">Net</TableHead>
-                    ])}
-                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Physical</TableHead>
-                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Pricing</TableHead>
-                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Paper</TableHead>
-                    <TableHead className="text-right p-2 font-medium text-sm whitespace-nowrap">Net</TableHead>
+                    {exposureCategories.flatMap(category => 
+                      allProducts.map((product, index) => (
+                        <TableHead 
+                          key={`${category}-${product}`} 
+                          className={`text-right p-2 text-sm whitespace-nowrap ${
+                            index === allProducts.length - 1 && category !== 'Net' ? 'border-r' : ''
+                          }`}
+                        >
+                          {product}
+                        </TableHead>
+                      ))
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Data rows for each month */}
                   {exposureData.map((monthData) => (
                     <TableRow key={monthData.month} className="hover:bg-muted/50">
-                      <TableCell className="font-medium border-r">{monthData.month}</TableCell>
+                      <TableCell className="font-medium border-r sticky left-0 bg-white z-10">
+                        {monthData.month}
+                      </TableCell>
                       
-                      {allProducts.flatMap(product => {
+                      {/* Physical exposure values */}
+                      {allProducts.map(product => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                        return [
-                          <TableCell key={`${monthData.month}-${product}-physical`} className={`text-right ${getValueColorClass(productData.physical)}`}>
+                        return (
+                          <TableCell 
+                            key={`${monthData.month}-physical-${product}`} 
+                            className={`text-right ${getValueColorClass(productData.physical)}`}
+                          >
                             {formatValue(productData.physical)}
-                          </TableCell>,
-                          <TableCell key={`${monthData.month}-${product}-pricing`} className={`text-right ${getValueColorClass(productData.pricing)}`}>
-                            {formatValue(productData.pricing)}
-                          </TableCell>,
-                          <TableCell key={`${monthData.month}-${product}-paper`} className={`text-right ${getValueColorClass(productData.paper)}`}>
-                            {formatValue(productData.paper)}
-                          </TableCell>,
-                          <TableCell key={`${monthData.month}-${product}-net`} className={`text-right font-medium border-r ${getValueColorClass(productData.netExposure)}`}>
-                            {formatValue(productData.netExposure)}
                           </TableCell>
-                        ];
+                        );
                       })}
                       
-                      {/* Month totals */}
-                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.physical)}`}>
-                        {formatValue(monthData.totals.physical)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.pricing)}`}>
-                        {formatValue(monthData.totals.pricing)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.paper)}`}>
-                        {formatValue(monthData.totals.paper)}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${getValueColorClass(monthData.totals.netExposure)}`}>
-                        {formatValue(monthData.totals.netExposure)}
-                      </TableCell>
+                      {/* Pricing exposure values */}
+                      {allProducts.map(product => {
+                        const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                        return (
+                          <TableCell 
+                            key={`${monthData.month}-pricing-${product}`} 
+                            className={`text-right ${getValueColorClass(productData.pricing)} ${
+                              product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                            }`}
+                          >
+                            {formatValue(productData.pricing)}
+                          </TableCell>
+                        );
+                      })}
+                      
+                      {/* Paper exposure values */}
+                      {allProducts.map(product => {
+                        const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                        return (
+                          <TableCell 
+                            key={`${monthData.month}-paper-${product}`} 
+                            className={`text-right ${getValueColorClass(productData.paper)} ${
+                              product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                            }`}
+                          >
+                            {formatValue(productData.paper)}
+                          </TableCell>
+                        );
+                      })}
+                      
+                      {/* Net exposure values */}
+                      {allProducts.map(product => {
+                        const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                        return (
+                          <TableCell 
+                            key={`${monthData.month}-net-${product}`} 
+                            className={`text-right font-medium ${getValueColorClass(productData.netExposure)}`}
+                          >
+                            {formatValue(productData.netExposure)}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
+                  
+                  {/* Grand Total row */}
+                  <TableRow className="bg-muted/30 font-semibold">
+                    <TableCell className="border-r sticky left-0 bg-muted/30 z-10">
+                      Total
+                    </TableCell>
+                    
+                    {/* Physical totals by product */}
+                    {allProducts.map(product => (
+                      <TableCell 
+                        key={`total-physical-${product}`} 
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.physical || 0)}`}
+                      >
+                        {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                      </TableCell>
+                    ))}
+                    
+                    {/* Pricing totals by product */}
+                    {allProducts.map(product => (
+                      <TableCell 
+                        key={`total-pricing-${product}`} 
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.pricing || 0)} ${
+                          product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                        }`}
+                      >
+                        {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                      </TableCell>
+                    ))}
+                    
+                    {/* Paper totals by product */}
+                    {allProducts.map(product => (
+                      <TableCell 
+                        key={`total-paper-${product}`} 
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.paper || 0)} ${
+                          product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                        }`}
+                      >
+                        {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                      </TableCell>
+                    ))}
+                    
+                    {/* Net totals by product */}
+                    {allProducts.map(product => (
+                      <TableCell 
+                        key={`total-net-${product}`} 
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.netExposure || 0)}`}
+                      >
+                        {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
