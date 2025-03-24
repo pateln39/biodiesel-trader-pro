@@ -1,4 +1,3 @@
-
 /**
  * Maps paper product names to standardized pricing instrument names
  * Ensures exposures are consolidated under the correct product columns
@@ -38,11 +37,11 @@ export const mapProductToCanonical = (product: string): string => {
     return CANONICAL_PRODUCTS.DIESEL;
   }
   
-  if (product === 'HVO' || product.includes('HVO')) {
+  if (product === 'HVO' || product === 'HVO FP' || product.includes('HVO')) {
     return CANONICAL_PRODUCTS.HVO;
   }
   
-  if (product === 'GASOIL' || product.includes('GASOIL')) {
+  if (product === 'GASOIL' || product === 'GASOIL FP' || product.includes('GASOIL')) {
     return CANONICAL_PRODUCTS.GASOIL;
   }
   
