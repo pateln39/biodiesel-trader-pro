@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -66,11 +67,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [exposureData, setExposureData] = useState<any[]>(() => {
     return availableMonths.map(month => ({
       month,
-      UCOME: 0,
-      FAME0: 0,
-      RME: 0,
-      HVO: 0,
-      LSGO: 0,
+      'Argus UCOME': 0,
+      'Argus FAME0': 0,
+      'Argus RME': 0,
+      'Argus HVO': 0,
+      'Platts LSGO': 0,
       'ICE GASOIL FUTURES': 0
     }));
   });
@@ -161,7 +162,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const calculateExposures = (legs: any[]) => {
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
-      ['UCOME', 'FAME0', 'RME', 'HVO', 'LSGO', 'ICE GASOIL FUTURES'].forEach(product => {
+      ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Argus HVO', 'Platts LSGO', 'ICE GASOIL FUTURES'].forEach(product => {
         entry[product] = 0;
       });
       return entry;
@@ -309,11 +310,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 exposureData.map((row, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.UCOME || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.FAME0 || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.RME || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.HVO || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row.LSGO || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus UCOME'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus FAME0'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus RME'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus HVO'] || 0}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Platts LSGO'] || 0}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
                   </tr>
                 ))
