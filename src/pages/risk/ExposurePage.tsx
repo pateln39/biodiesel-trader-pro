@@ -558,7 +558,7 @@ const ExposurePage = () => {
                     </TableHeader>
                     
                     <TableBody>
-                      {exposureData.map((monthData, monthIndex) => (
+                      {exposureData.map((monthData) => (
                         <TableRow key={monthData.month} className="bg-white border-[1px] border-black">
                           <TableCell className="font-medium border-[1px] border-black text-xs sticky left-0 bg-white z-10">
                             {monthData.month}
@@ -571,12 +571,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-physical-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${
-                                      monthIndex !== exposureData.length - 1 ? 'border-b-0' : ''
-                                    } border-[1px] border-black ${
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} border-[1px] border-black ${
                                       index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                    } ${
-                                      index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                     }`}
                                   >
                                     {formatValue(productData.physical)}
@@ -589,12 +585,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-pricing-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${
-                                      monthIndex !== exposureData.length - 1 ? 'border-b-0' : ''
-                                    } border-[1px] border-black ${
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
                                       index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                    } ${
-                                      index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                     }`}
                                   >
                                     {formatValue(productData.pricing)}
@@ -607,12 +599,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-paper-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${
-                                      monthIndex !== exposureData.length - 1 ? 'border-b-0' : ''
-                                    } border-[1px] border-black ${
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} border-[1px] border-black ${
                                       index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                    } ${
-                                      index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                     }`}
                                   >
                                     {formatValue(productData.paper)}
@@ -625,12 +613,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} ${
-                                      monthIndex !== exposureData.length - 1 ? 'border-b-0' : ''
-                                    } border-[1px] border-black ${
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} border-[1px] border-black ${
                                       index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                    } ${
-                                      index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                     }`}
                                   >
                                     {formatValue(productData.netExposure)}
@@ -658,8 +642,6 @@ const ExposurePage = () => {
                                   grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
                                 } border-[1px] border-black font-bold ${
                                   index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                } ${
-                                  index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.physical || 0)}
@@ -674,8 +656,6 @@ const ExposurePage = () => {
                                   grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
                                 } border-[1px] border-black font-bold ${
                                   index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                } ${
-                                  index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
@@ -690,8 +670,6 @@ const ExposurePage = () => {
                                   grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
                                 } border-[1px] border-black font-bold ${
                                   index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                } ${
-                                  index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.paper || 0)}
@@ -706,8 +684,6 @@ const ExposurePage = () => {
                                   grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
                                 } border-[1px] border-black font-bold ${
                                   index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                                } ${
-                                  index !== filteredProducts.length - 1 ? 'border-r-0' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
@@ -730,3 +706,4 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
+
