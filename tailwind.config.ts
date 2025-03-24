@@ -17,8 +17,14 @@ export default {
 		'bg-green-100',
 		'bg-blue-100',
 		'bg-green-50',
+		'bg-gray-100',
+		'bg-gray-200',
+		'bg-gray-300',
+		'bg-gray-700',
 		'border-r-[3px]',
-		'border-[2px]'
+		'border-[2px]',
+		'border-[3px]',
+		'border-black'
 	],
 	prefix: "",
 	theme: {
