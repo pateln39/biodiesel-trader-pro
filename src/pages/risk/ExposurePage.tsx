@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -316,7 +315,7 @@ const ExposurePage = () => {
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
 
-  const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Net'];
+  const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
@@ -326,7 +325,7 @@ const ExposurePage = () => {
         return 'bg-green-800';
       case 'Paper':
         return 'bg-blue-800';
-      case 'Net':
+      case 'Exposure':
         return 'bg-green-600';
       default:
         return '';
@@ -547,3 +546,4 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
+
