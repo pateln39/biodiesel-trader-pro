@@ -77,7 +77,7 @@ export const parsePaperInstrument = (
     // For SPREADs, the format is usually "{product1}-{product2} SPREAD" or just "{product1}-{product2}"
     const products = instrument
       .replace(' SPREAD', '')
-      .split('-')
+      .split(/[-\/]/)  // Split on either hyphen or forward slash
       .map(p => p.trim());
     
     if (products.length >= 2) {
