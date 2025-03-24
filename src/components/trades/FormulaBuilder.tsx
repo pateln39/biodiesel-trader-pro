@@ -162,6 +162,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Argus FAME0': 0,
           'Platts LSGO': 0,
           'Platts diesel': 0,
+          'Argus HVO': 0,
+          'ICE GASOIL FUTURES': 0,
         },
         pricing: {
           'Argus UCOME': 0,
@@ -169,6 +171,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Argus FAME0': 0,
           'Platts LSGO': 0,
           'Platts diesel': 0,
+          'Argus HVO': 0,
+          'ICE GASOIL FUTURES': 0,
         }
       }
     });
@@ -320,8 +324,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
                 <SelectItem value="Argus RME">Argus RME</SelectItem>
                 <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
+                <SelectItem value="Argus HVO">Argus HVO</SelectItem>
                 <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
                 <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+                <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
               </SelectContent>
             </Select>
             <Button 

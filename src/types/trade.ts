@@ -1,9 +1,8 @@
 
-
 import { TradeType } from './index';
 
 export type BuySell = "buy" | "sell";
-export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC";
+export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "HVO";
 export type DisplayProduct = string; // For displaying formatted product names
 export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
@@ -20,4 +19,3 @@ export interface ProductRelationship {
   default_opposite: string | null;
   created_at?: string;
 }
-

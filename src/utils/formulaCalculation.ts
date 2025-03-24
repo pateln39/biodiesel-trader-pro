@@ -1,3 +1,4 @@
+
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
@@ -5,15 +6,19 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Argus UCOME': 0,
     'Argus RME': 0,
     'Argus FAME0': 0,
+    'Argus HVO': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
+    'ICE GASOIL FUTURES': 0,
   },
   pricing: {
     'Argus UCOME': 0,
     'Argus RME': 0,
     'Argus FAME0': 0,
+    'Argus HVO': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
+    'ICE GASOIL FUTURES': 0,
   }
 });
 
