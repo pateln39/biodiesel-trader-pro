@@ -67,6 +67,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   isEditMode = false,
   initialData
 }) => {
+  
   const { counterparties, sustainabilityOptions, creditStatusOptions } = useReferenceData();
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
@@ -91,6 +92,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     })) || [createDefaultLeg()]
   );
 
+  
+  
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
@@ -146,6 +149,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     setLegs(newLegs);
   };
 
+  
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -339,8 +344,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <SelectItem value="UCOME">UCOME</SelectItem>
                       <SelectItem value="UCOME-5">UCOME-5</SelectItem>
                       <SelectItem value="RME DC">RME DC</SelectItem>
-                      <SelectItem value="HVO">HVO</SelectItem>
-                      <SelectItem value="GASOIL">GASOIL</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -365,6 +368,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </div>
               </div>
 
+              
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-incoterm`}>Incoterm</Label>
