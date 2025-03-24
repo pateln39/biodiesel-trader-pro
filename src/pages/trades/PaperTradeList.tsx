@@ -37,7 +37,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
           <TableHead>Broker</TableHead>
           <TableHead>Products</TableHead>
           <TableHead>Period</TableHead>
-          <TableHead>Buy/Sell</TableHead>
           <TableHead className="text-right">Quantity</TableHead>
           <TableHead className="text-right">Price</TableHead>
           <TableHead className="text-center">Actions</TableHead>
@@ -66,7 +65,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                   <TableCell>{leg.broker || trade.broker}</TableCell>
                   <TableCell>{productDisplay}</TableCell>
                   <TableCell>{leg.period}</TableCell>
-                  <TableCell className="capitalize">{leg.buySell}</TableCell>
                   <TableCell className="text-right">{leg.quantity}</TableCell>
                   <TableCell className="text-right">{leg.price}</TableCell>
                   <TableCell className="text-center">
@@ -84,7 +82,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
+            <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
               No paper trades found.
             </TableCell>
           </TableRow>
