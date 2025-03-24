@@ -1,3 +1,4 @@
+
 import { TradeType } from './index';
 
 export type BuySell = "buy" | "sell";
