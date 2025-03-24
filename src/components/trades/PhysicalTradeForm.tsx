@@ -339,6 +339,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <SelectItem value="UCOME">UCOME</SelectItem>
                       <SelectItem value="UCOME-5">UCOME-5</SelectItem>
                       <SelectItem value="RME DC">RME DC</SelectItem>
+                      <SelectItem value="HVO">HVO</SelectItem>
+                      <SelectItem value="GASOIL">GASOIL</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

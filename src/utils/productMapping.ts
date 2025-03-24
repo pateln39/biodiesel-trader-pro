@@ -10,7 +10,9 @@ export const CANONICAL_PRODUCTS = {
   RME: 'Argus RME',
   FAME0: 'Argus FAME0',
   LSGO: 'Platts LSGO',
-  DIESEL: 'Platts diesel'
+  DIESEL: 'Platts Diesel',
+  HVO: 'Argus HVO',
+  GASOIL: 'ICE GASOIL FUTURES'
 };
 
 // Maps paper product names and codes to their canonical pricing instrument name
@@ -32,8 +34,16 @@ export const mapProductToCanonical = (product: string): string => {
     return CANONICAL_PRODUCTS.LSGO;
   }
   
-  if (product === 'diesel' || product.includes('diesel')) {
+  if (product === 'diesel' || product.includes('diesel') || product.includes('Diesel')) {
     return CANONICAL_PRODUCTS.DIESEL;
+  }
+  
+  if (product === 'HVO' || product.includes('HVO')) {
+    return CANONICAL_PRODUCTS.HVO;
+  }
+  
+  if (product === 'GASOIL' || product.includes('GASOIL')) {
+    return CANONICAL_PRODUCTS.GASOIL;
   }
   
   // If no mapping found, return the original product name
