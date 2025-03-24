@@ -12,7 +12,13 @@ export default {
 	safelist: [
 		'text-green-600',
 		'text-red-600',
-		'text-muted-foreground'
+		'text-muted-foreground',
+		'bg-orange-100',
+		'bg-green-100',
+		'bg-blue-100',
+		'bg-green-50',
+		'border-r-[3px]',
+		'border-[2px]'
 	],
 	prefix: "",
 	theme: {

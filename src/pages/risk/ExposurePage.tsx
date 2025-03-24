@@ -347,6 +347,22 @@ const ExposurePage = () => {
   // Exposure categories
   const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Net'];
 
+  // Get background color class for each category
+  const getCategoryColorClass = (category: string): string => {
+    switch (category) {
+      case 'Physical':
+        return 'bg-orange-100';
+      case 'Pricing':
+        return 'bg-green-100';
+      case 'Paper':
+        return 'bg-blue-100';
+      case 'Net':
+        return 'bg-green-50';
+      default:
+        return '';
+    }
+  };
+
   return (
     <Layout>
       <Helmet>
@@ -396,18 +412,23 @@ const ExposurePage = () => {
         ) : (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="[&_*]:border-[1.5px]"> {/* Making all borders bold */}
                 <TableHeader>
                   {/* First header row: Main exposure categories */}
                   <TableRow className="bg-muted/50">
-                    <TableHead rowSpan={2} className="border-r border-b text-left p-3 font-medium sticky left-0 bg-muted/50 z-10">
+                    <TableHead 
+                      rowSpan={2} 
+                      className="border-[2px] border-r border-b text-left p-3 font-medium sticky left-0 bg-muted/50 z-10"
+                    >
                       Month
                     </TableHead>
-                    {exposureCategories.map(category => (
+                    {exposureCategories.map((category, catIndex) => (
                       <TableHead 
                         key={category} 
                         colSpan={allProducts.length} 
-                        className="text-center p-2 font-medium border-r border-b"
+                        className={`text-center p-2 font-medium border-[2px] ${
+                          catIndex < exposureCategories.length - 1 ? 'border-r' : ''
+                        }`}
                       >
                         {category}
                       </TableHead>
@@ -416,12 +437,14 @@ const ExposurePage = () => {
                   
                   {/* Second header row: Products under each category */}
                   <TableRow className="bg-muted/30">
-                    {exposureCategories.flatMap(category => 
+                    {exposureCategories.flatMap((category, catIndex) => 
                       allProducts.map((product, index) => (
                         <TableHead 
                           key={`${category}-${product}`} 
-                          className={`text-right p-2 text-sm whitespace-nowrap ${
-                            index === allProducts.length - 1 && category !== 'Net' ? 'border-r' : ''
+                          className={`text-right p-2 text-sm whitespace-nowrap border-[2px] ${
+                            getCategoryColorClass(category)
+                          } ${
+                            index === allProducts.length - 1 && catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
                           }`}
                         >
                           {product}
@@ -434,17 +457,19 @@ const ExposurePage = () => {
                   {/* Data rows for each month */}
                   {exposureData.map((monthData) => (
                     <TableRow key={monthData.month} className="hover:bg-muted/50">
-                      <TableCell className="font-medium border-r sticky left-0 bg-white z-10">
+                      <TableCell className="font-medium border-[2px] border-r sticky left-0 bg-white z-10">
                         {monthData.month}
                       </TableCell>
                       
                       {/* Physical exposure values */}
-                      {allProducts.map(product => {
+                      {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
                           <TableCell 
                             key={`${monthData.month}-physical-${product}`} 
-                            className={`text-right ${getValueColorClass(productData.physical)}`}
+                            className={`text-right ${getValueColorClass(productData.physical)} bg-orange-100 border-[2px] ${
+                              index === allProducts.length - 1 ? 'border-r-[3px]' : ''
+                            }`}
                           >
                             {formatValue(productData.physical)}
                           </TableCell>
@@ -452,13 +477,13 @@ const ExposurePage = () => {
                       })}
                       
                       {/* Pricing exposure values */}
-                      {allProducts.map(product => {
+                      {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
                           <TableCell 
                             key={`${monthData.month}-pricing-${product}`} 
-                            className={`text-right ${getValueColorClass(productData.pricing)} ${
-                              product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                            className={`text-right ${getValueColorClass(productData.pricing)} bg-green-100 border-[2px] ${
+                              index === allProducts.length - 1 ? 'border-r-[3px]' : ''
                             }`}
                           >
                             {formatValue(productData.pricing)}
@@ -467,13 +492,13 @@ const ExposurePage = () => {
                       })}
                       
                       {/* Paper exposure values */}
-                      {allProducts.map(product => {
+                      {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
                           <TableCell 
                             key={`${monthData.month}-paper-${product}`} 
-                            className={`text-right ${getValueColorClass(productData.paper)} ${
-                              product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                            className={`text-right ${getValueColorClass(productData.paper)} bg-blue-100 border-[2px] ${
+                              index === allProducts.length - 1 ? 'border-r-[3px]' : ''
                             }`}
                           >
                             {formatValue(productData.paper)}
@@ -482,12 +507,12 @@ const ExposurePage = () => {
                       })}
                       
                       {/* Net exposure values */}
-                      {allProducts.map(product => {
+                      {allProducts.map((product, index) => {
                         const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                         return (
                           <TableCell 
                             key={`${monthData.month}-net-${product}`} 
-                            className={`text-right font-medium ${getValueColorClass(productData.netExposure)}`}
+                            className={`text-right font-medium ${getValueColorClass(productData.netExposure)} bg-green-50 border-[2px]`}
                           >
                             {formatValue(productData.netExposure)}
                           </TableCell>
@@ -497,27 +522,29 @@ const ExposurePage = () => {
                   ))}
                   
                   {/* Grand Total row */}
-                  <TableRow className="bg-muted/30 font-semibold">
-                    <TableCell className="border-r sticky left-0 bg-muted/30 z-10">
+                  <TableRow className="bg-muted/30 font-bold">
+                    <TableCell className="border-[2px] border-r sticky left-0 bg-muted/30 z-10">
                       Total
                     </TableCell>
                     
                     {/* Physical totals by product */}
-                    {allProducts.map(product => (
+                    {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-physical-${product}`} 
-                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.physical || 0)}`}
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.physical || 0)} bg-orange-100 border-[2px] font-bold ${
+                          index === allProducts.length - 1 ? 'border-r-[3px]' : ''
+                        }`}
                       >
                         {formatValue(grandTotals.productTotals[product]?.physical || 0)}
                       </TableCell>
                     ))}
                     
                     {/* Pricing totals by product */}
-                    {allProducts.map(product => (
+                    {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-pricing-${product}`} 
-                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.pricing || 0)} ${
-                          product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.pricing || 0)} bg-green-100 border-[2px] font-bold ${
+                          index === allProducts.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
                         {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
@@ -525,11 +552,11 @@ const ExposurePage = () => {
                     ))}
                     
                     {/* Paper totals by product */}
-                    {allProducts.map(product => (
+                    {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-paper-${product}`} 
-                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.paper || 0)} ${
-                          product === allProducts[allProducts.length - 1] ? 'border-r' : ''
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.paper || 0)} bg-blue-100 border-[2px] font-bold ${
+                          index === allProducts.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
                         {formatValue(grandTotals.productTotals[product]?.paper || 0)}
@@ -537,10 +564,10 @@ const ExposurePage = () => {
                     ))}
                     
                     {/* Net totals by product */}
-                    {allProducts.map(product => (
+                    {allProducts.map((product, index) => (
                       <TableCell 
                         key={`total-net-${product}`} 
-                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.netExposure || 0)}`}
+                        className={`text-right ${getValueColorClass(grandTotals.productTotals[product]?.netExposure || 0)} bg-green-50 border-[2px] font-bold`}
                       >
                         {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
                       </TableCell>
