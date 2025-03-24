@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Download, Calendar } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -379,7 +380,7 @@ const ExposurePage = () => {
                   <TableRow className="bg-muted/50">
                     <TableHead 
                       rowSpan={2} 
-                      className="border-[3px] border-black text-left p-3 font-bold text-3xl bg-white sticky left-0 z-10"
+                      className="border-[3px] border-black text-left p-3 font-bold text-black bg-white sticky left-0 z-10"
                     >
                       Month
                     </TableHead>
@@ -387,7 +388,7 @@ const ExposurePage = () => {
                       <TableHead 
                         key={category} 
                         colSpan={allProducts.length} 
-                        className={`text-center p-2 font-bold text-3xl border-[3px] border-black ${
+                        className={`text-center p-2 font-bold text-black border-[3px] border-black ${
                           catIndex < exposureCategories.length - 1 ? 'border-r-[3px]' : ''
                         }`}
                       >
