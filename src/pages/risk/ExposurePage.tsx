@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -24,7 +23,6 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 
 interface ExposureData {
   physical: number;
@@ -43,9 +41,11 @@ interface MonthlyExposure {
   totals: ExposureData;
 }
 
+const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
+
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
-  const [visibleCategories, setVisibleCategories] = useState<string[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
+  const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
@@ -255,7 +255,6 @@ const ExposurePage = () => {
         
         productExposure.netExposure = productExposure.physical + productExposure.pricing + productExposure.paper;
         
-        // Always include all products, even with zero values
         productsData[product] = productExposure;
         
         totals.physical += productExposure.physical;
@@ -312,16 +311,14 @@ const ExposurePage = () => {
   }, [exposureData, allProducts]);
 
   const getValueColorClass = (value: number): string => {
-    if (value > 0) return 'text-green-600';
-    if (value < 0) return 'text-red-600';
-    return 'text-muted-foreground';
+    return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
   };
 
   const formatValue = (value: number): string => {
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
 
-  const exposureCategories = ['Physical', 'Pricing', 'Paper', 'Exposure'];
+  const exposureCategories = CATEGORY_ORDER;
 
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
@@ -339,11 +336,14 @@ const ExposurePage = () => {
   };
 
   const toggleCategory = (category: string) => {
-    setVisibleCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(cat => cat !== category) 
-        : [...prev, category]
-    );
+    setVisibleCategories(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(cat => cat !== category);
+      } else {
+        const newCategories = [...prev, category];
+        return [...CATEGORY_ORDER].filter(cat => newCategories.includes(cat));
+      }
+    });
   };
 
   const filteredProducts = useMemo(() => {
@@ -352,6 +352,10 @@ const ExposurePage = () => {
     }
     return allProducts.filter(product => product === selectedProduct);
   }, [allProducts, selectedProduct]);
+
+  const orderedVisibleCategories = useMemo(() => {
+    return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
+  }, [visibleCategories]);
 
   return (
     <Layout>
@@ -444,12 +448,12 @@ const ExposurePage = () => {
                         >
                           Month
                         </TableHead>
-                        {visibleCategories.map((category, catIndex) => (
+                        {orderedVisibleCategories.map((category, catIndex) => (
                           <TableHead 
                             key={category} 
                             colSpan={filteredProducts.length} 
                             className={`text-center p-1 font-bold text-black text-xs border-[1px] border-black ${
-                              catIndex < visibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                              catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
                             }`}
                           >
                             {category}
@@ -458,14 +462,14 @@ const ExposurePage = () => {
                       </TableRow>
                       
                       <TableRow className="bg-muted/30">
-                        {visibleCategories.flatMap((category, catIndex) => 
+                        {orderedVisibleCategories.flatMap((category, catIndex) => 
                           filteredProducts.map((product, index) => (
                             <TableHead 
                               key={`${category}-${product}`} 
                               className={`text-right p-1 text-xs whitespace-nowrap border-[1px] border-black text-white font-bold ${
                                 getCategoryColorClass(category)
                               } ${
-                                index === filteredProducts.length - 1 && catIndex < visibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
                               }`}
                             >
                               {product}
@@ -482,58 +486,65 @@ const ExposurePage = () => {
                             {monthData.month}
                           </TableCell>
                           
-                          {visibleCategories.includes('Physical') && filteredProducts.map((product, index) => {
-                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                            return (
-                              <TableCell 
-                                key={`${monthData.month}-physical-${product}`} 
-                                className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} border-[1px] border-black ${
-                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                                }`}
-                              >
-                                {formatValue(productData.physical)}
-                              </TableCell>
-                            );
-                          })}
-                          
-                          {visibleCategories.includes('Pricing') && filteredProducts.map((product, index) => {
-                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                            return (
-                              <TableCell 
-                                key={`${monthData.month}-pricing-${product}`} 
-                                className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
-                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                                }`}
-                              >
-                                {formatValue(productData.pricing)}
-                              </TableCell>
-                            );
-                          })}
-                          
-                          {visibleCategories.includes('Paper') && filteredProducts.map((product, index) => {
-                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                            return (
-                              <TableCell 
-                                key={`${monthData.month}-paper-${product}`} 
-                                className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} border-[1px] border-black ${
-                                  index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                                }`}
-                              >
-                                {formatValue(productData.paper)}
-                              </TableCell>
-                            );
-                          })}
-                          
-                          {visibleCategories.includes('Exposure') && filteredProducts.map((product, index) => {
-                            const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                            return (
-                              <TableCell 
-                                key={`${monthData.month}-net-${product}`} 
-                                className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} border-[1px] border-black`}
-                              >
-                                {formatValue(productData.netExposure)}
-                              </TableCell>
-                            );
+                          {orderedVisibleCategories.map((category, catIndex) => {
+                            if (category === 'Physical') {
+                              return filteredProducts.map((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-physical-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} border-[1px] border-black ${
+                                      index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.physical)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Pricing') {
+                              return filteredProducts.map((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-pricing-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
+                                      index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.pricing)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Paper') {
+                              return filteredProducts.map((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-paper-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} border-[1px] border-black ${
+                                      index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.paper)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Exposure') {
+                              return filteredProducts.map((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-net-${product}`} 
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} border-[1px] border-black ${
+                                      index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.netExposure)}
+                                  </TableCell>
+                                );
+                              });
+                            }
+                            return null;
                           })}
                         </TableRow>
                       ))}
@@ -543,59 +554,66 @@ const ExposurePage = () => {
                           Total
                         </TableCell>
                         
-                        {visibleCategories.includes('Physical') && filteredProducts.map((product, index) => (
-                          <TableCell 
-                            key={`total-physical-${product}`} 
-                            className={`text-right text-xs p-1 ${
-                              grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
-                              grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
-                            } border-[1px] border-black font-bold ${
-                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                            }`}
-                          >
-                            {formatValue(grandTotals.productTotals[product]?.physical || 0)}
-                          </TableCell>
-                        ))}
-                        
-                        {visibleCategories.includes('Pricing') && filteredProducts.map((product, index) => (
-                          <TableCell 
-                            key={`total-pricing-${product}`} 
-                            className={`text-right text-xs p-1 ${
-                              grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
-                              grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
-                            } border-[1px] border-black font-bold ${
-                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                            }`}
-                          >
-                            {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
-                          </TableCell>
-                        ))}
-                        
-                        {visibleCategories.includes('Paper') && filteredProducts.map((product, index) => (
-                          <TableCell 
-                            key={`total-paper-${product}`} 
-                            className={`text-right text-xs p-1 ${
-                              grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
-                              grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
-                            } border-[1px] border-black font-bold ${
-                              index === filteredProducts.length - 1 ? 'border-r-[1px]' : ''
-                            }`}
-                          >
-                            {formatValue(grandTotals.productTotals[product]?.paper || 0)}
-                          </TableCell>
-                        ))}
-                        
-                        {visibleCategories.includes('Exposure') && filteredProducts.map((product, index) => (
-                          <TableCell 
-                            key={`total-net-${product}`} 
-                            className={`text-right text-xs p-1 ${
-                              grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
-                              grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
-                            } border-[1px] border-black font-bold`}
-                          >
-                            {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
-                          </TableCell>
-                        ))}
+                        {orderedVisibleCategories.map((category, catIndex) => {
+                          if (category === 'Physical') {
+                            return filteredProducts.map((product, index) => (
+                              <TableCell 
+                                key={`total-physical-${product}`} 
+                                className={`text-right text-xs p-1 ${
+                                  grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
+                                  grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
+                                } border-[1px] border-black font-bold ${
+                                  index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                }`}
+                              >
+                                {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                              </TableCell>
+                            ));
+                          } else if (category === 'Pricing') {
+                            return filteredProducts.map((product, index) => (
+                              <TableCell 
+                                key={`total-pricing-${product}`} 
+                                className={`text-right text-xs p-1 ${
+                                  grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
+                                  grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
+                                } border-[1px] border-black font-bold ${
+                                  index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                }`}
+                              >
+                                {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                              </TableCell>
+                            ));
+                          } else if (category === 'Paper') {
+                            return filteredProducts.map((product, index) => (
+                              <TableCell 
+                                key={`total-paper-${product}`} 
+                                className={`text-right text-xs p-1 ${
+                                  grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
+                                  grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
+                                } border-[1px] border-black font-bold ${
+                                  index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                }`}
+                              >
+                                {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                              </TableCell>
+                            ));
+                          } else if (category === 'Exposure') {
+                            return filteredProducts.map((product, index) => (
+                              <TableCell 
+                                key={`total-net-${product}`} 
+                                className={`text-right text-xs p-1 ${
+                                  grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
+                                  grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
+                                } border-[1px] border-black font-bold ${
+                                  index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                }`}
+                              >
+                                {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                              </TableCell>
+                            ));
+                          }
+                          return null;
+                        })}
                       </TableRow>
                     </TableBody>
                   </Table>
