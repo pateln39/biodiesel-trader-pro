@@ -58,11 +58,9 @@ const MTMPage = () => {
 
   const tradeLegs = physicalTrades.flatMap(trade => 
     trade.legs?.map(leg => {
-      // Ensure start date is before end date
       let startDate = leg.pricingPeriodStart;
       let endDate = leg.pricingPeriodEnd;
       
-      // Swap dates if start is after end
       if (startDate > endDate) {
         const temp = startDate;
         startDate = endDate;
@@ -159,7 +157,6 @@ const MTMPage = () => {
     
     const firstLeg = trade.legs[0];
     
-    // For MTM formula display use the dash format for instrument names
     return <span>{formatMTMDisplay(
       firstLeg.product,
       firstLeg.relationshipType,
@@ -235,11 +232,13 @@ const MTMPage = () => {
                     <TableRow key={position.legId}>
                       <TableCell>
                         {position.physicalType === 'term' ? (
-                          // For term trades, show the suffix
-                          <>{position.tradeRef}-{position.legReference.split('-').pop()}</>
+                          <>
+                            {position.tradeRef}-{position.legReference.split('-').pop()}
+                          </>
                         ) : (
-                          // For spot trades, show only the trade reference
-                          <>{position.tradeRef}</>
+                          <>
+                            {position.tradeRef}
+                          </>
                         )}
                       </TableCell>
                       <TableCell>{position.product}</TableCell>

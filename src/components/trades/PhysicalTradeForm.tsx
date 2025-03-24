@@ -92,8 +92,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     })) || [createDefaultLeg()]
   );
 
-  
-  
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
@@ -149,8 +147,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     setLegs(newLegs);
   };
 
-  
-  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -368,7 +364,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </div>
               </div>
 
-              
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-incoterm`}>Incoterm</Label>

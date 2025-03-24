@@ -7,8 +7,6 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Argus FAME0': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
-    'Argus HVO': 0,
-    'ICE GASOIL FUTURES': 0,
   },
   pricing: {
     'Argus UCOME': 0,
@@ -16,8 +14,6 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Argus FAME0': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
-    'Argus HVO': 0,
-    'ICE GASOIL FUTURES': 0,
   }
 });
 
@@ -411,8 +407,6 @@ export const calculatePhysicalExposure = (
     'Argus FAME0': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
-    'Argus HVO': 0,
-    'ICE GASOIL FUTURES': 0,
   };
   
   if (!tokens.length || tradeQuantity === 0) {
@@ -454,8 +448,6 @@ export const calculatePricingExposure = (
     'Argus FAME0': 0,
     'Platts LSGO': 0,
     'Platts diesel': 0,
-    'Argus HVO': 0,
-    'ICE GASOIL FUTURES': 0,
   };
   
   if (!tokens.length || tradeQuantity === 0) {
