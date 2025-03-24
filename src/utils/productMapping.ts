@@ -1,99 +1,49 @@
 
 /**
- * Maps paper product names to standardized pricing instrument names
- * Ensures exposures are consolidated under the correct product columns
+ * Maps product codes to their canonical display names for exposure reporting
  */
-
-// Key pricing instrument names (canonical product names)
-export const CANONICAL_PRODUCTS = {
-  UCOME: 'Argus UCOME',
-  RME: 'Argus RME',
-  FAME0: 'Argus FAME0',
-  HVO: 'Argus HVO',
-  LSGO: 'Platts LSGO',
-  DIESEL: 'Platts Diesel',
-  GASOIL: 'ICE GASOIL FUTURES'
-};
-
-// Maps paper product names and codes to their canonical pricing instrument name
 export const mapProductToCanonical = (product: string): string => {
-  // Handle FP (Fixed Price) products
-  if (product === 'UCOME' || product === 'UCOME FP' || product.includes('UCOME-')) {
-    return CANONICAL_PRODUCTS.UCOME;
+  switch (product) {
+    case 'UCOME':
+    case 'UCOME-5':
+      return 'Argus UCOME';
+    case 'FAME0':
+      return 'Argus FAME0';
+    case 'RME':
+    case 'RME DC':
+      return 'Argus RME';
+    case 'LSGO':
+      return 'Platts LSGO';
+    case 'HVO':
+      return 'Argus HVO';
+    case 'GASOIL':
+      return 'ICE GASOIL FUTURES';
+    default:
+      return product;
   }
-  
-  if (product === 'RME' || product === 'RME FP' || product.includes('RME-')) {
-    return CANONICAL_PRODUCTS.RME;
-  }
-  
-  if (product === 'FAME0' || product === 'FAME0 FP' || product.includes('FAME0-')) {
-    return CANONICAL_PRODUCTS.FAME0;
-  }
-  
-  if (product === 'HVO' || product === 'HVO FP' || product.includes('HVO-')) {
-    return CANONICAL_PRODUCTS.HVO;
-  }
-  
-  if (product === 'LSGO' || product.includes('LSGO')) {
-    return CANONICAL_PRODUCTS.LSGO;
-  }
-  
-  if (product === 'diesel' || product.includes('diesel') || product.includes('Diesel')) {
-    return CANONICAL_PRODUCTS.DIESEL;
-  }
-  
-  if (product === 'GASOIL' || product.includes('GASOIL') || product.includes('ICE GASOIL')) {
-    return CANONICAL_PRODUCTS.GASOIL;
-  }
-  
-  // If no mapping found, return the original product name
-  return product;
 };
 
-// Parse a paper trade instrument name to determine the products involved
-export const parsePaperInstrument = (
-  instrument: string
-): { baseProduct: string; oppositeProduct?: string; relationshipType: 'FP' | 'DIFF' | 'SPREAD' } => {
-  if (!instrument) {
-    return { baseProduct: '', relationshipType: 'FP' };
+/**
+ * Returns display name for a product based on type
+ */
+export const formatProductDisplay = (
+  product: string, 
+  relationshipType: string,
+  oppositeProduct?: string | null
+): string => {
+  if (!product) return '';
+  
+  if (relationshipType === 'FP') {
+    return `${product} FP`;
   }
   
-  // Check for DIFF relationship
-  if (instrument.includes('DIFF')) {
-    // For DIFFs, the format is usually "{product} DIFF"
-    const baseProduct = instrument.replace(' DIFF', '');
-    // DIFFs are typically against LSGO
-    const oppositeProduct = CANONICAL_PRODUCTS.LSGO;
-    
-    return {
-      baseProduct: mapProductToCanonical(baseProduct),
-      oppositeProduct: oppositeProduct,
-      relationshipType: 'DIFF'
-    };
+  if (relationshipType === 'DIFF' && oppositeProduct) {
+    return `${product}/${oppositeProduct} DIFF`;
   }
   
-  // Check for SPREAD relationship
-  if (instrument.includes('SPREAD') || instrument.includes('-')) {
-    // For SPREADs, the format is usually "{product1}-{product2} SPREAD" or just "{product1}-{product2}"
-    const products = instrument
-      .replace(' SPREAD', '')
-      .split('-')
-      .map(p => p.trim());
-    
-    if (products.length >= 2) {
-      return {
-        baseProduct: mapProductToCanonical(products[0]),
-        oppositeProduct: mapProductToCanonical(products[1]),
-        relationshipType: 'SPREAD'
-      };
-    }
+  if (relationshipType === 'SPREAD' && oppositeProduct) {
+    return `${product}/${oppositeProduct} SPREAD`;
   }
   
-  // Default to FP, extract the product name
-  let baseProduct = instrument.replace(' FP', '');
-  
-  return {
-    baseProduct: mapProductToCanonical(baseProduct),
-    relationshipType: 'FP'
-  };
+  return product;
 };
