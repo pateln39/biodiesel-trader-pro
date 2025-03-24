@@ -63,7 +63,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     return [];
   });
   
-  const availableMonths = useMemo(() => getNextMonths(8), []);
+  const availableMonths = useMemo(() => getNextMonths(13), []);
   
   const [exposureData, setExposureData] = useState<any[]>(() => {
     return availableMonths.map(month => ({

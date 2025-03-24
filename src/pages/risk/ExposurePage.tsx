@@ -40,7 +40,7 @@ interface MonthlyExposure {
 }
 
 const ExposurePage = () => {
-  const [periods] = React.useState<string[]>(getNextMonths(8));
+  const [periods] = React.useState<string[]>(getNextMonths(13));
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -546,4 +546,3 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
-

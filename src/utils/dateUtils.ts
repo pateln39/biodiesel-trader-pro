@@ -10,7 +10,7 @@
  * @param count Number of months to generate
  * @returns Array of month codes
  */
-export function getNextMonths(count: number = 8): string[] {
+export function getNextMonths(count: number = 13): string[] {
   const months = [];
   const currentDate = new Date();
   
