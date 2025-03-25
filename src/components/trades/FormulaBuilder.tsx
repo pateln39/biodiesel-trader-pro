@@ -161,7 +161,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Argus RME': 0,
           'Argus FAME0': 0,
           'Platts LSGO': 0,
-          'Platts diesel': 0,
+          'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
         },
@@ -170,7 +170,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Argus RME': 0,
           'Argus FAME0': 0,
           'Platts LSGO': 0,
-          'Platts diesel': 0,
+          'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
         }

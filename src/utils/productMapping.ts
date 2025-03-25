@@ -1,3 +1,4 @@
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -20,7 +21,8 @@ export const mapProductToCanonical = (product: string): string => {
       return 'ICE GASOIL FUTURES';
     case 'diesel':
     case 'Platts diesel':
-      return 'Platts Diesel';
+    case 'Platts Diesel': // Add this case to ensure consistency
+      return 'Platts Diesel'; // Changed to capital D for consistency
     default:
       return product;
   }
@@ -55,7 +57,7 @@ export const formatExposureTableProduct = (product: string): string => {
   const simplified = stripProductPrefix(product);
   
   // Special case for Diesel (capitalize D)
-  if (simplified === 'Diesel') {
+  if (simplified.toLowerCase() === 'diesel') {
     return 'Diesel';
   }
   
