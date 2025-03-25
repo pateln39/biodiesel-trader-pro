@@ -1,3 +1,4 @@
+
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -101,13 +102,12 @@ export const formatDate = (date: Date): string => {
   });
 };
 
-// Calculate net exposure from physical, pricing, and paper positions
+// Updated to exclude Paper column when calculating netExposure
 export const calculateNetExposure = (
   physical: number,
-  pricing: number,
-  paper: number
+  pricing: number
 ): number => {
-  return physical + pricing + paper;
+  return physical + pricing;
 };
 
 // Generate instrument name from product and relationship type (for database storage)

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -68,6 +69,14 @@ const calculateProductGroupTotal = (
     }
     return total;
   }, 0);
+};
+
+// Updated to exclude Paper column when calculating netExposure
+const calculateNetExposure = (
+  physical: number,
+  pricing: number
+): number => {
+  return physical + pricing;
 };
 
 const ExposurePage = () => {
@@ -458,14 +467,19 @@ const ExposurePage = () => {
       Array.from(allProducts).forEach(product => {
         const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
-        productExposure.netExposure = productExposure.physical + productExposure.pricing + productExposure.paper;
+        // Update net exposure calculation to exclude paper column
+        productExposure.netExposure = calculateNetExposure(
+          productExposure.physical,
+          productExposure.pricing
+        );
         
         productsData[product] = productExposure;
         
         totals.physical += productExposure.physical;
         totals.pricing += productExposure.pricing;
         totals.paper += productExposure.paper;
-        totals.netExposure += productExposure.netExposure;
+        // Recalculate the total net exposure
+        totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       });
       
       return {
@@ -511,13 +525,20 @@ const ExposurePage = () => {
       totals.physical += monthData.totals.physical;
       totals.pricing += monthData.totals.pricing;
       totals.paper += monthData.totals.paper;
-      totals.netExposure += monthData.totals.netExposure;
+      
+      // Update the calculation of grand total net exposure
+      totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         productTotals[product].physical += exposure.physical;
         productTotals[product].pricing += exposure.pricing;
         productTotals[product].paper += exposure.paper;
-        productTotals[product].netExposure += exposure.netExposure;
+        
+        // Update product totals net exposure calculation
+        productTotals[product].netExposure = calculateNetExposure(
+          productTotals[product].physical,
+          productTotals[product].pricing
+        );
       });
     });
     
