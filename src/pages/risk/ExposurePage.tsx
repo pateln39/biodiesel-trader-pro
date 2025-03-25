@@ -233,6 +233,8 @@ const ExposurePage = () => {
             const quantity = (leg.quantity || 0) * buySellMultiplier;
             
             exposuresByMonth[month][baseProduct].paper += quantity;
+            // Mirror paper exposure to pricing exposure
+            exposuresByMonth[month][baseProduct].pricing += quantity;
             
             if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
               allProducts.add(oppositeProduct);
@@ -247,6 +249,8 @@ const ExposurePage = () => {
               }
               
               exposuresByMonth[month][oppositeProduct].paper += -quantity;
+              // Mirror paper exposure to pricing exposure for opposite product
+              exposuresByMonth[month][oppositeProduct].pricing += -quantity;
             }
           }
         } else if (leg.exposures && typeof leg.exposures === 'object') {
@@ -267,6 +271,13 @@ const ExposurePage = () => {
               }
               
               exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
+              
+              // If pricing exposure is not explicitly set, mirror the paper exposure
+              if (!exposuresData.pricing || 
+                  typeof exposuresData.pricing !== 'object' || 
+                  !exposuresData.pricing[prodName]) {
+                exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
+              }
             });
           }
           
@@ -307,7 +318,34 @@ const ExposurePage = () => {
                   };
                 }
                 
-                exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
+                const paperExposure = Number(value) || 0;
+                exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                
+                // Mirror paper exposure to pricing exposure
+                if (!mtmExposures.pricing || 
+                    typeof mtmExposures.pricing !== 'object' || 
+                    !mtmExposures.pricing[prodName]) {
+                  exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+                }
+              });
+            }
+            
+            // If pricing exposures are explicitly defined, use those
+            if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+              Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
+                const canonicalProduct = mapProductToCanonical(prodName);
+                allProducts.add(canonicalProduct);
+                
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
               });
             }
           }
@@ -337,7 +375,33 @@ const ExposurePage = () => {
                 // Apply the paper exposure with the correct sign based on buy/sell
                 const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
                 exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
+                
+                // Mirror paper exposure to pricing exposure
+                if (!mtmFormula.exposures.pricing || 
+                    !(baseProduct in (mtmFormula.exposures.pricing || {}))) {
+                  exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                }
               });
+              
+              // If pricing exposures are explicitly defined, use those
+              if (mtmFormula.exposures.pricing) {
+                Object.entries(mtmFormula.exposures.pricing).forEach(([baseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                  allProducts.add(canonicalBaseProduct);
+                  
+                  if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                    exposuresByMonth[month][canonicalBaseProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
+                  exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                });
+              }
             } else {
               allProducts.add(canonicalProduct);
               
@@ -351,7 +415,10 @@ const ExposurePage = () => {
               }
               
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-              exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
+              const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+              exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+              // Mirror paper exposure to pricing exposure
+              exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
             }
           } else {
             allProducts.add(canonicalProduct);
@@ -366,7 +433,10 @@ const ExposurePage = () => {
             }
             
             const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-            exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
+            const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+            exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+            // Mirror paper exposure to pricing exposure
+            exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
           }
         }
       });
