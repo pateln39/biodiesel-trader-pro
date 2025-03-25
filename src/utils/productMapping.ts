@@ -20,3 +20,21 @@ export const formatProductDisplay = (
   
   return product;
 };
+
+export const calculateDisplayPrice = (
+  relationshipType: string,
+  price?: number | null,
+  rightSidePrice?: number | null
+): string => {
+  if (price === undefined || price === null) return '-';
+  
+  if (relationshipType === 'DIFF' || relationshipType === 'SPREAD') {
+    if (rightSidePrice === undefined || rightSidePrice === null) {
+      return price.toFixed(2);
+    }
+    const diff = price - rightSidePrice;
+    return diff.toFixed(2);
+  }
+  
+  return price.toFixed(2);
+};
