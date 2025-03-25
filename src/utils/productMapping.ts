@@ -43,7 +43,7 @@ export const formatProductDisplay = (
   }
   
   if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}/${oppositeProduct} SPREAD`;
+    return `${product}/${oppositeProduct}`;
   }
   
   return product;
