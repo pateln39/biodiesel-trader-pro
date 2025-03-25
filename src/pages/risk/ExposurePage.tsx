@@ -53,6 +53,9 @@ const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
 const BIODIESEL_PRODUCTS = ['Argus FAME0', 'Argus HVO', 'Argus RME', 'Argus UCOME'];
 const PRICING_INSTRUMENT_PRODUCTS = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
 
+// All products that should always be included in the exposure table
+const ALL_PRODUCTS = [...BIODIESEL_PRODUCTS, ...PRICING_INSTRUMENT_PRODUCTS];
+
 // Helper function to calculate the total of a product group for a specific month and category
 const calculateProductGroupTotal = (
   monthProducts: ProductExposure,
@@ -120,73 +123,54 @@ const ExposurePage = () => {
   });
 
   const exposureData = useMemo(() => {
-    if (!tradeData) return [];
-
-    const { physicalTradeLegs, paperTradeLegs } = tradeData;
-    
+    // Initialize exposure data for all months with all standard products
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
-    const allProducts = new Set<string>();
     
+    // Ensure all required products are always in the allProducts set
+    const allProducts = new Set<string>(ALL_PRODUCTS);
+    
+    // Initialize all months with zero values for all products
     periods.forEach(month => {
       exposuresByMonth[month] = {};
+      
+      // Initialize all standard products with zero values
+      ALL_PRODUCTS.forEach(product => {
+        exposuresByMonth[month][product] = {
+          physical: 0,
+          pricing: 0,
+          paper: 0,
+          netExposure: 0
+        };
+      });
     });
     
-    if (physicalTradeLegs && physicalTradeLegs.length > 0) {
-      physicalTradeLegs.forEach(leg => {
-        let month = leg.trading_period || '';
-        
-        if (!month && leg.pricing_period_start) {
-          const date = new Date(leg.pricing_period_start);
-          const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-          const year = date.getFullYear().toString().slice(2);
-          month = `${monthName}-${year}`;
-        }
-        
-        if (!month || !periods.includes(month)) {
-          return;
-        }
-        
-        const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
-        const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-        const quantity = (leg.quantity || 0) * quantityMultiplier;
-        
-        const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-        
-        if (mtmFormula.tokens.length > 0) {
-          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-            Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-              const canonicalBaseProduct = mapProductToCanonical(baseProduct);
-              allProducts.add(canonicalBaseProduct);
-              
-              if (!exposuresByMonth[month][canonicalBaseProduct]) {
-                exposuresByMonth[month][canonicalBaseProduct] = {
-                  physical: 0,
-                  pricing: 0,
-                  paper: 0,
-                  netExposure: 0
-                };
-              }
-              
-              const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
-              exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
-            });
-          } else {
-            allProducts.add(canonicalProduct);
-            
-            if (!exposuresByMonth[month][canonicalProduct]) {
-              exposuresByMonth[month][canonicalProduct] = {
-                physical: 0,
-                pricing: 0,
-                paper: 0,
-                netExposure: 0
-              };
-            }
-            
-            exposuresByMonth[month][canonicalProduct].physical += quantity;
+    // Only process trade data if it exists
+    if (tradeData) {
+      const { physicalTradeLegs, paperTradeLegs } = tradeData;
+      
+      if (physicalTradeLegs && physicalTradeLegs.length > 0) {
+        physicalTradeLegs.forEach(leg => {
+          let month = leg.trading_period || '';
+          
+          if (!month && leg.pricing_period_start) {
+            const date = new Date(leg.pricing_period_start);
+            const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+            const year = date.getFullYear().toString().slice(2);
+            month = `${monthName}-${year}`;
           }
-        } else {
+          
+          if (!month || !periods.includes(month)) {
+            return;
+          }
+          
+          const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+          const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+          const quantity = (leg.quantity || 0) * quantityMultiplier;
+          
+          // Add any new products to the set
           allProducts.add(canonicalProduct);
           
+          // Ensure the product exists in the exposures
           if (!exposuresByMonth[month][canonicalProduct]) {
             exposuresByMonth[month][canonicalProduct] = {
               physical: 0,
@@ -196,104 +180,36 @@ const ExposurePage = () => {
             };
           }
           
-          exposuresByMonth[month][canonicalProduct].physical += quantity;
-        }
-        
-        const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-        if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-          Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-            const canonicalInstrument = mapProductToCanonical(instrument);
-            allProducts.add(canonicalInstrument);
-            
-            if (!exposuresByMonth[month][canonicalInstrument]) {
-              exposuresByMonth[month][canonicalInstrument] = {
-                physical: 0,
-                pricing: 0,
-                paper: 0,
-                netExposure: 0
-              };
-            }
-            
-            exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
-          });
-        }
-      });
-    }
-    
-    if (paperTradeLegs && paperTradeLegs.length > 0) {
-      paperTradeLegs.forEach(leg => {
-        const month = leg.period || leg.trading_period || '';
-        
-        if (!month || !periods.includes(month)) {
-          return;
-        }
-        
-        if (leg.instrument) {
-          const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
+          const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
           
-          if (baseProduct) {
-            allProducts.add(baseProduct);
-            
-            if (!exposuresByMonth[month][baseProduct]) {
-              exposuresByMonth[month][baseProduct] = {
-                physical: 0,
-                pricing: 0,
-                paper: 0,
-                netExposure: 0
-              };
+          if (mtmFormula.tokens.length > 0) {
+            if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                allProducts.add(canonicalBaseProduct);
+                
+                if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                  exposuresByMonth[month][canonicalBaseProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+                exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
+              });
+            } else {
+              exposuresByMonth[month][canonicalProduct].physical += quantity;
             }
-            
-            const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-            const quantity = (leg.quantity || 0) * buySellMultiplier;
-            
-            exposuresByMonth[month][baseProduct].paper += quantity;
-            exposuresByMonth[month][baseProduct].pricing += quantity;
-            
-            if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
-              allProducts.add(oppositeProduct);
-              
-              if (!exposuresByMonth[month][oppositeProduct]) {
-                exposuresByMonth[month][oppositeProduct] = {
-                  physical: 0,
-                  pricing: 0,
-                  paper: 0,
-                  netExposure: 0
-                };
-              }
-              
-              exposuresByMonth[month][oppositeProduct].paper += -quantity;
-              exposuresByMonth[month][oppositeProduct].pricing += -quantity;
-            }
-          }
-        } else if (leg.exposures && typeof leg.exposures === 'object') {
-          const exposuresData = leg.exposures as Record<string, any>;
-          
-          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-            Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-              const canonicalProduct = mapProductToCanonical(prodName);
-              allProducts.add(canonicalProduct);
-              
-              if (!exposuresByMonth[month][canonicalProduct]) {
-                exposuresByMonth[month][canonicalProduct] = {
-                  physical: 0,
-                  pricing: 0,
-                  netExposure: 0,
-                  paper: 0
-                };
-              }
-              
-              exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
-              
-              if (!exposuresData.pricing || 
-                  typeof exposuresData.pricing !== 'object' || 
-                  !exposuresData.pricing[prodName]) {
-                exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
-              }
-            });
+          } else {
+            exposuresByMonth[month][canonicalProduct].physical += quantity;
           }
           
-          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
-            Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
+          const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+          if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+            Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProducts.add(canonicalInstrument);
               
@@ -309,69 +225,43 @@ const ExposurePage = () => {
               exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
             });
           }
-        } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-          const mtmFormula = leg.mtm_formula as Record<string, any>;
+        });
+      }
+      
+      if (paperTradeLegs && paperTradeLegs.length > 0) {
+        paperTradeLegs.forEach(leg => {
+          const month = leg.period || leg.trading_period || '';
           
-          if (mtmFormula.exposures && typeof mtmFormula.exposures === 'object') {
-            const mtmExposures = mtmFormula.exposures as Record<string, any>;
-            
-            if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
-              Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
-                const canonicalProduct = mapProductToCanonical(prodName);
-                allProducts.add(canonicalProduct);
-                
-                if (!exposuresByMonth[month][canonicalProduct]) {
-                  exposuresByMonth[month][canonicalProduct] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
-                }
-                
-                const paperExposure = Number(value) || 0;
-                exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-                
-                if (!mtmExposures.pricing || 
-                    !(prodName in (mtmExposures.pricing || {}))) {
-                  exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
-                }
-              });
-            }
-            
-            if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
-              Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
-                const canonicalProduct = mapProductToCanonical(prodName);
-                allProducts.add(canonicalProduct);
-                
-                if (!exposuresByMonth[month][canonicalProduct]) {
-                  exposuresByMonth[month][canonicalProduct] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
-                }
-                
-                exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
-              });
-            }
+          if (!month || !periods.includes(month)) {
+            return;
           }
-        } else {
-          const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
           
-          if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+          if (leg.instrument) {
+            const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
             
-            if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
-              const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+            if (baseProduct) {
+              allProducts.add(baseProduct);
               
-              Object.entries(mtmFormula.exposures.physical).forEach(([pBaseProduct, weight]) => {
-                const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                allProducts.add(canonicalBaseProduct);
+              if (!exposuresByMonth[month][baseProduct]) {
+                exposuresByMonth[month][baseProduct] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+              const quantity = (leg.quantity || 0) * buySellMultiplier;
+              
+              exposuresByMonth[month][baseProduct].paper += quantity;
+              exposuresByMonth[month][baseProduct].pricing += quantity;
+              
+              if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
+                allProducts.add(oppositeProduct);
                 
-                if (!exposuresByMonth[month][canonicalBaseProduct]) {
-                  exposuresByMonth[month][canonicalBaseProduct] = {
+                if (!exposuresByMonth[month][oppositeProduct]) {
+                  exposuresByMonth[month][oppositeProduct] = {
                     physical: 0,
                     pricing: 0,
                     paper: 0,
@@ -379,17 +269,112 @@ const ExposurePage = () => {
                   };
                 }
                 
-                const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
-                exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
+                exposuresByMonth[month][oppositeProduct].paper += -quantity;
+                exposuresByMonth[month][oppositeProduct].pricing += -quantity;
+              }
+            }
+          } else if (leg.exposures && typeof leg.exposures === 'object') {
+            const exposuresData = leg.exposures as Record<string, any>;
+            
+            if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+              Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
+                const canonicalProduct = mapProductToCanonical(prodName);
+                allProducts.add(canonicalProduct);
                 
-                if (!mtmFormula.exposures.pricing || 
-                    !(pBaseProduct in (mtmFormula.exposures.pricing || {}))) {
-                  exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    netExposure: 0,
+                    paper: 0
+                  };
+                }
+                
+                exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
+                
+                if (!exposuresData.pricing || 
+                    typeof exposuresData.pricing !== 'object' || 
+                    !exposuresData.pricing[prodName]) {
+                  exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
                 }
               });
+            }
+            
+            if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+              Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                allProducts.add(canonicalInstrument);
+                
+                if (!exposuresByMonth[month][canonicalInstrument]) {
+                  exposuresByMonth[month][canonicalInstrument] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
+              });
+            }
+          } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+            const mtmFormula = leg.mtm_formula as Record<string, any>;
+            
+            if (mtmFormula.exposures && typeof mtmFormula.exposures === 'object') {
+              const mtmExposures = mtmFormula.exposures as Record<string, any>;
               
-              if (mtmFormula.exposures.pricing) {
-                Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
+              if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+                Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
+                  const canonicalProduct = mapProductToCanonical(prodName);
+                  allProducts.add(canonicalProduct);
+                  
+                  if (!exposuresByMonth[month][canonicalProduct]) {
+                    exposuresByMonth[month][canonicalProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  const paperExposure = Number(value) || 0;
+                  exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                  
+                  if (!mtmExposures.pricing || 
+                      !(prodName in (mtmExposures.pricing || {}))) {
+                    exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+                  }
+                });
+              }
+              
+              if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+                Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
+                  const canonicalProduct = mapProductToCanonical(prodName);
+                  allProducts.add(canonicalProduct);
+                  
+                  if (!exposuresByMonth[month][canonicalProduct]) {
+                    exposuresByMonth[month][canonicalProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  exposuresByMonth[month][canonicalProduct].pricing += Number(value) || 0;
+                });
+              }
+            }
+          } else {
+            const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+            
+            if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+              const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+              
+              if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
+                const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+                
+                Object.entries(mtmFormula.exposures.physical).forEach(([pBaseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
                   allProducts.add(canonicalBaseProduct);
                   
@@ -403,12 +388,48 @@ const ExposurePage = () => {
                   }
                   
                   const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
-                  exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                  exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
+                  
+                  if (!mtmFormula.exposures.pricing || 
+                      !(pBaseProduct in (mtmFormula.exposures.pricing || {}))) {
+                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                  }
                 });
+                
+                if (mtmFormula.exposures.pricing) {
+                  Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
+                    const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
+                    allProducts.add(canonicalBaseProduct);
+                    
+                    if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                      exposuresByMonth[month][canonicalBaseProduct] = {
+                        physical: 0,
+                        pricing: 0,
+                        paper: 0,
+                        netExposure: 0
+                      };
+                    }
+                    
+                    const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
+                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                  });
+                }
+              } else {
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+                const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+                exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
               }
             } else {
-              allProducts.add(canonicalProduct);
-              
               if (!exposuresByMonth[month][canonicalProduct]) {
                 exposuresByMonth[month][canonicalProduct] = {
                   physical: 0,
@@ -423,25 +444,9 @@ const ExposurePage = () => {
               exposuresByMonth[month][canonicalProduct].paper += paperExposure;
               exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
             }
-          } else {
-            allProducts.add(canonicalProduct);
-            
-            if (!exposuresByMonth[month][canonicalProduct]) {
-              exposuresByMonth[month][canonicalProduct] = {
-                physical: 0,
-                pricing: 0,
-                paper: 0,
-                netExposure: 0
-              };
-            }
-            
-            const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-            const paperExposure = (leg.quantity || 0) * buySellMultiplier;
-            exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-            exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
           }
-        }
-      });
+        });
+      }
     }
     
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
@@ -449,6 +454,7 @@ const ExposurePage = () => {
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
+      // Process all products in the set
       Array.from(allProducts).forEach(product => {
         const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
@@ -473,8 +479,10 @@ const ExposurePage = () => {
   }, [tradeData, periods]);
 
   const allProducts = useMemo(() => {
-    const productSet = new Set<string>();
+    // Always include the default products, even if there are no exposure data
+    const productSet = new Set<string>(ALL_PRODUCTS);
     
+    // Add any additional products from the exposure data
     exposureData.forEach(monthData => {
       Object.keys(monthData.products).forEach(product => {
         productSet.add(product);
