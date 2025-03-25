@@ -39,16 +39,7 @@ export default {
 		'text-lg',
 		'text-xl',
 		'text-2xl',
-		'text-3xl',
-		'bg-green-50',
-		'bg-blue-50',
-		'bg-green-900',
-		'bg-blue-900',
-		'bg-gray-800',
-		'bg-purple-300',
-		'text-green-300',
-		'text-red-300',
-		'text-gray-300'
+		'text-3xl'
 	],
 	prefix: "",
 	theme: {
