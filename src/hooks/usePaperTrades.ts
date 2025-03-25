@@ -19,7 +19,8 @@ const debounce = (fn: Function, ms = 300) => {
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
-  const isProcessingRef = useRef<boolean>(isProcessingRef.current);
+  // Fix the circular reference by initializing with a simple boolean value
+  const isProcessingRef = useRef<boolean>(false);
   
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
@@ -111,11 +112,10 @@ export const usePaperTrades = () => {
               rightSide = leg.mtm_formula.rightSide;
             }
             
-            // Build exposures object
+            // Build exposures object (updated to match the type definition in paper.ts)
             let exposuresObj: PaperTradeLeg['exposures'] = {
-              physical: {},
-              pricing: {},
-              paper: {}
+              paper: {},
+              pricing: {}
             };
             
             // Extract exposures data
