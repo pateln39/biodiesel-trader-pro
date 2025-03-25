@@ -105,7 +105,7 @@ const ExposurePage = () => {
   
   const { data: pricingInstruments, isLoading: loadingInstruments } = usePricingInstruments();
   
-  const { data: exposureData, isLoading, error } = useQuery({
+  const { data: exposureData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
     queryFn: async () => {
       // Fetch Physical trades with exposures
@@ -115,7 +115,7 @@ const ExposurePage = () => {
           id, parent_trade_id, buy_sell, product, quantity, 
           pricing_period_start, pricing_period_end, trading_period, exposures
         `)
-        .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical'));
+        .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical').toString());
         
       if (physicalError) throw physicalError;
 
@@ -267,7 +267,9 @@ const ExposurePage = () => {
     
     // Process paper trades
     exposureData.paper.forEach(leg => {
-      const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument || leg.product);
+      // Use the product directly since we don't have instrument in this context
+      // Fixed: Use product directly instead of missing 'instrument' property
+      const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.product);
       const buySell = leg.buy_sell === 'buy' ? 1 : -1;
       const quantity = (leg.quantity || 0) * buySell;
       
@@ -432,6 +434,10 @@ const ExposurePage = () => {
     // Export functionality placeholder
     console.log('Export CSV');
   };
+
+  const handleRetry = () => {
+    refetch();
+  };
   
   if (isLoading || loadingInstruments) {
     return (
@@ -455,7 +461,7 @@ const ExposurePage = () => {
         </Helmet>
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold mb-4">Exposure Report</h1>
-          <TableErrorState error={error} />
+          <TableErrorState error={error} onRetry={handleRetry} />
         </div>
       </Layout>
     );
