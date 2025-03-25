@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -920,7 +921,7 @@ const ExposurePage = () => {
                               headers.push(
                                 <TableHead 
                                   key={`${category}-${product}`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-gray-300 ${
                                     getExposureProductBackgroundClass(product)
                                   } text-white font-bold`}
                                 >
@@ -932,7 +933,7 @@ const ExposurePage = () => {
                                 headers.push(
                                   <TableHead 
                                     key={`${category}-biodiesel-total`} 
-                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-gray-300 ${
                                       getCategoryColorClass(category)
                                     } text-white font-bold`}
                                   >
@@ -946,7 +947,7 @@ const ExposurePage = () => {
                               headers.push(
                                 <TableHead 
                                   key={`${category}-pricing-instrument-total`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-gray-300 ${
                                     getExposureProductBackgroundClass('', false, true)
                                   } text-white font-bold`}
                                 >
@@ -1057,7 +1058,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)}`}
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-gray-300 ${getValueColorClass(productData.netExposure)}`}
                                   >
                                     {formatValue(productData.netExposure)}
                                   </TableCell>
@@ -1072,7 +1073,7 @@ const ExposurePage = () => {
                                   cells.push(
                                     <TableCell 
                                       key={`${monthData.month}-biodiesel-total`} 
-                                      className={`text-right text-xs p-1 font-medium ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                                      className={`text-right text-xs p-1 font-medium border-r-[1px] border-gray-300 ${getValueColorClass(biodieselTotal)} bg-green-50`}
                                     >
                                       {formatValue(biodieselTotal)}
                                     </TableCell>
@@ -1089,7 +1090,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-pricing-instrument-total`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-gray-300 ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
                                   >
                                     {formatValue(pricingInstrumentTotal)}
                                   </TableCell>
@@ -1194,7 +1195,7 @@ const ExposurePage = () => {
                               cells.push(
                                 <TableCell 
                                   key={`total-net-${product}`} 
-                                  className={`text-right text-xs p-1 ${
+                                  className={`text-right text-xs p-1 border-r-[1px] border-gray-300 ${
                                     grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
                                     grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold`}
@@ -1207,7 +1208,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`total-biodiesel-total`} 
-                                    className={`text-right text-xs p-1 ${
+                                    className={`text-right text-xs p-1 border-r-[1px] border-gray-300 ${
                                       groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
                                       groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
                                     } font-bold bg-green-900`}
@@ -1222,7 +1223,7 @@ const ExposurePage = () => {
                               cells.push(
                                 <TableCell 
                                   key={`total-pricing-instrument-total`} 
-                                  className={`text-right text-xs p-1 ${
+                                  className={`text-right text-xs p-1 border-r-[1px] border-gray-300 ${
                                     groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : 
                                     groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold bg-blue-900`}
