@@ -192,3 +192,29 @@ export const shouldUseSpecialBackground = (product: string): boolean => {
   
   return specialBackgroundProducts.includes(product);
 };
+
+/**
+ * Returns the appropriate background color class for a product in the exposure table
+ * Used for styling the header cells in the exposure column
+ */
+export const getExposureProductBackgroundClass = (
+  product: string, 
+  isTotal: boolean = false,
+  isPricingInstrumentTotal: boolean = false
+): string => {
+  if (isTotal) {
+    return 'bg-gray-500'; // Total Row background
+  }
+  
+  if (isPricingInstrumentTotal) {
+    return 'bg-[#1A1F2C]'; // Dark purple for pricing instrument total
+  }
+  
+  // Dark purple background for specific pricing instruments
+  if (shouldUseSpecialBackground(product)) {
+    return 'bg-[#1A1F2C]'; // Dark purple
+  }
+  
+  // Default background for biodiesel products
+  return 'bg-green-600';
+};
