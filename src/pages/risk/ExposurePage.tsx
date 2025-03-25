@@ -50,9 +50,6 @@ const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 // Constants for products to exclude from specific categories
 const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
 
-// Define the default products that should always be displayed
-const DEFAULT_PRODUCTS = ['UCOME', 'FAME0', 'RME', 'LSGO', 'HVO', 'GASOIL'];
-
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
@@ -112,23 +109,8 @@ const ExposurePage = () => {
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     const allProducts = new Set<string>();
     
-    // Add default products to the set
-    DEFAULT_PRODUCTS.forEach(product => {
-      allProducts.add(product);
-    });
-    
     periods.forEach(month => {
       exposuresByMonth[month] = {};
-      
-      // Initialize default products with zero values for each month
-      DEFAULT_PRODUCTS.forEach(product => {
-        exposuresByMonth[month][product] = {
-          physical: 0,
-          pricing: 0,
-          paper: 0,
-          netExposure: 0
-        };
-      });
     });
     
     if (physicalTradeLegs && physicalTradeLegs.length > 0) {
@@ -395,7 +377,6 @@ const ExposurePage = () => {
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Make sure all products are included in each month's data
       Array.from(allProducts).forEach(product => {
         const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
@@ -422,12 +403,6 @@ const ExposurePage = () => {
   const allProducts = useMemo(() => {
     const productSet = new Set<string>();
     
-    // Add default products first to ensure they're always included
-    DEFAULT_PRODUCTS.forEach(product => {
-      productSet.add(product);
-    });
-    
-    // Then add any other products from the exposure data
     exposureData.forEach(monthData => {
       Object.keys(monthData.products).forEach(product => {
         productSet.add(product);
