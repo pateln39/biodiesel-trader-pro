@@ -1,7 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
 import { 
   Card, 
   CardContent 
@@ -27,6 +25,7 @@ import {
   parsePaperInstrument, 
   formatExposureTableProduct 
 } from '@/utils/productMapping';
+import ExposurePageActions from './ExposurePageActions';
 
 interface ExposureData {
   physical: number;
@@ -47,7 +46,6 @@ interface MonthlyExposure {
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
-// Constants for products to exclude from specific categories
 const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
 
 const ExposurePage = () => {
@@ -136,7 +134,6 @@ const ExposurePage = () => {
         
         if (mtmFormula.tokens.length > 0) {
           if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-            // Use the precalculated exposures directly without multiplying by quantity again
             Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
               const canonicalBaseProduct = mapProductToCanonical(baseProduct);
               allProducts.add(canonicalBaseProduct);
@@ -150,8 +147,6 @@ const ExposurePage = () => {
                 };
               }
               
-              // Apply the physical exposure with the correct sign based on buy/sell
-              // The weight already includes the proportion, so we only need to apply the direction
               const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
               exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
             });
@@ -199,7 +194,6 @@ const ExposurePage = () => {
               };
             }
             
-            // Apply the pricing exposure, which is already calculated properly
             exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
           });
         }
@@ -233,7 +227,6 @@ const ExposurePage = () => {
             const quantity = (leg.quantity || 0) * buySellMultiplier;
             
             exposuresByMonth[month][baseProduct].paper += quantity;
-            // Mirror paper exposure to pricing exposure
             exposuresByMonth[month][baseProduct].pricing += quantity;
             
             if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
@@ -249,15 +242,14 @@ const ExposurePage = () => {
               }
               
               exposuresByMonth[month][oppositeProduct].paper += -quantity;
-              // Mirror paper exposure to pricing exposure for opposite product
               exposuresByMonth[month][oppositeProduct].pricing += -quantity;
             }
           }
         } else if (leg.exposures && typeof leg.exposures === 'object') {
           const exposuresData = leg.exposures as Record<string, any>;
           
-          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-            Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
+          if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+            Object.entries(exposuresData.paper).forEach(([prodName, value]) => {
               const canonicalProduct = mapProductToCanonical(prodName);
               allProducts.add(canonicalProduct);
               
@@ -265,14 +257,13 @@ const ExposurePage = () => {
                 exposuresByMonth[month][canonicalProduct] = {
                   physical: 0,
                   pricing: 0,
-                  netExposure: 0,
-                  paper: 0
+                  paper: 0,
+                  netExposure: 0
                 };
               }
               
               exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
               
-              // If pricing exposure is not explicitly set, mirror the paper exposure
               if (!exposuresData.pricing || 
                   typeof exposuresData.pricing !== 'object' || 
                   !exposuresData.pricing[prodName]) {
@@ -304,8 +295,8 @@ const ExposurePage = () => {
           if (mtmFormula.exposures && typeof mtmFormula.exposures === 'object') {
             const mtmExposures = mtmFormula.exposures as Record<string, any>;
             
-            if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
-              Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
+            if (mtmExposures.paper && typeof mtmExposures.paper === 'object') {
+              Object.entries(mtmExposures.paper).forEach(([prodName, value]) => {
                 const canonicalProduct = mapProductToCanonical(prodName);
                 allProducts.add(canonicalProduct);
                 
@@ -321,16 +312,13 @@ const ExposurePage = () => {
                 const paperExposure = Number(value) || 0;
                 exposuresByMonth[month][canonicalProduct].paper += paperExposure;
                 
-                // Mirror paper exposure to pricing exposure
                 if (!mtmExposures.pricing || 
-                    typeof mtmExposures.pricing !== 'object' || 
-                    !mtmExposures.pricing[prodName]) {
+                    !(baseProduct in (mtmExposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
                 }
               });
             }
             
-            // If pricing exposures are explicitly defined, use those
             if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
               Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
                 const canonicalProduct = mapProductToCanonical(prodName);
@@ -355,11 +343,10 @@ const ExposurePage = () => {
           if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
             const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
             
-            if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
+            if (mtmFormula.exposures && mtmFormula.exposures.paper && Object.keys(mtmFormula.exposures.paper).length > 0) {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-              // Apply the mtm_formula directly without multiplying by quantity again
               
-              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+              Object.entries(mtmFormula.exposures.paper).forEach(([baseProduct, weight]) => {
                 const canonicalBaseProduct = mapProductToCanonical(baseProduct);
                 allProducts.add(canonicalBaseProduct);
                 
@@ -372,18 +359,15 @@ const ExposurePage = () => {
                   };
                 }
                 
-                // Apply the paper exposure with the correct sign based on buy/sell
                 const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
                 exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
                 
-                // Mirror paper exposure to pricing exposure
                 if (!mtmFormula.exposures.pricing || 
                     !(baseProduct in (mtmFormula.exposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
                 }
               });
               
-              // If pricing exposures are explicitly defined, use those
               if (mtmFormula.exposures.pricing) {
                 Object.entries(mtmFormula.exposures.pricing).forEach(([baseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(baseProduct);
@@ -417,7 +401,6 @@ const ExposurePage = () => {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
               const paperExposure = (leg.quantity || 0) * buySellMultiplier;
               exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-              // Mirror paper exposure to pricing exposure
               exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
             }
           } else {
@@ -435,7 +418,6 @@ const ExposurePage = () => {
             const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
             const paperExposure = (leg.quantity || 0) * buySellMultiplier;
             exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-            // Mirror paper exposure to pricing exposure
             exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
           }
         }
@@ -591,11 +573,7 @@ const ExposurePage = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <Download className="mr-2 h-3 w-3" /> Export
-            </Button>
-          </div>
+          <ExposurePageActions onRefresh={refetch} />
         </div>
 
         <Card className="mb-4">
@@ -890,3 +868,4 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
+
