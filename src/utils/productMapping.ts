@@ -1,6 +1,4 @@
 
-import { mapProductToCanonical } from './productMapping';
-
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
