@@ -180,3 +180,15 @@ export const isPricingInstrument = (product: string): boolean => {
   return pricingInstruments.includes(product);
 };
 
+/**
+ * Check if the product should have a special background color in the exposure table
+ */
+export const shouldUseSpecialBackground = (product: string): boolean => {
+  const specialBackgroundProducts = [
+    'ICE GASOIL FUTURES',
+    'Platts LSGO',
+    'Platts Diesel',
+  ];
+  
+  return specialBackgroundProducts.includes(product);
+};

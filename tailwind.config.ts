@@ -24,6 +24,8 @@ export default {
 		'bg-gray-300',
 		'bg-gray-700',
 		'bg-white',
+		'bg-[#1A1F2C]',
+		'bg-gray-500',
 		'border-r-[1px]',
 		'border-[1px]',
 		'border-[2px]',
