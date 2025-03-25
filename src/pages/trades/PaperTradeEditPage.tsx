@@ -96,15 +96,18 @@ const PaperTradeEditPage = () => {
         // Make sure exposures are properly updated
         let exposures = leg.exposures || { physical: {}, pricing: {}, paper: {} };
         
+        // Always ensure physical is an empty object for paper trades
+        exposures.physical = {};
+        
         if (leg.relationshipType === 'FP' && leg.product) {
-          exposures.physical = { [leg.product]: leg.quantity };
           exposures.paper = { [leg.product]: leg.quantity };
+          exposures.pricing = { [leg.product]: leg.quantity };
         } else if (leg.rightSide && leg.product) {
-          exposures.physical = { 
+          exposures.paper = { 
             [leg.product]: leg.quantity,
             [leg.rightSide.product]: leg.rightSide.quantity 
           };
-          exposures.paper = { 
+          exposures.pricing = { 
             [leg.product]: leg.quantity,
             [leg.rightSide.product]: leg.rightSide.quantity 
           };
