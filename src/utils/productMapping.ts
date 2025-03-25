@@ -27,6 +27,19 @@ export const mapProductToCanonical = (product: string): string => {
 };
 
 /**
+ * Strips prefix from product name for display purposes
+ */
+export const stripProductPrefix = (product: string): string => {
+  if (!product) return '';
+  
+  // Remove common prefixes
+  return product
+    .replace('Argus ', '')
+    .replace('Platts ', '')
+    .replace('ICE ', '');
+};
+
+/**
  * Returns display name for a product based on type
  */
 export const formatProductDisplay = (
@@ -36,19 +49,22 @@ export const formatProductDisplay = (
 ): string => {
   if (!product) return '';
   
+  const cleanProduct = stripProductPrefix(product);
+  
   if (relationshipType === 'FP') {
-    return `${product} FP`;
+    return `${cleanProduct} FP`;
   }
   
   if (relationshipType === 'DIFF' && oppositeProduct) {
-    return `${product}/${oppositeProduct} DIFF`;
+    return `${cleanProduct} DIFF`;
   }
   
   if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}/${oppositeProduct}`;
+    const cleanOppositeProduct = stripProductPrefix(oppositeProduct);
+    return `${cleanProduct}/${cleanOppositeProduct}`;
   }
   
-  return product;
+  return cleanProduct;
 };
 
 /**
