@@ -136,6 +136,7 @@ const ExposurePage = () => {
         
         if (mtmFormula.tokens.length > 0) {
           if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+            // Use the precalculated exposures directly without multiplying by quantity again
             Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
               const canonicalBaseProduct = mapProductToCanonical(baseProduct);
               allProducts.add(canonicalBaseProduct);
@@ -149,9 +150,10 @@ const ExposurePage = () => {
                 };
               }
               
-              const actualWeight = typeof weight === 'number' ? weight : 0;
-              const physicalExposure = quantity * actualWeight;
-              exposuresByMonth[month][canonicalBaseProduct].physical += physicalExposure;
+              // Apply the physical exposure with the correct sign based on buy/sell
+              // The weight already includes the proportion, so we only need to apply the direction
+              const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+              exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
             });
           } else {
             allProducts.add(canonicalProduct);
@@ -197,6 +199,7 @@ const ExposurePage = () => {
               };
             }
             
+            // Apply the pricing exposure, which is already calculated properly
             exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
           });
         }
@@ -316,7 +319,7 @@ const ExposurePage = () => {
             
             if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-              const quantity = (leg.quantity || 0) * buySellMultiplier;
+              // Apply the mtm_formula directly without multiplying by quantity again
               
               Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                 const canonicalBaseProduct = mapProductToCanonical(baseProduct);
@@ -331,9 +334,9 @@ const ExposurePage = () => {
                   };
                 }
                 
-                const actualWeight = typeof weight === 'number' ? weight : 0;
-                const paperExposure = quantity * actualWeight;
-                exposuresByMonth[month][canonicalBaseProduct].paper += paperExposure;
+                // Apply the paper exposure with the correct sign based on buy/sell
+                const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
+                exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
               });
             } else {
               allProducts.add(canonicalProduct);
