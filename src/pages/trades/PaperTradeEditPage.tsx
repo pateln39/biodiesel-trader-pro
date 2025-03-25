@@ -94,17 +94,23 @@ const PaperTradeEditPage = () => {
         }
         
         // Make sure exposures are properly updated
-        let exposures = leg.exposures || { physical: {}, pricing: {}, paper: {} };
+        let exposures = {
+          // Remove physical exposures from paper trades
+          paper: {},
+          pricing: {}
+        };
         
         if (leg.relationshipType === 'FP' && leg.product) {
-          exposures.physical = { [leg.product]: leg.quantity };
           exposures.paper = { [leg.product]: leg.quantity };
+          // Mirror to pricing exposures
+          exposures.pricing = { [leg.product]: leg.quantity };
         } else if (leg.rightSide && leg.product) {
-          exposures.physical = { 
+          exposures.paper = { 
             [leg.product]: leg.quantity,
             [leg.rightSide.product]: leg.rightSide.quantity 
           };
-          exposures.paper = { 
+          // Mirror to pricing exposures
+          exposures.pricing = { 
             [leg.product]: leg.quantity,
             [leg.rightSide.product]: leg.rightSide.quantity 
           };

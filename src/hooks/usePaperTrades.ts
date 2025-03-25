@@ -19,7 +19,7 @@ const debounce = (fn: Function, ms = 300) => {
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
-  const isProcessingRef = useRef<boolean>(false);
+  const isProcessingRef = useRef<boolean>(isProcessingRef.current);
   
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
@@ -312,7 +312,6 @@ export const usePaperTrades = () => {
           }
           
           const exposures = {
-            physical: {},
             paper: {},
             pricing: {}
           };
@@ -320,7 +319,6 @@ export const usePaperTrades = () => {
           if (leg.relationshipType === 'FP') {
             // Use canonical product name
             const canonicalProduct = mapProductToCanonical(leg.product);
-            exposures.physical[canonicalProduct] = leg.quantity || 0;
             exposures.paper[canonicalProduct] = leg.quantity || 0;
             
             // Add the same exposure to pricing
@@ -330,8 +328,6 @@ export const usePaperTrades = () => {
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
-            exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
             exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
             
