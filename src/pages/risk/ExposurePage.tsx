@@ -47,7 +47,6 @@ interface MonthlyExposure {
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
-// Constants for products to exclude from specific categories
 const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
 
 const ExposurePage = () => {
@@ -136,7 +135,6 @@ const ExposurePage = () => {
         
         if (mtmFormula.tokens.length > 0) {
           if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-            // Use the precalculated exposures directly without multiplying by quantity again
             Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
               const canonicalBaseProduct = mapProductToCanonical(baseProduct);
               allProducts.add(canonicalBaseProduct);
@@ -150,8 +148,6 @@ const ExposurePage = () => {
                 };
               }
               
-              // Apply the physical exposure with the correct sign based on buy/sell
-              // The weight already includes the proportion, so we only need to apply the direction
               const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
               exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
             });
@@ -199,7 +195,6 @@ const ExposurePage = () => {
               };
             }
             
-            // Apply the pricing exposure, which is already calculated properly
             exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
           });
         }
@@ -233,7 +228,6 @@ const ExposurePage = () => {
             const quantity = (leg.quantity || 0) * buySellMultiplier;
             
             exposuresByMonth[month][baseProduct].paper += quantity;
-            // Mirror paper exposure to pricing exposure
             exposuresByMonth[month][baseProduct].pricing += quantity;
             
             if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
@@ -249,7 +243,6 @@ const ExposurePage = () => {
               }
               
               exposuresByMonth[month][oppositeProduct].paper += -quantity;
-              // Mirror paper exposure to pricing exposure for opposite product
               exposuresByMonth[month][oppositeProduct].pricing += -quantity;
             }
           }
@@ -272,7 +265,6 @@ const ExposurePage = () => {
               
               exposuresByMonth[month][canonicalProduct].paper += Number(value) || 0;
               
-              // If pricing exposure is not explicitly set, mirror the paper exposure
               if (!exposuresData.pricing || 
                   typeof exposuresData.pricing !== 'object' || 
                   !exposuresData.pricing[prodName]) {
@@ -321,16 +313,13 @@ const ExposurePage = () => {
                 const paperExposure = Number(value) || 0;
                 exposuresByMonth[month][canonicalProduct].paper += paperExposure;
                 
-                // Mirror paper exposure to pricing exposure
                 if (!mtmExposures.pricing || 
-                    typeof mtmExposures.pricing !== 'object' || 
-                    !mtmExposures.pricing[prodName]) {
+                    !(baseProduct in (mtmExposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
                 }
               });
             }
             
-            // If pricing exposures are explicitly defined, use those
             if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
               Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
                 const canonicalProduct = mapProductToCanonical(prodName);
@@ -357,7 +346,6 @@ const ExposurePage = () => {
             
             if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-              // Apply the mtm_formula directly without multiplying by quantity again
               
               Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                 const canonicalBaseProduct = mapProductToCanonical(baseProduct);
@@ -372,18 +360,15 @@ const ExposurePage = () => {
                   };
                 }
                 
-                // Apply the paper exposure with the correct sign based on buy/sell
                 const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
                 exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
                 
-                // Mirror paper exposure to pricing exposure
                 if (!mtmFormula.exposures.pricing || 
                     !(baseProduct in (mtmFormula.exposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
                 }
               });
               
-              // If pricing exposures are explicitly defined, use those
               if (mtmFormula.exposures.pricing) {
                 Object.entries(mtmFormula.exposures.pricing).forEach(([baseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(baseProduct);
@@ -417,7 +402,6 @@ const ExposurePage = () => {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
               const paperExposure = (leg.quantity || 0) * buySellMultiplier;
               exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-              // Mirror paper exposure to pricing exposure
               exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
             }
           } else {
@@ -435,7 +419,6 @@ const ExposurePage = () => {
             const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
             const paperExposure = (leg.quantity || 0) * buySellMultiplier;
             exposuresByMonth[month][canonicalProduct].paper += paperExposure;
-            // Mirror paper exposure to pricing exposure
             exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
           }
         }
@@ -683,12 +666,12 @@ const ExposurePage = () => {
             <CardContent className="p-0 overflow-auto">
               <div className="w-full overflow-auto">
                 <div style={{ width: "max-content", minWidth: "100%" }}>
-                  <Table className="border-collapse [&_*]:border-black [&_*]:border-[1px]">
+                  <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-muted/50">
+                      <TableRow className="bg-muted/50 border-b-[1px] border-black">
                         <TableHead 
                           rowSpan={2} 
-                          className="border-[1px] border-black text-left p-1 font-bold text-black text-xs bg-white sticky left-0 z-10"
+                          className="border-r-[1px] border-b-[1px] border-black text-left p-1 font-bold text-black text-xs bg-white sticky left-0 z-10"
                         >
                           Month
                         </TableHead>
@@ -701,9 +684,9 @@ const ExposurePage = () => {
                             <TableHead 
                               key={category} 
                               colSpan={categoryProducts.length} 
-                              className={`text-center p-1 font-bold text-black text-xs border-[1px] border-black ${
+                              className={`text-center p-1 font-bold text-black text-xs border-b-[1px] ${
                                 catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                              }`}
+                              } border-black`}
                             >
                               {category}
                             </TableHead>
@@ -711,7 +694,7 @@ const ExposurePage = () => {
                         })}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30">
+                      <TableRow className="bg-muted/30 border-b-[1px] border-black">
                         {orderedVisibleCategories.flatMap((category, catIndex) => {
                           const categoryProducts = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
@@ -720,11 +703,13 @@ const ExposurePage = () => {
                           return categoryProducts.map((product, index) => (
                             <TableHead 
                               key={`${category}-${product}`} 
-                              className={`text-right p-1 text-xs whitespace-nowrap border-[1px] border-black text-white font-bold ${
+                              className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
                                 getCategoryColorClass(category)
                               } ${
-                                index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                              }`}
+                                index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                              } ${
+                                index > 0 ? 'border-l-[0px]' : ''
+                              } text-white font-bold`}
                             >
                               {formatExposureTableProduct(product)}
                             </TableHead>
@@ -735,8 +720,8 @@ const ExposurePage = () => {
                     
                     <TableBody>
                       {exposureData.map((monthData) => (
-                        <TableRow key={monthData.month} className="bg-white border-[1px] border-black">
-                          <TableCell className="font-medium border-[1px] border-black text-xs sticky left-0 bg-white z-10">
+                        <TableRow key={monthData.month} className="bg-white hover:bg-gray-50">
+                          <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 bg-white z-10">
                             {monthData.month}
                           </TableCell>
                           
@@ -751,8 +736,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-physical-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} border-[1px] border-black ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
                                     {formatValue(productData.physical)}
@@ -765,8 +750,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-pricing-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} border-[1px] border-black ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
                                     {formatValue(productData.pricing)}
@@ -779,8 +764,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-paper-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} border-[1px] border-black ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
                                     {formatValue(productData.paper)}
@@ -793,8 +778,8 @@ const ExposurePage = () => {
                                 return (
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} border-[1px] border-black ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
                                     {formatValue(productData.netExposure)}
@@ -807,8 +792,8 @@ const ExposurePage = () => {
                         </TableRow>
                       ))}
                       
-                      <TableRow className="bg-gray-700 text-white font-bold border-[1px] border-black">
-                        <TableCell className="border-[1px] border-black text-xs p-1 sticky left-0 bg-gray-700 z-10 text-white">
+                      <TableRow className="bg-gray-700 text-white font-bold border-t-[1px] border-black">
+                        <TableCell className="border-r-[1px] border-black text-xs p-1 sticky left-0 bg-gray-700 z-10 text-white">
                           Total
                         </TableCell>
                         
@@ -824,8 +809,8 @@ const ExposurePage = () => {
                                 className={`text-right text-xs p-1 ${
                                   grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
                                   grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
-                                } border-[1px] border-black font-bold ${
-                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                } font-bold ${
+                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.physical || 0)}
@@ -838,8 +823,8 @@ const ExposurePage = () => {
                                 className={`text-right text-xs p-1 ${
                                   grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
                                   grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
-                                } border-[1px] border-black font-bold ${
-                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                } font-bold ${
+                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
@@ -852,8 +837,8 @@ const ExposurePage = () => {
                                 className={`text-right text-xs p-1 ${
                                   grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
                                   grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
-                                } border-[1px] border-black font-bold ${
-                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                } font-bold ${
+                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.paper || 0)}
@@ -866,8 +851,8 @@ const ExposurePage = () => {
                                 className={`text-right text-xs p-1 ${
                                   grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
                                   grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
-                                } border-[1px] border-black font-bold ${
-                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                                } font-bold ${
+                                  index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                 }`}
                               >
                                 {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
