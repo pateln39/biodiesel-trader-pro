@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -50,9 +49,9 @@ const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
 const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
 
-// Product groupings for calculated columns
-const BIODIESEL_PRODUCTS = ['FAME0', 'HVO', 'RME', 'UCOME'];
-const PRICING_INSTRUMENT_PRODUCTS = ['ICE GASOIL FUTURES', 'LSGO', 'DIESEL'];
+// Updated product groupings with canonical names
+const BIODIESEL_PRODUCTS = ['Argus FAME0', 'Argus HVO', 'Argus RME', 'Argus UCOME'];
+const PRICING_INSTRUMENT_PRODUCTS = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
 
 // Helper function to calculate the total of a product group for a specific month and category
 const calculateProductGroupTotal = (
@@ -607,8 +606,16 @@ const ExposurePage = () => {
     return true;
   };
 
-  // Determine if we need to render the calculated totals columns (only if the relevant base products are selected)
+  // Debugging log to check product selections and matches
+  React.useEffect(() => {
+    console.log('Selected Products:', selectedProducts);
+    console.log('Biodiesel Products:', BIODIESEL_PRODUCTS);
+    console.log('Biodiesel matches:', BIODIESEL_PRODUCTS.filter(product => selectedProducts.includes(product)));
+  }, [selectedProducts]);
+
+  // Determine if we need to render the calculated totals columns with more specific conditions
   const shouldShowBiodieselTotal = useMemo(() => {
+    // Check if any biodiesel product is selected
     return BIODIESEL_PRODUCTS.some(product => selectedProducts.includes(product));
   }, [selectedProducts]);
 
@@ -618,6 +625,11 @@ const ExposurePage = () => {
 
   const shouldShowTotalRow = useMemo(() => {
     return shouldShowBiodieselTotal || shouldShowPricingInstrumentTotal;
+  }, [shouldShowBiodieselTotal, shouldShowPricingInstrumentTotal]);
+
+  React.useEffect(() => {
+    console.log('Should Show Biodiesel Total:', shouldShowBiodieselTotal);
+    console.log('Should Show Pricing Instrument Total:', shouldShowPricingInstrumentTotal);
   }, [shouldShowBiodieselTotal, shouldShowPricingInstrumentTotal]);
 
   return (
