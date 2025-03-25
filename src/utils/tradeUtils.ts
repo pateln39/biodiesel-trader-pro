@@ -130,3 +130,10 @@ export const generateInstrumentName = (
       return product;
   }
 };
+
+// Function to check if a product is a pricing instrument
+export const isPricingInstrument = (product: string): boolean => {
+  const pricingInstruments = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
+  return pricingInstruments.includes(product);
+};
+

@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   mapProductToCanonical, 
   parsePaperInstrument, 
-  formatExposureTableProduct 
+  formatExposureTableProduct,
+  isPricingInstrument
 } from '@/utils/productMapping';
+import { calculateNetExposure } from '@/utils/tradeUtils';
 
 interface ExposureData {
   physical: number;
@@ -46,16 +48,30 @@ interface MonthlyExposure {
   totals: ExposureData;
 }
 
+interface PricingInstrument {
+  id: string;
+  display_name: string;
+  instrument_code: string;
+  is_active: boolean;
+}
+
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
-const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
-
-// Updated product groupings with canonical names
-const BIODIESEL_PRODUCTS = ['Argus FAME0', 'Argus HVO', 'Argus RME', 'Argus UCOME'];
-const PRICING_INSTRUMENT_PRODUCTS = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
-
-// All products that should always be included in the exposure table
-const ALL_PRODUCTS = [...BIODIESEL_PRODUCTS, ...PRICING_INSTRUMENT_PRODUCTS];
+// Updated to fetch allowed pricing instruments from the database
+const usePricingInstruments = () => {
+  return useQuery({
+    queryKey: ['pricing-instruments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pricing_instruments')
+        .select('id, display_name, instrument_code, is_active')
+        .eq('is_active', true);
+        
+      if (error) throw error;
+      return data || [];
+    }
+  });
+};
 
 // Helper function to calculate the total of a product group for a specific month and category
 const calculateProductGroupTotal = (
@@ -71,19 +87,36 @@ const calculateProductGroupTotal = (
   }, 0);
 };
 
-// Updated to exclude Paper column when calculating netExposure
-const calculateNetExposure = (
-  physical: number,
-  pricing: number
-): number => {
-  return physical + pricing;
-};
-
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
-  // We'll set selectedProducts to be equal to allProducts all the time
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  
+  // Fetch pricing instruments from the database
+  const { data: pricingInstruments = [], isLoading: instrumentsLoading } = usePricingInstruments();
+  
+  // Create allowed products list from pricing instruments
+  const ALLOWED_PRODUCTS = useMemo(() => {
+    // Map display names to canonical format
+    const instrumentProducts = pricingInstruments.map(
+      (inst: PricingInstrument) => mapProductToCanonical(inst.display_name)
+    );
+    
+    // Add biodiesel products that are always allowed
+    const biodieselProducts = ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Argus HVO'];
+    
+    // Combine and deduplicate
+    return Array.from(new Set([...instrumentProducts, ...biodieselProducts]));
+  }, [pricingInstruments]);
+  
+  // Use these for product grouping
+  const BIODIESEL_PRODUCTS = useMemo(() => {
+    return ALLOWED_PRODUCTS.filter(p => p.includes('Argus'));
+  }, [ALLOWED_PRODUCTS]);
+  
+  const PRICING_INSTRUMENT_PRODUCTS = useMemo(() => {
+    return ALLOWED_PRODUCTS.filter(p => !p.includes('Argus'));
+  }, [ALLOWED_PRODUCTS]);
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -132,18 +165,18 @@ const ExposurePage = () => {
   });
 
   const exposureData = useMemo(() => {
-    // Initialize exposure data for all months with all standard products
+    // Initialize exposure data for all months with allowed products
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     
-    // Ensure all required products are always in the allProducts set
-    const allProducts = new Set<string>(ALL_PRODUCTS);
+    // Used to track ALL products found in data (before filtering)
+    const allProductsFound = new Set<string>();
     
-    // Initialize all months with zero values for all products
+    // Initialize all months with zero values for allowed products
     periods.forEach(month => {
       exposuresByMonth[month] = {};
       
-      // Initialize all standard products with zero values
-      ALL_PRODUCTS.forEach(product => {
+      // Initialize allowed products with zero values
+      ALLOWED_PRODUCTS.forEach(product => {
         exposuresByMonth[month][product] = {
           physical: 0,
           pricing: 0,
@@ -176,10 +209,10 @@ const ExposurePage = () => {
           const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
           const quantity = (leg.quantity || 0) * quantityMultiplier;
           
-          // Add any new products to the set
-          allProducts.add(canonicalProduct);
+          // Track all products found in data
+          allProductsFound.add(canonicalProduct);
           
-          // Ensure the product exists in the exposures
+          // Create entry for this product if it doesn't exist yet
           if (!exposuresByMonth[month][canonicalProduct]) {
             exposuresByMonth[month][canonicalProduct] = {
               physical: 0,
@@ -195,7 +228,7 @@ const ExposurePage = () => {
             if (mtmFormula.exposures && mtmFormula.exposures.physical) {
               Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                 const canonicalBaseProduct = mapProductToCanonical(baseProduct);
-                allProducts.add(canonicalBaseProduct);
+                allProductsFound.add(canonicalBaseProduct);
                 
                 if (!exposuresByMonth[month][canonicalBaseProduct]) {
                   exposuresByMonth[month][canonicalBaseProduct] = {
@@ -220,7 +253,7 @@ const ExposurePage = () => {
           if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
             Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
-              allProducts.add(canonicalInstrument);
+              allProductsFound.add(canonicalInstrument);
               
               if (!exposuresByMonth[month][canonicalInstrument]) {
                 exposuresByMonth[month][canonicalInstrument] = {
@@ -249,7 +282,7 @@ const ExposurePage = () => {
             const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
             
             if (baseProduct) {
-              allProducts.add(baseProduct);
+              allProductsFound.add(baseProduct);
               
               if (!exposuresByMonth[month][baseProduct]) {
                 exposuresByMonth[month][baseProduct] = {
@@ -267,7 +300,7 @@ const ExposurePage = () => {
               exposuresByMonth[month][baseProduct].pricing += quantity;
               
               if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
-                allProducts.add(oppositeProduct);
+                allProductsFound.add(oppositeProduct);
                 
                 if (!exposuresByMonth[month][oppositeProduct]) {
                   exposuresByMonth[month][oppositeProduct] = {
@@ -288,7 +321,7 @@ const ExposurePage = () => {
             if (exposuresData.physical && typeof exposuresData.physical === 'object') {
               Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
                 const canonicalProduct = mapProductToCanonical(prodName);
-                allProducts.add(canonicalProduct);
+                allProductsFound.add(canonicalProduct);
                 
                 if (!exposuresByMonth[month][canonicalProduct]) {
                   exposuresByMonth[month][canonicalProduct] = {
@@ -312,7 +345,7 @@ const ExposurePage = () => {
             if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
               Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
                 const canonicalInstrument = mapProductToCanonical(instrument);
-                allProducts.add(canonicalInstrument);
+                allProductsFound.add(canonicalInstrument);
                 
                 if (!exposuresByMonth[month][canonicalInstrument]) {
                   exposuresByMonth[month][canonicalInstrument] = {
@@ -335,7 +368,7 @@ const ExposurePage = () => {
               if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
                 Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
                   const canonicalProduct = mapProductToCanonical(prodName);
-                  allProducts.add(canonicalProduct);
+                  allProductsFound.add(canonicalProduct);
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
                     exposuresByMonth[month][canonicalProduct] = {
@@ -359,7 +392,7 @@ const ExposurePage = () => {
               if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
                 Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
                   const canonicalProduct = mapProductToCanonical(prodName);
-                  allProducts.add(canonicalProduct);
+                  allProductsFound.add(canonicalProduct);
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
                     exposuresByMonth[month][canonicalProduct] = {
@@ -385,7 +418,7 @@ const ExposurePage = () => {
                 
                 Object.entries(mtmFormula.exposures.physical).forEach(([pBaseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                  allProducts.add(canonicalBaseProduct);
+                  allProductsFound.add(canonicalBaseProduct);
                   
                   if (!exposuresByMonth[month][canonicalBaseProduct]) {
                     exposuresByMonth[month][canonicalBaseProduct] = {
@@ -408,7 +441,7 @@ const ExposurePage = () => {
                 if (mtmFormula.exposures.pricing) {
                   Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
                     const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                    allProducts.add(canonicalBaseProduct);
+                    allProductsFound.add(canonicalBaseProduct);
                     
                     if (!exposuresByMonth[month][canonicalBaseProduct]) {
                       exposuresByMonth[month][canonicalBaseProduct] = {
@@ -463,24 +496,27 @@ const ExposurePage = () => {
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Process all products in the set
-      Array.from(allProducts).forEach(product => {
-        const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-        
-        // Update net exposure calculation to exclude paper column
-        productExposure.netExposure = calculateNetExposure(
-          productExposure.physical,
-          productExposure.pricing
-        );
-        
-        productsData[product] = productExposure;
-        
-        totals.physical += productExposure.physical;
-        totals.pricing += productExposure.pricing;
-        totals.paper += productExposure.paper;
-        // Recalculate the total net exposure
-        totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
+      // Process all products, but only include allowed products
+      Object.entries(monthData).forEach(([product, exposure]) => {
+        // Check if this is a product we want to display
+        if (ALLOWED_PRODUCTS.includes(product)) {
+          // Calculate net exposure using the utility function
+          exposure.netExposure = calculateNetExposure(
+            exposure.physical,
+            exposure.pricing
+          );
+          
+          productsData[product] = exposure;
+          
+          // Update totals
+          totals.physical += exposure.physical;
+          totals.pricing += exposure.pricing;
+          totals.paper += exposure.paper;
+        }
       });
+      
+      // Calculate net exposure for totals
+      totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       
       return {
         month,
@@ -490,24 +526,15 @@ const ExposurePage = () => {
     });
     
     return monthlyExposures;
-  }, [tradeData, periods]);
+  }, [tradeData, periods, ALLOWED_PRODUCTS]);
 
+  // We'll use ALLOWED_PRODUCTS as our allProducts list
   const allProducts = useMemo(() => {
-    // Always include the default products, even if there are no exposure data
-    const productSet = new Set<string>(ALL_PRODUCTS);
-    
-    // Add any additional products from the exposure data
-    exposureData.forEach(monthData => {
-      Object.keys(monthData.products).forEach(product => {
-        productSet.add(product);
-      });
-    });
-    
-    return Array.from(productSet).sort();
-  }, [exposureData]);
+    return [...ALLOWED_PRODUCTS].sort();
+  }, [ALLOWED_PRODUCTS]);
 
-  // Always show all products
-  React.useEffect(() => {
+  // Always show all allowed products
+  useEffect(() => {
     if (allProducts.length > 0) {
       setSelectedProducts([...allProducts]);
     }
@@ -530,15 +557,17 @@ const ExposurePage = () => {
       totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
-        productTotals[product].physical += exposure.physical;
-        productTotals[product].pricing += exposure.pricing;
-        productTotals[product].paper += exposure.paper;
-        
-        // Update product totals net exposure calculation
-        productTotals[product].netExposure = calculateNetExposure(
-          productTotals[product].physical,
-          productTotals[product].pricing
-        );
+        if (productTotals[product]) {
+          productTotals[product].physical += exposure.physical;
+          productTotals[product].pricing += exposure.pricing;
+          productTotals[product].paper += exposure.paper;
+          
+          // Update product totals net exposure calculation
+          productTotals[product].netExposure = calculateNetExposure(
+            productTotals[product].physical,
+            productTotals[product].pricing
+          );
+        }
       });
     });
     
@@ -566,7 +595,7 @@ const ExposurePage = () => {
       pricingInstrumentTotal,
       totalRow: biodieselTotal + pricingInstrumentTotal
     };
-  }, [grandTotals]);
+  }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
 
   const getValueColorClass = (value: number): string => {
     return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
@@ -604,28 +633,8 @@ const ExposurePage = () => {
     });
   };
 
-  // We don't need these product toggle functions anymore but will keep them
-  // for potential future use, they just won't be shown in the UI
-  const toggleProduct = (product: string) => {
-    setSelectedProducts(prev => {
-      if (prev.includes(product)) {
-        return prev.filter(p => p !== product);
-      } else {
-        return [...prev, product];
-      }
-    });
-  };
-
-  const toggleAllProducts = () => {
-    if (selectedProducts.length === allProducts.length) {
-      setSelectedProducts([]);
-    } else {
-      setSelectedProducts([...allProducts]);
-    }
-  };
-
+  // Always include all products (which are now only the allowed pricing instruments)
   const filteredProducts = useMemo(() => {
-    // Always return all products
     return allProducts;
   }, [allProducts]);
 
@@ -634,7 +643,7 @@ const ExposurePage = () => {
   }, [visibleCategories]);
 
   const shouldShowProductInCategory = (product: string, category: string): boolean => {
-    if (category === 'Physical' && PHYSICAL_CATEGORY_EXCLUSIONS.includes(product)) {
+    if (category === 'Physical' && product === 'ICE GASOIL FUTURES') {
       return false;
     }
     return true;
@@ -648,6 +657,9 @@ const ExposurePage = () => {
   
   // Since both are always true, this is always true
   const shouldShowTotalRow = true;
+
+  // Combined loading state
+  const isLoadingData = isLoading || instrumentsLoading;
 
   return (
     <Layout>
@@ -692,7 +704,7 @@ const ExposurePage = () => {
           </CardContent>
         </Card>
 
-        {isLoading ? (
+        {isLoadingData ? (
           <Card>
             <CardContent className="pt-4">
               <TableLoadingState />
@@ -1132,3 +1144,4 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
+

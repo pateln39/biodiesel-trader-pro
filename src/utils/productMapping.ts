@@ -160,3 +160,23 @@ export const calculateDisplayPrice = (
   // For DIFF and SPREAD, return absolute difference
   return Math.abs(leftPrice - rightSidePrice);
 };
+
+/**
+ * Returns true if the product is a pricing instrument that should be included
+ * in the exposure table
+ */
+export const isPricingInstrument = (product: string): boolean => {
+  // These are the only products that should appear in the exposure table
+  const pricingInstruments = [
+    'ICE GASOIL FUTURES',
+    'Platts LSGO',
+    'Platts Diesel',
+    'Argus UCOME',
+    'Argus FAME0',
+    'Argus RME',
+    'Argus HVO'
+  ];
+  
+  return pricingInstruments.includes(product);
+};
+
