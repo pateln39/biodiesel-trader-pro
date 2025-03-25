@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, Trash2, AlertTriangle } from 'lucide-react';
@@ -48,9 +47,9 @@ const PaperTradeDeletePage = () => {
       setIsSuccess(true);
       refetchPaperTrades();
       
-      // Navigate back after successful deletion
+      // Navigate back after successful deletion - now redirecting to paper tab
       setTimeout(() => {
-        navigate('/trades');
+        navigate('/trades?tab=paper');
       }, 2000);
       
     } catch (err) {

@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,9 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PhysicalTrade } from '@/types';
 
 const TradesPage = () => {
-  const [activeTab, setActiveTab] = useState<string>("physical");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
   
   // Load physical trades
@@ -39,7 +40,7 @@ const TradesPage = () => {
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
   // Error handling across both trade types
-  React.useEffect(() => {
+  useEffect(() => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
       setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
@@ -47,6 +48,15 @@ const TradesPage = () => {
       setPageError(null);
     }
   }, [physicalError, paperError]);
+
+  // Update active tab based on URL parameter
+  useEffect(() => {
+    if (tabParam === 'paper') {
+      setActiveTab('paper');
+    } else if (tabParam === 'physical') {
+      setActiveTab('physical');
+    }
+  }, [tabParam]);
 
   const showErrorAlert = () => {
     if (!pageError) return null;
@@ -134,7 +144,7 @@ const TradesPage = () => {
         {pageError && showErrorAlert()}
 
         {/* Tabs for Physical and Paper Trades */}
-        <Tabs defaultValue="physical" onValueChange={setActiveTab}>
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="physical">Physical Trades</TabsTrigger>
             <TabsTrigger value="paper">Paper Trades</TabsTrigger>

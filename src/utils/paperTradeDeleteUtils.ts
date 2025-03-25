@@ -37,6 +37,7 @@ export const deletePaperTrade = async (tradeId: string): Promise<boolean> => {
     }
     
     console.log(`Successfully deleted paper trade: ${tradeId}`);
+    toast.success("Paper trade deleted successfully");
     return true;
   } catch (error) {
     console.error('Error in deletePaperTrade:', error);
@@ -98,6 +99,12 @@ export const deletePaperTradeLeg = async (legId: string, parentTradeId: string):
         console.error('Error deleting parent paper trade:', parentError);
         throw parentError;
       }
+      
+      toast.success("Paper trade deleted successfully", {
+        description: "Last leg was removed, so the entire trade was deleted"
+      });
+    } else {
+      toast.success("Paper trade leg deleted successfully");
     }
     
     console.log(`Successfully deleted paper trade leg: ${legId}`);
