@@ -15,6 +15,7 @@ export const mapProductToCanonical = (product: string): string => {
     case 'LSGO':
       return 'Platts LSGO';
     case 'HVO':
+    case 'HVO_FP':
       return 'Argus HVO';
     case 'GASOIL':
       return 'ICE GASOIL FUTURES';
