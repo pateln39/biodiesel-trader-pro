@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for form validation
  */
@@ -6,7 +5,7 @@
 import { toast } from "sonner";
 
 /**
- * Validates that a date range is valid (start date is before end date)
+ * Validates that a date range is valid (start date is before or equal to end date)
  */
 export const validateDateRange = (
   startDate: Date | null | undefined,
@@ -20,9 +19,9 @@ export const validateDateRange = (
     return false;
   }
 
-  if (startDate >= endDate) {
+  if (startDate > endDate) { // Changed from >= to > to allow equal dates
     toast.error(`Invalid ${rangeName}`, {
-      description: `${rangeName} end date must be after start date.`
+      description: `${rangeName} end date must not be before start date.`
     });
     return false;
   }
