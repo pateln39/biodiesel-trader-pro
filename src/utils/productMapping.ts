@@ -1,4 +1,3 @@
-
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -40,6 +39,29 @@ export const stripProductPrefix = (product: string): string => {
     .replace('Argus ', '')
     .replace('Platts ', '')
     .replace('ICE ', '');
+};
+
+/**
+ * Formats product names for exposure table display
+ * Converts full canonical names to simplified display names
+ */
+export const formatExposureTableProduct = (product: string): string => {
+  if (!product) return '';
+  
+  // Special case for GASOIL
+  if (product === 'ICE GASOIL FUTURES') {
+    return 'ICE GASOIL';
+  }
+  
+  // For other products, strip prefixes and keep base name
+  const simplified = stripProductPrefix(product);
+  
+  // Special case for Diesel (capitalize D)
+  if (simplified === 'Diesel') {
+    return 'Diesel';
+  }
+  
+  return simplified;
 };
 
 /**

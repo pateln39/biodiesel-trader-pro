@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -23,7 +22,11 @@ import { getNextMonths } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
-import { mapProductToCanonical, parsePaperInstrument } from '@/utils/productMapping';
+import { 
+  mapProductToCanonical, 
+  parsePaperInstrument, 
+  formatExposureTableProduct 
+} from '@/utils/productMapping';
 
 interface ExposureData {
   physical: number;
@@ -494,7 +497,7 @@ const ExposurePage = () => {
                         htmlFor={`product-${product}`}
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        {product}
+                        {formatExposureTableProduct(product)}
                       </label>
                     </div>
                   ))}
@@ -574,7 +577,7 @@ const ExposurePage = () => {
                                 index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
                               }`}
                             >
-                              {product}
+                              {formatExposureTableProduct(product)}
                             </TableHead>
                           ));
                         })}
