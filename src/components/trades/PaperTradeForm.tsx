@@ -75,8 +75,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const availableMonths = useMemo(() => getNextMonths(13), []);
   
   const [exposureData, setExposureData] = useState<any[]>(() => {
+    // Always initialize with ALL_PRODUCTS for all months
     return availableMonths.map(month => {
-      // Initialize with all products set to 0
       const entry: any = { month };
       ALL_PRODUCTS.forEach(product => {
         entry[product] = 0;
