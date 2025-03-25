@@ -308,8 +308,29 @@ export const usePaperTrades = () => {
             leg.rightSide?.product
           );
           
-          const mtmFormulaForDb = leg.mtmFormula ? (typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : leg.mtmFormula) : null;
-          const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
+          // Fix: Ensure rightSide includes the price when creating mtmFormulaForDb
+          const mtmFormulaForDb = leg.mtmFormula ? 
+            (typeof leg.mtmFormula === 'string' ? 
+              JSON.parse(leg.mtmFormula) : 
+              {...leg.mtmFormula}) : 
+            null;
+          
+          // Fix: If we have a rightSide with a price, make sure it's included in the mtmFormula
+          if (mtmFormulaForDb && leg.rightSide && leg.relationshipType !== 'FP') {
+            mtmFormulaForDb.rightSide = {
+              ...mtmFormulaForDb.rightSide,
+              product: leg.rightSide.product,
+              quantity: leg.rightSide.quantity,
+              period: leg.rightSide.period || leg.period,
+              price: leg.rightSide.price || 0 // Ensure price is included
+            };
+          }
+          
+          const formulaForDb = leg.formula ? 
+            (typeof leg.formula === 'string' ? 
+              JSON.parse(leg.formula) : 
+              leg.formula) : 
+            null;
           
           const legData = {
             leg_reference: legReference,
