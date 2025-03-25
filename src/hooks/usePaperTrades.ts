@@ -308,7 +308,22 @@ export const usePaperTrades = () => {
             leg.rightSide?.product
           );
           
-          const mtmFormulaForDb = leg.mtmFormula ? (typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : leg.mtmFormula) : null;
+          // Create mtmFormula with right-side price included
+          let mtmFormulaForDb = null;
+          if (leg.mtmFormula) {
+            mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
+          } else {
+            mtmFormulaForDb = {};
+          }
+          
+          // Make sure rightSide with price is properly included in the mtmFormula
+          if (leg.rightSide) {
+            mtmFormulaForDb.rightSide = {
+              ...leg.rightSide,
+              price: leg.rightSide.price || 0
+            };
+          }
+          
           const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
           
           const legData = {

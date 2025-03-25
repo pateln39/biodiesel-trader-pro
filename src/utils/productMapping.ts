@@ -1,3 +1,4 @@
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -43,7 +44,7 @@ export const formatProductDisplay = (
   }
   
   if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}/${oppositeProduct} SPREAD`;
+    return `${product}/${oppositeProduct}`;
   }
   
   return product;
