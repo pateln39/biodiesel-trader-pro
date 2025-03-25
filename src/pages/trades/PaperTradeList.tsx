@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { PaperTrade } from '@/types/paper';
-import { formatProductDisplay } from '@/utils/tradeUtils';
+import { formatProductDisplay, calculateDisplayPrice } from '@/utils/productMapping';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import PaperTradeRowActions from '@/components/trades/paper/PaperTradeRowActions';
@@ -55,6 +55,13 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
               const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
               const isMultiLeg = trade.legs.length > 1;
               
+              // Calculate the display price based on relationship type
+              const displayPrice = calculateDisplayPrice(
+                leg.relationshipType,
+                leg.price,
+                leg.rightSide?.price
+              );
+              
               return (
                 <TableRow key={`${trade.id}-${leg.id}`}>
                   <TableCell>
@@ -66,7 +73,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                   <TableCell>{productDisplay}</TableCell>
                   <TableCell>{leg.period}</TableCell>
                   <TableCell className="text-right">{leg.quantity}</TableCell>
-                  <TableCell className="text-right">{leg.price}</TableCell>
+                  <TableCell className="text-right">{displayPrice}</TableCell>
                   <TableCell className="text-center">
                     <PaperTradeRowActions
                       tradeId={trade.id}

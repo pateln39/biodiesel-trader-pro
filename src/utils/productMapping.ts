@@ -1,4 +1,3 @@
-
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -99,4 +98,22 @@ export const parsePaperInstrument = (
     oppositeProduct: null,
     relationshipType: 'FP'
   };
+};
+
+/**
+ * Calculate the display price for a paper trade based on relationship type
+ * For FP trades: returns the original price
+ * For DIFF/SPREAD trades: returns the absolute difference between left and right side prices
+ */
+export const calculateDisplayPrice = (
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD',
+  leftPrice: number,
+  rightSidePrice?: number | null
+): number => {
+  if (relationshipType === 'FP' || !rightSidePrice) {
+    return leftPrice;
+  }
+  
+  // For DIFF and SPREAD, return absolute difference
+  return Math.abs(leftPrice - rightSidePrice);
 };
