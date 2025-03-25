@@ -128,22 +128,59 @@ const ExposurePage = () => {
           return;
         }
         
-        const product = mapProductToCanonical(leg.product || 'Unknown');
-        allProducts.add(product);
-        
+        const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
         const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
         const quantity = (leg.quantity || 0) * quantityMultiplier;
         
-        if (!exposuresByMonth[month][product]) {
-          exposuresByMonth[month][product] = {
-            physical: 0,
-            pricing: 0,
-            paper: 0,
-            netExposure: 0
-          };
-        }
+        const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
         
-        exposuresByMonth[month][product].physical += quantity;
+        if (mtmFormula.tokens.length > 0) {
+          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+            Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+              const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+              allProducts.add(canonicalBaseProduct);
+              
+              if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                exposuresByMonth[month][canonicalBaseProduct] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              const actualWeight = typeof weight === 'number' ? weight : 0;
+              const physicalExposure = quantity * actualWeight;
+              exposuresByMonth[month][canonicalBaseProduct].physical += physicalExposure;
+            });
+          } else {
+            allProducts.add(canonicalProduct);
+            
+            if (!exposuresByMonth[month][canonicalProduct]) {
+              exposuresByMonth[month][canonicalProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            exposuresByMonth[month][canonicalProduct].physical += quantity;
+          }
+        } else {
+          allProducts.add(canonicalProduct);
+          
+          if (!exposuresByMonth[month][canonicalProduct]) {
+            exposuresByMonth[month][canonicalProduct] = {
+              physical: 0,
+              pricing: 0,
+              paper: 0,
+              netExposure: 0
+            };
+          }
+          
+          exposuresByMonth[month][canonicalProduct].physical += quantity;
+        }
         
         const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
         if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
@@ -273,19 +310,61 @@ const ExposurePage = () => {
           }
         } else {
           const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
-          allProducts.add(canonicalProduct);
           
-          if (!exposuresByMonth[month][canonicalProduct]) {
-            exposuresByMonth[month][canonicalProduct] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
+          if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            
+            if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
+              const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+              const quantity = (leg.quantity || 0) * buySellMultiplier;
+              
+              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                allProducts.add(canonicalBaseProduct);
+                
+                if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                  exposuresByMonth[month][canonicalBaseProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                const actualWeight = typeof weight === 'number' ? weight : 0;
+                const paperExposure = quantity * actualWeight;
+                exposuresByMonth[month][canonicalBaseProduct].paper += paperExposure;
+              });
+            } else {
+              allProducts.add(canonicalProduct);
+              
+              if (!exposuresByMonth[month][canonicalProduct]) {
+                exposuresByMonth[month][canonicalProduct] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+              exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
+            }
+          } else {
+            allProducts.add(canonicalProduct);
+            
+            if (!exposuresByMonth[month][canonicalProduct]) {
+              exposuresByMonth[month][canonicalProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+            exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
           }
-          
-          const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-          exposuresByMonth[month][canonicalProduct].paper += (leg.quantity || 0) * buySellMultiplier;
         }
       });
     }
@@ -423,7 +502,6 @@ const ExposurePage = () => {
     return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
   }, [visibleCategories]);
 
-  // Function to determine if a product should be shown in a specific category
   const shouldShowProductInCategory = (product: string, category: string): boolean => {
     if (category === 'Physical' && PHYSICAL_CATEGORY_EXCLUSIONS.includes(product)) {
       return false;
@@ -542,7 +620,6 @@ const ExposurePage = () => {
                           Month
                         </TableHead>
                         {orderedVisibleCategories.map((category, catIndex) => {
-                          // Filter products based on category exclusions
                           const categoryProducts = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
                           );
@@ -563,7 +640,6 @@ const ExposurePage = () => {
                       
                       <TableRow className="bg-muted/30">
                         {orderedVisibleCategories.flatMap((category, catIndex) => {
-                          // Filter products that should be shown in this category
                           const categoryProducts = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
                           );
@@ -592,7 +668,6 @@ const ExposurePage = () => {
                           </TableCell>
                           
                           {orderedVisibleCategories.map((category, catIndex) => {
-                            // Filter products for this category
                             const categoryProducts = filteredProducts.filter(product => 
                               shouldShowProductInCategory(product, category)
                             );
@@ -665,7 +740,6 @@ const ExposurePage = () => {
                         </TableCell>
                         
                         {orderedVisibleCategories.map((category, catIndex) => {
-                          // Filter products for this category
                           const categoryProducts = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
                           );
