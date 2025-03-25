@@ -1,4 +1,6 @@
 
+import { mapProductToCanonical } from './productMapping';
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -40,11 +42,11 @@ export const formatProductDisplay = (
   }
   
   if (relationshipType === 'DIFF' && oppositeProduct) {
-    return `${product}/${oppositeProduct} DIFF`;
+    return `${product} DIFF`;
   }
   
   if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}/${oppositeProduct}`;
+    return `${product}-${oppositeProduct}`;
   }
   
   return product;
