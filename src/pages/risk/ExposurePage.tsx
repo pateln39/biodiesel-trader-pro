@@ -31,6 +31,7 @@ import {
   getExposureProductBackgroundClass
 } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
+import { calculateProRatedExposure } from '@/utils/businessDayUtils';
 
 interface ExposureData {
   physical: number;
@@ -125,7 +126,8 @@ const ExposurePage = () => {
           pricing_formula,
           mtm_formula,
           trading_period,
-          pricing_period_start
+          pricing_period_start,
+          pricing_period_end
         `)
         .order('trading_period', { ascending: true });
         
@@ -179,18 +181,13 @@ const ExposurePage = () => {
       
       if (physicalTradeLegs && physicalTradeLegs.length > 0) {
         physicalTradeLegs.forEach(leg => {
+          // Get the trading period first
           let month = leg.trading_period || '';
           
-          if (!month && leg.pricing_period_start) {
-            const date = new Date(leg.pricing_period_start);
-            const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-            const year = date.getFullYear().toString().slice(2);
-            month = `${monthName}-${year}`;
-          }
-          
-          if (!month || !periods.includes(month)) {
-            return;
-          }
+          // Check if pricing period spans multiple months
+          const hasPricingPeriod = leg.pricing_period_start && leg.pricing_period_end;
+          const spanningMultipleMonths = hasPricingPeriod && 
+            new Date(leg.pricing_period_start).getMonth() !== new Date(leg.pricing_period_end).getMonth();
           
           const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
           const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
@@ -198,25 +195,55 @@ const ExposurePage = () => {
           
           allProductsFound.add(canonicalProduct);
           
-          if (!exposuresByMonth[month][canonicalProduct]) {
-            exposuresByMonth[month][canonicalProduct] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
-          }
-          
-          const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-          
-          if (mtmFormula.tokens.length > 0) {
-            if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+          // Process multi-month exposure
+          if (hasPricingPeriod && spanningMultipleMonths) {
+            const startDate = new Date(leg.pricing_period_start);
+            const endDate = new Date(leg.pricing_period_end);
+            
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+            
+            // Calculate physical exposure allocation
+            if (mtmFormula.tokens.length > 0 && mtmFormula.exposures && mtmFormula.exposures.physical) {
+              // Handle physical exposures from MTM formula with pro-rating
               Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                 const canonicalBaseProduct = mapProductToCanonical(baseProduct);
                 allProductsFound.add(canonicalBaseProduct);
                 
-                if (!exposuresByMonth[month][canonicalBaseProduct]) {
-                  exposuresByMonth[month][canonicalBaseProduct] = {
+                // Calculate pro-rated exposures by month
+                const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+                const proRatedExposures = calculateProRatedExposure(startDate, endDate, actualExposure);
+                
+                // Add exposures to each month
+                Object.entries(proRatedExposures).forEach(([monthKey, exposureAmount]) => {
+                  if (!exposuresByMonth[monthKey]) {
+                    exposuresByMonth[monthKey] = {};
+                  }
+                  
+                  if (!exposuresByMonth[monthKey][canonicalBaseProduct]) {
+                    exposuresByMonth[monthKey][canonicalBaseProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  exposuresByMonth[monthKey][canonicalBaseProduct].physical += exposureAmount;
+                });
+              });
+            } else {
+              // Handle direct physical exposure with pro-rating
+              const proRatedExposures = calculateProRatedExposure(startDate, endDate, quantity);
+              
+              // Add exposures to each month
+              Object.entries(proRatedExposures).forEach(([monthKey, exposureAmount]) => {
+                if (!exposuresByMonth[monthKey]) {
+                  exposuresByMonth[monthKey] = {};
+                }
+                
+                if (!exposuresByMonth[monthKey][canonicalProduct]) {
+                  exposuresByMonth[monthKey][canonicalProduct] = {
                     physical: 0,
                     pricing: 0,
                     paper: 0,
@@ -224,33 +251,107 @@ const ExposurePage = () => {
                   };
                 }
                 
-                const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
-                exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
+                exposuresByMonth[monthKey][canonicalProduct].physical += exposureAmount;
               });
+            }
+            
+            // Calculate pricing exposure allocation
+            if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+              // Handle pricing exposures from pricing formula with pro-rating
+              Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                allProductsFound.add(canonicalInstrument);
+                
+                // Calculate pro-rated exposures by month
+                const exposureValue = Number(value) || 0;
+                const proRatedExposures = calculateProRatedExposure(startDate, endDate, exposureValue);
+                
+                // Add exposures to each month
+                Object.entries(proRatedExposures).forEach(([monthKey, exposureAmount]) => {
+                  if (!exposuresByMonth[monthKey]) {
+                    exposuresByMonth[monthKey] = {};
+                  }
+                  
+                  if (!exposuresByMonth[monthKey][canonicalInstrument]) {
+                    exposuresByMonth[monthKey][canonicalInstrument] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  exposuresByMonth[monthKey][canonicalInstrument].pricing += exposureAmount;
+                });
+              });
+            }
+          } else {
+            // Single month exposure handling (original logic)
+            if (!month && leg.pricing_period_start) {
+              const date = new Date(leg.pricing_period_start);
+              const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+              const year = date.getFullYear().toString().slice(2);
+              month = `${monthName}-${year}`;
+            }
+            
+            if (!month || !periods.includes(month)) {
+              return;
+            }
+            
+            if (!exposuresByMonth[month][canonicalProduct]) {
+              exposuresByMonth[month][canonicalProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            
+            if (mtmFormula.tokens.length > 0) {
+              if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+                Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                  allProductsFound.add(canonicalBaseProduct);
+                  
+                  if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                    exposuresByMonth[month][canonicalBaseProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+                  exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
+                });
+              } else {
+                exposuresByMonth[month][canonicalProduct].physical += quantity;
+              }
             } else {
               exposuresByMonth[month][canonicalProduct].physical += quantity;
             }
-          } else {
-            exposuresByMonth[month][canonicalProduct].physical += quantity;
-          }
-          
-          const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-          if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-            Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-              const canonicalInstrument = mapProductToCanonical(instrument);
-              allProductsFound.add(canonicalInstrument);
-              
-              if (!exposuresByMonth[month][canonicalInstrument]) {
-                exposuresByMonth[month][canonicalInstrument] = {
-                  physical: 0,
-                  pricing: 0,
-                  paper: 0,
-                  netExposure: 0
-                };
-              }
-              
-              exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
-            });
+            
+            const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+            if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+              Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                allProductsFound.add(canonicalInstrument);
+                
+                if (!exposuresByMonth[month][canonicalInstrument]) {
+                  exposuresByMonth[month][canonicalInstrument] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
+              });
+            }
           }
         });
       }
