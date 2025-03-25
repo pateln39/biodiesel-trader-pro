@@ -27,7 +27,8 @@ import {
   parsePaperInstrument, 
   formatExposureTableProduct,
   isPricingInstrument,
-  shouldUseSpecialBackground
+  shouldUseSpecialBackground,
+  getExposureProductBackgroundClass
 } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
 
