@@ -15,6 +15,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
+import { formatMonthKey } from '@/utils/businessDayUtils';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -196,6 +197,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         const legReference = initialData?.legs?.[index]?.legReference || 
                             generateLegReference(tradeReference, index);
         
+        const tradingPeriod = formatMonthKey(legForm.pricingPeriodStart);
+        console.log(`Generated trading period: ${tradingPeriod} for leg ${index}`);
+        
         const legData: PhysicalTradeLeg = {
           id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
           legReference,
@@ -223,9 +227,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       const tradeData: any = {
         ...parentTrade,
         legs: tradeLegs,
-        ...legs[0]
+        ...legs[0],
+        trading_period: formatMonthKey(legs[0].pricingPeriodStart)
       };
 
+      console.log('Submitting trade with data:', tradeData);
       onSubmit(tradeData);
     } else {
       toast.error('Please fix the validation errors before submitting', {
@@ -558,3 +564,4 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 };
 
 export default PhysicalTradeForm;
+

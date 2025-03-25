@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
+import { formatMonthKey } from '@/utils/businessDayUtils';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -57,6 +58,14 @@ const TradeEditPage = () => {
 
         // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
+          // Generate the trading period if it's missing
+          const firstLegPricingStart = tradeLegs[0].pricing_period_start 
+            ? new Date(tradeLegs[0].pricing_period_start) 
+            : new Date();
+          
+          const tradingPeriod = tradeLegs[0].trading_period || formatMonthKey(firstLegPricingStart);
+          console.log(`Trade ${parentTrade.trade_reference} using trading period: ${tradingPeriod}`);
+
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -80,26 +89,33 @@ const TradeEditPage = () => {
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
-            legs: tradeLegs.map(leg => ({
-              id: leg.id,
-              parentTradeId: leg.parent_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
-              sustainability: leg.sustainability || '',
-              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-              quantity: leg.quantity,
-              tolerance: leg.tolerance || 0,
-              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              unit: (leg.unit || 'MT') as Unit,
-              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-            }))
+            tradingPeriod: tradingPeriod,
+            legs: tradeLegs.map(leg => {
+              const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
+              const legTradingPeriod = leg.trading_period || formatMonthKey(legPricingStart);
+              
+              return {
+                id: leg.id,
+                parentTradeId: leg.parent_trade_id,
+                legReference: leg.leg_reference,
+                buySell: leg.buy_sell as BuySell,
+                product: leg.product as Product,
+                sustainability: leg.sustainability || '',
+                incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+                quantity: leg.quantity,
+                tolerance: leg.tolerance || 0,
+                loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+                loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+                pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+                pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+                unit: (leg.unit || 'MT') as Unit,
+                paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+                creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+                formula: validateAndParsePricingFormula(leg.pricing_formula),
+                mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+                tradingPeriod: legTradingPeriod
+              }
+            })
           };
           setTradeData(physicalTrade);
         } else {
@@ -124,6 +140,8 @@ const TradeEditPage = () => {
     try {
       if (!id) return;
 
+      console.log('Updating trade with data:', updatedTradeData);
+
       // Update the parent trade
       const parentTradeUpdate = {
         trade_reference: updatedTradeData.tradeReference,
@@ -143,6 +161,9 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
+        // Get the trading period from the leg or derive it from the pricing period
+        const tradingPeriod = leg.tradingPeriod || formatMonthKey(leg.pricingPeriodStart);
+        
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -160,8 +181,11 @@ const TradeEditPage = () => {
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
+          trading_period: tradingPeriod, // Add trading_period to the database
           updated_at: new Date().toISOString()
         };
+
+        console.log(`Updating leg ${leg.id} with trading period: ${tradingPeriod}`);
 
         // Update the existing leg
         const { error: legUpdateError } = await supabase
