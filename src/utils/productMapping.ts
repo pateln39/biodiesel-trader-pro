@@ -13,6 +13,7 @@ export const mapProductToCanonical = (product: string): string => {
     case 'RME DC':
       return 'Argus RME';
     case 'LSGO':
+    case 'Platts LSGO':
       return 'Platts LSGO';
     case 'HVO':
     case 'HVO_FP':
@@ -69,7 +70,7 @@ export const parsePaperInstrument = (
     
     return {
       baseProduct: mapProductToCanonical(baseProduct),
-      oppositeProduct: oppositeProduct,
+      oppositeProduct: mapProductToCanonical(oppositeProduct),
       relationshipType: 'DIFF'
     };
   }

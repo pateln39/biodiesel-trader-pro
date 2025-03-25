@@ -1,4 +1,3 @@
-
 import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -7,6 +6,7 @@ import { BuySell, Product } from '@/types/trade';
 import { PaperTrade, PaperTradeLeg } from '@/types/paper';
 import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -124,15 +124,19 @@ export const usePaperTrades = () => {
                 const exposuresData = leg.exposures as Record<string, any>;
                 
                 if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-                  exposuresObj.physical = exposuresData.physical as Record<string, number>;
+                  // Map exposures.physical product names to canonical names
+                  Object.entries(exposuresData.physical).forEach(([key, value]) => {
+                    const canonicalProduct = mapProductToCanonical(key);
+                    exposuresObj.physical[canonicalProduct] = value as number;
+                  });
                   
                   // If rightSide is not set from mtm_formula but exposures has two products,
                   // build rightSide from exposures data
                   if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
                     const products = Object.keys(exposuresData.physical);
                     if (products.length === 2) {
-                      const mainProduct = leg.product;
-                      const secondProduct = products.find(p => p !== mainProduct);
+                      const mainProduct = mapProductToCanonical(leg.product);
+                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
                       
                       if (secondProduct) {
                         rightSide = {
@@ -146,11 +150,19 @@ export const usePaperTrades = () => {
                 }
                 
                 if (exposuresData.paper && typeof exposuresData.paper === 'object') {
-                  exposuresObj.paper = exposuresData.paper as Record<string, number>;
+                  // Map exposures.paper product names to canonical names
+                  Object.entries(exposuresData.paper).forEach(([key, value]) => {
+                    const canonicalProduct = mapProductToCanonical(key);
+                    exposuresObj.paper[canonicalProduct] = value as number;
+                  });
                 }
                 
                 if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
-                  exposuresObj.pricing = exposuresData.pricing as Record<string, number>;
+                  // Map exposures.pricing product names to canonical names
+                  Object.entries(exposuresData.pricing).forEach(([key, value]) => {
+                    const canonicalProduct = mapProductToCanonical(key);
+                    exposuresObj.pricing[canonicalProduct] = value as number;
+                  });
                 }
               }
             } 
@@ -162,15 +174,19 @@ export const usePaperTrades = () => {
                 const mtmExposures = mtmData.exposures as Record<string, any>;
                 
                 if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
-                  exposuresObj.physical = mtmExposures.physical as Record<string, number>;
-                  exposuresObj.paper = mtmExposures.physical as Record<string, number>;
+                  // Map mtm_formula.exposures.physical product names to canonical names
+                  Object.entries(mtmExposures.physical).forEach(([key, value]) => {
+                    const canonicalProduct = mapProductToCanonical(key);
+                    exposuresObj.physical[canonicalProduct] = value as number;
+                    exposuresObj.paper[canonicalProduct] = value as number;
+                  });
                   
                   // Try to build rightSide from mtm_formula exposures
                   if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
                     const products = Object.keys(mtmExposures.physical);
                     if (products.length === 2) {
-                      const mainProduct = leg.product;
-                      const secondProduct = products.find(p => p !== mainProduct);
+                      const mainProduct = mapProductToCanonical(leg.product);
+                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
                       
                       if (secondProduct) {
                         rightSide = {
@@ -184,7 +200,11 @@ export const usePaperTrades = () => {
                 }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
-                  exposuresObj.pricing = mtmExposures.pricing as Record<string, number>;
+                  // Map mtm_formula.exposures.pricing product names to canonical names
+                  Object.entries(mtmExposures.pricing).forEach(([key, value]) => {
+                    const canonicalProduct = mapProductToCanonical(key);
+                    exposuresObj.pricing[canonicalProduct] = value as number;
+                  });
                 }
               }
             }
@@ -199,12 +219,17 @@ export const usePaperTrades = () => {
               rightSide.price = 0;
             }
             
+            // If rightSide is set, make sure its product is canonicalized
+            if (rightSide && rightSide.product) {
+              rightSide.product = mapProductToCanonical(rightSide.product);
+            }
+            
             return {
               id: leg.id,
               paperTradeId: leg.paper_trade_id,
               legReference: leg.leg_reference,
               buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
+              product: mapProductToCanonical(leg.product) as Product,
               quantity: leg.quantity,
               period: leg.period || leg.trading_period || '', 
               price: leg.price || 0,
@@ -293,13 +318,19 @@ export const usePaperTrades = () => {
           };
           
           if (leg.relationshipType === 'FP') {
-            exposures.physical[leg.product] = leg.quantity || 0;
-            exposures.paper[leg.product] = leg.quantity || 0;
+            // Use canonical product name
+            const canonicalProduct = mapProductToCanonical(leg.product);
+            exposures.physical[canonicalProduct] = leg.quantity || 0;
+            exposures.paper[canonicalProduct] = leg.quantity || 0;
           } else if (leg.rightSide) {
-            exposures.physical[leg.product] = leg.quantity || 0;
-            exposures.physical[leg.rightSide.product] = leg.rightSide.quantity || 0;
-            exposures.paper[leg.product] = leg.quantity || 0;
-            exposures.paper[leg.rightSide.product] = leg.rightSide.quantity || 0;
+            // Use canonical product names for both sides
+            const canonicalLeftProduct = mapProductToCanonical(leg.product);
+            const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
+            
+            exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
+            exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
+            exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
+            exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
           }
           
           const instrument = generateInstrumentName(
@@ -330,7 +361,7 @@ export const usePaperTrades = () => {
             leg_reference: legReference,
             paper_trade_id: paperTrade.id,
             buy_sell: leg.buySell,
-            product: leg.product,
+            product: mapProductToCanonical(leg.product) as Product,
             quantity: leg.quantity,
             price: leg.price,
             broker: leg.broker || trade.broker,
