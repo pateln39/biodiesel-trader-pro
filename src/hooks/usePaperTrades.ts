@@ -322,6 +322,9 @@ export const usePaperTrades = () => {
             const canonicalProduct = mapProductToCanonical(leg.product);
             exposures.physical[canonicalProduct] = leg.quantity || 0;
             exposures.paper[canonicalProduct] = leg.quantity || 0;
+            
+            // Add the same exposure to pricing
+            exposures.pricing[canonicalProduct] = leg.quantity || 0;
           } else if (leg.rightSide) {
             // Use canonical product names for both sides
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
@@ -331,6 +334,10 @@ export const usePaperTrades = () => {
             exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
             exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
+            
+            // Add the same exposure to pricing
+            exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
+            exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
           }
           
           const instrument = generateInstrumentName(
