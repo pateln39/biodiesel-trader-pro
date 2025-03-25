@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -314,7 +315,7 @@ const ExposurePage = () => {
                 exposuresByMonth[month][canonicalProduct].paper += paperExposure;
                 
                 if (!mtmExposures.pricing || 
-                    !(baseProduct in (mtmExposures.pricing || {}))) {
+                    !(prodName in (mtmExposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
                 }
               });
@@ -347,8 +348,8 @@ const ExposurePage = () => {
             if (mtmFormula.exposures && mtmFormula.exposures.physical && Object.keys(mtmFormula.exposures.physical).length > 0) {
               const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
               
-              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+              Object.entries(mtmFormula.exposures.physical).forEach(([pBaseProduct, weight]) => {
+                const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
                 allProducts.add(canonicalBaseProduct);
                 
                 if (!exposuresByMonth[month][canonicalBaseProduct]) {
@@ -364,14 +365,14 @@ const ExposurePage = () => {
                 exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
                 
                 if (!mtmFormula.exposures.pricing || 
-                    !(baseProduct in (mtmFormula.exposures.pricing || {}))) {
+                    !(pBaseProduct in (mtmFormula.exposures.pricing || {}))) {
                   exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
                 }
               });
               
               if (mtmFormula.exposures.pricing) {
-                Object.entries(mtmFormula.exposures.pricing).forEach(([baseProduct, weight]) => {
-                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
                   allProducts.add(canonicalBaseProduct);
                   
                   if (!exposuresByMonth[month][canonicalBaseProduct]) {
