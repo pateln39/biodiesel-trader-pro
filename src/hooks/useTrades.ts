@@ -50,20 +50,29 @@ const fetchTrades = async (): Promise<Trade[]> => {
         const pricingStart = firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date();
         const pricingEnd = firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date();
         
-        // Calculate exposures per month based on business days
-        const quantity = firstLeg.quantity || 0;
-        const buySell = firstLeg.buy_sell as BuySell;
-        const exposureMultiplier = buySell === 'buy' ? 1 : -1;
-        const totalExposure = quantity * exposureMultiplier;
+        // Calculate exposures per month based on business days or use stored value
+        let exposureByMonth: Record<string, number> = {};
         
-        console.log(`Trade ${parent.trade_reference} - Calculating exposure: ${quantity} * ${exposureMultiplier} = ${totalExposure}`);
-        console.log(`Pricing period: ${pricingStart.toDateString()} to ${pricingEnd.toDateString()}`);
+        // First, check if we have stored exposures in the database
+        if (firstLeg.exposures && firstLeg.exposures.byMonth) {
+          console.log(`Using stored exposure data for trade ${parent.trade_reference}:`, firstLeg.exposures.byMonth);
+          exposureByMonth = firstLeg.exposures.byMonth;
+        } else {
+          // If not, calculate them
+          const quantity = firstLeg.quantity || 0;
+          const buySell = firstLeg.buy_sell as BuySell;
+          const exposureMultiplier = buySell === 'buy' ? 1 : -1;
+          const totalExposure = quantity * exposureMultiplier;
+          
+          console.log(`Trade ${parent.trade_reference} - Calculating exposure: ${quantity} * ${exposureMultiplier} = ${totalExposure}`);
+          console.log(`Pricing period: ${pricingStart.toDateString()} to ${pricingEnd.toDateString()}`);
+          
+          // Use business day utility to prorate exposure
+          exposureByMonth = calculateProRatedExposure(pricingStart, pricingEnd, totalExposure);
+          console.log('Calculated exposure by month:', exposureByMonth);
+        }
         
-        // Use business day utility to prorate exposure
-        const exposureByMonth = calculateProRatedExposure(pricingStart, pricingEnd, totalExposure);
-        console.log('Calculated exposure by month:', exposureByMonth);
-        
-        // Get the trading period from the leg or fallback to the first month of pricing period
+        // Get the trading period from the database or fallback to calculating it
         const tradingPeriod = firstLeg.trading_period || formatMonthKey(pricingStart);
         console.log(`Using trading period: ${tradingPeriod}`);
 
@@ -97,18 +106,31 @@ const fetchTrades = async (): Promise<Trade[]> => {
           legs: legs.map(leg => {
             const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
             const legPricingEnd = leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date();
-            const legBuySell = leg.buy_sell as BuySell;
-            const legExposureMultiplier = legBuySell === 'buy' ? 1 : -1;
-            const legTotalExposure = (leg.quantity || 0) * legExposureMultiplier;
             
-            // Calculate per-leg exposures for multi-leg trades
-            const legExposureByMonth = calculateProRatedExposure(legPricingStart, legPricingEnd, legTotalExposure);
+            // Get leg-specific exposure data
+            let legExposureByMonth: Record<string, number> = {};
+            
+            // First check if we have stored exposures
+            if (leg.exposures && leg.exposures.byMonth) {
+              legExposureByMonth = leg.exposures.byMonth;
+            } else {
+              // If not, calculate them
+              const legBuySell = leg.buy_sell as BuySell;
+              const legExposureMultiplier = legBuySell === 'buy' ? 1 : -1;
+              const legTotalExposure = (leg.quantity || 0) * legExposureMultiplier;
+              
+              // Calculate per-leg exposures
+              legExposureByMonth = calculateProRatedExposure(legPricingStart, legPricingEnd, legTotalExposure);
+            }
+            
+            // Get the trading period from the database or calculate it
+            const legTradingPeriod = leg.trading_period || formatMonthKey(legPricingStart);
             
             return {
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
               legReference: leg.leg_reference,
-              buySell: legBuySell,
+              buySell: leg.buy_sell as BuySell,
               product: leg.product as Product,
               sustainability: leg.sustainability || '',
               incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
@@ -124,7 +146,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
               formula: validateAndParsePricingFormula(leg.pricing_formula),
               mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
               exposureByMonth: legExposureByMonth,
-              tradingPeriod: leg.trading_period || formatMonthKey(legPricingStart),
+              tradingPeriod: legTradingPeriod,
             }
           })
         };

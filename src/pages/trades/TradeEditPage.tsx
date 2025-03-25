@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatMonthKey } from '@/utils/businessDayUtils';
+import { calculateProRatedExposure, formatMonthKey } from '@/utils/businessDayUtils';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -90,6 +90,7 @@ const TradeEditPage = () => {
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
             tradingPeriod: tradingPeriod,
+            exposureByMonth: tradeLegs[0].exposures?.byMonth || {},
             legs: tradeLegs.map(leg => {
               const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
               const legTradingPeriod = leg.trading_period || formatMonthKey(legPricingStart);
@@ -113,7 +114,8 @@ const TradeEditPage = () => {
                 creditStatus: (leg.credit_status || 'pending') as CreditStatus,
                 formula: validateAndParsePricingFormula(leg.pricing_formula),
                 mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-                tradingPeriod: legTradingPeriod
+                tradingPeriod: legTradingPeriod,
+                exposureByMonth: leg.exposures?.byMonth || {}
               }
             })
           };
@@ -161,6 +163,17 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
+        // Calculate exposure data for this leg
+        const buySell = leg.buySell;
+        const quantity = leg.quantity;
+        const exposureMultiplier = buySell === 'buy' ? 1 : -1;
+        const totalExposure = quantity * exposureMultiplier;
+        
+        // Calculate pro-rated exposure by month
+        const pricingStart = leg.pricingPeriodStart;
+        const pricingEnd = leg.pricingPeriodEnd;
+        const exposureByMonth = calculateProRatedExposure(pricingStart, pricingEnd, totalExposure);
+        
         // Get the trading period from the leg or derive it from the pricing period
         const tradingPeriod = leg.tradingPeriod || formatMonthKey(leg.pricingPeriodStart);
         
@@ -182,10 +195,12 @@ const TradeEditPage = () => {
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           trading_period: tradingPeriod, // Add trading_period to the database
+          exposures: { byMonth: exposureByMonth }, // Store exposures in a JSONB column
           updated_at: new Date().toISOString()
         };
 
         console.log(`Updating leg ${leg.id} with trading period: ${tradingPeriod}`);
+        console.log(`Updated exposure data:`, exposureByMonth);
 
         // Update the existing leg
         const { error: legUpdateError } = await supabase
