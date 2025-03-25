@@ -31,6 +31,8 @@ export interface PhysicalTradeLeg {
   creditStatus: CreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
+  exposureByMonth?: Record<string, number>;
+  tradingPeriod?: string;
 }
 
 // For backward compatibility
@@ -54,4 +56,7 @@ export interface PhysicalTrade extends Trade {
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   legs: PhysicalTradeLeg[];
+  // Add the missing properties
+  exposureByMonth?: Record<string, number>;
+  tradingPeriod?: string;
 }
