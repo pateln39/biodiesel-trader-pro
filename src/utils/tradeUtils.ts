@@ -53,7 +53,7 @@ export const formatProductDisplay = (
       if (rightSideProduct) {
         return `${product}/${rightSideProduct}`;
       }
-      return `${product} SPREAD`;
+      return product;
     default:
       return product;
   }
