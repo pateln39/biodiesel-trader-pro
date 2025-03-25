@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -1058,7 +1057,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-gray-300 ${getValueColorClass(productData.netExposure)}`}
+                                    className={`text-right text-xs p-1 font-medium border-r-[2px] border-black ${getValueColorClass(productData.netExposure)}`}
                                   >
                                     {formatValue(productData.netExposure)}
                                   </TableCell>
