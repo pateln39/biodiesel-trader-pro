@@ -70,6 +70,7 @@ const calculateProductGroupTotal = (
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
+  // We'll set selectedProducts to be equal to allProducts all the time
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
@@ -483,11 +484,12 @@ const ExposurePage = () => {
     return Array.from(productSet).sort();
   }, [exposureData]);
 
+  // Always show all products
   React.useEffect(() => {
-    if (allProducts.length > 0 && selectedProducts.length === 0) {
+    if (allProducts.length > 0) {
       setSelectedProducts([...allProducts]);
     }
-  }, [allProducts, selectedProducts.length]);
+  }, [allProducts]);
 
   const grandTotals = useMemo(() => {
     const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
@@ -573,6 +575,8 @@ const ExposurePage = () => {
     });
   };
 
+  // We don't need these product toggle functions anymore but will keep them
+  // for potential future use, they just won't be shown in the UI
   const toggleProduct = (product: string) => {
     setSelectedProducts(prev => {
       if (prev.includes(product)) {
@@ -592,8 +596,9 @@ const ExposurePage = () => {
   };
 
   const filteredProducts = useMemo(() => {
-    return allProducts.filter(product => selectedProducts.includes(product));
-  }, [allProducts, selectedProducts]);
+    // Always return all products
+    return allProducts;
+  }, [allProducts]);
 
   const orderedVisibleCategories = useMemo(() => {
     return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
@@ -606,31 +611,14 @@ const ExposurePage = () => {
     return true;
   };
 
-  // Debugging log to check product selections and matches
-  React.useEffect(() => {
-    console.log('Selected Products:', selectedProducts);
-    console.log('Biodiesel Products:', BIODIESEL_PRODUCTS);
-    console.log('Biodiesel matches:', BIODIESEL_PRODUCTS.filter(product => selectedProducts.includes(product)));
-  }, [selectedProducts]);
-
-  // Determine if we need to render the calculated totals columns with more specific conditions
-  const shouldShowBiodieselTotal = useMemo(() => {
-    // Check if any biodiesel product is selected
-    return BIODIESEL_PRODUCTS.some(product => selectedProducts.includes(product));
-  }, [selectedProducts]);
-
-  const shouldShowPricingInstrumentTotal = useMemo(() => {
-    return PRICING_INSTRUMENT_PRODUCTS.some(product => selectedProducts.includes(product));
-  }, [selectedProducts]);
-
-  const shouldShowTotalRow = useMemo(() => {
-    return shouldShowBiodieselTotal || shouldShowPricingInstrumentTotal;
-  }, [shouldShowBiodieselTotal, shouldShowPricingInstrumentTotal]);
-
-  React.useEffect(() => {
-    console.log('Should Show Biodiesel Total:', shouldShowBiodieselTotal);
-    console.log('Should Show Pricing Instrument Total:', shouldShowPricingInstrumentTotal);
-  }, [shouldShowBiodieselTotal, shouldShowPricingInstrumentTotal]);
+  // Always show the biodiesel total column
+  const shouldShowBiodieselTotal = true;
+  
+  // Always show pricing instrument total
+  const shouldShowPricingInstrumentTotal = true;
+  
+  // Since both are always true, this is always true
+  const shouldShowTotalRow = true;
 
   return (
     <Layout>
@@ -650,7 +638,7 @@ const ExposurePage = () => {
 
         <Card className="mb-4">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Category Filters</label>
                 <div className="flex flex-wrap gap-2">
@@ -666,39 +654,6 @@ const ExposurePage = () => {
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
                         {category}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Product Filters</label>
-                <div className="flex items-center space-x-2 mb-2">
-                  <Checkbox 
-                    id="select-all-products" 
-                    checked={selectedProducts.length === allProducts.length && allProducts.length > 0} 
-                    onCheckedChange={toggleAllProducts}
-                  />
-                  <label 
-                    htmlFor="select-all-products"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Select All
-                  </label>
-                </div>
-                <div className="max-h-[180px] overflow-y-auto pr-2 flex flex-wrap gap-2">
-                  {allProducts.map(product => (
-                    <div key={product} className="flex items-center space-x-2">
-                      <Checkbox 
-                        id={`product-${product}`} 
-                        checked={selectedProducts.includes(product)} 
-                        onCheckedChange={() => toggleProduct(product)}
-                      />
-                      <label 
-                        htmlFor={`product-${product}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        {formatExposureTableProduct(product)}
                       </label>
                     </div>
                   ))}
@@ -747,10 +702,12 @@ const ExposurePage = () => {
                             shouldShowProductInCategory(product, category)
                           );
                           
-                          // Add additional calculated columns for the Exposure category
+                          // Modify header spans for the Exposure category
                           let colSpan = categoryProducts.length;
+                          
+                          // For Exposure category, we need to add biodiesel total, pricing instrument total, and total row
                           if (category === 'Exposure') {
-                            if (shouldShowBiodieselTotal) colSpan += 1;
+                            // Biodiesel total is NOT included in colSpan here as it will be positioned within the product columns
                             if (shouldShowPricingInstrumentTotal) colSpan += 1;
                             if (shouldShowTotalRow) colSpan += 1;
                           }
@@ -775,43 +732,43 @@ const ExposurePage = () => {
                             shouldShowProductInCategory(product, category)
                           );
                           
-                          const headers = categoryProducts.map((product, index) => (
-                            <TableHead 
-                              key={`${category}-${product}`} 
-                              className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                getCategoryColorClass(category)
-                              } ${
-                                index === categoryProducts.length - 1 && 
-                                catIndex < orderedVisibleCategories.length - 1 && 
-                                !(category === 'Exposure' && (shouldShowBiodieselTotal || shouldShowPricingInstrumentTotal || shouldShowTotalRow))
-                                  ? 'border-r-[1px] border-black' : ''
-                              } ${
-                                index > 0 ? 'border-l-[0px]' : ''
-                              } text-white font-bold`}
-                            >
-                              {formatExposureTableProduct(product)}
-                            </TableHead>
-                          ));
-                          
-                          // Add calculated column headers for the Exposure category
                           if (category === 'Exposure') {
-                            const additionalHeaders = [];
+                            // Get the index of UCOME in the product list
+                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
                             
-                            if (shouldShowBiodieselTotal) {
-                              additionalHeaders.push(
+                            // Create headers with Biodiesel Total inserted right after UCOME
+                            const headers = [];
+                            
+                            categoryProducts.forEach((product, index) => {
+                              headers.push(
                                 <TableHead 
-                                  key={`${category}-biodiesel-total`} 
+                                  key={`${category}-${product}`} 
                                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
                                     getCategoryColorClass(category)
                                   } text-white font-bold`}
                                 >
-                                  Total Biodiesel
+                                  {formatExposureTableProduct(product)}
                                 </TableHead>
                               );
-                            }
+                              
+                              // Insert Biodiesel Total after UCOME
+                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                headers.push(
+                                  <TableHead 
+                                    key={`${category}-biodiesel-total`} 
+                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                      getCategoryColorClass(category)
+                                    } text-white font-bold`}
+                                  >
+                                    Total Biodiesel
+                                  </TableHead>
+                                );
+                              }
+                            });
                             
+                            // Add Pricing Instrument Total header
                             if (shouldShowPricingInstrumentTotal) {
-                              additionalHeaders.push(
+                              headers.push(
                                 <TableHead 
                                   key={`${category}-pricing-instrument-total`} 
                                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
@@ -823,8 +780,9 @@ const ExposurePage = () => {
                               );
                             }
                             
+                            // Add Total Row header
                             if (shouldShowTotalRow) {
-                              additionalHeaders.push(
+                              headers.push(
                                 <TableHead 
                                   key={`${category}-total-row`} 
                                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
@@ -838,10 +796,26 @@ const ExposurePage = () => {
                               );
                             }
                             
-                            return [...headers, ...additionalHeaders];
+                            return headers;
+                          } else {
+                            // Regular headers for other categories
+                            return categoryProducts.map((product, index) => (
+                              <TableHead 
+                                key={`${category}-${product}`} 
+                                className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                  getCategoryColorClass(category)
+                                } ${
+                                  index === categoryProducts.length - 1 && 
+                                  catIndex < orderedVisibleCategories.length - 1
+                                    ? 'border-r-[1px] border-black' : ''
+                                } ${
+                                  index > 0 ? 'border-l-[0px]' : ''
+                                } text-white font-bold`}
+                              >
+                                {formatExposureTableProduct(product)}
+                              </TableHead>
+                            ));
                           }
-                          
-                          return headers;
                         })}
                       </TableRow>
                     </TableHeader>
@@ -903,40 +877,38 @@ const ExposurePage = () => {
                                 );
                               });
                             } else if (category === 'Exposure') {
-                              // Regular product cells
+                              // Get the index of UCOME
+                              const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                              
+                              // Generate product cells with biodiesel total after UCOME
                               categoryProducts.forEach((product, index) => {
                                 const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)} ${
-                                      index === categoryProducts.length - 1 && 
-                                      catIndex < orderedVisibleCategories.length - 1 && 
-                                      !shouldShowBiodieselTotal && !shouldShowPricingInstrumentTotal && !shouldShowTotalRow
-                                        ? 'border-r-[1px] border-black' : ''
-                                    }`}
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)}`}
                                   >
                                     {formatValue(productData.netExposure)}
                                   </TableCell>
                                 );
-                              });
-                              
-                              // Total Biodiesel cell
-                              if (shouldShowBiodieselTotal) {
-                                const biodieselTotal = calculateProductGroupTotal(
-                                  monthData.products,
-                                  BIODIESEL_PRODUCTS
-                                );
                                 
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-biodiesel-total`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(biodieselTotal)} bg-green-50`}
-                                  >
-                                    {formatValue(biodieselTotal)}
-                                  </TableCell>
-                                );
-                              }
+                                // Insert Biodiesel Total after UCOME
+                                if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                  const biodieselTotal = calculateProductGroupTotal(
+                                    monthData.products,
+                                    BIODIESEL_PRODUCTS
+                                  );
+                                  
+                                  cells.push(
+                                    <TableCell 
+                                      key={`${monthData.month}-biodiesel-total`} 
+                                      className={`text-right text-xs p-1 font-medium ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                                    >
+                                      {formatValue(biodieselTotal)}
+                                    </TableCell>
+                                  );
+                                }
+                              });
                               
                               // Total Pricing Instrument cell
                               if (shouldShowPricingInstrumentTotal) {
@@ -1049,7 +1021,10 @@ const ExposurePage = () => {
                               );
                             });
                           } else if (category === 'Exposure') {
-                            // Regular product cells
+                            // Get the index of UCOME
+                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                            
+                            // Generate product total cells with biodiesel total after UCOME
                             categoryProducts.forEach((product, index) => {
                               cells.push(
                                 <TableCell 
@@ -1057,32 +1032,27 @@ const ExposurePage = () => {
                                   className={`text-right text-xs p-1 ${
                                     grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
                                     grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold ${
-                                    index === categoryProducts.length - 1 && 
-                                    catIndex < orderedVisibleCategories.length - 1 && 
-                                    !shouldShowBiodieselTotal && !shouldShowPricingInstrumentTotal && !shouldShowTotalRow
-                                      ? 'border-r-[1px] border-black' : ''
-                                  }`}
+                                  } font-bold`}
                                 >
                                   {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
                                 </TableCell>
                               );
+                              
+                              // Insert Biodiesel Total after UCOME
+                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                cells.push(
+                                  <TableCell 
+                                    key={`total-biodiesel-total`} 
+                                    className={`text-right text-xs p-1 ${
+                                      groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
+                                      groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
+                                    } font-bold bg-green-900`}
+                                  >
+                                    {formatValue(groupGrandTotals.biodieselTotal)}
+                                  </TableCell>
+                                );
+                              }
                             });
-                            
-                            // Total Biodiesel cell
-                            if (shouldShowBiodieselTotal) {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-biodiesel-total`} 
-                                  className={`text-right text-xs p-1 ${
-                                    groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
-                                    groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold bg-green-900`}
-                                >
-                                  {formatValue(groupGrandTotals.biodieselTotal)}
-                                </TableCell>
-                              );
-                            }
                             
                             // Total Pricing Instrument cell
                             if (shouldShowPricingInstrumentTotal) {
