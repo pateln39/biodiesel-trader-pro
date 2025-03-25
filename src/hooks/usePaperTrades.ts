@@ -19,7 +19,6 @@ const debounce = (fn: Function, ms = 300) => {
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
-  // Fix the circular reference by initializing with a simple boolean value
   const isProcessingRef = useRef<boolean>(false);
   
   const debouncedRefetch = useRef(debounce((fn: Function) => {
@@ -112,10 +111,11 @@ export const usePaperTrades = () => {
               rightSide = leg.mtm_formula.rightSide;
             }
             
-            // Build exposures object (updated to match the type definition in paper.ts)
+            // Build exposures object
             let exposuresObj: PaperTradeLeg['exposures'] = {
-              paper: {},
-              pricing: {}
+              physical: {},
+              pricing: {},
+              paper: {}
             };
             
             // Extract exposures data
@@ -312,6 +312,7 @@ export const usePaperTrades = () => {
           }
           
           const exposures = {
+            physical: {},
             paper: {},
             pricing: {}
           };
@@ -319,6 +320,7 @@ export const usePaperTrades = () => {
           if (leg.relationshipType === 'FP') {
             // Use canonical product name
             const canonicalProduct = mapProductToCanonical(leg.product);
+            exposures.physical[canonicalProduct] = leg.quantity || 0;
             exposures.paper[canonicalProduct] = leg.quantity || 0;
             
             // Add the same exposure to pricing
@@ -328,6 +330,8 @@ export const usePaperTrades = () => {
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
+            exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
+            exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
             exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
             
