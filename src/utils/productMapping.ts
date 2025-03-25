@@ -4,12 +4,10 @@
 export const mapProductToCanonical = (product: string): string => {
   switch (product) {
     case 'UCOME':
-    case 'UCOME-5':
       return 'Argus UCOME';
     case 'FAME0':
       return 'Argus FAME0';
     case 'RME':
-    case 'RME DC':
       return 'Argus RME';
     case 'LSGO':
     case 'Platts LSGO':
