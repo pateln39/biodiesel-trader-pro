@@ -19,6 +19,32 @@ import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 import { formatMonthKey, calculateProRatedExposure } from '@/utils/businessDayUtils';
 
+// Define a more specific type for the database row
+interface DbTradeLegRow {
+  id: string;
+  parent_trade_id: string;
+  leg_reference: string;
+  buy_sell: string;
+  product: string;
+  sustainability?: string;
+  inco_term?: string;
+  quantity?: number;
+  tolerance?: number;
+  loading_period_start?: string;
+  loading_period_end?: string;
+  pricing_period_start?: string;
+  pricing_period_end?: string;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  pricing_formula?: any;
+  mtm_formula?: any;
+  exposures?: { byMonth?: Record<string, number> };
+  trading_period?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
     const { data: parentTrades, error: parentTradesError } = await supabase
@@ -41,7 +67,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
+      const legs = tradeLegs.filter((leg: DbTradeLegRow) => leg.parent_trade_id === parent.id);
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
@@ -103,7 +129,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
           exposureByMonth: exposureByMonth,
           // Store trading period
           tradingPeriod: tradingPeriod,
-          legs: legs.map(leg => {
+          legs: legs.map((leg: DbTradeLegRow) => {
             const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
             const legPricingEnd = leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date();
             
