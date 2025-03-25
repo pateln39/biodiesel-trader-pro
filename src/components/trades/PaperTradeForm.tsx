@@ -29,6 +29,16 @@ interface BrokerOption {
   name: string;
 }
 
+// List of all products that should always be shown in the exposure table
+const ALL_PRODUCTS = [
+  'Argus UCOME', 
+  'Argus FAME0', 
+  'Argus RME', 
+  'Platts LSGO', 
+  'Argus HVO', 
+  'ICE GASOIL FUTURES'
+];
+
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
@@ -65,15 +75,14 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const availableMonths = useMemo(() => getNextMonths(13), []);
   
   const [exposureData, setExposureData] = useState<any[]>(() => {
-    return availableMonths.map(month => ({
-      month,
-      'Argus UCOME': 0,
-      'Argus FAME0': 0,
-      'Argus RME': 0,
-      'Platts LSGO': 0,
-      'Argus HVO': 0,
-      'ICE GASOIL FUTURES': 0
-    }));
+    return availableMonths.map(month => {
+      // Initialize with all products set to 0
+      const entry: any = { month };
+      ALL_PRODUCTS.forEach(product => {
+        entry[product] = 0;
+      });
+      return entry;
+    });
   });
   
   useEffect(() => {
@@ -119,9 +128,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   }, []);
   
   useEffect(() => {
-    if (tradeLegs.length > 0) {
-      calculateExposures(tradeLegs);
-    }
+    // Always calculate exposures, even if there are no trade legs
+    calculateExposures(tradeLegs);
   }, [tradeLegs]);
   
   const handleAddBroker = async () => {
@@ -160,35 +168,39 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   };
   
   const calculateExposures = (legs: any[]) => {
+    // Reset all exposures to 0 for all months and all products
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
-      ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Platts LSGO', 'Argus HVO', 'ICE GASOIL FUTURES'].forEach(product => {
+      ALL_PRODUCTS.forEach(product => {
         entry[product] = 0;
       });
       return entry;
     });
     
-    legs.forEach(leg => {
-      if (!leg.period || !leg.product) return;
-      
-      const monthIndex = exposures.findIndex(e => e.month === leg.period);
-      if (monthIndex === -1) return;
-      
-      const canonicalProduct = mapProductToCanonical(leg.product);
-      
-      if (exposures[monthIndex][canonicalProduct] !== undefined) {
-        const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
-        exposures[monthIndex][canonicalProduct] += quantity || 0;
-      }
-      
-      if (leg.rightSide && leg.rightSide.product) {
-        const rightCanonicalProduct = mapProductToCanonical(leg.rightSide.product);
-        if (exposures[monthIndex][rightCanonicalProduct] !== undefined) {
-          const rightQuantity = leg.rightSide.quantity || 0;
-          exposures[monthIndex][rightCanonicalProduct] += rightQuantity;
+    // Only accumulate exposures if there are trade legs
+    if (legs.length > 0) {
+      legs.forEach(leg => {
+        if (!leg.period || !leg.product) return;
+        
+        const monthIndex = exposures.findIndex(e => e.month === leg.period);
+        if (monthIndex === -1) return;
+        
+        const canonicalProduct = mapProductToCanonical(leg.product);
+        
+        if (canonicalProduct && ALL_PRODUCTS.includes(canonicalProduct)) {
+          const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
+          exposures[monthIndex][canonicalProduct] += quantity || 0;
         }
-      }
-    });
+        
+        if (leg.rightSide && leg.rightSide.product) {
+          const rightCanonicalProduct = mapProductToCanonical(leg.rightSide.product);
+          if (rightCanonicalProduct && ALL_PRODUCTS.includes(rightCanonicalProduct)) {
+            const rightQuantity = leg.rightSide.quantity || 0;
+            exposures[monthIndex][rightCanonicalProduct] += rightQuantity;
+          }
+        }
+      });
+    }
     
     setExposureData(exposures);
   };
@@ -306,25 +318,17 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {exposureData.length > 0 ? (
-                exposureData.map((row, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus UCOME'] || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus FAME0'] || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus RME'] || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Platts LSGO'] || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus HVO'] || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No exposure data available. Add trade legs to see the exposure table.
-                  </td>
+              {exposureData.map((row, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus UCOME'] || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus FAME0'] || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus RME'] || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Platts LSGO'] || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus HVO'] || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
