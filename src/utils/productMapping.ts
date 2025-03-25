@@ -40,11 +40,11 @@ export const formatProductDisplay = (
   }
   
   if (relationshipType === 'DIFF' && oppositeProduct) {
-    return `${product} DIFF`;
+    return `${product}/${oppositeProduct} DIFF`;
   }
   
   if (relationshipType === 'SPREAD' && oppositeProduct) {
-    return `${product}-${oppositeProduct}`;
+    return `${product}/${oppositeProduct}`;
   }
   
   return product;
