@@ -21,6 +21,9 @@ export const mapProductToCanonical = (product: string): string => {
     case 'GASOIL':
     case 'GASOIL_FP':
       return 'ICE GASOIL FUTURES';
+    case 'diesel':
+    case 'Platts diesel':
+      return 'Platts Diesel';
     default:
       return product;
   }

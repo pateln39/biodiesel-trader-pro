@@ -326,7 +326,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
                 <SelectItem value="Argus HVO">Argus HVO</SelectItem>
                 <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                <SelectItem value="Platts diesel">Platts diesel</SelectItem>
+                <SelectItem value="Platts Diesel">Platts Diesel</SelectItem>
                 <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
               </SelectContent>
             </Select>
