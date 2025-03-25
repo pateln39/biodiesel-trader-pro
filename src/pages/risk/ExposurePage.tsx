@@ -1,20 +1,9 @@
-
 import React, { useMemo, useState } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent 
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
@@ -23,11 +12,7 @@ import { getNextMonths } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  mapProductToCanonical, 
-  parsePaperInstrument, 
-  formatExposureTableProduct 
-} from '@/utils/productMapping';
+import { formatExposureTableProduct } from '@/utils/productMapping';
 
 interface ExposureData {
   physical: number;
@@ -46,18 +31,15 @@ interface MonthlyExposure {
   totals: ExposureData;
 }
 
+interface PricingInstrument {
+  instrument_code: string;
+  display_name: string;
+  is_active: boolean;
+}
+
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
-const PHYSICAL_CATEGORY_EXCLUSIONS = ['ICE GASOIL FUTURES'];
-
-// Updated product groupings with canonical names
-const BIODIESEL_PRODUCTS = ['Argus FAME0', 'Argus HVO', 'Argus RME', 'Argus UCOME'];
-const PRICING_INSTRUMENT_PRODUCTS = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
-
-// All products that should always be included in the exposure table
-const ALL_PRODUCTS = [...BIODIESEL_PRODUCTS, ...PRICING_INSTRUMENT_PRODUCTS];
-
-// Helper function to calculate the total of a product group for a specific month and category
+// Calculate the total of a product group for a specific month and category
 const calculateProductGroupTotal = (
   monthProducts: ProductExposure,
   productGroup: string[],
@@ -82,9 +64,29 @@ const calculateNetExposure = (
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
-  // We'll set selectedProducts to be equal to allProducts all the time
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
+  // Fetch pricing instruments
+  const { data: pricingInstruments = [], isLoading: instrumentsLoading } = useQuery({
+    queryKey: ['pricing-instruments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pricing_instruments')
+        .select('instrument_code, display_name, is_active')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      return (data || []) as PricingInstrument[];
+    }
+  });
+
+  // Get all active pricing instrument codes
+  const pricingInstrumentCodes = useMemo(() => 
+    pricingInstruments.map(instrument => instrument.instrument_code),
+    [pricingInstruments]
+  );
+
+  // Fetch exposure data
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
     queryFn: async () => {
@@ -132,19 +134,15 @@ const ExposurePage = () => {
   });
 
   const exposureData = useMemo(() => {
-    // Initialize exposure data for all months with all standard products
+    // Initialize exposure data for all months with pricing instruments only
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     
-    // Ensure all required products are always in the allProducts set
-    const allProducts = new Set<string>(ALL_PRODUCTS);
-    
-    // Initialize all months with zero values for all products
+    // Initialize all months with zero values for pricing instruments
     periods.forEach(month => {
       exposuresByMonth[month] = {};
       
-      // Initialize all standard products with zero values
-      ALL_PRODUCTS.forEach(product => {
-        exposuresByMonth[month][product] = {
+      pricingInstrumentCodes.forEach(code => {
+        exposuresByMonth[month][code] = {
           physical: 0,
           pricing: 0,
           paper: 0,
@@ -152,8 +150,8 @@ const ExposurePage = () => {
         };
       });
     });
-    
-    // Only process trade data if it exists
+
+    // Process trade data
     if (tradeData) {
       const { physicalTradeLegs, paperTradeLegs } = tradeData;
       
@@ -172,14 +170,10 @@ const ExposurePage = () => {
             return;
           }
           
-          const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+          const canonicalProduct = leg.product || 'Unknown';
           const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
           const quantity = (leg.quantity || 0) * quantityMultiplier;
           
-          // Add any new products to the set
-          allProducts.add(canonicalProduct);
-          
-          // Ensure the product exists in the exposures
           if (!exposuresByMonth[month][canonicalProduct]) {
             exposuresByMonth[month][canonicalProduct] = {
               physical: 0,
@@ -194,8 +188,7 @@ const ExposurePage = () => {
           if (mtmFormula.tokens.length > 0) {
             if (mtmFormula.exposures && mtmFormula.exposures.physical) {
               Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
-                allProducts.add(canonicalBaseProduct);
+                const canonicalBaseProduct = baseProduct;
                 
                 if (!exposuresByMonth[month][canonicalBaseProduct]) {
                   exposuresByMonth[month][canonicalBaseProduct] = {
@@ -219,8 +212,7 @@ const ExposurePage = () => {
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
           if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
             Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-              const canonicalInstrument = mapProductToCanonical(instrument);
-              allProducts.add(canonicalInstrument);
+              const canonicalInstrument = instrument;
               
               if (!exposuresByMonth[month][canonicalInstrument]) {
                 exposuresByMonth[month][canonicalInstrument] = {
@@ -246,11 +238,9 @@ const ExposurePage = () => {
           }
           
           if (leg.instrument) {
-            const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
+            const baseProduct = leg.instrument;
             
             if (baseProduct) {
-              allProducts.add(baseProduct);
-              
               if (!exposuresByMonth[month][baseProduct]) {
                 exposuresByMonth[month][baseProduct] = {
                   physical: 0,
@@ -265,30 +255,13 @@ const ExposurePage = () => {
               
               exposuresByMonth[month][baseProduct].paper += quantity;
               exposuresByMonth[month][baseProduct].pricing += quantity;
-              
-              if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
-                allProducts.add(oppositeProduct);
-                
-                if (!exposuresByMonth[month][oppositeProduct]) {
-                  exposuresByMonth[month][oppositeProduct] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
-                }
-                
-                exposuresByMonth[month][oppositeProduct].paper += -quantity;
-                exposuresByMonth[month][oppositeProduct].pricing += -quantity;
-              }
             }
           } else if (leg.exposures && typeof leg.exposures === 'object') {
             const exposuresData = leg.exposures as Record<string, any>;
             
             if (exposuresData.physical && typeof exposuresData.physical === 'object') {
               Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-                const canonicalProduct = mapProductToCanonical(prodName);
-                allProducts.add(canonicalProduct);
+                const canonicalProduct = prodName;
                 
                 if (!exposuresByMonth[month][canonicalProduct]) {
                   exposuresByMonth[month][canonicalProduct] = {
@@ -311,8 +284,7 @@ const ExposurePage = () => {
             
             if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
               Object.entries(exposuresData.pricing).forEach(([instrument, value]) => {
-                const canonicalInstrument = mapProductToCanonical(instrument);
-                allProducts.add(canonicalInstrument);
+                const canonicalInstrument = instrument;
                 
                 if (!exposuresByMonth[month][canonicalInstrument]) {
                   exposuresByMonth[month][canonicalInstrument] = {
@@ -334,8 +306,7 @@ const ExposurePage = () => {
               
               if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
                 Object.entries(mtmExposures.physical).forEach(([prodName, value]) => {
-                  const canonicalProduct = mapProductToCanonical(prodName);
-                  allProducts.add(canonicalProduct);
+                  const canonicalProduct = prodName;
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
                     exposuresByMonth[month][canonicalProduct] = {
@@ -358,8 +329,7 @@ const ExposurePage = () => {
               
               if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
                 Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
-                  const canonicalProduct = mapProductToCanonical(prodName);
-                  allProducts.add(canonicalProduct);
+                  const canonicalProduct = prodName;
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
                     exposuresByMonth[month][canonicalProduct] = {
@@ -375,7 +345,7 @@ const ExposurePage = () => {
               }
             }
           } else {
-            const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+            const canonicalProduct = leg.product || 'Unknown';
             
             if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
               const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
@@ -384,8 +354,7 @@ const ExposurePage = () => {
                 const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
                 
                 Object.entries(mtmFormula.exposures.physical).forEach(([pBaseProduct, weight]) => {
-                  const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                  allProducts.add(canonicalBaseProduct);
+                  const canonicalBaseProduct = pBaseProduct;
                   
                   if (!exposuresByMonth[month][canonicalBaseProduct]) {
                     exposuresByMonth[month][canonicalBaseProduct] = {
@@ -407,8 +376,7 @@ const ExposurePage = () => {
                 
                 if (mtmFormula.exposures.pricing) {
                   Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
-                    const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                    allProducts.add(canonicalBaseProduct);
+                    const canonicalBaseProduct = pBaseProduct;
                     
                     if (!exposuresByMonth[month][canonicalBaseProduct]) {
                       exposuresByMonth[month][canonicalBaseProduct] = {
@@ -457,17 +425,16 @@ const ExposurePage = () => {
         });
       }
     }
-    
+
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
       const monthData = exposuresByMonth[month];
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Process all products in the set
-      Array.from(allProducts).forEach(product => {
+      // Only process pricing instruments
+      pricingInstrumentCodes.forEach(product => {
         const productExposure = monthData[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
-        // Update net exposure calculation to exclude paper column
         productExposure.netExposure = calculateNetExposure(
           productExposure.physical,
           productExposure.pricing
@@ -478,7 +445,6 @@ const ExposurePage = () => {
         totals.physical += productExposure.physical;
         totals.pricing += productExposure.pricing;
         totals.paper += productExposure.paper;
-        // Recalculate the total net exposure
         totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       });
       
@@ -490,34 +456,23 @@ const ExposurePage = () => {
     });
     
     return monthlyExposures;
-  }, [tradeData, periods]);
+  }, [tradeData, periods, pricingInstrumentCodes]);
 
-  const allProducts = useMemo(() => {
-    // Always include the default products, even if there are no exposure data
-    const productSet = new Set<string>(ALL_PRODUCTS);
-    
-    // Add any additional products from the exposure data
-    exposureData.forEach(monthData => {
-      Object.keys(monthData.products).forEach(product => {
-        productSet.add(product);
-      });
-    });
-    
-    return Array.from(productSet).sort();
-  }, [exposureData]);
-
-  // Always show all products
+  // Always show all pricing instruments
   React.useEffect(() => {
-    if (allProducts.length > 0) {
-      setSelectedProducts([...allProducts]);
-    }
-  }, [allProducts]);
+    setSelectedProducts([...pricingInstrumentCodes]);
+  }, [pricingInstrumentCodes]);
+
+  const filteredProducts = useMemo(() => {
+    // Only return pricing instruments
+    return pricingInstrumentCodes;
+  }, [pricingInstrumentCodes]);
 
   const grandTotals = useMemo(() => {
     const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
     const productTotals: Record<string, ExposureData> = {};
     
-    allProducts.forEach(product => {
+    pricingInstrumentCodes.forEach(product => {
       productTotals[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
     });
     
@@ -525,16 +480,12 @@ const ExposurePage = () => {
       totals.physical += monthData.totals.physical;
       totals.pricing += monthData.totals.pricing;
       totals.paper += monthData.totals.paper;
-      
-      // Update the calculation of grand total net exposure
       totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         productTotals[product].physical += exposure.physical;
         productTotals[product].pricing += exposure.pricing;
         productTotals[product].paper += exposure.paper;
-        
-        // Update product totals net exposure calculation
         productTotals[product].netExposure = calculateNetExposure(
           productTotals[product].physical,
           productTotals[product].pricing
@@ -543,30 +494,7 @@ const ExposurePage = () => {
     });
     
     return { totals, productTotals };
-  }, [exposureData, allProducts]);
-
-  // Calculate grand totals for product groups
-  const groupGrandTotals = useMemo(() => {
-    const biodieselTotal = BIODIESEL_PRODUCTS.reduce((total, product) => {
-      if (grandTotals.productTotals[product]) {
-        return total + grandTotals.productTotals[product].netExposure;
-      }
-      return total;
-    }, 0);
-    
-    const pricingInstrumentTotal = PRICING_INSTRUMENT_PRODUCTS.reduce((total, product) => {
-      if (grandTotals.productTotals[product]) {
-        return total + grandTotals.productTotals[product].netExposure;
-      }
-      return total;
-    }, 0);
-    
-    return {
-      biodieselTotal,
-      pricingInstrumentTotal,
-      totalRow: biodieselTotal + pricingInstrumentTotal
-    };
-  }, [grandTotals]);
+  }, [exposureData, pricingInstrumentCodes]);
 
   const getValueColorClass = (value: number): string => {
     return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
@@ -604,8 +532,6 @@ const ExposurePage = () => {
     });
   };
 
-  // We don't need these product toggle functions anymore but will keep them
-  // for potential future use, they just won't be shown in the UI
   const toggleProduct = (product: string) => {
     setSelectedProducts(prev => {
       if (prev.includes(product)) {
@@ -617,37 +543,20 @@ const ExposurePage = () => {
   };
 
   const toggleAllProducts = () => {
-    if (selectedProducts.length === allProducts.length) {
+    if (selectedProducts.length === filteredProducts.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts([...allProducts]);
+      setSelectedProducts([...filteredProducts]);
     }
   };
-
-  const filteredProducts = useMemo(() => {
-    // Always return all products
-    return allProducts;
-  }, [allProducts]);
 
   const orderedVisibleCategories = useMemo(() => {
     return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
   }, [visibleCategories]);
 
   const shouldShowProductInCategory = (product: string, category: string): boolean => {
-    if (category === 'Physical' && PHYSICAL_CATEGORY_EXCLUSIONS.includes(product)) {
-      return false;
-    }
     return true;
   };
-
-  // Always show the biodiesel total column
-  const shouldShowBiodieselTotal = true;
-  
-  // Always show pricing instrument total
-  const shouldShowPricingInstrumentTotal = true;
-  
-  // Since both are always true, this is always true
-  const shouldShowTotalRow = true;
 
   return (
     <Layout>
@@ -692,7 +601,7 @@ const ExposurePage = () => {
           </CardContent>
         </Card>
 
-        {isLoading ? (
+        {isLoading || instrumentsLoading ? (
           <Card>
             <CardContent className="pt-4">
               <TableLoadingState />
@@ -726,125 +635,37 @@ const ExposurePage = () => {
                         >
                           Month
                         </TableHead>
-                        {orderedVisibleCategories.map((category, catIndex) => {
-                          const categoryProducts = filteredProducts.filter(product => 
-                            shouldShowProductInCategory(product, category)
-                          );
-                          
-                          // Modify header spans for the Exposure category
-                          let colSpan = categoryProducts.length;
-                          
-                          // For Exposure category, we need to add biodiesel total, pricing instrument total, and total row
-                          if (category === 'Exposure') {
-                            // Biodiesel total is NOT included in colSpan here as it will be positioned within the product columns
-                            if (shouldShowPricingInstrumentTotal) colSpan += 1;
-                            if (shouldShowTotalRow) colSpan += 1;
-                          }
-                          
-                          return (
-                            <TableHead 
-                              key={category} 
-                              colSpan={colSpan} 
-                              className={`text-center p-1 font-bold text-black text-xs border-b-[1px] ${
-                                catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                              } border-black`}
-                            >
-                              {category}
-                            </TableHead>
-                          );
-                        })}
+                        {orderedVisibleCategories.map((category, catIndex) => (
+                          <TableHead 
+                            key={category} 
+                            colSpan={filteredProducts.length} 
+                            className={`text-center p-1 font-bold text-black text-xs border-b-[1px] ${
+                              catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                            } border-black`}
+                          >
+                            {category}
+                          </TableHead>
+                        ))}
                       </TableRow>
                       
                       <TableRow className="bg-muted/30 border-b-[1px] border-black">
                         {orderedVisibleCategories.flatMap((category, catIndex) => {
-                          const categoryProducts = filteredProducts.filter(product => 
-                            shouldShowProductInCategory(product, category)
-                          );
-                          
-                          if (category === 'Exposure') {
-                            // Get the index of UCOME in the product list
-                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
-                            
-                            // Create headers with Biodiesel Total inserted right after UCOME
-                            const headers = [];
-                            
-                            categoryProducts.forEach((product, index) => {
-                              headers.push(
-                                <TableHead 
-                                  key={`${category}-${product}`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                    getCategoryColorClass(category)
-                                  } text-white font-bold`}
-                                >
-                                  {formatExposureTableProduct(product)}
-                                </TableHead>
-                              );
-                              
-                              // Insert Biodiesel Total after UCOME
-                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
-                                headers.push(
-                                  <TableHead 
-                                    key={`${category}-biodiesel-total`} 
-                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                      getCategoryColorClass(category)
-                                    } text-white font-bold`}
-                                  >
-                                    Total Biodiesel
-                                  </TableHead>
-                                );
-                              }
-                            });
-                            
-                            // Add Pricing Instrument Total header
-                            if (shouldShowPricingInstrumentTotal) {
-                              headers.push(
-                                <TableHead 
-                                  key={`${category}-pricing-instrument-total`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                    getCategoryColorClass(category)
-                                  } text-white font-bold`}
-                                >
-                                  Total Pricing Instrument
-                                </TableHead>
-                              );
-                            }
-                            
-                            // Add Total Row header
-                            if (shouldShowTotalRow) {
-                              headers.push(
-                                <TableHead 
-                                  key={`${category}-total-row`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                    getCategoryColorClass(category)
-                                  } ${
-                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                  } text-white font-bold`}
-                                >
-                                  Total Row
-                                </TableHead>
-                              );
-                            }
-                            
-                            return headers;
-                          } else {
-                            // Regular headers for other categories
-                            return categoryProducts.map((product, index) => (
-                              <TableHead 
-                                key={`${category}-${product}`} 
-                                className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                  getCategoryColorClass(category)
-                                } ${
-                                  index === categoryProducts.length - 1 && 
-                                  catIndex < orderedVisibleCategories.length - 1
-                                    ? 'border-r-[1px] border-black' : ''
-                                } ${
-                                  index > 0 ? 'border-l-[0px]' : ''
-                                } text-white font-bold`}
-                              >
-                                {formatExposureTableProduct(product)}
-                              </TableHead>
-                            ));
-                          }
+                          return filteredProducts.map((product, index) => (
+                            <TableHead 
+                              key={`${category}-${product}`} 
+                              className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                getCategoryColorClass(category)
+                              } ${
+                                index === filteredProducts.length - 1 && 
+                                catIndex < orderedVisibleCategories.length - 1
+                                  ? 'border-r-[1px] border-black' : ''
+                              } ${
+                                index > 0 ? 'border-l-[0px]' : ''
+                              } text-white font-bold`}
+                            >
+                              {formatExposureTableProduct(product)}
+                            </TableHead>
+                          ));
                         })}
                       </TableRow>
                     </TableHeader>
@@ -857,133 +678,31 @@ const ExposurePage = () => {
                           </TableCell>
                           
                           {orderedVisibleCategories.map((category, catIndex) => {
-                            const categoryProducts = filteredProducts.filter(product => 
-                              shouldShowProductInCategory(product, category)
-                            );
-                            
-                            const cells = [];
-                            
-                            if (category === 'Physical') {
-                              categoryProducts.forEach((product, index) => {
-                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-physical-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                    }`}
-                                  >
-                                    {formatValue(productData.physical)}
-                                  </TableCell>
-                                );
-                              });
-                            } else if (category === 'Pricing') {
-                              categoryProducts.forEach((product, index) => {
-                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-pricing-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                    }`}
-                                  >
-                                    {formatValue(productData.pricing)}
-                                  </TableCell>
-                                );
-                              });
-                            } else if (category === 'Paper') {
-                              categoryProducts.forEach((product, index) => {
-                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-paper-${product}`} 
-                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                    }`}
-                                  >
-                                    {formatValue(productData.paper)}
-                                  </TableCell>
-                                );
-                              });
-                            } else if (category === 'Exposure') {
-                              // Get the index of UCOME
-                              const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                            return filteredProducts.map((product, index) => {
+                              const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                              let value = 0;
                               
-                              // Generate product cells with biodiesel total after UCOME
-                              categoryProducts.forEach((product, index) => {
-                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(productData.netExposure)}`}
-                                  >
-                                    {formatValue(productData.netExposure)}
-                                  </TableCell>
-                                );
-                                
-                                // Insert Biodiesel Total after UCOME
-                                if (index === ucomeIndex && shouldShowBiodieselTotal) {
-                                  const biodieselTotal = calculateProductGroupTotal(
-                                    monthData.products,
-                                    BIODIESEL_PRODUCTS
-                                  );
-                                  
-                                  cells.push(
-                                    <TableCell 
-                                      key={`${monthData.month}-biodiesel-total`} 
-                                      className={`text-right text-xs p-1 font-medium ${getValueColorClass(biodieselTotal)} bg-green-50`}
-                                    >
-                                      {formatValue(biodieselTotal)}
-                                    </TableCell>
-                                  );
-                                }
-                              });
-                              
-                              // Total Pricing Instrument cell
-                              if (shouldShowPricingInstrumentTotal) {
-                                const pricingInstrumentTotal = calculateProductGroupTotal(
-                                  monthData.products,
-                                  PRICING_INSTRUMENT_PRODUCTS
-                                );
-                                
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-pricing-instrument-total`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
-                                  >
-                                    {formatValue(pricingInstrumentTotal)}
-                                  </TableCell>
-                                );
+                              if (category === 'Physical') {
+                                value = productData.physical;
+                              } else if (category === 'Pricing') {
+                                value = productData.pricing;
+                              } else if (category === 'Paper') {
+                                value = productData.paper;
+                              } else if (category === 'Exposure') {
+                                value = productData.netExposure;
                               }
                               
-                              // Total Row cell
-                              if (shouldShowTotalRow) {
-                                const biodieselTotal = calculateProductGroupTotal(
-                                  monthData.products,
-                                  BIODIESEL_PRODUCTS
-                                );
-                                
-                                const pricingInstrumentTotal = calculateProductGroupTotal(
-                                  monthData.products,
-                                  PRICING_INSTRUMENT_PRODUCTS
-                                );
-                                
-                                const totalRow = biodieselTotal + pricingInstrumentTotal;
-                                
-                                cells.push(
-                                  <TableCell 
-                                    key={`${monthData.month}-total-row`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${
-                                      catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                    }`}
-                                  >
-                                    {formatValue(totalRow)}
-                                  </TableCell>
-                                );
-                              }
-                            }
-                            
-                            return cells;
+                              return (
+                                <TableCell 
+                                  key={`${monthData.month}-${category}-${product}`} 
+                                  className={`text-right text-xs p-1 ${getValueColorClass(value)} ${
+                                    index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  }`}
+                                >
+                                  {formatValue(value)}
+                                </TableCell>
+                              );
+                            });
                           })}
                         </TableRow>
                       ))}
@@ -994,129 +713,33 @@ const ExposurePage = () => {
                         </TableCell>
                         
                         {orderedVisibleCategories.map((category, catIndex) => {
-                          const categoryProducts = filteredProducts.filter(product => 
-                            shouldShowProductInCategory(product, category)
-                          );
-                          
-                          const cells = [];
-                          
-                          if (category === 'Physical') {
-                            categoryProducts.forEach((product, index) => {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-physical-${product}`} 
-                                  className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
-                                    grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                  }`}
-                                >
-                                  {formatValue(grandTotals.productTotals[product]?.physical || 0)}
-                                </TableCell>
-                              );
-                            });
-                          } else if (category === 'Pricing') {
-                            categoryProducts.forEach((product, index) => {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-pricing-${product}`} 
-                                  className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
-                                    grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length -
-                                    1 ? 'border-r-[1px] border-black' : ''
-                                  }`}
-                                >
-                                  {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
-                                </TableCell>
-                              );
-                            });
-                          } else if (category === 'Paper') {
-                            categoryProducts.forEach((product, index) => {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-paper-${product}`} 
-                                  className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
-                                    grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                  }`}
-                                >
-                                  {formatValue(grandTotals.productTotals[product]?.paper || 0)}
-                                </TableCell>
-                              );
-                            });
-                          } else if (category === 'Exposure') {
-                            // Get the index of UCOME
-                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                          return filteredProducts.map((product, index) => {
+                            let value = 0;
                             
-                            // Generate product total cells with biodiesel total after UCOME
-                            categoryProducts.forEach((product, index) => {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-net-${product}`} 
-                                  className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
-                                    grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold`}
-                                >
-                                  {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
-                                </TableCell>
-                              );
-                              
-                              // Insert Biodiesel Total after UCOME
-                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
-                                cells.push(
-                                  <TableCell 
-                                    key={`total-biodiesel-total`} 
-                                    className={`text-right text-xs p-1 ${
-                                      groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
-                                      groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
-                                    } font-bold bg-green-900`}
-                                  >
-                                    {formatValue(groupGrandTotals.biodieselTotal)}
-                                  </TableCell>
-                                );
-                              }
-                            });
-                            
-                            // Total Pricing Instrument cell
-                            if (shouldShowPricingInstrumentTotal) {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-pricing-instrument-total`} 
-                                  className={`text-right text-xs p-1 ${
-                                    groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : 
-                                    groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold bg-blue-900`}
-                                >
-                                  {formatValue(groupGrandTotals.pricingInstrumentTotal)}
-                                </TableCell>
-                              );
+                            if (category === 'Physical') {
+                              value = grandTotals.productTotals[product]?.physical || 0;
+                            } else if (category === 'Pricing') {
+                              value = grandTotals.productTotals[product]?.pricing || 0;
+                            } else if (category === 'Paper') {
+                              value = grandTotals.productTotals[product]?.paper || 0;
+                            } else if (category === 'Exposure') {
+                              value = grandTotals.productTotals[product]?.netExposure || 0;
                             }
                             
-                            // Total Row cell
-                            if (shouldShowTotalRow) {
-                              cells.push(
-                                <TableCell 
-                                  key={`total-total-row`} 
-                                  className={`text-right text-xs p-1 ${
-                                    groupGrandTotals.totalRow > 0 ? 'text-green-300' : 
-                                    groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold bg-gray-800 ${
-                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                  }`}
-                                >
-                                  {formatValue(groupGrandTotals.totalRow)}
-                                </TableCell>
-                              );
-                            }
-                          }
-                          
-                          return cells;
+                            return (
+                              <TableCell 
+                                key={`total-${category}-${product}`} 
+                                className={`text-right text-xs p-1 ${
+                                  value > 0 ? 'text-green-300' : 
+                                  value < 0 ? 'text-red-300' : 'text-gray-300'
+                                } font-bold ${
+                                  index === filteredProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                }`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            );
+                          });
                         })}
                       </TableRow>
                     </TableBody>
