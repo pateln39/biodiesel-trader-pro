@@ -203,16 +203,16 @@ export const getExposureProductBackgroundClass = (
   isPricingInstrumentTotal: boolean = false
 ): string => {
   if (isTotal) {
-    return 'bg-gray-500'; // Total Row background
+    return 'bg-gray-500'; // Total Row background - keep gray
   }
   
   if (isPricingInstrumentTotal) {
-    return 'bg-[#1A1F2C]'; // Dark purple for pricing instrument total
+    return 'bg-purple-300'; // Changed to light purple for pricing instrument total
   }
   
-  // Dark purple background for specific pricing instruments
+  // Light purple background for specific pricing instruments
   if (shouldUseSpecialBackground(product)) {
-    return 'bg-[#1A1F2C]'; // Dark purple
+    return 'bg-purple-300'; // Changed to light purple (#D6BCFA equivalent in Tailwind)
   }
   
   // Default background for biodiesel products
