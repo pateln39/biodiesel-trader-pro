@@ -111,9 +111,8 @@ export const usePaperTrades = () => {
               rightSide = leg.mtm_formula.rightSide;
             }
             
-            // Build exposures object
+            // Build exposures object - MODIFIED to remove physical exposures
             let exposuresObj: PaperTradeLeg['exposures'] = {
-              physical: {},
               pricing: {},
               paper: {}
             };
@@ -123,31 +122,7 @@ export const usePaperTrades = () => {
               if (typeof leg.exposures === 'object') {
                 const exposuresData = leg.exposures as Record<string, any>;
                 
-                if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-                  // Map exposures.physical product names to canonical names
-                  Object.entries(exposuresData.physical).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.physical[canonicalProduct] = value as number;
-                  });
-                  
-                  // If rightSide is not set from mtm_formula but exposures has two products,
-                  // build rightSide from exposures data
-                  if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
-                    const products = Object.keys(exposuresData.physical);
-                    if (products.length === 2) {
-                      const mainProduct = mapProductToCanonical(leg.product);
-                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
-                      
-                      if (secondProduct) {
-                        rightSide = {
-                          product: secondProduct,
-                          quantity: exposuresData.physical[secondProduct],
-                          period: leg.period || '',
-                        };
-                      }
-                    }
-                  }
-                }
+                // We no longer map physical exposures for paper trades
                 
                 if (exposuresData.paper && typeof exposuresData.paper === 'object') {
                   // Map exposures.paper product names to canonical names
@@ -173,30 +148,12 @@ export const usePaperTrades = () => {
               if (mtmData.exposures && typeof mtmData.exposures === 'object') {
                 const mtmExposures = mtmData.exposures as Record<string, any>;
                 
-                if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
-                  // Map mtm_formula.exposures.physical product names to canonical names
-                  Object.entries(mtmExposures.physical).forEach(([key, value]) => {
+                if (mtmExposures.paper && typeof mtmExposures.paper === 'object') {
+                  // Map mtm_formula.exposures.paper product names to canonical names
+                  Object.entries(mtmExposures.paper).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.physical[canonicalProduct] = value as number;
                     exposuresObj.paper[canonicalProduct] = value as number;
                   });
-                  
-                  // Try to build rightSide from mtm_formula exposures
-                  if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
-                    const products = Object.keys(mtmExposures.physical);
-                    if (products.length === 2) {
-                      const mainProduct = mapProductToCanonical(leg.product);
-                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
-                      
-                      if (secondProduct) {
-                        rightSide = {
-                          product: secondProduct,
-                          quantity: mtmExposures.physical[secondProduct],
-                          period: leg.period || '',
-                        };
-                      }
-                    }
-                  }
                 }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
@@ -312,7 +269,6 @@ export const usePaperTrades = () => {
           }
           
           const exposures = {
-            physical: {},
             paper: {},
             pricing: {}
           };
@@ -320,7 +276,7 @@ export const usePaperTrades = () => {
           if (leg.relationshipType === 'FP') {
             // Use canonical product name
             const canonicalProduct = mapProductToCanonical(leg.product);
-            exposures.physical[canonicalProduct] = leg.quantity || 0;
+            // REMOVED: exposures.physical[canonicalProduct] = leg.quantity || 0;
             exposures.paper[canonicalProduct] = leg.quantity || 0;
             
             // Add the same exposure to pricing
@@ -330,8 +286,8 @@ export const usePaperTrades = () => {
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
-            exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
+            // REMOVED: exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
+            // REMOVED: exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
             exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
             

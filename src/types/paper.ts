@@ -34,9 +34,8 @@ export interface PaperTradeLeg {
   // Using Record<string, any> for formula and mtmFormula to be compatible with JSON
   formula?: Record<string, any>;
   mtmFormula?: Record<string, any>;
-  // Typed exposures field for better type safety
+  // Updated exposures field to remove physical exposure
   exposures?: {
-    physical?: Record<string, number>;
     pricing?: Record<string, number>;
     paper?: Record<string, number>;
   };
