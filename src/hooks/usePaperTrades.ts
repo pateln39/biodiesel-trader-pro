@@ -101,30 +101,37 @@ export const usePaperTrades = () => {
               relationshipType = 'SPREAD';
             }
             
+            // Extract rightSide data
             let rightSide = undefined;
             
+            // First try to get rightSide from mtm_formula
             if (leg.mtm_formula && 
                 typeof leg.mtm_formula === 'object' && 
                 'rightSide' in leg.mtm_formula) {
               rightSide = leg.mtm_formula.rightSide;
             }
             
+            // Build exposures object
             let exposuresObj: PaperTradeLeg['exposures'] = {
               physical: {},
               pricing: {},
               paper: {}
             };
             
+            // Extract exposures data
             if (leg.exposures) {
               if (typeof leg.exposures === 'object') {
                 const exposuresData = leg.exposures as Record<string, any>;
                 
                 if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+                  // Map exposures.physical product names to canonical names
                   Object.entries(exposuresData.physical).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
                     exposuresObj.physical[canonicalProduct] = value as number;
                   });
                   
+                  // If rightSide is not set from mtm_formula but exposures has two products,
+                  // build rightSide from exposures data
                   if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
                     const products = Object.keys(exposuresData.physical);
                     if (products.length === 2) {
@@ -143,6 +150,7 @@ export const usePaperTrades = () => {
                 }
                 
                 if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+                  // Map exposures.paper product names to canonical names
                   Object.entries(exposuresData.paper).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
                     exposuresObj.paper[canonicalProduct] = value as number;
@@ -150,6 +158,7 @@ export const usePaperTrades = () => {
                 }
                 
                 if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+                  // Map exposures.pricing product names to canonical names
                   Object.entries(exposuresData.pricing).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
                     exposuresObj.pricing[canonicalProduct] = value as number;
@@ -157,19 +166,22 @@ export const usePaperTrades = () => {
                 }
               }
             } 
-            if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+            // If exposures is not set but mtm_formula has exposures, use those
+            else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
               const mtmData = leg.mtm_formula as Record<string, any>;
               
               if (mtmData.exposures && typeof mtmData.exposures === 'object') {
                 const mtmExposures = mtmData.exposures as Record<string, any>;
                 
                 if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+                  // Map mtm_formula.exposures.physical product names to canonical names
                   Object.entries(mtmExposures.physical).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
                     exposuresObj.physical[canonicalProduct] = value as number;
                     exposuresObj.paper[canonicalProduct] = value as number;
                   });
                   
+                  // Try to build rightSide from mtm_formula exposures
                   if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
                     const products = Object.keys(mtmExposures.physical);
                     if (products.length === 2) {
@@ -188,6 +200,7 @@ export const usePaperTrades = () => {
                 }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+                  // Map mtm_formula.exposures.pricing product names to canonical names
                   Object.entries(mtmExposures.pricing).forEach(([key, value]) => {
                     const canonicalProduct = mapProductToCanonical(key);
                     exposuresObj.pricing[canonicalProduct] = value as number;
@@ -196,14 +209,17 @@ export const usePaperTrades = () => {
               }
             }
             
+            // Make sure rightSide has the same period as leftSide 
             if (rightSide && !rightSide.period && leg.period) {
               rightSide.period = leg.period;
             }
             
+            // Add price if missing for rightSide
             if (rightSide && rightSide.price === undefined) {
               rightSide.price = 0;
             }
             
+            // If rightSide is set, make sure its product is canonicalized
             if (rightSide && rightSide.product) {
               rightSide.product = mapProductToCanonical(rightSide.product);
             }
@@ -296,22 +312,30 @@ export const usePaperTrades = () => {
           }
           
           const exposures = {
+            physical: {},
             paper: {},
             pricing: {}
           };
           
           if (leg.relationshipType === 'FP') {
+            // Use canonical product name
             const canonicalProduct = mapProductToCanonical(leg.product);
+            exposures.physical[canonicalProduct] = leg.quantity || 0;
             exposures.paper[canonicalProduct] = leg.quantity || 0;
             
+            // Add the same exposure to pricing
             exposures.pricing[canonicalProduct] = leg.quantity || 0;
           } else if (leg.rightSide) {
+            // Use canonical product names for both sides
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
+            exposures.physical[canonicalLeftProduct] = leg.quantity || 0;
+            exposures.physical[canonicalRightProduct] = leg.rightSide.quantity || 0;
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
             exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
             
+            // Add the same exposure to pricing
             exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
             exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
           }
@@ -322,6 +346,7 @@ export const usePaperTrades = () => {
             leg.rightSide?.product
           );
           
+          // Create mtmFormula with right-side price included
           let mtmFormulaForDb = null;
           if (leg.mtmFormula) {
             mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
@@ -329,6 +354,7 @@ export const usePaperTrades = () => {
             mtmFormulaForDb = {};
           }
           
+          // Make sure rightSide with price is properly included in the mtmFormula
           if (leg.rightSide) {
             mtmFormulaForDb.rightSide = {
               ...leg.rightSide,
@@ -391,4 +417,3 @@ export const usePaperTrades = () => {
     refetchPaperTrades: refetch
   };
 };
-
