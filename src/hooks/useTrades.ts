@@ -18,6 +18,7 @@ import {
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 import { formatMonthKey, calculateProRatedExposure } from '@/utils/businessDayUtils';
+import { Json } from '@/integrations/supabase/types';
 
 // Define a more specific type for the database row
 interface DbTradeLegRow {
@@ -39,10 +40,19 @@ interface DbTradeLegRow {
   credit_status?: string;
   pricing_formula?: any;
   mtm_formula?: any;
-  exposures?: { byMonth?: Record<string, number> };
+  exposures?: Json;
   trading_period?: string;
   created_at: string;
   updated_at: string;
+}
+
+// Type guard to check if exposures has byMonth
+function hasExposureByMonth(exposures: Json | undefined): exposures is { byMonth: Record<string, number> } {
+  return !!exposures && 
+         typeof exposures === 'object' && 
+         exposures !== null && 
+         'byMonth' in exposures && 
+         !!exposures.byMonth;
 }
 
 const fetchTrades = async (): Promise<Trade[]> => {
@@ -67,7 +77,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: DbTradeLegRow) => leg.parent_trade_id === parent.id);
+      const legs = tradeLegs.filter((leg) => leg.parent_trade_id === parent.id) as DbTradeLegRow[];
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
@@ -80,7 +90,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
         let exposureByMonth: Record<string, number> = {};
         
         // First, check if we have stored exposures in the database
-        if (firstLeg.exposures && firstLeg.exposures.byMonth) {
+        if (firstLeg.exposures && hasExposureByMonth(firstLeg.exposures)) {
           console.log(`Using stored exposure data for trade ${parent.trade_reference}:`, firstLeg.exposures.byMonth);
           exposureByMonth = firstLeg.exposures.byMonth;
         } else {
@@ -137,7 +147,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
             let legExposureByMonth: Record<string, number> = {};
             
             // First check if we have stored exposures
-            if (leg.exposures && leg.exposures.byMonth) {
+            if (leg.exposures && hasExposureByMonth(leg.exposures)) {
               legExposureByMonth = leg.exposures.byMonth;
             } else {
               // If not, calculate them
