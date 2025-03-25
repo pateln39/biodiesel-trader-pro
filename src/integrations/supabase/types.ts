@@ -673,7 +673,6 @@ export type Database = {
           calculated_price: number | null
           created_at: string
           credit_status: string | null
-          exposures: Json | null
           id: string
           inco_term: string | null
           instrument: string | null
@@ -704,7 +703,6 @@ export type Database = {
           calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
-          exposures?: Json | null
           id?: string
           inco_term?: string | null
           instrument?: string | null
@@ -735,7 +733,6 @@ export type Database = {
           calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
-          exposures?: Json | null
           id?: string
           inco_term?: string | null
           instrument?: string | null

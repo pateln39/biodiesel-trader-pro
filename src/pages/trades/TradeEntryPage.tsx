@@ -14,7 +14,6 @@ import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateProRatedExposure, formatMonthKey } from '@/utils/businessDayUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -48,46 +47,25 @@ const TradeEntryPage = () => {
       const parentTradeId = parentTradeData.id;
       
       // For physical trades, insert all legs
-      const legs = tradeData.legs.map((leg: any) => {
-        // Calculate exposure data for this leg
-        const buySell = leg.buySell;
-        const quantity = leg.quantity;
-        const exposureMultiplier = buySell === 'buy' ? 1 : -1;
-        const totalExposure = quantity * exposureMultiplier;
-        
-        // Calculate pro-rated exposure by month
-        const pricingStart = leg.pricingPeriodStart;
-        const pricingEnd = leg.pricingPeriodEnd;
-        const exposureByMonth = calculateProRatedExposure(pricingStart, pricingEnd, totalExposure);
-        
-        // Get the trading period from the pricing period start date
-        const tradingPeriod = formatMonthKey(pricingStart);
-        
-        console.log(`Creating leg with trading period: ${tradingPeriod}`);
-        console.log(`Exposure data:`, exposureByMonth);
-        
-        return {
-          leg_reference: leg.legReference,
-          parent_trade_id: parentTradeId,
-          buy_sell: leg.buySell,
-          product: leg.product,
-          sustainability: leg.sustainability,
-          inco_term: leg.incoTerm,
-          quantity: leg.quantity,
-          tolerance: leg.tolerance,
-          loading_period_start: leg.loadingPeriodStart,
-          loading_period_end: leg.loadingPeriodEnd,
-          pricing_period_start: leg.pricingPeriodStart,
-          pricing_period_end: leg.pricingPeriodEnd,
-          unit: leg.unit,
-          payment_term: leg.paymentTerm,
-          credit_status: leg.creditStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
-          trading_period: tradingPeriod, // Store trading period in the database
-          exposures: { byMonth: exposureByMonth } // Store exposures in a JSONB column
-        };
-      });
+      const legs = tradeData.legs.map((leg: any) => ({
+        leg_reference: leg.legReference,
+        parent_trade_id: parentTradeId,
+        buy_sell: leg.buySell,
+        product: leg.product,
+        sustainability: leg.sustainability,
+        inco_term: leg.incoTerm,
+        quantity: leg.quantity,
+        tolerance: leg.tolerance,
+        loading_period_start: leg.loadingPeriodStart,
+        loading_period_end: leg.loadingPeriodEnd,
+        pricing_period_start: leg.pricingPeriodStart,
+        pricing_period_end: leg.pricingPeriodEnd,
+        unit: leg.unit,
+        payment_term: leg.paymentTerm,
+        credit_status: leg.creditStatus,
+        pricing_formula: leg.formula,
+        mtm_formula: leg.mtmFormula,
+      }));
       
       const { error: legsError } = await supabase
         .from('trade_legs')
