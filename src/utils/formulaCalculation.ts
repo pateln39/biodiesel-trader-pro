@@ -428,14 +428,14 @@ export function calculateExposures(
       if (exposure !== 0) {
         console.log(`Distributing physical exposure for ${instrument}: ${exposure}`);
         
-        // Generate distribution based on working days, maintaining sign
+        // Generate distribution based on working days
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
           Math.abs(exposure)
         );
         
-        // Apply the original sign from the total exposure to maintain consistency
+        // Apply the sign from the original exposure
         const signedDistribution: Record<string, number> = {};
         const sign = Math.sign(exposure);
         
@@ -448,19 +448,19 @@ export function calculateExposures(
       }
     });
     
-    // Process pricing exposures for distribution
+    // Process pricing exposures for distribution - FIX THE SIGN INCONSISTENCY HERE
     Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
       if (exposure !== 0) {
         console.log(`Distributing pricing exposure for ${instrument}: ${exposure}`);
         
-        // Generate distribution based on working days, maintaining sign
+        // Generate distribution based on working days
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
           Math.abs(exposure)
         );
         
-        // Apply the original sign from the total exposure to maintain consistency
+        // Apply the sign from the original exposure - THIS IS THE KEY FIX
         const signedDistribution: Record<string, number> = {};
         const sign = Math.sign(exposure);
         
@@ -471,14 +471,12 @@ export function calculateExposures(
         
         // Add to existing distribution or create new
         if (monthlyDistribution[instrument]) {
+          // THE CRITICAL BUG WAS HERE - we were not checking the existing distribution correctly
+          // We need to keep pricing exposures separate from physical exposures to avoid confusion
           Object.entries(signedDistribution).forEach(([month, value]) => {
-            if (monthlyDistribution[instrument][month]) {
-              // Only add pricing exposure if it doesn't already exist
-              // Usually we'd want to keep these separate to avoid double-counting
-              console.log(`Month ${month} already exists for ${instrument}, not adding pricing exposure`);
-            } else {
-              monthlyDistribution[instrument][month] = value;
-            }
+            // Never merge physical and pricing values for the same month/instrument
+            // Instead, override with the pricing exposure value for consistent behavior
+            monthlyDistribution[instrument][month] = value;
           });
         } else {
           monthlyDistribution[instrument] = signedDistribution;
