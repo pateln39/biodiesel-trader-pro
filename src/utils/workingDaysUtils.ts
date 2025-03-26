@@ -61,12 +61,16 @@ export function distributeQuantityByWorkingDays(
 ): Record<string, number> {
   // Validate inputs
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate || totalQuantity === 0) {
+    console.log("Invalid inputs for distribution:", { startDate, endDate, totalQuantity });
     return {};
   }
   
   // Calculate total working days
   const totalWorkingDays = countWorkingDays(startDate, endDate);
-  if (totalWorkingDays === 0) return {};
+  if (totalWorkingDays === 0) {
+    console.log("No working days found in the period:", { startDate, endDate });
+    return {};
+  }
   
   const distribution: Record<string, number> = {};
   
@@ -93,12 +97,15 @@ export function distributeQuantityByWorkingDays(
       const monthCode = formatMonthCode(currentMonth);
       const proportion = workingDaysInMonth / totalWorkingDays;
       distribution[monthCode] = parseFloat((proportion * totalQuantity).toFixed(2));
+      
+      console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distribution[monthCode]} units`);
     }
     
     // Move to next month
     currentMonth.setMonth(currentMonth.getMonth() + 1);
   }
   
+  console.log("Final distribution:", distribution);
   return distribution;
 }
 
@@ -114,50 +121,26 @@ export function formatMonthCode(date: Date): string {
 }
 
 /**
- * Extract monthly distribution from formula exposures
- * @param exposures The exposures object from a pricing formula
- * @param type The type of exposure ('physical' or 'pricing')
- * @returns An object mapping instruments to their monthly distributions
+ * Gets monthly distribution data from the formula's exposure object
+ * @param formulaExposures The exposures object from the formula
+ * @param productType The type of product (physical or pricing)
+ * @returns An object mapping month codes to their exposures
  */
 export function getMonthlyDistribution(
-  exposures: any,
-  type: 'physical' | 'pricing'
+  formulaExposures: any, 
+  productType: 'physical' | 'pricing'
 ): Record<string, Record<string, number>> {
-  const result: Record<string, Record<string, number>> = {};
-  
-  // Return empty result if exposures is undefined or not an object
-  if (!exposures || typeof exposures !== 'object') {
-    return result;
+  if (!formulaExposures || typeof formulaExposures !== 'object') {
+    return {};
   }
   
-  // Check if exposures has monthlyDistribution property
-  if (exposures.monthlyDistribution && typeof exposures.monthlyDistribution === 'object') {
-    // Handle the case where monthlyDistribution is directly nested under exposures
-    Object.entries(exposures.monthlyDistribution).forEach(([instrument, monthDistribution]) => {
-      if (typeof monthDistribution === 'object') {
-        result[instrument] = { ...monthDistribution as Record<string, number> };
-      }
-    });
-    
-    return result;
+  // Check if we have monthlyDistribution data in the exposures
+  if (formulaExposures.monthlyDistribution && 
+      typeof formulaExposures.monthlyDistribution === 'object') {
+    // MonthlyDistribution format is: { product: { month: quantity } }
+    return formulaExposures.monthlyDistribution;
   }
   
-  // Check if we need to look in the physical or pricing property of exposures
-  const typeExposures = exposures[type];
-  
-  // If there's no specific type exposures, return empty result
-  if (!typeExposures || typeof typeExposures !== 'object') {
-    return result;
-  }
-  
-  // Check if there's a nested monthlyDistribution under the type
-  if (typeExposures.monthlyDistribution && typeof typeExposures.monthlyDistribution === 'object') {
-    Object.entries(typeExposures.monthlyDistribution).forEach(([instrument, monthDistribution]) => {
-      if (typeof monthDistribution === 'object') {
-        result[instrument] = { ...monthDistribution as Record<string, number> };
-      }
-    });
-  }
-  
-  return result;
+  return {};
 }
+

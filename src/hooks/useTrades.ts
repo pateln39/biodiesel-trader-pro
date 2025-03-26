@@ -17,7 +17,10 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-import { distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
+import { 
+  distributeQuantityByWorkingDays, 
+  getMonthlyDistribution 
+} from '@/utils/workingDaysUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -46,11 +49,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
       if (parent.trade_type === 'physical' && firstLeg) {
-        // Process the pricing formula and mtm formula to ensure exposures are correctly parsed
-        const pricingFormula = validateAndParsePricingFormula(firstLeg.pricing_formula);
-        const mtmFormula = validateAndParsePricingFormula(firstLeg.mtm_formula);
-
-        // Create a physical trade object with all necessary data including formulas with complete exposures
+        // Create the base physical trade structure
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
@@ -72,13 +71,48 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: pricingFormula,
-          mtmFormula: mtmFormula,
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           legs: legs.map(leg => {
-            // Process each leg's formulas to ensure exposures are correctly parsed
-            const legPricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-            const legMtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            // Process each leg with its formula and ensure the pricing periods are set correctly
+            const pricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
+            const pricingEnd = leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date();
             
+            // Parse the formula ensuring it has the correct exposure information
+            const formula = validateAndParsePricingFormula(leg.pricing_formula);
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            
+            // Ensure monthly distributions are properly processed if not already in the formula
+            if (mtmFormula.exposures && 
+                !mtmFormula.exposures.monthlyDistribution && 
+                leg.pricing_period_start && 
+                leg.pricing_period_end) {
+              // Calculate distribution based on working days if not already done
+              const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+              const quantity = (leg.quantity || 0) * quantityMultiplier;
+              
+              if (mtmFormula.exposures.physical) {
+                Object.entries(mtmFormula.exposures.physical).forEach(([product, weight]) => {
+                  const productQuantity = typeof weight === 'number' ? weight : quantity;
+                  
+                  // Generate monthly distribution
+                  const distribution = distributeQuantityByWorkingDays(
+                    pricingStart,
+                    pricingEnd,
+                    productQuantity
+                  );
+                  
+                  // Add to exposures if not already there
+                  if (!mtmFormula.exposures.monthlyDistribution) {
+                    mtmFormula.exposures.monthlyDistribution = {};
+                  }
+                  
+                  mtmFormula.exposures.monthlyDistribution[product] = distribution;
+                });
+              }
+            }
+            
+            // Return the processed leg
             return {
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
@@ -91,19 +125,20 @@ const fetchTrades = async (): Promise<Trade[]> => {
               tolerance: leg.tolerance || 0,
               loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
               loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              pricingPeriodStart: pricingStart,
+              pricingPeriodEnd: pricingEnd,
               unit: (leg.unit || 'MT') as Unit,
               paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              formula: legPricingFormula,
-              mtmFormula: legMtmFormula
+              formula: formula,
+              mtmFormula: mtmFormula
             };
           })
         };
         return physicalTrade;
       } 
       
+      // Handle non-physical trades (as before)
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
