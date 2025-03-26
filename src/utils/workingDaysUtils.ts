@@ -112,3 +112,52 @@ export function formatMonthCode(date: Date): string {
   const yearCode = date.getFullYear().toString().slice(2);
   return `${monthCode}-${yearCode}`;
 }
+
+/**
+ * Extract monthly distribution from formula exposures
+ * @param exposures The exposures object from a pricing formula
+ * @param type The type of exposure ('physical' or 'pricing')
+ * @returns An object mapping instruments to their monthly distributions
+ */
+export function getMonthlyDistribution(
+  exposures: any,
+  type: 'physical' | 'pricing'
+): Record<string, Record<string, number>> {
+  const result: Record<string, Record<string, number>> = {};
+  
+  // Return empty result if exposures is undefined or not an object
+  if (!exposures || typeof exposures !== 'object') {
+    return result;
+  }
+  
+  // Check if exposures has monthlyDistribution property
+  if (exposures.monthlyDistribution && typeof exposures.monthlyDistribution === 'object') {
+    // Handle the case where monthlyDistribution is directly nested under exposures
+    Object.entries(exposures.monthlyDistribution).forEach(([instrument, monthDistribution]) => {
+      if (typeof monthDistribution === 'object') {
+        result[instrument] = { ...monthDistribution as Record<string, number> };
+      }
+    });
+    
+    return result;
+  }
+  
+  // Check if we need to look in the physical or pricing property of exposures
+  const typeExposures = exposures[type];
+  
+  // If there's no specific type exposures, return empty result
+  if (!typeExposures || typeof typeExposures !== 'object') {
+    return result;
+  }
+  
+  // Check if there's a nested monthlyDistribution under the type
+  if (typeExposures.monthlyDistribution && typeof typeExposures.monthlyDistribution === 'object') {
+    Object.entries(typeExposures.monthlyDistribution).forEach(([instrument, monthDistribution]) => {
+      if (typeof monthDistribution === 'object') {
+        result[instrument] = { ...monthDistribution as Record<string, number> };
+      }
+    });
+  }
+  
+  return result;
+}
