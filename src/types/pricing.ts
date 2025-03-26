@@ -18,6 +18,16 @@ export interface MonthlyDistribution {
   [monthCode: string]: number; // e.g., "Mar-24": 363.63
 }
 
+// New type for daily distribution calculations
+export interface DailyDistribution {
+  [dateString: string]: number; // e.g., "2023-03-15": 3000
+}
+
+// New type to organize daily distributions by instrument
+export interface DailyDistributionByInstrument {
+  [instrument: string]: DailyDistribution;
+}
+
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
