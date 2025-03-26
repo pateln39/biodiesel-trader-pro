@@ -100,12 +100,33 @@ const PaperTradeEditPage = () => {
         exposures.physical = {};
         
         // Apply the buy/sell direction to the exposures correctly
-        const buySellMultiplier = leg.buySell === 'buy' ? -1 : 1;
         
         if (leg.relationshipType === 'FP' && leg.product) {
           // For FP (direct formula pricing), sign depends on buy/sell
           exposures.paper = { [leg.product]: leg.quantity };
-          exposures.pricing = { [leg.product]: leg.quantity * buySellMultiplier };
+          
+          // For pricing exposure, calculate using the formula tokens if available
+          if (leg.formula && leg.formula.tokens) {
+            if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+              // Use calculateExposures with the buySell indicator
+              const calculatedExposures = calculateExposures(
+                leg.formula.tokens,
+                leg.quantity,
+                leg.buySell,
+                leg.pricingPeriodStart,
+                leg.pricingPeriodEnd
+              );
+              
+              // Update the pricing exposure from calculated result
+              exposures.pricing = calculatedExposures.pricing || {};
+            } else {
+              // Fallback if dates not available
+              exposures.pricing = { [leg.product]: leg.buySell === 'buy' ? -leg.quantity : leg.quantity };
+            }
+          } else {
+            // Direct calculation without formula
+            exposures.pricing = { [leg.product]: leg.buySell === 'buy' ? -leg.quantity : leg.quantity };
+          }
         } else if (leg.rightSide && leg.product) {
           // For DIFF and SPREAD, both sides must have the correct sign
           exposures.paper = { 
@@ -114,10 +135,17 @@ const PaperTradeEditPage = () => {
           };
           
           // For pricing exposure, apply the buySell direction
-          exposures.pricing = { 
-            [leg.product]: leg.quantity * buySellMultiplier,
-            [leg.rightSide.product]: leg.rightSide.quantity * buySellMultiplier
-          };
+          if (leg.buySell === 'buy') {
+            exposures.pricing = { 
+              [leg.product]: -leg.quantity,
+              [leg.rightSide.product]: -leg.rightSide.quantity
+            };
+          } else {
+            exposures.pricing = { 
+              [leg.product]: leg.quantity,
+              [leg.rightSide.product]: leg.rightSide.quantity
+            };
+          }
         }
         
         // Recalculate exposures if we have formula tokens
@@ -126,7 +154,7 @@ const PaperTradeEditPage = () => {
             leg.formula.exposures = calculateExposures(
               leg.formula.tokens, 
               leg.quantity, 
-              buySellMultiplier,
+              leg.buySell,
               leg.pricingPeriodStart, 
               leg.pricingPeriodEnd
             );

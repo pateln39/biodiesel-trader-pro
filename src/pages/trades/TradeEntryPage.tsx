@@ -52,14 +52,13 @@ const TradeEntryPage = () => {
         // Ensure formula has proper exposures with correct signs
         if (leg.formula && leg.formula.tokens) {
           // Calculate exposures for the formula with the correct buySell direction
-          const buySellMultiplier = leg.buySell === 'buy' ? -1 : 1;
           
           // Update exposures in the formula
           if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
             leg.formula.exposures = calculateExposures(
               leg.formula.tokens, 
               leg.quantity, 
-              buySellMultiplier,
+              leg.buySell,
               leg.pricingPeriodStart, 
               leg.pricingPeriodEnd
             );
@@ -69,14 +68,13 @@ const TradeEntryPage = () => {
         // Do the same for MTM formula if it exists
         if (leg.mtmFormula && leg.mtmFormula.tokens) {
           // Calculate exposures for the formula with the correct buySell direction
-          const buySellMultiplier = leg.buySell === 'buy' ? -1 : 1;
           
           // Update exposures in the formula
           if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
             leg.mtmFormula.exposures = calculateExposures(
               leg.mtmFormula.tokens, 
               leg.quantity, 
-              buySellMultiplier,
+              leg.buySell,
               leg.pricingPeriodStart, 
               leg.pricingPeriodEnd
             );
