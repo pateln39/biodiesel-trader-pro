@@ -1,4 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -21,7 +23,7 @@ import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getNextMonths, formatMonthCode } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox as CheckboxComponent } from "@/components/ui/checkbox";
 import { 
   mapProductToCanonical, 
   parsePaperInstrument, 
@@ -95,7 +97,8 @@ const ExposurePage = () => {
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isDateFilterActive, setIsDateFilterActive] = useState<boolean>(false);
-  
+  const [isRounded, setIsRounded] = useState(false);
+
   const { data: pricingInstruments = [], isLoading: instrumentsLoading } = usePricingInstruments();
   
   const ALLOWED_PRODUCTS = useMemo(() => {
@@ -115,20 +118,6 @@ const ExposurePage = () => {
   const PRICING_INSTRUMENT_PRODUCTS = useMemo(() => {
     return ALLOWED_PRODUCTS.filter(p => !p.includes('Argus'));
   }, [ALLOWED_PRODUCTS]);
-
-  // Initialize the filtered exposures hook with current month
-  const {
-    filteredExposures,
-    isLoading: filteredExposuresLoading,
-    error: filteredExposuresError,
-    updateDateRange,
-    startDate,
-    endDate,
-    refetchTrades
-  } = useFilteredExposures({
-    startDate: startOfMonth(new Date()),
-    endDate: endOfMonth(new Date())
-  });
 
   const { data: tradeData, isLoading, error, refetch } = useQuery({
     queryKey: ['exposure-data'],
@@ -177,26 +166,21 @@ const ExposurePage = () => {
     }
   });
 
-  // Use either filtered or regular exposure data based on date filter
   const exposureData = useMemo(() => {
     if (isDateFilterActive) {
-      // When date filter is active, convert filtered exposures to the same format
-      // as the original exposure data for compatibility with existing table
       const monthlyExposures: MonthlyExposure[] = [];
       
-      // If we're filtering, we'll only show one month that represents the filtered period
       const filteredMonth = `${format(startDate, 'MMM')}-${format(startDate, 'yy')} to ${format(endDate, 'MMM')}-${format(endDate, 'yy')}`;
       
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Process physical exposures
       Object.entries(filteredExposures.physical).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product)) {
           productsData[product] = {
             physical: exposure,
             pricing: filteredExposures.pricing[product] || 0,
-            paper: 0, // No paper trades in this implementation
+            paper: 0,
             netExposure: calculateNetExposure(exposure, filteredExposures.pricing[product] || 0)
           };
           
@@ -205,7 +189,6 @@ const ExposurePage = () => {
         }
       });
       
-      // Process pricing instruments that might not have physical exposure
       Object.entries(filteredExposures.pricing).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product) && !productsData[product]) {
           productsData[product] = {
@@ -850,8 +833,11 @@ const ExposurePage = () => {
     return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
   };
 
-  const formatValue = (value: number): string => {
-    return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
+  const formatExposure = (value: number): string => {
+    if (isRounded) {
+      return Math.round(value).toLocaleString('en-US');
+    }
+    return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const exposureCategories = CATEGORY_ORDER;
@@ -903,11 +889,9 @@ const ExposurePage = () => {
   
   const shouldShowTotalRow = true;
 
-  // Determine if we're in a loading state from either data source
   const isLoadingData = isLoading || instrumentsLoading || 
                       (isDateFilterActive && filteredExposuresLoading);
 
-  // Handle date range filter changes
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
     updateDateRange(startDate, endDate);
     setIsDateFilterActive(true);
@@ -935,7 +919,6 @@ const ExposurePage = () => {
           </div>
         </div>
 
-        {/* Date Range Filter */}
         <DateRangeFilter 
           onFilterChange={handleDateRangeChange}
           isLoading={filteredExposuresLoading} 
@@ -967,6 +950,17 @@ const ExposurePage = () => {
             </div>
           </CardContent>
         </Card>
+
+        <div className="flex items-center space-x-2 mb-4">
+          <Checkbox 
+            id="round-exposures" 
+            checked={isRounded}
+            onCheckedChange={(checked) => setIsRounded(!!checked)}
+          />
+          <Label htmlFor="round-exposures">
+            Round Exposures to Nearest Whole Number
+          </Label>
+        </div>
 
         {isLoadingData ? (
           <Card>
@@ -1147,7 +1141,7 @@ const ExposurePage = () => {
                                       index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
-                                    {formatValue(productData.physical)}
+                                    {formatExposure(productData.physical)}
                                   </TableCell>
                                 );
                               });
@@ -1161,7 +1155,7 @@ const ExposurePage = () => {
                                       index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
-                                    {formatValue(productData.pricing)}
+                                    {formatExposure(productData.pricing)}
                                   </TableCell>
                                 );
                               });
@@ -1175,7 +1169,7 @@ const ExposurePage = () => {
                                       index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
-                                    {formatValue(productData.paper)}
+                                    {formatExposure(productData.paper)}
                                   </TableCell>
                                 );
                               });
@@ -1189,7 +1183,7 @@ const ExposurePage = () => {
                                     key={`${monthData.month}-net-${product}`} 
                                     className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}
                                   >
-                                    {formatValue(productData.netExposure)}
+                                    {formatExposure(productData.netExposure)}
                                   </TableCell>
                                 );
                                 
@@ -1204,7 +1198,7 @@ const ExposurePage = () => {
                                       key={`${monthData.month}-biodiesel-total`} 
                                       className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}
                                     >
-                                      {formatValue(biodieselTotal)}
+                                      {formatExposure(biodieselTotal)}
                                     </TableCell>
                                   );
                                 }
@@ -1221,7 +1215,7 @@ const ExposurePage = () => {
                                     key={`${monthData.month}-pricing-instrument-total`} 
                                     className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
                                   >
-                                    {formatValue(pricingInstrumentTotal)}
+                                    {formatExposure(pricingInstrumentTotal)}
                                   </TableCell>
                                 );
                               }
@@ -1246,7 +1240,7 @@ const ExposurePage = () => {
                                       catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                     }`}
                                   >
-                                    {formatValue(totalRow)}
+                                    {formatExposure(totalRow)}
                                   </TableCell>
                                 );
                               }
@@ -1281,7 +1275,7 @@ const ExposurePage = () => {
                                     index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                   }`}
                                 >
-                                  {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                                  {formatExposure(grandTotals.productTotals[product]?.physical || 0)}
                                 </TableCell>
                               );
                             });
@@ -1297,7 +1291,7 @@ const ExposurePage = () => {
                                     index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                   }`}
                                 >
-                                  {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                                  {formatExposure(grandTotals.productTotals[product]?.pricing || 0)}
                                 </TableCell>
                               );
                             });
@@ -1313,7 +1307,7 @@ const ExposurePage = () => {
                                     index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                   }`}
                                 >
-                                  {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                                  {formatExposure(grandTotals.productTotals[product]?.paper || 0)}
                                 </TableCell>
                               );
                             });
@@ -1329,7 +1323,7 @@ const ExposurePage = () => {
                                     grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold`}
                                 >
-                                  {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                                  {formatExposure(grandTotals.productTotals[product]?.netExposure || 0)}
                                 </TableCell>
                               );
                               
@@ -1342,7 +1336,7 @@ const ExposurePage = () => {
                                       groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
                                     } font-bold bg-green-900`}
                                   >
-                                    {formatValue(groupGrandTotals.biodieselTotal)}
+                                    {formatExposure(groupGrandTotals.biodieselTotal)}
                                   </TableCell>
                                 );
                               }
@@ -1357,7 +1351,7 @@ const ExposurePage = () => {
                                     groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold bg-blue-900`}
                                 >
-                                  {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                                  {formatExposure(groupGrandTotals.pricingInstrumentTotal)}
                                 </TableCell>
                               );
                             }
@@ -1373,7 +1367,7 @@ const ExposurePage = () => {
                                     catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
                                   }`}
                                 >
-                                  {formatValue(groupGrandTotals.totalRow)}
+                                  {formatExposure(groupGrandTotals.totalRow)}
                                 </TableCell>
                               );
                             }
