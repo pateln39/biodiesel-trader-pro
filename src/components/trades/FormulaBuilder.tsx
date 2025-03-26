@@ -53,6 +53,11 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
+      console.log(`Calculating exposures for ${formulaType} formula with dates:`, {
+        pricingPeriodStart,
+        pricingPeriodEnd
+      });
+
       if (formulaType === 'price') {
         const pricingExposure = calculatePricingExposure(value.tokens, tradeQuantity, buySell);
         const physicalExposure = otherFormula && otherFormula.tokens.length > 0 
@@ -68,18 +73,16 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           pricingPeriodEnd
         );
         
-        if (JSON.stringify({ 
-          physical: physicalExposure, 
+        const newExposures = {
+          physical: physicalExposure,
           pricing: pricingExposure,
           monthlyDistribution: fullExposures.monthlyDistribution
-        }) !== JSON.stringify(value.exposures)) {
+        };
+        
+        if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
           onChange({
             ...value,
-            exposures: {
-              physical: physicalExposure,
-              pricing: pricingExposure,
-              monthlyDistribution: fullExposures.monthlyDistribution
-            }
+            exposures: newExposures
           });
         }
       } 
@@ -98,23 +101,21 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           pricingPeriodEnd
         );
         
-        if (JSON.stringify({ 
-          physical: physicalExposure, 
+        const newExposures = {
+          physical: physicalExposure,
           pricing: pricingExposure,
           monthlyDistribution: fullExposures.monthlyDistribution
-        }) !== JSON.stringify(value.exposures)) {
+        };
+        
+        if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
           onChange({
             ...value,
-            exposures: {
-              physical: physicalExposure,
-              pricing: pricingExposure,
-              monthlyDistribution: fullExposures.monthlyDistribution
-            }
+            exposures: newExposures
           });
         }
       }
     }
-  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType, pricingPeriodStart, pricingPeriodEnd]);
+  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType, pricingPeriodStart, pricingPeriodEnd, selectedProduct, onChange]);
 
   const handleAddInstrument = () => {
     if (!canAddTokenType(value.tokens, 'instrument')) return;
@@ -519,3 +520,4 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 };
 
 export default FormulaBuilder;
+

@@ -403,6 +403,11 @@ export const calculateExposures = (
     const validStart = new Date(pricingPeriodStart);
     const validEnd = new Date(pricingPeriodEnd);
     
+    console.log("Calculating monthly distribution with dates:", {
+      start: validStart.toISOString(),
+      end: validEnd.toISOString()
+    });
+    
     // Only calculate distribution if dates are valid and span multiple months
     if (!isNaN(validStart.getTime()) && !isNaN(validEnd.getTime())) {
       monthlyDistribution = {};
@@ -412,6 +417,8 @@ export const calculateExposures = (
         if (physicalExposure[instrument as Instrument] !== 0) {
           // For physical exposure
           const physicalQuantity = Math.abs(physicalExposure[instrument as Instrument]);
+          console.log(`Distributing physical exposure for ${instrument}: ${physicalQuantity}`);
+          
           const distribution = distributeQuantityByWorkingDays(validStart, validEnd, physicalQuantity);
           
           if (!monthlyDistribution[instrument as Instrument]) {
@@ -430,6 +437,8 @@ export const calculateExposures = (
       for (const instrument in pricingExposure) {
         if (pricingExposure[instrument as Instrument] !== 0) {
           const pricingQuantity = Math.abs(pricingExposure[instrument as Instrument]);
+          console.log(`Distributing pricing exposure for ${instrument}: ${pricingQuantity}`);
+          
           const distribution = distributeQuantityByWorkingDays(validStart, validEnd, pricingQuantity);
           
           if (!monthlyDistribution[instrument as Instrument]) {
@@ -439,9 +448,12 @@ export const calculateExposures = (
           // Apply the buy/sell direction to the distributed quantities
           const direction = pricingExposure[instrument as Instrument] > 0 ? 1 : -1;
           Object.entries(distribution).forEach(([month, quantity]) => {
-            // If there's already a value from physical exposure, we don't want to overwrite it
+            // For pricing exposure, we'll set or add to the monthly distribution
             if (!monthlyDistribution![instrument as Instrument][month]) {
               monthlyDistribution![instrument as Instrument][month] = quantity * direction;
+            } else {
+              // This might happen if both physical and pricing exposures exist for the same instrument
+              monthlyDistribution![instrument as Instrument][month] += quantity * direction;
             }
           });
         }

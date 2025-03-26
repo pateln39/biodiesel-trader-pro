@@ -88,12 +88,16 @@ export function distributeQuantityByWorkingDays(
   const firstMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
   
-  // Iterate through each month in the pricing period
+  // Make sure we iterate through ALL months in the range including the last month
+  // Create a deep copy of firstMonth to avoid modifying it
   const currentMonth = new Date(firstMonth);
+  
+  // Ensure we cover the entire range by checking <= lastMonth
   while (currentMonth <= lastMonth) {
     // Calculate month's start and end dates
     const monthStart = new Date(currentMonth);
-    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0); // Last day of month
+    // Last day of month - important to get the correct last day
+    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     
     // Adjust for pricing period boundaries
     const effectiveStart = startDate > monthStart ? startDate : monthStart;
@@ -114,7 +118,7 @@ export function distributeQuantityByWorkingDays(
       console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distribution[monthCode]} units`);
     }
     
-    // Move to next month
+    // Move to next month - ensure we actually increment to avoid infinite loops
     currentMonth.setMonth(currentMonth.getMonth() + 1);
   }
   
