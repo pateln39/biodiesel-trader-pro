@@ -525,4 +525,3 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 };
 
 export default FormulaBuilder;
-

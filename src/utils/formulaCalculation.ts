@@ -1,4 +1,3 @@
-
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types';
@@ -427,21 +426,22 @@ export function calculateExposures(
     // Process physical exposures for distribution
     Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
       if (exposure !== 0) {
-        // Use the absolute value for distribution calculation, but preserve the sign in the final result
-        const instrumentExposure = Math.abs(exposure);
-        const exposureSign = Math.sign(exposure);
+        console.log(`Distributing physical exposure for ${instrument}: ${exposure}`);
         
-        console.log(`Distributing ${instrumentExposure} for ${instrument} (physical) with sign ${exposureSign}`);
+        // Generate distribution based on working days, maintaining sign
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
-          instrumentExposure
+          Math.abs(exposure)
         );
         
-        // Apply the original sign to maintain positive/negative consistency
+        // Apply the original sign from the total exposure to maintain consistency
         const signedDistribution: Record<string, number> = {};
+        const sign = Math.sign(exposure);
+        
         Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * exposureSign;
+          signedDistribution[month] = value * sign;
+          console.log(`Physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
         });
         
         monthlyDistribution[instrument] = signedDistribution;
@@ -451,21 +451,22 @@ export function calculateExposures(
     // Process pricing exposures for distribution
     Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
       if (exposure !== 0) {
-        // Use the absolute value for distribution calculation, but preserve the sign in the final result
-        const instrumentExposure = Math.abs(exposure);
-        const exposureSign = Math.sign(exposure);
+        console.log(`Distributing pricing exposure for ${instrument}: ${exposure}`);
         
-        console.log(`Distributing ${instrumentExposure} for ${instrument} (pricing) with sign ${exposureSign}`);
+        // Generate distribution based on working days, maintaining sign
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
-          instrumentExposure
+          Math.abs(exposure)
         );
         
-        // Apply the original sign to maintain positive/negative consistency
+        // Apply the original sign from the total exposure to maintain consistency
         const signedDistribution: Record<string, number> = {};
+        const sign = Math.sign(exposure);
+        
         Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * exposureSign;
+          signedDistribution[month] = value * sign;
+          console.log(`Pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
         });
         
         // Add to existing distribution or create new
