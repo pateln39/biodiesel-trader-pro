@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for working days calculations
  */
@@ -116,7 +117,36 @@ export function distributeQuantityByWorkingDays(
 export function formatMonthCode(date: Date): string {
   const monthCode = date.toLocaleDateString('en-US', { month: 'short' });
   const yearCode = date.getFullYear().toString().slice(2);
+  // Make sure there is a hyphen between month and year
   return `${monthCode}-${yearCode}`;
+}
+
+/**
+ * Parses a month code string into a standard format (e.g. "Mar 24" -> "Mar-24")
+ * @param monthCode The month code to parse
+ * @returns Standardized month code
+ */
+export function standardizeMonthCode(monthCode: string): string {
+  // If already contains a hyphen, return as is
+  if (monthCode.includes('-')) {
+    return monthCode;
+  }
+  
+  // Handle "Mar 24" format (with space)
+  if (monthCode.includes(' ')) {
+    const [month, year] = monthCode.split(' ');
+    return `${month}-${year}`;
+  }
+  
+  // Try to extract month and year if in another format
+  const monthPattern = /([A-Za-z]{3})(\d{2})/;
+  const match = monthCode.match(monthPattern);
+  if (match) {
+    return `${match[1]}-${match[2]}`;
+  }
+  
+  console.warn(`Unable to standardize month code: ${monthCode}`);
+  return monthCode;
 }
 
 /**
@@ -132,20 +162,35 @@ export function getMonthlyDistribution(
   const result: Record<string, Record<string, number>> = {};
   
   if (!exposures) {
+    console.log("No exposures provided to getMonthlyDistribution");
     return result;
   }
   
   // First check if there's a dedicated monthlyDistribution field
   if (exposures.monthlyDistribution && typeof exposures.monthlyDistribution === 'object') {
-    return exposures.monthlyDistribution;
+    // Standardize month codes in the distribution
+    const standardized: Record<string, Record<string, number>> = {};
+    
+    Object.entries(exposures.monthlyDistribution).forEach(([instrument, distribution]) => {
+      standardized[instrument] = {};
+      
+      // Convert each month code to standard format
+      Object.entries(distribution as Record<string, number>).forEach(([monthCode, value]) => {
+        const standardMonthCode = standardizeMonthCode(monthCode);
+        standardized[instrument][standardMonthCode] = value;
+      });
+    });
+    
+    console.log("Using explicit monthly distribution with standardized month codes:", standardized);
+    return standardized;
   }
   
   // If no monthly distribution is found but we have the specific exposure type
   if (exposures[type] && typeof exposures[type] === 'object') {
-    // No monthly distribution, but we have exposure data
+    console.log(`Found ${type} exposures but no explicit monthly distribution`);
     // This will be handled by the caller based on pricing period dates
-    return result;
   }
   
   return result;
 }
+

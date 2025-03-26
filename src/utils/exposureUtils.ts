@@ -1,10 +1,11 @@
+
 import { 
   DailyDistribution, 
   DailyDistributionByInstrument, 
   MonthlyDistribution 
 } from '@/types/pricing';
 import { Instrument } from '@/types/common';
-import { countWorkingDays, isWeekend } from './workingDaysUtils';
+import { countWorkingDays, isWeekend, standardizeMonthCode } from './workingDaysUtils';
 import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'date-fns';
 
 /**
@@ -56,8 +57,11 @@ function isAfterOrEqual(date1: Date, date2: Date): boolean {
  * @returns Object with start and end dates for the month
  */
 export function monthCodeToDates(monthCode: string): { start: Date, end: Date } {
+  // Ensure the month code is standardized
+  const standardizedMonthCode = standardizeMonthCode(monthCode);
+  
   // Parse the month code (e.g., "Mar-24")
-  const [monthStr, yearStr] = monthCode.split('-');
+  const [monthStr, yearStr] = standardizedMonthCode.split('-');
   const year = 2000 + parseInt(yearStr);
   
   // Get the month number (0-11)
@@ -65,7 +69,7 @@ export function monthCodeToDates(monthCode: string): { start: Date, end: Date } 
   const monthIndex = monthNames.findIndex(m => m === monthStr);
   
   if (monthIndex === -1) {
-    throw new Error(`Invalid month code: ${monthCode}`);
+    throw new Error(`Invalid month code: ${monthCode} (standardized: ${standardizedMonthCode})`);
   }
   
   // Create the start date (first day of month)
@@ -90,14 +94,17 @@ export function calculateDailyDistribution(
   // Process each month in the distribution
   Object.entries(monthlyDistribution).forEach(([monthCode, totalValue]) => {
     try {
+      // Ensure month code is standardized
+      const standardMonthCode = standardizeMonthCode(monthCode);
+      
       // Convert month code to date range
-      const { start, end } = monthCodeToDates(monthCode);
+      const { start, end } = monthCodeToDates(standardMonthCode);
       
       // Count working days in the month
       const workingDaysInMonth = countWorkingDays(start, end);
       
       if (workingDaysInMonth === 0) {
-        console.warn(`No working days found in month: ${monthCode}`);
+        console.warn(`No working days found in month: ${standardMonthCode}`);
         return;
       }
       
@@ -136,10 +143,14 @@ export function filterDailyDistributionByDateRange(
   const filteredDistribution: DailyDistribution = {};
   
   Object.entries(dailyDistribution).forEach(([dateString, value]) => {
-    const date = parse(dateString, 'yyyy-MM-dd', new Date());
-    
-    if (isWithinInterval(date, { start: startDate, end: endDate })) {
-      filteredDistribution[dateString] = value;
+    try {
+      const date = parse(dateString, 'yyyy-MM-dd', new Date());
+      
+      if (isWithinInterval(date, { start: startDate, end: endDate })) {
+        filteredDistribution[dateString] = value;
+      }
+    } catch (error) {
+      console.error(`Error filtering distribution for date ${dateString}:`, error);
     }
   });
   
@@ -204,7 +215,10 @@ export function calculateTotalExposureFromDailyDistributions(
   const result: Record<string, number> = {};
   
   Object.entries(filteredDailyDistributions).forEach(([instrument, dailyDist]) => {
-    result[instrument] = sumDailyDistribution(dailyDist);
+    const totalExposure = sumDailyDistribution(dailyDist);
+    if (totalExposure !== 0) {
+      result[instrument] = totalExposure;
+    }
   });
   
   return result as Record<Instrument, number>;
@@ -247,3 +261,4 @@ export function getCachedDailyDistribution(
 export function clearDailyDistributionCache(): void {
   dailyDistributionCache.clear();
 }
+

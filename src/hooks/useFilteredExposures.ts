@@ -10,7 +10,7 @@ import {
   clearDailyDistributionCache,
   isDateWithinPricingPeriod
 } from '@/utils/exposureUtils';
-import { getMonthlyDistribution } from '@/utils/workingDaysUtils';
+import { getMonthlyDistribution, distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { PhysicalTrade } from '@/types/physical';
 
@@ -41,6 +41,7 @@ export function useFilteredExposures({
   // Create a filtered version of the exposure data
   const filteredExposures = useMemo(() => {
     if (tradesLoading || !trades || trades.length === 0) {
+      console.log("No trades to calculate exposures from");
       return { physical: {}, pricing: {} } as FilteredExposureResult;
     }
     
@@ -59,6 +60,8 @@ export function useFilteredExposures({
       // Track how many trades and legs are processed
       let processedTrades = 0;
       let processedLegs = 0;
+      let processedPhysicalExposures = 0;
+      let processedPricingExposures = 0;
       
       // Process trades that have valid pricing periods overlapping with the selected date range
       physicalTrades.forEach(trade => {
@@ -66,6 +69,7 @@ export function useFilteredExposures({
         
         // Process legs to collect monthly distributions
         trade.legs.forEach(leg => {
+          // Check for required formula properties
           if (!leg.formula || !leg.mtmFormula) {
             console.log(`Skipping leg with missing formulas: ${leg.legReference}`);
             return;
@@ -86,69 +90,127 @@ export function useFilteredExposures({
           
           processedLegs++;
           tradeHasValidLeg = true;
-          
-          // FIXED: Get physical exposures from mtm_formula (not formula)
+
+          // PHYSICAL EXPOSURES - Get from mtmFormula
           if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
-            Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
-              if (!physicalDistributions[instrument]) {
-                physicalDistributions[instrument] = {};
-              }
+            console.log(`Processing physical exposures from mtmFormula for leg ${leg.legReference}`);
+            
+            // Get explicit monthly distribution if available
+            const physicalMonthlyDist = getMonthlyDistribution(
+              leg.mtmFormula.exposures, 
+              'physical'
+            );
+            
+            // Check if we got any monthly distributions from the formula
+            const hasExplicitMonthlyDistribution = 
+              physicalMonthlyDist && 
+              Object.keys(physicalMonthlyDist).length > 0;
+            
+            if (hasExplicitMonthlyDistribution) {
+              console.log(`Found explicit monthly distribution for physical:`, physicalMonthlyDist);
               
-              // Get the monthly distribution for physical products
-              const physicalMonthlyDist = getMonthlyDistribution(
-                { physical: { [instrument]: value } } as ExposureResult, 
-                'physical'
-              );
-              
-              if (Object.keys(physicalMonthlyDist).length > 0) {
-                Object.entries(physicalMonthlyDist[instrument] || {}).forEach(([month, monthValue]) => {
-                  if (!physicalDistributions[instrument][month]) {
-                    physicalDistributions[instrument][month] = 0;
-                  }
-                  physicalDistributions[instrument][month] += monthValue;
-                });
-              } else {
-                console.log(`No monthly distribution for physical instrument ${instrument}, using even distribution`);
-                // If no monthly distribution is available, we can create a simple one based on the pricing period
-                const periodMonth = leg.pricingPeriodStart.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-                if (!physicalDistributions[instrument][periodMonth]) {
-                  physicalDistributions[instrument][periodMonth] = 0;
+              // Process each instrument's monthly distribution
+              Object.entries(physicalMonthlyDist).forEach(([instrument, distribution]) => {
+                if (!physicalDistributions[instrument]) {
+                  physicalDistributions[instrument] = {};
                 }
-                physicalDistributions[instrument][periodMonth] += value as number;
-              }
-            });
+                
+                // Add monthly values to our accumulated distributions
+                Object.entries(distribution).forEach(([monthCode, monthValue]) => {
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
+                  }
+                  physicalDistributions[instrument][monthCode] += monthValue;
+                  processedPhysicalExposures++;
+                });
+              });
+            } else {
+              console.log(`No explicit monthly distribution for physical, creating one based on pricing period`);
+              
+              // Create even distribution based on the pricing period for each instrument
+              Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
+                if (!physicalDistributions[instrument]) {
+                  physicalDistributions[instrument] = {};
+                }
+                
+                // Generate month distribution based on working days in pricing period
+                const evenDistribution = distributeQuantityByWorkingDays(
+                  leg.pricingPeriodStart,
+                  leg.pricingPeriodEnd,
+                  value as number
+                );
+                
+                // Add generated monthly values to our accumulated distributions
+                Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
+                  }
+                  physicalDistributions[instrument][monthCode] += monthValue;
+                  processedPhysicalExposures++;
+                });
+              });
+            }
           }
           
-          // Get pricing exposures from pricing_formula (correct formula)
+          // PRICING EXPOSURES - Get from regular formula
           if (leg.formula && leg.formula.exposures && leg.formula.exposures.pricing) {
-            Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
-              if (!pricingDistributions[instrument]) {
-                pricingDistributions[instrument] = {};
-              }
+            console.log(`Processing pricing exposures from formula for leg ${leg.legReference}`);
+            
+            // Get explicit monthly distribution if available
+            const pricingMonthlyDist = getMonthlyDistribution(
+              leg.formula.exposures, 
+              'pricing'
+            );
+            
+            // Check if we got any monthly distributions from the formula
+            const hasExplicitMonthlyDistribution = 
+              pricingMonthlyDist && 
+              Object.keys(pricingMonthlyDist).length > 0;
+            
+            if (hasExplicitMonthlyDistribution) {
+              console.log(`Found explicit monthly distribution for pricing:`, pricingMonthlyDist);
               
-              // Get the monthly distribution for pricing instruments
-              const pricingMonthlyDist = getMonthlyDistribution(
-                { pricing: { [instrument]: value } } as ExposureResult, 
-                'pricing'
-              );
-              
-              if (Object.keys(pricingMonthlyDist).length > 0) {
-                Object.entries(pricingMonthlyDist[instrument] || {}).forEach(([month, monthValue]) => {
-                  if (!pricingDistributions[instrument][month]) {
-                    pricingDistributions[instrument][month] = 0;
-                  }
-                  pricingDistributions[instrument][month] += monthValue;
-                });
-              } else {
-                console.log(`No monthly distribution for pricing instrument ${instrument}, using even distribution`);
-                // If no monthly distribution is available, we can create a simple one based on the pricing period
-                const periodMonth = leg.pricingPeriodStart.toLocaleString('en-US', { month: 'short', year: '2-digit' });
-                if (!pricingDistributions[instrument][periodMonth]) {
-                  pricingDistributions[instrument][periodMonth] = 0;
+              // Process each instrument's monthly distribution
+              Object.entries(pricingMonthlyDist).forEach(([instrument, distribution]) => {
+                if (!pricingDistributions[instrument]) {
+                  pricingDistributions[instrument] = {};
                 }
-                pricingDistributions[instrument][periodMonth] += value as number;
-              }
-            });
+                
+                // Add monthly values to our accumulated distributions
+                Object.entries(distribution).forEach(([monthCode, monthValue]) => {
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
+                  }
+                  pricingDistributions[instrument][monthCode] += monthValue;
+                  processedPricingExposures++;
+                });
+              });
+            } else {
+              console.log(`No explicit monthly distribution for pricing, creating one based on pricing period`);
+              
+              // Create even distribution based on the pricing period for each instrument
+              Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
+                if (!pricingDistributions[instrument]) {
+                  pricingDistributions[instrument] = {};
+                }
+                
+                // Generate month distribution based on working days in pricing period
+                const evenDistribution = distributeQuantityByWorkingDays(
+                  leg.pricingPeriodStart,
+                  leg.pricingPeriodEnd,
+                  value as number
+                );
+                
+                // Add generated monthly values to our accumulated distributions
+                Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
+                  }
+                  pricingDistributions[instrument][monthCode] += monthValue;
+                  processedPricingExposures++;
+                });
+              });
+            }
           }
         });
         
@@ -158,6 +220,7 @@ export function useFilteredExposures({
       });
       
       console.log(`Processed ${processedTrades} trades and ${processedLegs} legs`);
+      console.log(`Found ${processedPhysicalExposures} physical exposure entries and ${processedPricingExposures} pricing exposure entries`);
       console.log('Physical distributions:', physicalDistributions);
       console.log('Pricing distributions:', pricingDistributions);
       
