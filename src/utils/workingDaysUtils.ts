@@ -61,16 +61,12 @@ export function distributeQuantityByWorkingDays(
 ): Record<string, number> {
   // Validate inputs
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate || totalQuantity === 0) {
-    console.log("Invalid inputs for distribution:", { startDate, endDate, totalQuantity });
     return {};
   }
   
   // Calculate total working days
   const totalWorkingDays = countWorkingDays(startDate, endDate);
-  if (totalWorkingDays === 0) {
-    console.log("No working days found in the period:", { startDate, endDate });
-    return {};
-  }
+  if (totalWorkingDays === 0) return {};
   
   const distribution: Record<string, number> = {};
   
@@ -97,15 +93,12 @@ export function distributeQuantityByWorkingDays(
       const monthCode = formatMonthCode(currentMonth);
       const proportion = workingDaysInMonth / totalWorkingDays;
       distribution[monthCode] = parseFloat((proportion * totalQuantity).toFixed(2));
-      
-      console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distribution[monthCode]} units`);
     }
     
     // Move to next month
     currentMonth.setMonth(currentMonth.getMonth() + 1);
   }
   
-  console.log("Final distribution:", distribution);
   return distribution;
 }
 
@@ -119,28 +112,3 @@ export function formatMonthCode(date: Date): string {
   const yearCode = date.getFullYear().toString().slice(2);
   return `${monthCode}-${yearCode}`;
 }
-
-/**
- * Gets monthly distribution data from the formula's exposure object
- * @param formulaExposures The exposures object from the formula
- * @param productType The type of product (physical or pricing)
- * @returns An object mapping month codes to their exposures
- */
-export function getMonthlyDistribution(
-  formulaExposures: any, 
-  productType: 'physical' | 'pricing'
-): Record<string, Record<string, number>> {
-  if (!formulaExposures || typeof formulaExposures !== 'object') {
-    return {};
-  }
-  
-  // Check if we have monthlyDistribution data in the exposures
-  if (formulaExposures.monthlyDistribution && 
-      typeof formulaExposures.monthlyDistribution === 'object') {
-    // MonthlyDistribution format is: { product: { month: quantity } }
-    return formulaExposures.monthlyDistribution;
-  }
-  
-  return {};
-}
-
