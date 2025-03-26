@@ -160,7 +160,6 @@ const ExposurePage = () => {
   });
 
   const exposureData = useMemo(() => {
-    
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     const allProductsFound = new Set<string>();
     
@@ -184,6 +183,7 @@ const ExposurePage = () => {
         physicalTradeLegs.forEach(leg => {
           console.log(`Processing physical leg ${leg.leg_reference}:`, leg);
           
+          // Parse formulas to get exposure data
           const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
           
@@ -193,6 +193,7 @@ const ExposurePage = () => {
           
           allProductsFound.add(canonicalProduct);
           
+          // Ensure product exists in all months
           periods.forEach(month => {
             if (!exposuresByMonth[month][canonicalProduct]) {
               exposuresByMonth[month][canonicalProduct] = {
@@ -204,6 +205,7 @@ const ExposurePage = () => {
             }
           });
           
+          // Check if we have monthly distribution data in either formula
           const physicalDistribution = getMonthlyDistribution(mtmFormula.exposures, 'physical');
           const pricingDistribution = getMonthlyDistribution(pricingFormula.exposures, 'pricing');
           
@@ -214,12 +216,13 @@ const ExposurePage = () => {
           console.log(`Leg ${leg.leg_reference} has monthly distribution:`, hasMonthlyDistribution);
           
           if (hasMonthlyDistribution) {
-            
+            // Process physical exposure distribution from MTM formula
             if (Object.keys(physicalDistribution).length > 0) {
               Object.entries(physicalDistribution).forEach(([product, monthDistribution]) => {
                 const canonicalBaseProduct = mapProductToCanonical(product);
                 allProductsFound.add(canonicalBaseProduct);
                 
+                // Apply monthly distribution
                 Object.entries(monthDistribution).forEach(([month, exposure]) => {
                   if (periods.includes(month) && 
                       exposuresByMonth[month] && 
@@ -234,12 +237,14 @@ const ExposurePage = () => {
               });
             } 
             else if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-              
+              // If no monthly distribution, but the pricing period is defined,
+              // we distribute the physical exposure across the pricing period
               if (leg.pricing_period_start && leg.pricing_period_end) {
                 Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(baseProduct);
                   allProductsFound.add(canonicalBaseProduct);
                   
+                  // Calculate distribution by working days
                   const startDate = new Date(leg.pricing_period_start as string);
                   const endDate = new Date(leg.pricing_period_end as string);
                   const weightValue = typeof weight === 'number' ? weight : quantity;
@@ -247,19 +252,23 @@ const ExposurePage = () => {
                   const monthlyDistribution = {};
                   const actualValue = weightValue;
                   
+                  // Get start and end month
                   const startMonth = formatMonthCode(startDate);
                   const endMonth = formatMonthCode(endDate);
                   
+                  // If both dates are in the same month
                   if (startMonth === endMonth) {
                     if (periods.includes(startMonth) && exposuresByMonth[startMonth][canonicalBaseProduct]) {
                       exposuresByMonth[startMonth][canonicalBaseProduct].physical += actualValue;
                       console.log(`Adding entire physical exposure for ${canonicalBaseProduct} in ${startMonth}: ${actualValue}`);
                     }
                   } 
+                  // If dates span multiple months, let's divide the exposure evenly
                   else {
                     const startMonthDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
                     const endMonthDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
                     
+                    // Count total months
                     let monthCount = 0;
                     const currentMonth = new Date(startMonthDate);
                     while (currentMonth <= endMonthDate) {
@@ -267,6 +276,7 @@ const ExposurePage = () => {
                       currentMonth.setMonth(currentMonth.getMonth() + 1);
                     }
                     
+                    // Distribute evenly across months
                     const perMonthValue = actualValue / monthCount;
                     
                     const distributionMonth = new Date(startMonthDate);
@@ -283,6 +293,7 @@ const ExposurePage = () => {
                   }
                 });
               }
+              // Legacy approach - just use primary month if no pricing period or monthly distribution
               else if (leg.trading_period) {
                 const primaryMonth = leg.trading_period;
                 
@@ -297,6 +308,7 @@ const ExposurePage = () => {
                   }
                 });
               }
+              // Last resort - derive month from pricing_period_start
               else if (leg.pricing_period_start) {
                 const date = new Date(leg.pricing_period_start);
                 const primaryMonth = formatMonthCode(date);
@@ -312,13 +324,15 @@ const ExposurePage = () => {
                   }
                 });
               }
-            }
+            } 
             
+            // Process pricing exposure distribution from pricing formula
             if (Object.keys(pricingDistribution).length > 0) {
               Object.entries(pricingDistribution).forEach(([product, monthDistribution]) => {
                 const canonicalBaseProduct = mapProductToCanonical(product);
                 allProductsFound.add(canonicalBaseProduct);
                 
+                // Apply monthly distribution
                 Object.entries(monthDistribution).forEach(([month, exposure]) => {
                   if (periods.includes(month) && 
                       exposuresByMonth[month] && 
@@ -332,23 +346,28 @@ const ExposurePage = () => {
                 });
               });
             }
+            // If no monthly distribution for pricing, try to use physical distribution structure
             else if (Object.keys(physicalDistribution).length > 0 && pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              
+              // For each product that has pricing exposure
               Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
                 const canonicalInstrument = mapProductToCanonical(instrument);
                 allProductsFound.add(canonicalInstrument);
                 
+                // Try to match the distribution pattern of the physical exposure
                 const pricingValue = Number(value) || 0;
                 let totalPhysicalExposure = 0;
                 
+                // Calculate total physical exposure for normalization
                 for (const product in physicalDistribution) {
                   for (const month in physicalDistribution[product]) {
                     totalPhysicalExposure += Number(physicalDistribution[product][month]) || 0;
                   }
                 }
                 
+                // If there's no physical exposure, we can't normalize
                 if (totalPhysicalExposure === 0) return;
                 
+                // Distribute pricing using the same pattern as physical
                 for (const product in physicalDistribution) {
                   for (const month in physicalDistribution[product]) {
                     if (periods.includes(month) && exposuresByMonth[month][canonicalInstrument]) {
@@ -363,8 +382,9 @@ const ExposurePage = () => {
                 }
               });
             }
+            // If no monthly distribution for pricing, use legacy approach
             else if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              
+              // Try to use trading_period first
               if (leg.trading_period) {
                 const primaryMonth = leg.trading_period;
                 
@@ -379,6 +399,7 @@ const ExposurePage = () => {
                   }
                 });
               }
+              // If no trading_period, try to derive from pricing_period_start
               else if (leg.pricing_period_start) {
                 const date = new Date(leg.pricing_period_start);
                 const primaryMonth = formatMonthCode(date);
@@ -395,11 +416,13 @@ const ExposurePage = () => {
                 });
               }
             }
-          }
+          } 
+          // Legacy approach - no monthly distribution available
           else {
-            
+            // Check if we have a pricing period defined for more precise distribution
             const hasPricingPeriod = leg.pricing_period_start && leg.pricing_period_end;
             
+            // Determine which month to use - trading_period first, then derived from pricing_period_start
             let primaryMonth = leg.trading_period || '';
             
             if (!primaryMonth && leg.pricing_period_start) {
@@ -407,6 +430,7 @@ const ExposurePage = () => {
               primaryMonth = formatMonthCode(date);
             }
             
+            // Skip if no monthly information is available
             if (!primaryMonth && !hasPricingPeriod) {
               console.log(`Skipping leg ${leg.leg_reference} - no monthly information available`);
               return;
@@ -449,7 +473,6 @@ const ExposurePage = () => {
       }
       
       if (paperTradeLegs && paperTradeLegs.length > 0) {
-        
         paperTradeLegs.forEach(leg => {
           const month = leg.period || leg.trading_period || '';
           
@@ -777,36 +800,3 @@ const ExposurePage = () => {
                       paper: 0,
                       netExposure: 0
                     };
-                  }
-                  
-                  const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
-                  exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
-                  
-                  if (!mtmFormula.exposures.pricing || 
-                      !(pBaseProduct in (mtmFormula.exposures.pricing || {}))) {
-                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
-                  }
-                });
-                
-                if (mtmFormula.exposures.pricing) {
-                  Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
-                    const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
-                    allProductsFound.add(canonicalBaseProduct);
-                    
-                    if (!exposuresByMonth[month][canonicalBaseProduct]) {
-                      exposuresByMonth[month][canonicalBaseProduct] = {
-                        physical: 0,
-                        pricing: 0,
-                        paper: 0,
-                        netExposure: 0
-                      };
-                    }
-                    
-                    const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
-                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
-                  });
-                }
-              } else {
-                if (!exposuresByMonth[month][canonicalProduct]) {
-                  exposuresByMonth[month][canonicalProduct] = {
-                    physical: 0
