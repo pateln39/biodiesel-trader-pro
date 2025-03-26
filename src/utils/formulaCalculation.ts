@@ -1,3 +1,4 @@
+
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types';
@@ -426,19 +427,21 @@ export function calculateExposures(
     // Process physical exposures for distribution
     Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
       if (exposure !== 0) {
+        // Use the absolute value for distribution calculation, but preserve the sign in the final result
         const instrumentExposure = Math.abs(exposure);
+        const exposureSign = Math.sign(exposure);
         
-        console.log(`Distributing ${instrumentExposure} for ${instrument} (physical)`);
+        console.log(`Distributing ${instrumentExposure} for ${instrument} (physical) with sign ${exposureSign}`);
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
           instrumentExposure
         );
         
-        // Handle buySell sign for the distributed values
+        // Apply the original sign to maintain positive/negative consistency
         const signedDistribution: Record<string, number> = {};
         Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * Math.sign(exposure);
+          signedDistribution[month] = value * exposureSign;
         });
         
         monthlyDistribution[instrument] = signedDistribution;
@@ -448,19 +451,21 @@ export function calculateExposures(
     // Process pricing exposures for distribution
     Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
       if (exposure !== 0) {
+        // Use the absolute value for distribution calculation, but preserve the sign in the final result
         const instrumentExposure = Math.abs(exposure);
+        const exposureSign = Math.sign(exposure);
         
-        console.log(`Distributing ${instrumentExposure} for ${instrument} (pricing)`);
+        console.log(`Distributing ${instrumentExposure} for ${instrument} (pricing) with sign ${exposureSign}`);
         const distribution = distributeQuantityByWorkingDays(
           pricingPeriodStart,
           pricingPeriodEnd,
           instrumentExposure
         );
         
-        // Handle buySell sign for the distributed values
+        // Apply the original sign to maintain positive/negative consistency
         const signedDistribution: Record<string, number> = {};
         Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * Math.sign(exposure);
+          signedDistribution[month] = value * exposureSign;
         });
         
         // Add to existing distribution or create new
