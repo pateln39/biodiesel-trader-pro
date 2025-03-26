@@ -7,7 +7,8 @@ import {
   calculateDailyDistributionByInstrument,
   filterDailyDistributionsByDateRange,
   calculateTotalExposureFromDailyDistributions,
-  clearDailyDistributionCache
+  clearDailyDistributionCache,
+  isDateWithinPricingPeriod
 } from '@/utils/exposureUtils';
 import { getMonthlyDistribution } from '@/utils/workingDaysUtils';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -53,12 +54,21 @@ export function useFilteredExposures({
       // Process physical trades only
       const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
       
+      // Process trades that have valid pricing periods overlapping with the selected date range
       physicalTrades.forEach(trade => {
-        if (trade.tradeType !== 'physical') return;
+        // Skip trades with pricing periods that don't overlap with the selected date range
+        if (!isDateWithinPricingPeriod(startDate, endDate, trade.pricingPeriodStart, trade.pricingPeriodEnd)) {
+          return;
+        }
         
         // Process legs to collect monthly distributions
         trade.legs.forEach(leg => {
           if (!leg.formula || !leg.formula.exposures) return;
+          
+          // Skip legs with pricing periods that don't overlap with the selected date range
+          if (!isDateWithinPricingPeriod(startDate, endDate, leg.pricingPeriodStart, leg.pricingPeriodEnd)) {
+            return;
+          }
           
           // Get physical exposures monthly distribution
           const physicalMonthlyDist = getMonthlyDistribution(leg.formula.exposures, 'physical');
@@ -94,6 +104,9 @@ export function useFilteredExposures({
         });
       });
       
+      console.log('Physical distributions:', physicalDistributions);
+      console.log('Pricing distributions:', pricingDistributions);
+      
       // Convert monthly distributions to daily distributions
       const physicalDailyDistributions = calculateDailyDistributionByInstrument(physicalDistributions);
       const pricingDailyDistributions = calculateDailyDistributionByInstrument(pricingDistributions);
@@ -111,6 +124,9 @@ export function useFilteredExposures({
         endDate
       );
       
+      console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
+      console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
+      
       // Calculate total exposures from filtered daily distributions
       const totalPhysicalExposures = calculateTotalExposureFromDailyDistributions(
         filteredPhysicalDailyDistributions
@@ -119,6 +135,9 @@ export function useFilteredExposures({
       const totalPricingExposures = calculateTotalExposureFromDailyDistributions(
         filteredPricingDailyDistributions
       );
+      
+      console.log('Total physical exposures:', totalPhysicalExposures);
+      console.log('Total pricing exposures:', totalPricingExposures);
       
       return {
         physical: totalPhysicalExposures,

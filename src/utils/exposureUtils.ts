@@ -6,7 +6,44 @@ import {
 } from '@/types/pricing';
 import { Instrument } from '@/types/common';
 import { countWorkingDays, isWeekend } from './workingDaysUtils';
-import { format, isWithinInterval, parse } from 'date-fns';
+import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'date-fns';
+
+/**
+ * Check if a date range (startDate-endDate) overlaps with a pricing period (pricingStart-pricingEnd)
+ * @param startDate Start of selected date range
+ * @param endDate End of selected date range
+ * @param pricingStart Start of pricing period
+ * @param pricingEnd End of pricing period
+ * @returns True if there is an overlap, false otherwise
+ */
+export function isDateWithinPricingPeriod(
+  startDate: Date,
+  endDate: Date,
+  pricingStart: Date,
+  pricingEnd: Date
+): boolean {
+  // Check if date ranges overlap
+  // Two date ranges overlap if the start of one is before or equal to the end of the other,
+  // AND the end of one is after or equal to the start of the other
+  return (
+    isBeforeOrEqual(startDate, pricingEnd) && 
+    isAfterOrEqual(endDate, pricingStart)
+  );
+}
+
+/**
+ * Helper function to check if date1 is before or equal to date2
+ */
+function isBeforeOrEqual(date1: Date, date2: Date): boolean {
+  return isBefore(date1, date2) || date1.getTime() === date2.getTime();
+}
+
+/**
+ * Helper function to check if date1 is after or equal to date2
+ */
+function isAfterOrEqual(date1: Date, date2: Date): boolean {
+  return isAfter(date1, date2) || date1.getTime() === date2.getTime();
+}
 
 /**
  * Convert a month code (e.g., "Mar-24") to start and end dates

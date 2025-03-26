@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,15 +12,24 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 interface DateRangeFilterProps {
   onFilterChange: (startDate: Date, endDate: Date) => void;
   isLoading?: boolean;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ 
   onFilterChange,
-  isLoading = false
+  isLoading = false,
+  initialStartDate,
+  initialEndDate
 }) => {
   const currentDate = new Date();
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(currentDate));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(currentDate));
+  const [startDate, setStartDate] = useState<Date>(initialStartDate || startOfMonth(currentDate));
+  const [endDate, setEndDate] = useState<Date>(initialEndDate || endOfMonth(currentDate));
+
+  useEffect(() => {
+    if (initialStartDate) setStartDate(initialStartDate);
+    if (initialEndDate) setEndDate(initialEndDate);
+  }, [initialStartDate, initialEndDate]);
 
   const handleApplyFilter = () => {
     onFilterChange(startDate, endDate);
