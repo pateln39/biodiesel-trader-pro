@@ -11,6 +11,7 @@ import {
 } from '@/utils/exposureUtils';
 import { getMonthlyDistribution } from '@/utils/workingDaysUtils';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { PhysicalTrade } from '@/types/physical';
 
 interface UseFilteredExposuresProps {
   startDate?: Date;
@@ -50,7 +51,7 @@ export function useFilteredExposures({
       const pricingDistributions: Record<Instrument, MonthlyDistribution> = {};
       
       // Process physical trades only
-      const physicalTrades = trades.filter(trade => trade.tradeType === 'physical');
+      const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
       
       physicalTrades.forEach(trade => {
         if (trade.tradeType !== 'physical') return;
