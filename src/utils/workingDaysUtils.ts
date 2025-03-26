@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for working days calculations
  */
@@ -150,4 +149,3 @@ export function getMonthlyDistribution(
   
   return result;
 }
-
