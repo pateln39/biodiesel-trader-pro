@@ -18,15 +18,15 @@ export interface MonthlyDistribution {
   [monthCode: string]: number; // e.g., "Mar-24": 363.63
 }
 
+export interface DailyDistribution {
+  [dayCode: string]: number; // e.g., "2024-03-15": 30.25
+}
+
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
   monthlyDistribution?: Record<Instrument, MonthlyDistribution>;
-}
-
-export interface PricingFormula {
-  tokens: FormulaToken[];
-  exposures: ExposureResult;
+  dailyDistribution?: Record<Instrument, DailyDistribution>;
 }
 
 // Utility type to handle potentially incomplete data from the database
@@ -34,6 +34,7 @@ export type PartialExposureResult = {
   physical?: Partial<Record<Instrument, number>>;
   pricing?: Partial<Record<Instrument, number>>;
   monthlyDistribution?: Partial<Record<Instrument, Partial<MonthlyDistribution>>>;
+  dailyDistribution?: Partial<Record<Instrument, Partial<DailyDistribution>>>;
 };
 
 export type PartialPricingFormula = {
