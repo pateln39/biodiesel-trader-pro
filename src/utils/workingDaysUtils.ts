@@ -1,6 +1,6 @@
 
 // Importing the necessary types
-import { MonthlyDistribution } from '@/types';
+import { MonthlyDistribution, DailyDistribution, ExposureResult } from '@/types';
 
 // Function to check if a date is a working day (Monday to Friday)
 export const isWorkingDay = (date: Date): boolean => {
@@ -144,4 +144,76 @@ export const getMonthsBetweenDates = (startDate: Date, endDate: Date): string[] 
   }
   
   return months;
+};
+
+// Function to extract monthly distribution from exposure result
+export const getMonthlyDistribution = (
+  exposures: ExposureResult | undefined,
+  type: 'physical' | 'pricing'
+): Record<string, MonthlyDistribution> => {
+  if (!exposures || !exposures.monthlyDistribution) {
+    return {};
+  }
+  
+  return exposures.monthlyDistribution;
+};
+
+// Function to extract daily distribution from exposure result
+export const getDailyDistribution = (
+  exposures: ExposureResult | undefined,
+  type: 'physical' | 'pricing'
+): Record<string, Record<string, number>> => {
+  if (!exposures || !exposures.dailyDistribution) {
+    return {};
+  }
+  
+  return exposures.dailyDistribution;
+};
+
+// Function to filter daily distribution by date range
+export const filterDailyDistributionByDateRange = (
+  distribution: Record<string, number>,
+  startDate: Date,
+  endDate: Date
+): Record<string, number> => {
+  const filteredDistribution: Record<string, number> = {};
+  
+  // Format dates for comparison
+  const startString = formatDateAsDayCode(startDate);
+  const endString = formatDateAsDayCode(endDate);
+  
+  // Filter by date range
+  Object.entries(distribution).forEach(([day, value]) => {
+    if (day >= startString && day <= endString) {
+      filteredDistribution[day] = value;
+    }
+  });
+  
+  return filteredDistribution;
+};
+
+// Function to aggregate daily distribution to monthly
+export const aggregateDailyToMonthly = (
+  dailyDistribution: Record<string, number>
+): Record<string, number> => {
+  const monthlyDistribution: Record<string, number> = {};
+  
+  // Convert daily to monthly
+  Object.entries(dailyDistribution).forEach(([day, value]) => {
+    const date = new Date(day);
+    const monthCode = formatDateAsMonthCode(date);
+    
+    if (!monthlyDistribution[monthCode]) {
+      monthlyDistribution[monthCode] = 0;
+    }
+    
+    monthlyDistribution[monthCode] += value;
+  });
+  
+  // Round values for display
+  Object.keys(monthlyDistribution).forEach(month => {
+    monthlyDistribution[month] = parseFloat(monthlyDistribution[month].toFixed(2));
+  });
+  
+  return monthlyDistribution;
 };
