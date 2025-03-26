@@ -54,8 +54,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
       console.log(`Calculating exposures for ${formulaType} formula with dates:`, {
-        pricingPeriodStart,
-        pricingPeriodEnd
+        pricingPeriodStart: pricingPeriodStart?.toISOString(),
+        pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
+        tradeQuantity,
+        buySell
       });
 
       if (formulaType === 'price') {
@@ -80,6 +82,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         };
         
         if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
+          console.log('Updating price formula exposures:', newExposures);
           onChange({
             ...value,
             exposures: newExposures
@@ -108,6 +111,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         };
         
         if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
+          console.log('Updating mtm formula exposures:', newExposures);
           onChange({
             ...value,
             exposures: newExposures

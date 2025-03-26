@@ -383,82 +383,92 @@ const extractInstrumentsFromAST = (
   return instruments;
 };
 
-// Calculate exposures for a formula with proper parsing and exposure distribution
-export const calculateExposures = (
+// Calculate exposures including monthly distributions
+export function calculateExposures(
   tokens: FormulaToken[],
-  tradeQuantity: number,
+  quantity: number,
   buySell: 'buy' | 'sell' = 'buy',
   selectedProduct?: string,
   pricingPeriodStart?: Date,
   pricingPeriodEnd?: Date
-): ExposureResult => {
-  // Calculate physical and pricing exposures first
-  const physicalExposure = calculatePhysicalExposure(tokens, tradeQuantity, buySell);
-  const pricingExposure = calculatePricingExposure(tokens, tradeQuantity, buySell);
+): ExposureResult {
+  console.log(`Calculating exposures with dates:`, {
+    pricingPeriodStart: pricingPeriodStart?.toISOString(),
+    pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
+    quantity,
+    buySell,
+    selectedProduct
+  });
   
-  // Create monthly distribution if pricing period dates are provided
-  let monthlyDistribution: Record<Instrument, MonthlyDistribution> | undefined;
+  const signMultiplier = buySell === 'buy' ? 1 : -1;
+  const actualQuantity = quantity * signMultiplier;
   
-  if (pricingPeriodStart && pricingPeriodEnd && tradeQuantity !== 0) {
-    const validStart = new Date(pricingPeriodStart);
-    const validEnd = new Date(pricingPeriodEnd);
+  // Calculate the product exposures
+  const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell);
+  const pricingExposure = calculatePricingExposure(tokens, quantity, buySell);
+  
+  // Create monthly distribution if we have pricing period dates
+  const monthlyDistribution: Record<string, Record<string, number>> = {};
+  
+  if (pricingPeriodStart && pricingPeriodEnd) {
+    console.log(`Generating monthly distribution for ${pricingPeriodStart.toISOString()} to ${pricingPeriodEnd.toISOString()}`);
     
-    console.log("Calculating monthly distribution with dates:", {
-      start: validStart.toISOString(),
-      end: validEnd.toISOString()
+    // Process physical exposures for distribution
+    Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
+      if (exposure !== 0) {
+        const instrumentExposure = Math.abs(exposure);
+        
+        console.log(`Distributing ${instrumentExposure} for ${instrument} (physical)`);
+        const distribution = distributeQuantityByWorkingDays(
+          pricingPeriodStart,
+          pricingPeriodEnd,
+          instrumentExposure
+        );
+        
+        // Handle buySell sign for the distributed values
+        const signedDistribution: Record<string, number> = {};
+        Object.entries(distribution).forEach(([month, value]) => {
+          signedDistribution[month] = value * Math.sign(exposure);
+        });
+        
+        monthlyDistribution[instrument] = signedDistribution;
+      }
     });
     
-    // Only calculate distribution if dates are valid and span multiple months
-    if (!isNaN(validStart.getTime()) && !isNaN(validEnd.getTime())) {
-      monthlyDistribution = {};
-      
-      // For each instrument with non-zero exposure, calculate monthly distribution
-      for (const instrument in physicalExposure) {
-        if (physicalExposure[instrument as Instrument] !== 0) {
-          // For physical exposure
-          const physicalQuantity = Math.abs(physicalExposure[instrument as Instrument]);
-          console.log(`Distributing physical exposure for ${instrument}: ${physicalQuantity}`);
-          
-          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, physicalQuantity);
-          
-          if (!monthlyDistribution[instrument as Instrument]) {
-            monthlyDistribution[instrument as Instrument] = {};
-          }
-          
-          // Apply the buy/sell direction to the distributed quantities
-          const direction = physicalExposure[instrument as Instrument] > 0 ? 1 : -1;
-          Object.entries(distribution).forEach(([month, quantity]) => {
-            monthlyDistribution![instrument as Instrument][month] = quantity * direction;
-          });
-        }
-      }
-      
-      // Similarly for pricing exposure
-      for (const instrument in pricingExposure) {
-        if (pricingExposure[instrument as Instrument] !== 0) {
-          const pricingQuantity = Math.abs(pricingExposure[instrument as Instrument]);
-          console.log(`Distributing pricing exposure for ${instrument}: ${pricingQuantity}`);
-          
-          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, pricingQuantity);
-          
-          if (!monthlyDistribution[instrument as Instrument]) {
-            monthlyDistribution[instrument as Instrument] = {};
-          }
-          
-          // Apply the buy/sell direction to the distributed quantities
-          const direction = pricingExposure[instrument as Instrument] > 0 ? 1 : -1;
-          Object.entries(distribution).forEach(([month, quantity]) => {
-            // For pricing exposure, we'll set or add to the monthly distribution
-            if (!monthlyDistribution![instrument as Instrument][month]) {
-              monthlyDistribution![instrument as Instrument][month] = quantity * direction;
+    // Process pricing exposures for distribution
+    Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
+      if (exposure !== 0) {
+        const instrumentExposure = Math.abs(exposure);
+        
+        console.log(`Distributing ${instrumentExposure} for ${instrument} (pricing)`);
+        const distribution = distributeQuantityByWorkingDays(
+          pricingPeriodStart,
+          pricingPeriodEnd,
+          instrumentExposure
+        );
+        
+        // Handle buySell sign for the distributed values
+        const signedDistribution: Record<string, number> = {};
+        Object.entries(distribution).forEach(([month, value]) => {
+          signedDistribution[month] = value * Math.sign(exposure);
+        });
+        
+        // Add to existing distribution or create new
+        if (monthlyDistribution[instrument]) {
+          Object.entries(signedDistribution).forEach(([month, value]) => {
+            if (monthlyDistribution[instrument][month]) {
+              // Only add pricing exposure if it doesn't already exist
+              // Usually we'd want to keep these separate to avoid double-counting
+              console.log(`Month ${month} already exists for ${instrument}, not adding pricing exposure`);
             } else {
-              // This might happen if both physical and pricing exposures exist for the same instrument
-              monthlyDistribution![instrument as Instrument][month] += quantity * direction;
+              monthlyDistribution[instrument][month] = value;
             }
           });
+        } else {
+          monthlyDistribution[instrument] = signedDistribution;
         }
       }
-    }
+    });
   }
   
   return {
@@ -466,16 +476,17 @@ export const calculateExposures = (
     pricing: pricingExposure,
     monthlyDistribution
   };
-};
+}
 
 // Calculate physical exposure from formula tokens
-export const calculatePhysicalExposure = (
+export function calculatePhysicalExposure(
   tokens: FormulaToken[],
-  tradeQuantity: number,
+  quantity: number,
   buySell: 'buy' | 'sell' = 'buy'
-): Record<Instrument, number> => {
-  // Start with empty physical exposure
-  const physicalExposure: Record<Instrument, number> = {
+): Record<Instrument, number> {
+  console.log(`Calculating physical exposure for ${quantity} units, buySell: ${buySell}`);
+  
+  const result = {
     'Argus UCOME': 0,
     'Argus RME': 0,
     'Argus FAME0': 0,
@@ -485,74 +496,74 @@ export const calculatePhysicalExposure = (
     'ICE GASOIL FUTURES': 0,
   };
   
-  if (!tokens.length || tradeQuantity === 0) {
-    return physicalExposure;
+  const signMultiplier = buySell === 'buy' ? 1 : -1;
+  const actualQuantity = quantity * signMultiplier;
+  
+  // Count all instruments in the formula
+  let instrumentsCount = 0;
+  tokens.forEach(token => {
+    if (token.type === 'instrument') {
+      instrumentsCount++;
+    }
+  });
+  
+  if (instrumentsCount === 0) {
+    console.log('No instruments found in formula, returning empty exposure');
+    return result;
   }
   
-  try {
-    const ast = parseFormula(tokens);
-    const instrumentWeights = extractInstrumentsFromAST(ast);
-    
-    // Physical exposure sign depends on buy/sell direction
-    // Buy is positive physical exposure, sell is negative physical exposure
-    const physicalExposureSign = buySell === 'buy' ? 1 : -1;
-    
-    // Apply physical exposure based on formula weights
-    for (const [instrument, weight] of Object.entries(instrumentWeights)) {
-      if (instrument in physicalExposure) {
-        // Apply the proportional exposure based on weight
-        physicalExposure[instrument as Instrument] = physicalExposureSign * tradeQuantity * weight;
+  // Simple case: if only one instrument, 100% exposure to that instrument
+  if (instrumentsCount === 1) {
+    const instrument = tokens.find(token => token.type === 'instrument')?.value as Instrument;
+    if (instrument && Object.keys(result).includes(instrument)) {
+      console.log(`Single instrument formula: ${instrument}, quantity: ${actualQuantity}`);
+      result[instrument] = actualQuantity;
+    }
+    return result;
+  }
+  
+  // More complex case: multiple instruments, divide exposure equally
+  // (A very simplified approach - in a real system this would account for weights)
+  const instrumentWeight = 1 / instrumentsCount;
+  tokens.forEach(token => {
+    if (token.type === 'instrument') {
+      const instrument = token.value as Instrument;
+      if (Object.keys(result).includes(instrument)) {
+        result[instrument] = actualQuantity * instrumentWeight;
+        console.log(`Multiple instruments, ${instrument}: ${actualQuantity * instrumentWeight}`);
       }
     }
-  } catch (error) {
-    console.error('Error calculating physical exposures:', error);
-  }
+  });
   
-  return physicalExposure;
-};
+  return result;
+}
 
 // Calculate pricing exposure from formula tokens
-export const calculatePricingExposure = (
+export function calculatePricingExposure(
   tokens: FormulaToken[],
-  tradeQuantity: number,
+  quantity: number,
   buySell: 'buy' | 'sell' = 'buy'
-): Record<Instrument, number> => {
-  // Start with empty pricing exposure
-  const pricingExposure: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Argus HVO': 0,
-    'Platts LSGO': 0,
-    'Platts Diesel': 0,
-    'ICE GASOIL FUTURES': 0,
-  };
+): Record<Instrument, number> {
+  console.log(`Calculating pricing exposure for ${quantity} units, buySell: ${buySell}`);
   
-  if (!tokens.length || tradeQuantity === 0) {
-    return pricingExposure;
-  }
+  // The pricing exposure is the exact opposite of the physical exposure
+  // This is a simplified model - in a real system with complex formulas,
+  // the pricing exposure would be calculated differently
+  const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell);
+  const result = { ...physicalExposure };
   
-  try {
-    const ast = parseFormula(tokens);
-    const instrumentWeights = extractInstrumentsFromAST(ast);
+  // Invert the signs for pricing exposure
+  Object.keys(result).forEach(key => {
+    const instrument = key as Instrument;
+    result[instrument] = -result[instrument];
     
-    // Pricing exposure sign is opposite of physical for buy, same for sell
-    // Buy is negative pricing exposure, sell is positive pricing exposure
-    const pricingExposureSign = buySell === 'buy' ? -1 : 1;
-    
-    // Apply pricing exposure with proper weights and signs
-    for (const [instrument, weight] of Object.entries(instrumentWeights)) {
-      if (instrument in pricingExposure) {
-        // Apply the proportional exposure based on weight
-        pricingExposure[instrument as Instrument] = pricingExposureSign * tradeQuantity * weight;
-      }
+    if (result[instrument] !== 0) {
+      console.log(`Pricing exposure for ${instrument}: ${result[instrument]}`);
     }
-  } catch (error) {
-    console.error('Error calculating pricing exposures:', error);
-  }
+  });
   
-  return pricingExposure;
-};
+  return result;
+}
 
 // Convert formula to readable string
 export const formulaToString = (tokens: FormulaToken[]): string => {

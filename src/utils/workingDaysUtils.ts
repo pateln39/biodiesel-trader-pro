@@ -66,9 +66,22 @@ export function distributeQuantityByWorkingDays(
   endDate: Date, 
   totalQuantity: number
 ): Record<string, number> {
-  // Validate inputs
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate || totalQuantity === 0) {
-    console.log("Invalid inputs for distribution:", { startDate, endDate, totalQuantity });
+  // Validate inputs and perform additional logging
+  console.log(`distributeQuantityByWorkingDays called with:`, {
+    startDate: startDate?.toISOString(),
+    endDate: endDate?.toISOString(),
+    totalQuantity
+  });
+  
+  if (isNaN(startDate?.getTime()) || isNaN(endDate?.getTime()) || endDate < startDate || totalQuantity === 0) {
+    console.warn("Invalid inputs for distribution:", { 
+      startDate: startDate?.toISOString(), 
+      endDate: endDate?.toISOString(), 
+      totalQuantity,
+      startDateValid: !isNaN(startDate?.getTime()),
+      endDateValid: !isNaN(endDate?.getTime()),
+      endBeforeStart: endDate < startDate
+    });
     return {};
   }
   
@@ -77,8 +90,10 @@ export function distributeQuantityByWorkingDays(
   
   // Calculate total working days
   const totalWorkingDays = countWorkingDays(startDate, endDate);
+  console.log(`Total working days for full period: ${totalWorkingDays}`);
+  
   if (totalWorkingDays === 0) {
-    console.log("No working days found in the period:", { startDate, endDate });
+    console.warn("No working days found in the period:", { startDate, endDate });
     return {};
   }
   
@@ -88,11 +103,14 @@ export function distributeQuantityByWorkingDays(
   const firstMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   const lastMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
   
+  console.log(`First month: ${firstMonth.toISOString()}, Last month: ${lastMonth.toISOString()}`);
+  
   // Make sure we iterate through ALL months in the range including the last month
   // Create a deep copy of firstMonth to avoid modifying it
   const currentMonth = new Date(firstMonth);
   
   // Ensure we cover the entire range by checking <= lastMonth
+  let monthsProcessed = 0;
   while (currentMonth <= lastMonth) {
     // Calculate month's start and end dates
     const monthStart = new Date(currentMonth);
@@ -108,18 +126,49 @@ export function distributeQuantityByWorkingDays(
     
     // Count working days in this month's portion of the pricing period
     const workingDaysInMonth = countWorkingDays(effectiveStart, effectiveEnd);
+    console.log(`Working days in ${formatMonthCode(currentMonth)}: ${workingDaysInMonth}`);
     
     // Calculate proportion of the total quantity for this month
     if (workingDaysInMonth > 0) {
       const monthCode = formatMonthCode(currentMonth);
       const proportion = workingDaysInMonth / totalWorkingDays;
-      distribution[monthCode] = parseFloat((proportion * totalQuantity).toFixed(2));
       
-      console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distribution[monthCode]} units`);
+      // Ensure we're using proper number calculation and avoid potential division inaccuracies
+      const distributedAmount = Number((proportion * totalQuantity).toFixed(2));
+      distribution[monthCode] = distributedAmount;
+      
+      console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distributedAmount} units`);
     }
     
     // Move to next month - ensure we actually increment to avoid infinite loops
     currentMonth.setMonth(currentMonth.getMonth() + 1);
+    monthsProcessed++;
+    
+    // Safety check to prevent infinite loops
+    if (monthsProcessed > 36) {
+      console.error("Too many months in range, possible infinite loop. Stopping.");
+      break;
+    }
+  }
+  
+  // Perform validation on the distribution
+  const totalDistributed = Object.values(distribution).reduce((sum, value) => sum + value, 0);
+  console.log(`Total distributed: ${totalDistributed} of ${totalQuantity}, difference: ${totalQuantity - totalDistributed}`);
+  
+  // If there's a significant difference due to rounding, adjust the largest month allocation
+  const roundingThreshold = 0.01; // 1 cent threshold
+  if (Math.abs(totalDistributed - totalQuantity) > roundingThreshold && Object.keys(distribution).length > 0) {
+    const difference = totalQuantity - totalDistributed;
+    console.log(`Adjusting for rounding difference of ${difference}`);
+    
+    // Find the month with the largest allocation to adjust
+    const monthEntries = Object.entries(distribution);
+    monthEntries.sort((a, b) => b[1] - a[1]); // Sort by value descending
+    const largestMonth = monthEntries[0][0];
+    
+    // Adjust the largest month allocation
+    distribution[largestMonth] = Number((distribution[largestMonth] + difference).toFixed(2));
+    console.log(`Adjusted ${largestMonth} from ${monthEntries[0][1]} to ${distribution[largestMonth]}`);
   }
   
   console.log("Final distribution:", distribution);
@@ -224,4 +273,3 @@ export function getWorkingDaysInMonth(year: number, month: number): number {
   console.log(`Calculating working days for ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
   return countWorkingDays(startDate, endDate);
 }
-
