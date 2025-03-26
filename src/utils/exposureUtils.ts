@@ -1,4 +1,3 @@
-
 import { 
   DailyDistribution, 
   DailyDistributionByInstrument, 
@@ -10,6 +9,7 @@ import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'da
 
 /**
  * Check if a date range (startDate-endDate) overlaps with a pricing period (pricingStart-pricingEnd)
+ * Safely handles potentially undefined pricing period dates
  * @param startDate Start of selected date range
  * @param endDate End of selected date range
  * @param pricingStart Start of pricing period
@@ -19,9 +19,14 @@ import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'da
 export function isDateWithinPricingPeriod(
   startDate: Date,
   endDate: Date,
-  pricingStart: Date,
-  pricingEnd: Date
+  pricingStart: Date | null | undefined,
+  pricingEnd: Date | null | undefined
 ): boolean {
+  // If either pricing date is missing, we can't determine overlap, so return false
+  if (!pricingStart || !pricingEnd) {
+    return false;
+  }
+  
   // Check if date ranges overlap
   // Two date ranges overlap if the start of one is before or equal to the end of the other,
   // AND the end of one is after or equal to the start of the other

@@ -8,6 +8,8 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { validateDateRange } from '@/utils/validationUtils';
+import { toast } from 'sonner';
 
 interface DateRangeFilterProps {
   onFilterChange: (startDate: Date, endDate: Date) => void;
@@ -32,7 +34,16 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   }, [initialStartDate, initialEndDate]);
 
   const handleApplyFilter = () => {
+    // Validate date range
+    if (!validateDateRange(startDate, endDate, 'Date range')) {
+      return;
+    }
+    
+    // Apply the filter
     onFilterChange(startDate, endDate);
+    toast.success('Date range applied', {
+      description: `Filtering from ${format(startDate, 'MMM dd, yyyy')} to ${format(endDate, 'MMM dd, yyyy')}`
+    });
   };
 
   return (

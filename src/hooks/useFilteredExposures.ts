@@ -45,6 +45,7 @@ export function useFilteredExposures({
     }
     
     setIsCalculating(true);
+    console.log('Calculating filtered exposures with date range:', startDate, endDate);
     
     try {
       // Collect monthly distributions from all physical trades
@@ -53,22 +54,38 @@ export function useFilteredExposures({
       
       // Process physical trades only
       const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
+      console.log(`Found ${physicalTrades.length} physical trades`);
+      
+      // Track how many trades and legs are processed
+      let processedTrades = 0;
+      let processedLegs = 0;
       
       // Process trades that have valid pricing periods overlapping with the selected date range
       physicalTrades.forEach(trade => {
-        // Skip trades with pricing periods that don't overlap with the selected date range
-        if (!isDateWithinPricingPeriod(startDate, endDate, trade.pricingPeriodStart, trade.pricingPeriodEnd)) {
-          return;
-        }
+        let tradeHasValidLeg = false;
         
         // Process legs to collect monthly distributions
         trade.legs.forEach(leg => {
-          if (!leg.formula || !leg.formula.exposures) return;
-          
-          // Skip legs with pricing periods that don't overlap with the selected date range
-          if (!isDateWithinPricingPeriod(startDate, endDate, leg.pricingPeriodStart, leg.pricingPeriodEnd)) {
+          if (!leg.formula || !leg.formula.exposures) {
+            console.log(`Skipping leg with missing formula or exposures: ${leg.legReference}`);
             return;
           }
+          
+          // Check if leg pricing period overlaps with the selected date range
+          const legOverlapsWithDateRange = isDateWithinPricingPeriod(
+            startDate, 
+            endDate, 
+            leg.pricingPeriodStart, 
+            leg.pricingPeriodEnd
+          );
+          
+          if (!legOverlapsWithDateRange) {
+            console.log(`Skipping leg ${leg.legReference} - pricing period doesn't overlap with selected date range`);
+            return;
+          }
+          
+          processedLegs++;
+          tradeHasValidLeg = true;
           
           // Get physical exposures monthly distribution
           const physicalMonthlyDist = getMonthlyDistribution(leg.formula.exposures, 'physical');
@@ -102,8 +119,13 @@ export function useFilteredExposures({
             });
           });
         });
+        
+        if (tradeHasValidLeg) {
+          processedTrades++;
+        }
       });
       
+      console.log(`Processed ${processedTrades} trades and ${processedLegs} legs`);
       console.log('Physical distributions:', physicalDistributions);
       console.log('Pricing distributions:', pricingDistributions);
       
@@ -152,6 +174,7 @@ export function useFilteredExposures({
   }, [trades, tradesLoading, startDate, endDate]);
   
   const updateDateRange = (newStartDate: Date, newEndDate: Date) => {
+    console.log("Updating date range:", newStartDate, newEndDate);
     setStartDate(newStartDate);
     setEndDate(newEndDate);
   };
