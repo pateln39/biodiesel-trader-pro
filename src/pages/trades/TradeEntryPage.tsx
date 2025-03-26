@@ -14,7 +14,6 @@ import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateExposures } from '@/utils/formulaCalculation';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -47,60 +46,26 @@ const TradeEntryPage = () => {
       // Get the parent trade ID
       const parentTradeId = parentTradeData.id;
       
-      // For physical trades, insert all legs with properly calculated exposures
-      const legs = tradeData.legs.map((leg: any) => {
-        // Ensure formula has proper exposures with correct signs
-        if (leg.formula && leg.formula.tokens) {
-          // Calculate exposures for the formula with the correct buySell direction
-          
-          // Update exposures in the formula
-          if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-            leg.formula.exposures = calculateExposures(
-              leg.formula.tokens, 
-              leg.quantity, 
-              leg.buySell,
-              leg.pricingPeriodStart, 
-              leg.pricingPeriodEnd
-            );
-          }
-        }
-        
-        // Do the same for MTM formula if it exists
-        if (leg.mtmFormula && leg.mtmFormula.tokens) {
-          // Calculate exposures for the formula with the correct buySell direction
-          
-          // Update exposures in the formula
-          if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-            leg.mtmFormula.exposures = calculateExposures(
-              leg.mtmFormula.tokens, 
-              leg.quantity, 
-              leg.buySell,
-              leg.pricingPeriodStart, 
-              leg.pricingPeriodEnd
-            );
-          }
-        }
-        
-        return {
-          leg_reference: leg.legReference,
-          parent_trade_id: parentTradeId,
-          buy_sell: leg.buySell,
-          product: leg.product,
-          sustainability: leg.sustainability,
-          inco_term: leg.incoTerm,
-          quantity: leg.quantity,
-          tolerance: leg.tolerance,
-          loading_period_start: leg.loadingPeriodStart,
-          loading_period_end: leg.loadingPeriodEnd,
-          pricing_period_start: leg.pricingPeriodStart,
-          pricing_period_end: leg.pricingPeriodEnd,
-          unit: leg.unit,
-          payment_term: leg.paymentTerm,
-          credit_status: leg.creditStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
-        };
-      });
+      // For physical trades, insert all legs
+      const legs = tradeData.legs.map((leg: any) => ({
+        leg_reference: leg.legReference,
+        parent_trade_id: parentTradeId,
+        buy_sell: leg.buySell,
+        product: leg.product,
+        sustainability: leg.sustainability,
+        inco_term: leg.incoTerm,
+        quantity: leg.quantity,
+        tolerance: leg.tolerance,
+        loading_period_start: leg.loadingPeriodStart,
+        loading_period_end: leg.loadingPeriodEnd,
+        pricing_period_start: leg.pricingPeriodStart,
+        pricing_period_end: leg.pricingPeriodEnd,
+        unit: leg.unit,
+        payment_term: leg.paymentTerm,
+        credit_status: leg.creditStatus,
+        pricing_formula: leg.formula,
+        mtm_formula: leg.mtmFormula,
+      }));
       
       const { error: legsError } = await supabase
         .from('trade_legs')

@@ -159,38 +159,6 @@ const TradeEditPage = () => {
       }
 
       for (const leg of updatedTradeData.legs) {
-        // Ensure formula has proper exposures with correct signs
-        if (leg.formula && leg.formula.tokens) {
-          // Calculate exposures for the formula with the correct buySell direction
-          
-          // Update exposures in the formula
-          if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-            leg.formula.exposures = calculateExposures(
-              leg.formula.tokens, 
-              leg.quantity, 
-              leg.buySell,
-              leg.pricingPeriodStart, 
-              leg.pricingPeriodEnd
-            );
-          }
-        }
-        
-        // Do the same for MTM formula if it exists
-        if (leg.mtmFormula && leg.mtmFormula.tokens) {
-          // Calculate exposures for the formula with the correct buySell direction
-          
-          // Update exposures in the formula
-          if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-            leg.mtmFormula.exposures = calculateExposures(
-              leg.mtmFormula.tokens, 
-              leg.quantity, 
-              leg.buySell,
-              leg.pricingPeriodStart, 
-              leg.pricingPeriodEnd
-            );
-          }
-        }
-        
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -269,7 +237,7 @@ const TradeEditPage = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Trade</h1>
           <p className="text-muted-foreground">
-            Edit trade {tradeData?.tradeReference}
+            Edit trade {tradeData.tradeReference}
           </p>
         </div>
 
@@ -284,7 +252,7 @@ const TradeEditPage = () => {
           </CardHeader>
           <CardContent>
             <PhysicalTradeForm 
-              tradeReference={tradeData?.tradeReference || ''} 
+              tradeReference={tradeData.tradeReference} 
               onSubmit={handleSubmit} 
               onCancel={handleCancel} 
               isEditMode={true}

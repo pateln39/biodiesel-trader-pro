@@ -1,4 +1,3 @@
-
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types';
@@ -438,7 +437,6 @@ export const calculateExposures = (
           }
           
           // Apply the buy/sell direction to the distributed quantities
-          // FIXED: Use the sign from pricingExposure (which is already negative for buy, positive for sell)
           const direction = pricingExposure[instrument as Instrument] > 0 ? 1 : -1;
           Object.entries(distribution).forEach(([month, quantity]) => {
             // If there's already a value from physical exposure, we don't want to overwrite it

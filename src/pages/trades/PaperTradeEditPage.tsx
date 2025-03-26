@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -10,7 +11,6 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { calculateExposures } from '@/utils/formulaCalculation';
 
 const PaperTradeEditPage = () => {
   const { id } = useParams();
@@ -99,66 +99,18 @@ const PaperTradeEditPage = () => {
         // Always ensure physical is an empty object for paper trades
         exposures.physical = {};
         
-        // Apply the buy/sell direction to the exposures correctly
-        
         if (leg.relationshipType === 'FP' && leg.product) {
-          // For FP (direct formula pricing), sign depends on buy/sell
           exposures.paper = { [leg.product]: leg.quantity };
-          
-          // For pricing exposure, calculate using the formula tokens if available
-          if (leg.formula && leg.formula.tokens) {
-            if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-              // Use calculateExposures with the buySell indicator
-              const calculatedExposures = calculateExposures(
-                leg.formula.tokens,
-                leg.quantity,
-                leg.buySell,
-                leg.pricingPeriodStart,
-                leg.pricingPeriodEnd
-              );
-              
-              // Update the pricing exposure from calculated result
-              exposures.pricing = calculatedExposures.pricing || {};
-            } else {
-              // Fallback if dates not available
-              exposures.pricing = { [leg.product]: leg.buySell === 'buy' ? -leg.quantity : leg.quantity };
-            }
-          } else {
-            // Direct calculation without formula
-            exposures.pricing = { [leg.product]: leg.buySell === 'buy' ? -leg.quantity : leg.quantity };
-          }
+          exposures.pricing = { [leg.product]: leg.quantity };
         } else if (leg.rightSide && leg.product) {
-          // For DIFF and SPREAD, both sides must have the correct sign
           exposures.paper = { 
             [leg.product]: leg.quantity,
             [leg.rightSide.product]: leg.rightSide.quantity 
           };
-          
-          // For pricing exposure, apply the buySell direction
-          if (leg.buySell === 'buy') {
-            exposures.pricing = { 
-              [leg.product]: -leg.quantity,
-              [leg.rightSide.product]: -leg.rightSide.quantity
-            };
-          } else {
-            exposures.pricing = { 
-              [leg.product]: leg.quantity,
-              [leg.rightSide.product]: leg.rightSide.quantity
-            };
-          }
-        }
-        
-        // Recalculate exposures if we have formula tokens
-        if (leg.formula && leg.formula.tokens) {
-          if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
-            leg.formula.exposures = calculateExposures(
-              leg.formula.tokens, 
-              leg.quantity, 
-              leg.buySell,
-              leg.pricingPeriodStart, 
-              leg.pricingPeriodEnd
-            );
-          }
+          exposures.pricing = { 
+            [leg.product]: leg.quantity,
+            [leg.rightSide.product]: leg.rightSide.quantity 
+          };
         }
         
         // Create each leg

@@ -15,7 +15,7 @@ export interface FormulaToken {
 }
 
 export interface MonthlyDistribution {
-  [monthCode: string]: number; // e.g., "Mar-24": 363.63 or "Mar-24": -363.63 (can be positive or negative)
+  [monthCode: string]: number; // e.g., "Mar-24": 363.63
 }
 
 export interface ExposureResult {
