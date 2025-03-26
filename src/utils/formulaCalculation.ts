@@ -1,3 +1,4 @@
+
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types';
@@ -400,14 +401,16 @@ export function calculateExposures(
   buySell: 'buy' | 'sell' = 'buy',
   selectedProduct?: string,
   pricingPeriodStart?: Date,
-  pricingPeriodEnd?: Date
+  pricingPeriodEnd?: Date,
+  formulaType: 'price' | 'mtm' = 'price'
 ): ExposureResult {
-  console.log(`Calculating exposures with dates:`, {
+  console.log(`Calculating ${formulaType} exposures with dates:`, {
     pricingPeriodStart: pricingPeriodStart?.toISOString(),
     pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
     quantity,
     buySell,
-    selectedProduct
+    selectedProduct,
+    formulaType
   });
   
   const signMultiplier = buySell === 'buy' ? 1 : -1;
@@ -421,68 +424,99 @@ export function calculateExposures(
   const monthlyDistribution: Record<string, Record<string, number>> = {};
   
   if (pricingPeriodStart && pricingPeriodEnd) {
-    console.log(`Generating monthly distribution for ${pricingPeriodStart.toISOString()} to ${pricingPeriodEnd.toISOString()}`);
+    console.log(`Generating ${formulaType} monthly distribution for ${pricingPeriodStart.toISOString()} to ${pricingPeriodEnd.toISOString()}`);
     
-    // Process physical exposures for distribution
-    Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
-      if (exposure !== 0) {
-        console.log(`Distributing physical exposure for ${instrument}: ${exposure}`);
-        
-        // Generate distribution based on working days
-        const distribution = distributeQuantityByWorkingDays(
-          pricingPeriodStart,
-          pricingPeriodEnd,
-          Math.abs(exposure)
-        );
-        
-        // Apply the sign from the original exposure
-        const signedDistribution: Record<string, number> = {};
-        const sign = Math.sign(exposure);
-        
-        Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * sign;
-          console.log(`Physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-        });
-        
-        monthlyDistribution[instrument] = signedDistribution;
-      }
-    });
-    
-    // Process pricing exposures for distribution - FIX THE SIGN INCONSISTENCY HERE
-    Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
-      if (exposure !== 0) {
-        console.log(`Distributing pricing exposure for ${instrument}: ${exposure}`);
-        
-        // Generate distribution based on working days
-        const distribution = distributeQuantityByWorkingDays(
-          pricingPeriodStart,
-          pricingPeriodEnd,
-          Math.abs(exposure)
-        );
-        
-        // Apply the sign from the original exposure - THIS IS THE KEY FIX
-        const signedDistribution: Record<string, number> = {};
-        const sign = Math.sign(exposure);
-        
-        Object.entries(distribution).forEach(([month, value]) => {
-          signedDistribution[month] = value * sign;
-          console.log(`Pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-        });
-        
-        // Add to existing distribution or create new
-        if (monthlyDistribution[instrument]) {
-          // THE CRITICAL BUG WAS HERE - we were not checking the existing distribution correctly
-          // We need to keep pricing exposures separate from physical exposures to avoid confusion
-          Object.entries(signedDistribution).forEach(([month, value]) => {
-            // Never merge physical and pricing values for the same month/instrument
-            // Instead, override with the pricing exposure value for consistent behavior
-            monthlyDistribution[instrument][month] = value;
+    // For price formula, we distribute physical exposures
+    // For MTM formula, we distribute MTM physical exposures
+    if (formulaType === 'price') {
+      // Process physical exposures for price formula distribution
+      Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
+        if (exposure !== 0) {
+          console.log(`Distributing price physical exposure for ${instrument}: ${exposure}`);
+          
+          // Generate distribution based on working days
+          const distribution = distributeQuantityByWorkingDays(
+            pricingPeriodStart,
+            pricingPeriodEnd,
+            Math.abs(exposure)
+          );
+          
+          // Apply the sign from the original exposure
+          const signedDistribution: Record<string, number> = {};
+          const sign = Math.sign(exposure);
+          
+          Object.entries(distribution).forEach(([month, value]) => {
+            signedDistribution[month] = value * sign;
+            console.log(`Physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
           });
-        } else {
+          
           monthlyDistribution[instrument] = signedDistribution;
         }
-      }
-    });
+      });
+      
+      // Process pricing exposures for price formula distribution
+      Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
+        if (exposure !== 0) {
+          console.log(`Distributing price pricing exposure for ${instrument}: ${exposure}`);
+          
+          // Generate distribution based on working days
+          const distribution = distributeQuantityByWorkingDays(
+            pricingPeriodStart,
+            pricingPeriodEnd,
+            Math.abs(exposure)
+          );
+          
+          // Apply the sign from the original exposure
+          const signedDistribution: Record<string, number> = {};
+          const sign = Math.sign(exposure);
+          
+          Object.entries(distribution).forEach(([month, value]) => {
+            signedDistribution[month] = value * sign;
+            console.log(`Pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
+          });
+          
+          // Add to existing distribution or create new
+          if (monthlyDistribution[instrument]) {
+            Object.entries(signedDistribution).forEach(([month, value]) => {
+              // For price formula, pricing exposures override physical exposures
+              monthlyDistribution[instrument][month] = value;
+            });
+          } else {
+            monthlyDistribution[instrument] = signedDistribution;
+          }
+        }
+      });
+    } 
+    else if (formulaType === 'mtm') {
+      // For MTM formula, we need to match the signs from the physical exposures
+      // MTM physical exposures should be distributed with their signs preserved
+      Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
+        if (exposure !== 0) {
+          console.log(`Distributing MTM physical exposure for ${instrument}: ${exposure}`);
+          
+          // Generate distribution based on working days
+          const distribution = distributeQuantityByWorkingDays(
+            pricingPeriodStart,
+            pricingPeriodEnd,
+            Math.abs(exposure)
+          );
+          
+          // Apply the sign from the original physical exposure
+          const signedDistribution: Record<string, number> = {};
+          const sign = Math.sign(exposure);
+          
+          Object.entries(distribution).forEach(([month, value]) => {
+            signedDistribution[month] = value * sign;
+            console.log(`MTM physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
+          });
+          
+          monthlyDistribution[instrument] = signedDistribution;
+        }
+      });
+      
+      // MTM pricing exposures are not distributed as they affect the MTM valuation
+      // but don't contribute to the monthly distribution
+    }
   }
   
   return {

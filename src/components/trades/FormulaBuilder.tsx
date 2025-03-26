@@ -73,7 +73,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           buySell, 
           selectedProduct, 
           pricingPeriodStart, 
-          pricingPeriodEnd
+          pricingPeriodEnd,
+          'price'
         );
         
         const newExposures = {
@@ -102,7 +103,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           buySell, 
           selectedProduct, 
           pricingPeriodStart, 
-          pricingPeriodEnd
+          pricingPeriodEnd,
+          'mtm'
         );
         
         const newExposures = {
@@ -134,7 +136,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -151,7 +154,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -168,7 +172,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -185,7 +190,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -202,7 +208,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -219,7 +226,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
@@ -234,7 +242,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         buySell, 
         selectedProduct, 
         pricingPeriodStart, 
-        pricingPeriodEnd
+        pricingPeriodEnd,
+        formulaType
       )
     });
   };
