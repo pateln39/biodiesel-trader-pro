@@ -855,4 +855,21 @@ const ExposurePage = () => {
 
   const formatExposure = (value: number): string => {
     if (isRounded) {
-      return Math.
+      return Math.round(value).toString();
+    }
+    return value.toFixed(2);
+  };
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure Page</title>
+      </Helmet>
+      <div>
+        {/* Add your component content here */}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
