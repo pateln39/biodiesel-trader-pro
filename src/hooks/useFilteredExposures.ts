@@ -87,37 +87,50 @@ export function useFilteredExposures({
           processedLegs++;
           tradeHasValidLeg = true;
           
-          // Get physical exposures monthly distribution
-          const physicalMonthlyDist = getMonthlyDistribution(leg.formula.exposures, 'physical');
-          Object.entries(physicalMonthlyDist).forEach(([instrument, monthDist]) => {
-            if (!physicalDistributions[instrument]) {
-              physicalDistributions[instrument] = {};
-            }
-            
-            // Merge the monthly distributions
-            Object.entries(monthDist).forEach(([month, value]) => {
-              if (!physicalDistributions[instrument][month]) {
-                physicalDistributions[instrument][month] = 0;
+          // IMPROVED: Separate physical and pricing exposures properly
+          // First process physical exposures - these are the actual physical products
+          if (leg.formula.exposures.physical) {
+            Object.entries(leg.formula.exposures.physical).forEach(([instrument, value]) => {
+              if (!physicalDistributions[instrument]) {
+                physicalDistributions[instrument] = {};
               }
-              physicalDistributions[instrument][month] += value;
+              
+              // Here we use the monthlyDistribution if available, otherwise distribute evenly
+              const physicalMonthlyDist = getMonthlyDistribution(
+                { physical: { [instrument]: value } } as ExposureResult, 
+                'physical'
+              );
+              
+              Object.entries(physicalMonthlyDist[instrument] || {}).forEach(([month, monthValue]) => {
+                if (!physicalDistributions[instrument][month]) {
+                  physicalDistributions[instrument][month] = 0;
+                }
+                physicalDistributions[instrument][month] += monthValue;
+              });
             });
-          });
+          }
           
-          // Get pricing exposures monthly distribution
-          const pricingMonthlyDist = getMonthlyDistribution(leg.formula.exposures, 'pricing');
-          Object.entries(pricingMonthlyDist).forEach(([instrument, monthDist]) => {
-            if (!pricingDistributions[instrument]) {
-              pricingDistributions[instrument] = {};
-            }
-            
-            // Merge the monthly distributions
-            Object.entries(monthDist).forEach(([month, value]) => {
-              if (!pricingDistributions[instrument][month]) {
-                pricingDistributions[instrument][month] = 0;
+          // Then process pricing exposures - these are the pricing instruments
+          if (leg.formula.exposures.pricing) {
+            Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
+              if (!pricingDistributions[instrument]) {
+                pricingDistributions[instrument] = {};
               }
-              pricingDistributions[instrument][month] += value;
+              
+              // Here we use the monthlyDistribution if available, otherwise distribute evenly
+              const pricingMonthlyDist = getMonthlyDistribution(
+                { pricing: { [instrument]: value } } as ExposureResult, 
+                'pricing'
+              );
+              
+              Object.entries(pricingMonthlyDist[instrument] || {}).forEach(([month, monthValue]) => {
+                if (!pricingDistributions[instrument][month]) {
+                  pricingDistributions[instrument][month] = 0;
+                }
+                pricingDistributions[instrument][month] += monthValue;
+              });
             });
-          });
+          }
         });
         
         if (tradeHasValidLeg) {
