@@ -46,6 +46,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
       if (parent.trade_type === 'physical' && firstLeg) {
+        // Create the base physical trade structure
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
@@ -69,30 +70,42 @@ const fetchTrades = async (): Promise<Trade[]> => {
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: legs.map(leg => ({
-            id: leg.id,
-            parentTradeId: leg.parent_trade_id,
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell as BuySell,
-            product: leg.product as Product,
-            sustainability: leg.sustainability || '',
-            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-            quantity: leg.quantity,
-            tolerance: leg.tolerance || 0,
-            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            unit: (leg.unit || 'MT') as Unit,
-            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
-          }))
+          legs: legs.map(leg => {
+            // Process each leg with its formula and ensure the pricing periods are set correctly
+            const pricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
+            const pricingEnd = leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date();
+            
+            // Parse the formula ensuring it has the correct exposure information
+            const formula = validateAndParsePricingFormula(leg.pricing_formula);
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            
+            // Return the processed leg
+            return {
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              sustainability: leg.sustainability || '',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+              pricingPeriodStart: pricingStart,
+              pricingPeriodEnd: pricingEnd,
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+              formula: formula,
+              mtmFormula: mtmFormula
+            };
+          })
         };
         return physicalTrade;
       } 
       
+      // Handle non-physical trades (as before)
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,

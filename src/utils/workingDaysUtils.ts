@@ -61,12 +61,16 @@ export function distributeQuantityByWorkingDays(
 ): Record<string, number> {
   // Validate inputs
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || endDate < startDate || totalQuantity === 0) {
+    console.log("Invalid inputs for distribution:", { startDate, endDate, totalQuantity });
     return {};
   }
   
   // Calculate total working days
   const totalWorkingDays = countWorkingDays(startDate, endDate);
-  if (totalWorkingDays === 0) return {};
+  if (totalWorkingDays === 0) {
+    console.log("No working days found in the period:", { startDate, endDate });
+    return {};
+  }
   
   const distribution: Record<string, number> = {};
   
@@ -93,12 +97,15 @@ export function distributeQuantityByWorkingDays(
       const monthCode = formatMonthCode(currentMonth);
       const proportion = workingDaysInMonth / totalWorkingDays;
       distribution[monthCode] = parseFloat((proportion * totalQuantity).toFixed(2));
+      
+      console.log(`Month ${monthCode}: ${workingDaysInMonth} working days, ${(proportion * 100).toFixed(2)}%, ${distribution[monthCode]} units`);
     }
     
     // Move to next month
     currentMonth.setMonth(currentMonth.getMonth() + 1);
   }
   
+  console.log("Final distribution:", distribution);
   return distribution;
 }
 
