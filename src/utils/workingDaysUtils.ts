@@ -119,3 +119,28 @@ export function formatMonthCode(date: Date): string {
   const yearCode = date.getFullYear().toString().slice(2);
   return `${monthCode}-${yearCode}`;
 }
+
+/**
+ * Gets monthly distribution data from the formula's exposure object
+ * @param formulaExposures The exposures object from the formula
+ * @param productType The type of product (physical or pricing)
+ * @returns An object mapping month codes to their exposures
+ */
+export function getMonthlyDistribution(
+  formulaExposures: any, 
+  productType: 'physical' | 'pricing'
+): Record<string, Record<string, number>> {
+  if (!formulaExposures || typeof formulaExposures !== 'object') {
+    return {};
+  }
+  
+  // Check if we have monthlyDistribution data in the exposures
+  if (formulaExposures.monthlyDistribution && 
+      typeof formulaExposures.monthlyDistribution === 'object') {
+    // MonthlyDistribution format is: { product: { month: quantity } }
+    return formulaExposures.monthlyDistribution;
+  }
+  
+  return {};
+}
+
