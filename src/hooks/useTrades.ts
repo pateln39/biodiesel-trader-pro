@@ -17,7 +17,7 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-import { distributeQuantityByWorkingDays, distributeQuantityByDays } from '@/utils/workingDaysUtils';
+import { distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -78,53 +78,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
             // Parse the formula ensuring it has the correct exposure information
             const formula = validateAndParsePricingFormula(leg.pricing_formula);
             const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-            
-            // Add daily distributions if they don't exist yet
-            if (pricingStart && pricingEnd) {
-              // Check and generate daily distributions for physical exposure
-              if (mtmFormula.exposures && mtmFormula.exposures.physical && 
-                  Object.keys(mtmFormula.exposures.physical).length > 0 && 
-                  (!mtmFormula.exposures.dailyDistribution || 
-                   Object.keys(mtmFormula.exposures.dailyDistribution).length === 0)) {
-                
-                mtmFormula.exposures.dailyDistribution = {};
-                
-                Object.entries(mtmFormula.exposures.physical).forEach(([instrument, weight]) => {
-                  const quantity = typeof weight === 'number' ? Math.abs(weight) : 0;
-                  if (quantity > 0) {
-                    const direction = (typeof weight === 'number' && weight > 0) ? 1 : -1;
-                    const dailyDist = distributeQuantityByDays(pricingStart, pricingEnd, quantity);
-                    
-                    mtmFormula.exposures.dailyDistribution![instrument] = {};
-                    Object.entries(dailyDist).forEach(([day, amount]) => {
-                      mtmFormula.exposures.dailyDistribution![instrument][day] = amount * direction;
-                    });
-                  }
-                });
-              }
-              
-              // Check and generate daily distributions for pricing exposure
-              if (formula.exposures && formula.exposures.pricing && 
-                  Object.keys(formula.exposures.pricing).length > 0 && 
-                  (!formula.exposures.dailyDistribution || 
-                   Object.keys(formula.exposures.dailyDistribution).length === 0)) {
-                
-                formula.exposures.dailyDistribution = {};
-                
-                Object.entries(formula.exposures.pricing).forEach(([instrument, weight]) => {
-                  const quantity = typeof weight === 'number' ? Math.abs(weight) : 0;
-                  if (quantity > 0) {
-                    const direction = (typeof weight === 'number' && weight > 0) ? 1 : -1;
-                    const dailyDist = distributeQuantityByDays(pricingStart, pricingEnd, quantity);
-                    
-                    formula.exposures.dailyDistribution![instrument] = {};
-                    Object.entries(dailyDist).forEach(([day, amount]) => {
-                      formula.exposures.dailyDistribution![instrument][day] = amount * direction;
-                    });
-                  }
-                });
-              }
-            }
             
             // Return the processed leg
             return {

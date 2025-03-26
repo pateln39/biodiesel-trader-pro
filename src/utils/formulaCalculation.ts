@@ -21,8 +21,7 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
   },
-  monthlyDistribution: {},
-  dailyDistribution: {}
+  monthlyDistribution: {}
 });
 
 // Helper function to check if a token is an instrument
@@ -397,46 +396,32 @@ export const calculateExposures = (
   const physicalExposure = calculatePhysicalExposure(tokens, tradeQuantity, buySell);
   const pricingExposure = calculatePricingExposure(tokens, tradeQuantity, buySell);
   
-  // Create monthly and daily distribution if pricing period dates are provided
-  let monthlyDistribution: Record<Instrument, Record<string, number>> | undefined;
-  let dailyDistribution: Record<Instrument, Record<string, number>> | undefined;
+  // Create monthly distribution if pricing period dates are provided
+  let monthlyDistribution: Record<Instrument, MonthlyDistribution> | undefined;
   
   if (pricingPeriodStart && pricingPeriodEnd && tradeQuantity !== 0) {
     const validStart = new Date(pricingPeriodStart);
     const validEnd = new Date(pricingPeriodEnd);
     
-    // Only calculate distribution if dates are valid
+    // Only calculate distribution if dates are valid and span multiple months
     if (!isNaN(validStart.getTime()) && !isNaN(validEnd.getTime())) {
       monthlyDistribution = {};
-      dailyDistribution = {};
       
-      // For each instrument with non-zero exposure, calculate distributions
+      // For each instrument with non-zero exposure, calculate monthly distribution
       for (const instrument in physicalExposure) {
         if (physicalExposure[instrument as Instrument] !== 0) {
           // For physical exposure
           const physicalQuantity = Math.abs(physicalExposure[instrument as Instrument]);
-          const monthlyDist = distributeQuantityByWorkingDays(validStart, validEnd, physicalQuantity);
-          const dailyDist = distributeQuantityByDays(validStart, validEnd, physicalQuantity);
+          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, physicalQuantity);
           
           if (!monthlyDistribution[instrument as Instrument]) {
             monthlyDistribution[instrument as Instrument] = {};
           }
           
-          if (!dailyDistribution[instrument as Instrument]) {
-            dailyDistribution[instrument as Instrument] = {};
-          }
-          
           // Apply the buy/sell direction to the distributed quantities
           const direction = physicalExposure[instrument as Instrument] > 0 ? 1 : -1;
-          
-          // Monthly distribution
-          Object.entries(monthlyDist).forEach(([month, quantity]) => {
+          Object.entries(distribution).forEach(([month, quantity]) => {
             monthlyDistribution![instrument as Instrument][month] = quantity * direction;
-          });
-          
-          // Daily distribution
-          Object.entries(dailyDist).forEach(([day, quantity]) => {
-            dailyDistribution![instrument as Instrument][day] = quantity * direction;
           });
         }
       }
@@ -445,33 +430,18 @@ export const calculateExposures = (
       for (const instrument in pricingExposure) {
         if (pricingExposure[instrument as Instrument] !== 0) {
           const pricingQuantity = Math.abs(pricingExposure[instrument as Instrument]);
-          const monthlyDist = distributeQuantityByWorkingDays(validStart, validEnd, pricingQuantity);
-          const dailyDist = distributeQuantityByDays(validStart, validEnd, pricingQuantity);
+          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, pricingQuantity);
           
           if (!monthlyDistribution[instrument as Instrument]) {
             monthlyDistribution[instrument as Instrument] = {};
           }
           
-          if (!dailyDistribution[instrument as Instrument]) {
-            dailyDistribution[instrument as Instrument] = {};
-          }
-          
           // Apply the buy/sell direction to the distributed quantities
           const direction = pricingExposure[instrument as Instrument] > 0 ? 1 : -1;
-          
-          // Monthly distribution
-          Object.entries(monthlyDist).forEach(([month, quantity]) => {
+          Object.entries(distribution).forEach(([month, quantity]) => {
             // If there's already a value from physical exposure, we don't want to overwrite it
             if (!monthlyDistribution![instrument as Instrument][month]) {
               monthlyDistribution![instrument as Instrument][month] = quantity * direction;
-            }
-          });
-          
-          // Daily distribution
-          Object.entries(dailyDist).forEach(([day, quantity]) => {
-            // If there's already a value from physical exposure, we don't want to overwrite it
-            if (!dailyDistribution![instrument as Instrument][day]) {
-              dailyDistribution![instrument as Instrument][day] = quantity * direction;
             }
           });
         }
@@ -482,8 +452,7 @@ export const calculateExposures = (
   return {
     physical: physicalExposure,
     pricing: pricingExposure,
-    monthlyDistribution,
-    dailyDistribution
+    monthlyDistribution
   };
 };
 
