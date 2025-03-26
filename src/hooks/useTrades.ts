@@ -95,9 +95,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
                     const direction = (typeof weight === 'number' && weight > 0) ? 1 : -1;
                     const dailyDist = distributeQuantityByDays(pricingStart, pricingEnd, quantity);
                     
-                    mtmFormula.exposures.dailyDistribution![instrument] = {};
+                    mtmFormula.exposures.dailyDistribution![instrument as any] = {};
                     Object.entries(dailyDist).forEach(([day, amount]) => {
-                      mtmFormula.exposures.dailyDistribution![instrument][day] = amount * direction;
+                      mtmFormula.exposures.dailyDistribution![instrument as any][day] = amount * direction;
                     });
                   }
                 });
@@ -117,9 +117,9 @@ const fetchTrades = async (): Promise<Trade[]> => {
                     const direction = (typeof weight === 'number' && weight > 0) ? 1 : -1;
                     const dailyDist = distributeQuantityByDays(pricingStart, pricingEnd, quantity);
                     
-                    formula.exposures.dailyDistribution![instrument] = {};
+                    formula.exposures.dailyDistribution![instrument as any] = {};
                     Object.entries(dailyDist).forEach(([day, amount]) => {
-                      formula.exposures.dailyDistribution![instrument][day] = amount * direction;
+                      formula.exposures.dailyDistribution![instrument as any][day] = amount * direction;
                     });
                   }
                 });
