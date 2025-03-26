@@ -17,10 +17,7 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-import { 
-  distributeQuantityByWorkingDays, 
-  getMonthlyDistribution 
-} from '@/utils/workingDaysUtils';
+import { distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -81,36 +78,6 @@ const fetchTrades = async (): Promise<Trade[]> => {
             // Parse the formula ensuring it has the correct exposure information
             const formula = validateAndParsePricingFormula(leg.pricing_formula);
             const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-            
-            // Ensure monthly distributions are properly processed if not already in the formula
-            if (mtmFormula.exposures && 
-                !mtmFormula.exposures.monthlyDistribution && 
-                leg.pricing_period_start && 
-                leg.pricing_period_end) {
-              // Calculate distribution based on working days if not already done
-              const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-              const quantity = (leg.quantity || 0) * quantityMultiplier;
-              
-              if (mtmFormula.exposures.physical) {
-                Object.entries(mtmFormula.exposures.physical).forEach(([product, weight]) => {
-                  const productQuantity = typeof weight === 'number' ? weight : quantity;
-                  
-                  // Generate monthly distribution
-                  const distribution = distributeQuantityByWorkingDays(
-                    pricingStart,
-                    pricingEnd,
-                    productQuantity
-                  );
-                  
-                  // Add to exposures if not already there
-                  if (!mtmFormula.exposures.monthlyDistribution) {
-                    mtmFormula.exposures.monthlyDistribution = {};
-                  }
-                  
-                  mtmFormula.exposures.monthlyDistribution[product] = distribution;
-                });
-              }
-            }
             
             // Return the processed leg
             return {
