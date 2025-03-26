@@ -17,6 +17,7 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+import { distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {

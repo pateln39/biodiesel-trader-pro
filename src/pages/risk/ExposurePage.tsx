@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { getNextMonths } from '@/utils/dateUtils';
+import { getNextMonths, formatMonthCode } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
@@ -125,7 +125,8 @@ const ExposurePage = () => {
           pricing_formula,
           mtm_formula,
           trading_period,
-          pricing_period_start
+          pricing_period_start,
+          pricing_period_end
         `)
         .order('trading_period', { ascending: true });
         
@@ -179,16 +180,19 @@ const ExposurePage = () => {
       
       if (physicalTradeLegs && physicalTradeLegs.length > 0) {
         physicalTradeLegs.forEach(leg => {
-          let month = leg.trading_period || '';
+          // Check if we have a pricing period defined
+          const hasPricingPeriod = leg.pricing_period_start && leg.pricing_period_end;
           
-          if (!month && leg.pricing_period_start) {
+          // Get the trade's primary month for legacy support
+          let primaryMonth = leg.trading_period || '';
+          
+          if (!primaryMonth && leg.pricing_period_start) {
             const date = new Date(leg.pricing_period_start);
-            const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-            const year = date.getFullYear().toString().slice(2);
-            month = `${monthName}-${year}`;
+            primaryMonth = formatMonthCode(date);
           }
           
-          if (!month || !periods.includes(month)) {
+          // Skip if no monthly information is available
+          if (!primaryMonth && !hasPricingPeriod) {
             return;
           }
           
@@ -198,59 +202,120 @@ const ExposurePage = () => {
           
           allProductsFound.add(canonicalProduct);
           
-          if (!exposuresByMonth[month][canonicalProduct]) {
-            exposuresByMonth[month][canonicalProduct] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
-          }
+          // Ensure product exists in all months
+          periods.forEach(month => {
+            if (!exposuresByMonth[month][canonicalProduct]) {
+              exposuresByMonth[month][canonicalProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+          });
           
           const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+          const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
           
-          if (mtmFormula.tokens.length > 0) {
-            if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+          // Check if we have monthly distribution data in either formula
+          const hasMonthlyDistribution = 
+            (mtmFormula.exposures && mtmFormula.exposures.monthlyDistribution) || 
+            (pricingFormula.exposures && pricingFormula.exposures.monthlyDistribution);
+          
+          if (hasMonthlyDistribution) {
+            // Process physical exposure distribution from MTM formula
+            if (mtmFormula.exposures && mtmFormula.exposures.monthlyDistribution) {
+              Object.entries(mtmFormula.exposures.monthlyDistribution).forEach(([product, monthDistribution]) => {
+                const canonicalBaseProduct = mapProductToCanonical(product);
                 allProductsFound.add(canonicalBaseProduct);
                 
-                if (!exposuresByMonth[month][canonicalBaseProduct]) {
-                  exposuresByMonth[month][canonicalBaseProduct] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
-                }
-                
-                const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
-                exposuresByMonth[month][canonicalBaseProduct].physical += actualExposure;
+                // Apply monthly distribution
+                Object.entries(monthDistribution).forEach(([month, exposure]) => {
+                  if (periods.includes(month) && 
+                      exposuresByMonth[month] && 
+                      exposuresByMonth[month][canonicalBaseProduct]) {
+                    exposuresByMonth[month][canonicalBaseProduct].physical += Number(exposure) || 0;
+                  }
+                });
               });
-            } else {
-              exposuresByMonth[month][canonicalProduct].physical += quantity;
-            }
-          } else {
-            exposuresByMonth[month][canonicalProduct].physical += quantity;
-          }
-          
-          const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-          if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-            Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-              const canonicalInstrument = mapProductToCanonical(instrument);
-              allProductsFound.add(canonicalInstrument);
-              
-              if (!exposuresByMonth[month][canonicalInstrument]) {
-                exposuresByMonth[month][canonicalInstrument] = {
-                  physical: 0,
-                  pricing: 0,
-                  paper: 0,
-                  netExposure: 0
-                };
+            } 
+            // If no monthly distribution in MTM formula, use legacy approach
+            else if (mtmFormula.tokens.length > 0) {
+              if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+                Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                  allProductsFound.add(canonicalBaseProduct);
+                  
+                  if (primaryMonth && exposuresByMonth[primaryMonth][canonicalBaseProduct]) {
+                    const actualExposure = typeof weight === 'number' ? weight : 0;
+                    exposuresByMonth[primaryMonth][canonicalBaseProduct].physical += actualExposure;
+                  }
+                });
+              } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
+                exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
               }
-              
-              exposuresByMonth[month][canonicalInstrument].pricing += Number(value) || 0;
-            });
+            } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
+              exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
+            }
+            
+            // Process pricing exposure distribution from pricing formula
+            if (pricingFormula.exposures && pricingFormula.exposures.monthlyDistribution) {
+              Object.entries(pricingFormula.exposures.monthlyDistribution).forEach(([product, monthDistribution]) => {
+                const canonicalBaseProduct = mapProductToCanonical(product);
+                allProductsFound.add(canonicalBaseProduct);
+                
+                // Apply monthly distribution
+                Object.entries(monthDistribution).forEach(([month, exposure]) => {
+                  if (periods.includes(month) && 
+                      exposuresByMonth[month] && 
+                      exposuresByMonth[month][canonicalBaseProduct]) {
+                    exposuresByMonth[month][canonicalBaseProduct].pricing += Number(exposure) || 0;
+                  }
+                });
+              });
+            }
+            // If no monthly distribution in pricing formula, use legacy approach
+            else if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+              Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                allProductsFound.add(canonicalInstrument);
+                
+                if (primaryMonth && exposuresByMonth[primaryMonth][canonicalInstrument]) {
+                  exposuresByMonth[primaryMonth][canonicalInstrument].pricing += Number(value) || 0;
+                }
+              });
+            }
+          } 
+          // Legacy approach - no monthly distribution
+          else {
+            if (mtmFormula.tokens.length > 0) {
+              if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+                Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                  allProductsFound.add(canonicalBaseProduct);
+                  
+                  if (primaryMonth && exposuresByMonth[primaryMonth][canonicalBaseProduct]) {
+                    const actualExposure = typeof weight === 'number' ? weight : 0;
+                    exposuresByMonth[primaryMonth][canonicalBaseProduct].physical += actualExposure;
+                  }
+                });
+              } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
+                exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
+              }
+            } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
+              exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
+            }
+            
+            if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+              Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                allProductsFound.add(canonicalInstrument);
+                
+                if (primaryMonth && exposuresByMonth[primaryMonth][canonicalInstrument]) {
+                  exposuresByMonth[primaryMonth][canonicalInstrument].pricing += Number(value) || 0;
+                }
+              });
+            }
           }
         });
       }
@@ -647,6 +712,7 @@ const ExposurePage = () => {
       }
     }
     
+    // Calculate net exposure for each product in each month
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
       const monthData = exposuresByMonth[month];
       const productsData: Record<string, ExposureData> = {};

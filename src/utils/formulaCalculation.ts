@@ -1,4 +1,6 @@
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
+import { distributeQuantityByWorkingDays } from './workingDaysUtils';
+import { MonthlyDistribution } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
   physical: {
@@ -18,7 +20,8 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
-  }
+  },
+  monthlyDistribution: {}
 });
 
 // Helper function to check if a token is an instrument
@@ -385,16 +388,71 @@ export const calculateExposures = (
   tokens: FormulaToken[],
   tradeQuantity: number,
   buySell: 'buy' | 'sell' = 'buy',
-  selectedProduct?: string
+  selectedProduct?: string,
+  pricingPeriodStart?: Date,
+  pricingPeriodEnd?: Date
 ): ExposureResult => {
-  // We now separate the physical and pricing calculation
+  // Calculate physical and pricing exposures first
+  const physicalExposure = calculatePhysicalExposure(tokens, tradeQuantity, buySell);
+  const pricingExposure = calculatePricingExposure(tokens, tradeQuantity, buySell);
+  
+  // Create monthly distribution if pricing period dates are provided
+  let monthlyDistribution: Record<Instrument, MonthlyDistribution> | undefined;
+  
+  if (pricingPeriodStart && pricingPeriodEnd && tradeQuantity !== 0) {
+    const validStart = new Date(pricingPeriodStart);
+    const validEnd = new Date(pricingPeriodEnd);
+    
+    // Only calculate distribution if dates are valid and span multiple months
+    if (!isNaN(validStart.getTime()) && !isNaN(validEnd.getTime())) {
+      monthlyDistribution = {};
+      
+      // For each instrument with non-zero exposure, calculate monthly distribution
+      for (const instrument in physicalExposure) {
+        if (physicalExposure[instrument as Instrument] !== 0) {
+          // For physical exposure
+          const physicalQuantity = Math.abs(physicalExposure[instrument as Instrument]);
+          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, physicalQuantity);
+          
+          if (!monthlyDistribution[instrument as Instrument]) {
+            monthlyDistribution[instrument as Instrument] = {};
+          }
+          
+          // Apply the buy/sell direction to the distributed quantities
+          const direction = physicalExposure[instrument as Instrument] > 0 ? 1 : -1;
+          Object.entries(distribution).forEach(([month, quantity]) => {
+            monthlyDistribution![instrument as Instrument][month] = quantity * direction;
+          });
+        }
+      }
+      
+      // Similarly for pricing exposure
+      for (const instrument in pricingExposure) {
+        if (pricingExposure[instrument as Instrument] !== 0) {
+          const pricingQuantity = Math.abs(pricingExposure[instrument as Instrument]);
+          const distribution = distributeQuantityByWorkingDays(validStart, validEnd, pricingQuantity);
+          
+          if (!monthlyDistribution[instrument as Instrument]) {
+            monthlyDistribution[instrument as Instrument] = {};
+          }
+          
+          // Apply the buy/sell direction to the distributed quantities
+          const direction = pricingExposure[instrument as Instrument] > 0 ? 1 : -1;
+          Object.entries(distribution).forEach(([month, quantity]) => {
+            // If there's already a value from physical exposure, we don't want to overwrite it
+            if (!monthlyDistribution![instrument as Instrument][month]) {
+              monthlyDistribution![instrument as Instrument][month] = quantity * direction;
+            }
+          });
+        }
+      }
+    }
+  }
+  
   return {
-    // Calculate physical exposure based on the formula tokens
-    // This is used when this function is called with MTM formula
-    physical: calculatePhysicalExposure(tokens, tradeQuantity, buySell),
-    // Calculate pricing exposure based on the formula tokens
-    // This is used when this function is called with pricing formula
-    pricing: calculatePricingExposure(tokens, tradeQuantity, buySell)
+    physical: physicalExposure,
+    pricing: pricingExposure,
+    monthlyDistribution
   };
 };
 

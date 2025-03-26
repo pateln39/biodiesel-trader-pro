@@ -14,9 +14,14 @@ export interface FormulaToken {
   value: string;
 }
 
+export interface MonthlyDistribution {
+  [monthCode: string]: number; // e.g., "Mar-24": 363.63
+}
+
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
+  monthlyDistribution?: Record<Instrument, MonthlyDistribution>;
 }
 
 export interface PricingFormula {
@@ -28,6 +33,7 @@ export interface PricingFormula {
 export type PartialExposureResult = {
   physical?: Partial<Record<Instrument, number>>;
   pricing?: Partial<Record<Instrument, number>>;
+  monthlyDistribution?: Partial<Record<Instrument, Partial<MonthlyDistribution>>>;
 };
 
 export type PartialPricingFormula = {
