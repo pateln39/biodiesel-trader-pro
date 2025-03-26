@@ -57,7 +57,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         pricingPeriodStart: pricingPeriodStart?.toISOString(),
         pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
         tradeQuantity,
-        buySell
+        buySell,
+        formulaTokens: value.tokens.map(t => `${t.type}:${t.value}`).join(', ')
       });
 
       if (formulaType === 'price') {

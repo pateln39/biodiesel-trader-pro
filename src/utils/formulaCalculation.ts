@@ -137,7 +137,6 @@ const tokenizeFormula = (tokens: FormulaToken[]): FormulaToken[] => {
 };
 
 // Parse formula tokens to build AST
-// This is a simplified parser for demonstration - a real implementation would be more robust
 const parseFormula = (tokens: FormulaToken[]): Node => {
   const processedTokens = tokenizeFormula(tokens);
   
@@ -260,7 +259,7 @@ const parseFormula = (tokens: FormulaToken[]): Node => {
   return ast;
 };
 
-// Extract instruments from AST
+// Enhanced function to extract instruments with their coefficients from AST
 const extractInstrumentsFromAST = (
   node: Node, 
   multiplier: number = 1
@@ -270,9 +269,12 @@ const extractInstrumentsFromAST = (
   if (!node) return instruments;
   
   if (node.type === 'instrument') {
+    // For instrument nodes, assign the current multiplier to represent the coefficient
     instruments[node.value as string] = multiplier;
+    console.log(`Found instrument ${node.value} with coefficient ${multiplier}`);
   } else if (node.type === 'binary') {
     if (node.operator === '+') {
+      // For addition, process both sides with the same multiplier
       const leftInstruments = extractInstrumentsFromAST(node.left, multiplier);
       const rightInstruments = extractInstrumentsFromAST(node.right, multiplier);
       
@@ -285,6 +287,7 @@ const extractInstrumentsFromAST = (
         instruments[instrument] = (instruments[instrument] || 0) + value;
       }
     } else if (node.operator === '-') {
+      // For subtraction, process right side with inverted multiplier
       const leftInstruments = extractInstrumentsFromAST(node.left, multiplier);
       const rightInstruments = extractInstrumentsFromAST(node.right, -multiplier);
       
@@ -297,12 +300,19 @@ const extractInstrumentsFromAST = (
         instruments[instrument] = (instruments[instrument] || 0) + value;
       }
     } else if (node.operator === '*') {
-      // When we multiply, we need to determine the multiplier first
-      let newMultiplier = multiplier;
-      
-      // FIX: Corrected the type comparison condition
-      // If right side is a simple value, use it as multiplier
-      if (node.right.type === 'value' && node.left.type !== 'value') {
+      // Multiply by numeric coefficient - this is key for correct exposure calculation
+      if (node.right.type === 'value' && node.left.type === 'instrument') {
+        // Case: instrument * value
+        const coefficient = node.right.value;
+        instruments[node.left.value] = multiplier * coefficient;
+        console.log(`Instrument ${node.left.value} * ${coefficient} = ${multiplier * coefficient}`);
+      } else if (node.left.type === 'value' && node.right.type === 'instrument') {
+        // Case: value * instrument
+        const coefficient = node.left.value;
+        instruments[node.right.value] = multiplier * coefficient;
+        console.log(`Value ${coefficient} * instrument ${node.right.value} = ${multiplier * coefficient}`);
+      } else if (node.right.type === 'value' && node.left.type !== 'value') {
+        // Case: complex_expression * value
         const rightMultiplier = node.right.value;
         const leftInstruments = extractInstrumentsFromAST(node.left, multiplier * rightMultiplier);
         
@@ -310,9 +320,8 @@ const extractInstrumentsFromAST = (
         for (const [instrument, value] of Object.entries(leftInstruments)) {
           instruments[instrument] = (instruments[instrument] || 0) + value;
         }
-      } 
-      // If left side is a simple value, use it as multiplier
-      else if (node.left.type === 'value' && node.right.type !== 'value') {
+      } else if (node.left.type === 'value' && node.right.type !== 'value') {
+        // Case: value * complex_expression
         const leftMultiplier = node.left.value;
         const rightInstruments = extractInstrumentsFromAST(node.right, multiplier * leftMultiplier);
         
@@ -321,12 +330,12 @@ const extractInstrumentsFromAST = (
           instruments[instrument] = (instruments[instrument] || 0) + value;
         }
       } else {
-        // Complex multiplication - this is a simplification
+        // Complex multiplication
         const leftInstruments = extractInstrumentsFromAST(node.left, multiplier);
         const rightInstruments = extractInstrumentsFromAST(node.right, multiplier);
         
-        // In complex multiplication, we would need to do some weighted distribution
-        // This is a simplified approach for demonstration
+        // For complex multiplication between instruments, assume both are weighted equally
+        // This is a simplification as real formulas usually don't multiply instruments directly
         for (const [instrument, value] of Object.entries(leftInstruments)) {
           instruments[instrument] = (instruments[instrument] || 0) + value;
         }
@@ -336,7 +345,7 @@ const extractInstrumentsFromAST = (
         }
       }
     } else if (node.operator === '/') {
-      // Division - simplification for demonstration
+      // Division - handle coefficient division
       if (node.right.type === 'value') {
         const divisor = node.right.value;
         if (divisor !== 0) {
@@ -350,9 +359,10 @@ const extractInstrumentsFromAST = (
       } else {
         // Complex division - simplification
         const leftInstruments = extractInstrumentsFromAST(node.left, multiplier);
+        // Division by an instrument is rare, but we'll handle it as a negative contribution
         const rightInstruments = extractInstrumentsFromAST(node.right, -multiplier);
         
-        // Merge instruments (simplification)
+        // Merge instruments
         for (const [instrument, value] of Object.entries(leftInstruments)) {
           instruments[instrument] = (instruments[instrument] || 0) + value;
         }
@@ -478,7 +488,7 @@ export function calculateExposures(
   };
 }
 
-// Calculate physical exposure from formula tokens
+// Calculate physical exposure from formula tokens - NOW USING THE AST PARSER
 export function calculatePhysicalExposure(
   tokens: FormulaToken[],
   quantity: number,
@@ -496,49 +506,33 @@ export function calculatePhysicalExposure(
     'ICE GASOIL FUTURES': 0,
   };
   
+  if (tokens.length === 0 || quantity === 0) {
+    console.log('No formula tokens or zero quantity, returning empty exposure');
+    return result;
+  }
+  
   const signMultiplier = buySell === 'buy' ? 1 : -1;
   const actualQuantity = quantity * signMultiplier;
   
-  // Count all instruments in the formula
-  let instrumentsCount = 0;
-  tokens.forEach(token => {
-    if (token.type === 'instrument') {
-      instrumentsCount++;
-    }
-  });
+  // Parse the formula and extract instruments with coefficients
+  const ast = parseFormula(tokens);
+  const instrumentCoefficients = extractInstrumentsFromAST(ast);
   
-  if (instrumentsCount === 0) {
-    console.log('No instruments found in formula, returning empty exposure');
-    return result;
-  }
+  console.log('Extracted instrument coefficients from formula:', instrumentCoefficients);
   
-  // Simple case: if only one instrument, 100% exposure to that instrument
-  if (instrumentsCount === 1) {
-    const instrument = tokens.find(token => token.type === 'instrument')?.value as Instrument;
-    if (instrument && Object.keys(result).includes(instrument)) {
-      console.log(`Single instrument formula: ${instrument}, quantity: ${actualQuantity}`);
-      result[instrument] = actualQuantity;
-    }
-    return result;
-  }
-  
-  // More complex case: multiple instruments, divide exposure equally
-  // (A very simplified approach - in a real system this would account for weights)
-  const instrumentWeight = 1 / instrumentsCount;
-  tokens.forEach(token => {
-    if (token.type === 'instrument') {
-      const instrument = token.value as Instrument;
-      if (Object.keys(result).includes(instrument)) {
-        result[instrument] = actualQuantity * instrumentWeight;
-        console.log(`Multiple instruments, ${instrument}: ${actualQuantity * instrumentWeight}`);
-      }
+  // Calculate physical exposure for each instrument based on its coefficient in the formula
+  Object.entries(instrumentCoefficients).forEach(([instrument, coefficient]) => {
+    // Apply the coefficient to the actual quantity to get the exposure
+    if (Object.keys(result).includes(instrument)) {
+      result[instrument as Instrument] = actualQuantity * coefficient;
+      console.log(`Physical exposure for ${instrument}: ${actualQuantity} * ${coefficient} = ${actualQuantity * coefficient}`);
     }
   });
   
   return result;
 }
 
-// Calculate pricing exposure from formula tokens
+// Calculate pricing exposure from formula tokens - NOW USING THE AST PARSER
 export function calculatePricingExposure(
   tokens: FormulaToken[],
   quantity: number,
@@ -546,19 +540,45 @@ export function calculatePricingExposure(
 ): Record<Instrument, number> {
   console.log(`Calculating pricing exposure for ${quantity} units, buySell: ${buySell}`);
   
-  // The pricing exposure is the exact opposite of the physical exposure
-  // This is a simplified model - in a real system with complex formulas,
-  // the pricing exposure would be calculated differently
-  const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell);
-  const result = { ...physicalExposure };
+  if (tokens.length === 0 || quantity === 0) {
+    console.log('No formula tokens or zero quantity, returning empty exposure');
+    return {
+      'Argus UCOME': 0,
+      'Argus RME': 0,
+      'Argus FAME0': 0,
+      'Argus HVO': 0,
+      'Platts LSGO': 0,
+      'Platts Diesel': 0,
+      'ICE GASOIL FUTURES': 0,
+    };
+  }
   
-  // Invert the signs for pricing exposure
-  Object.keys(result).forEach(key => {
-    const instrument = key as Instrument;
-    result[instrument] = -result[instrument];
-    
-    if (result[instrument] !== 0) {
-      console.log(`Pricing exposure for ${instrument}: ${result[instrument]}`);
+  const signMultiplier = buySell === 'buy' ? 1 : -1;
+  const actualQuantity = quantity * signMultiplier;
+  
+  // Parse the formula and extract instruments with coefficients
+  const ast = parseFormula(tokens);
+  const instrumentCoefficients = extractInstrumentsFromAST(ast);
+  
+  console.log('Extracted instrument coefficients for pricing:', instrumentCoefficients);
+  
+  // For pricing, the exposure is the opposite of the physical exposure
+  const result = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Argus HVO': 0,
+    'Platts LSGO': 0,
+    'Platts Diesel': 0,
+    'ICE GASOIL FUTURES': 0,
+  };
+  
+  // Calculate pricing exposure (opposite of physical exposure)
+  Object.entries(instrumentCoefficients).forEach(([instrument, coefficient]) => {
+    if (Object.keys(result).includes(instrument)) {
+      // Invert the sign for pricing exposure
+      result[instrument as Instrument] = -1 * actualQuantity * coefficient;
+      console.log(`Pricing exposure for ${instrument}: -1 * ${actualQuantity} * ${coefficient} = ${-1 * actualQuantity * coefficient}`);
     }
   });
   
