@@ -35,11 +35,8 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     if (initialEndDate) setEndDate(initialEndDate);
   }, [initialStartDate, initialEndDate]);
 
-  // Apply filter immediately on component mount
-  useEffect(() => {
-    console.log("DateRangeFilter initial render - applying filter automatically");
-    handleApplyFilter();
-  }, []); // Empty dependency array means this runs once on mount
+  // Remove automatic filter application on component mount
+  // The user will now need to click the "Apply Date Range" button explicitly
 
   const handleApplyFilter = () => {
     // Validate date range
