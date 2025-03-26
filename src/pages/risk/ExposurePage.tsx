@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -857,4 +858,398 @@ const ExposurePage = () => {
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         if (productTotals[product]) {
-          productTotals[product].physical += exposure
+          productTotals[product].physical += exposure.physical;
+          productTotals[product].pricing += exposure.pricing;
+          productTotals[product].paper += exposure.paper;
+          
+          productTotals[product].netExposure = calculateNetExposure(
+            productTotals[product].physical,
+            productTotals[product].pricing
+          );
+        }
+      });
+    });
+    
+    return {
+      totals,
+      productTotals
+    };
+  }, [exposureData, allProducts]);
+
+  const handleDateRangeFilterChange = (start: Date, end: Date) => {
+    console.log("Updating date range:", start, end);
+    updateDateRange(start, end);
+  };
+
+  const visibleProducts = useMemo(() => {
+    return selectedProducts.length > 0 ? selectedProducts : allProducts;
+  }, [selectedProducts, allProducts]);
+
+  // Toggle selected products
+  const handleProductToggle = (product: string) => {
+    setSelectedProducts(prev => {
+      if (prev.includes(product)) {
+        return prev.filter(p => p !== product);
+      } else {
+        return [...prev, product];
+      }
+    });
+  };
+
+  // Toggle categories for visibility
+  const handleCategoryToggle = (category: string) => {
+    setVisibleCategories(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
+  
+  // Determine if there are any exposures for a product
+  const hasExposure = (product: string) => {
+    if (!grandTotals.productTotals[product]) return false;
+    
+    const { physical, pricing, paper } = grandTotals.productTotals[product];
+    return Math.abs(physical) > 0 || 
+           Math.abs(pricing) > 0 || 
+           Math.abs(paper) > 0;
+  };
+  
+  // Filter out products with no exposures
+  const activeProducts = useMemo(() => {
+    return visibleProducts.filter(hasExposure);
+  }, [visibleProducts, grandTotals]);
+  
+  // Calculate product group totals for a month
+  const getProductGroupMonthTotal = (
+    monthData: MonthlyExposure,
+    productGroup: string[],
+    category: keyof ExposureData = 'netExposure'
+  ): number => {
+    return calculateProductGroupTotal(monthData.products, productGroup, category);
+  };
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure | Risk Management</title>
+      </Helmet>
+      
+      <div className="container mx-auto py-6">
+        <h1 className="text-2xl font-bold mb-6">Exposure Analysis</h1>
+        
+        <DateRangeFilter 
+          onFilterChange={handleDateRangeFilterChange}
+          isLoading={isLoading || filteredExposuresLoading}
+          initialStartDate={startDate}
+          initialEndDate={endDate}
+          isFilterActive={isFilterActive}
+        />
+        
+        {/* Filter status indicator */}
+        {isFilterActive && (
+          <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded-md text-sm">
+            <span className="font-medium">Filter active:</span> Exposures filtered from {format(startDate, 'MMM dd, yyyy')} to {format(endDate, 'MMM dd, yyyy')}
+          </div>
+        )}
+        
+        {/* Loading and error states */}
+        {(isLoading || instrumentsLoading || filteredExposuresLoading) && (
+          <TableLoadingState message="Loading exposure data..." />
+        )}
+        
+        {(error || filteredExposuresError) && (
+          <TableErrorState 
+            message="There was an error loading the exposure data."
+            error={error || filteredExposuresError}
+            onRetry={refetch}
+          />
+        )}
+        
+        {/* Main data table */}
+        {!isLoading && !error && !instrumentsLoading && !filteredExposuresLoading && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="mb-4 p-4 border-b flex gap-4 flex-wrap">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Categories</h4>
+                  <div className="flex gap-4">
+                    {CATEGORY_ORDER.map(category => (
+                      <div key={category} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`cat-${category}`}
+                          checked={visibleCategories.includes(category)}
+                          onCheckedChange={() => handleCategoryToggle(category)}
+                        />
+                        <label
+                          htmlFor={`cat-${category}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {category}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Export</h4>
+                  <Button size="sm" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export to Excel
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px] bg-gray-100/80 sticky left-0 z-10">Product</TableHead>
+                      {periods.map((month) => (
+                        <TableHead key={month} className="text-center">{month}</TableHead>
+                      ))}
+                      <TableHead className="text-center bg-gray-100/80">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Pricing instrument exposures */}
+                    {PRICING_INSTRUMENT_PRODUCTS.filter(product => 
+                      visibleProducts.includes(product) && hasExposure(product)
+                    ).map(product => (
+                      <React.Fragment key={product}>
+                        {visibleCategories.includes('Physical') && (
+                          <TableRow className={shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''}>
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Physical)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.physical || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-physical-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.physical || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Pricing') && (
+                          <TableRow className={shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''}>
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Pricing)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.pricing || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-pricing-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.pricing || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Paper') && (
+                          <TableRow className={shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''}>
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Paper)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.paper || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-paper-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.paper || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Exposure') && (
+                          <TableRow className={`${shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''} font-bold`}>
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10">
+                              {formatExposureTableProduct(product)} (Net)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const phys = monthData?.products[product]?.physical || 0;
+                              const pric = monthData?.products[product]?.pricing || 0;
+                              const netValue = calculateNetExposure(phys, pric);
+                              
+                              return (
+                                <TableCell 
+                                  key={`${product}-net-${month}`} 
+                                  className="text-right"
+                                >
+                                  {netValue.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80">
+                              {(grandTotals.productTotals[product]?.netExposure || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                    
+                    {/* Biodiesel product exposures */}
+                    {BIODIESEL_PRODUCTS.filter(product => 
+                      visibleProducts.includes(product) && hasExposure(product)
+                    ).map(product => (
+                      <React.Fragment key={product}>
+                        {visibleCategories.includes('Physical') && (
+                          <TableRow className="bg-green-50/50">
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Physical)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.physical || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-physical-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.physical || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Pricing') && (
+                          <TableRow className="bg-green-50/50">
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Pricing)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.pricing || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-pricing-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.pricing || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Paper') && (
+                          <TableRow className="bg-green-50/50">
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10 font-medium">
+                              {formatExposureTableProduct(product)} (Paper)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const value = monthData?.products[product]?.paper || 0;
+                              return (
+                                <TableCell 
+                                  key={`${product}-paper-${month}`} 
+                                  className="text-right"
+                                >
+                                  {value.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80 font-medium">
+                              {(grandTotals.productTotals[product]?.paper || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        
+                        {visibleCategories.includes('Exposure') && (
+                          <TableRow className="bg-green-50/50 font-bold">
+                            <TableCell className="bg-gray-100/80 sticky left-0 z-10">
+                              {formatExposureTableProduct(product)} (Net)
+                            </TableCell>
+                            {periods.map((month) => {
+                              const monthData = exposureData.find(m => m.month === month);
+                              const phys = monthData?.products[product]?.physical || 0;
+                              const pric = monthData?.products[product]?.pricing || 0;
+                              const netValue = calculateNetExposure(phys, pric);
+                              
+                              return (
+                                <TableCell 
+                                  key={`${product}-net-${month}`} 
+                                  className="text-right"
+                                >
+                                  {netValue.toFixed(2)}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="text-right bg-gray-100/80">
+                              {(grandTotals.productTotals[product]?.netExposure || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                    
+                    {/* Totals row */}
+                    <TableRow className="font-bold bg-gray-50 border-t-2 border-gray-200">
+                      <TableCell className="bg-gray-100 sticky left-0 z-10">
+                        Total Net Exposure
+                      </TableCell>
+                      {periods.map((month) => {
+                        const monthData = exposureData.find(m => m.month === month);
+                        const netValue = monthData ? monthData.totals.netExposure : 0;
+                        
+                        return (
+                          <TableCell 
+                            key={`total-${month}`} 
+                            className="text-right"
+                          >
+                            {netValue.toFixed(2)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right bg-gray-100">
+                        {grandTotals.totals.netExposure.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
