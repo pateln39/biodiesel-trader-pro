@@ -16,15 +16,13 @@ interface DateRangeFilterProps {
   isLoading?: boolean;
   initialStartDate?: Date;
   initialEndDate?: Date;
-  isFilterActive?: boolean;
 }
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ 
   onFilterChange,
   isLoading = false,
   initialStartDate,
-  initialEndDate,
-  isFilterActive = false
+  initialEndDate
 }) => {
   const currentDate = new Date();
   const [startDate, setStartDate] = useState<Date>(initialStartDate || startOfMonth(currentDate));
@@ -80,10 +78,10 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             <Button 
               onClick={handleApplyFilter} 
               disabled={isLoading}
-              className={`flex-1 ${isFilterActive ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+              className="flex-1"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              {isFilterActive ? 'Update Filter' : 'Apply Date Range'}
+              Apply Date Range
             </Button>
           </div>
         </div>

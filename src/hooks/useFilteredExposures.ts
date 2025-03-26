@@ -10,8 +10,8 @@ import {
   clearDailyDistributionCache,
   isDateWithinPricingPeriod
 } from '@/utils/exposureUtils';
-import { getMonthlyDistribution, distributeQuantityByWorkingDays, standardizeMonthCode } from '@/utils/workingDaysUtils';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { getMonthlyDistribution, distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { PhysicalTrade } from '@/types/physical';
 
 interface UseFilteredExposuresProps {
@@ -22,9 +22,6 @@ interface UseFilteredExposuresProps {
 interface FilteredExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
-  isFilterActive: boolean;
-  filterStartDate?: Date;
-  filterEndDate?: Date;
 }
 
 export function useFilteredExposures({ 
@@ -39,20 +36,13 @@ export function useFilteredExposures({
   
   const [startDate, setStartDate] = useState<Date>(defaultStartDate);
   const [endDate, setEndDate] = useState<Date>(defaultEndDate);
-  const [isFilterActive, setIsFilterActive] = useState<boolean>(false);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   
   // Create a filtered version of the exposure data
   const filteredExposures = useMemo(() => {
     if (tradesLoading || !trades || trades.length === 0) {
       console.log("No trades to calculate exposures from");
-      return { 
-        physical: {}, 
-        pricing: {}, 
-        isFilterActive, 
-        filterStartDate: isFilterActive ? startDate : undefined,
-        filterEndDate: isFilterActive ? endDate : undefined 
-      } as FilteredExposureResult;
+      return { physical: {}, pricing: {} } as FilteredExposureResult;
     }
     
     setIsCalculating(true);
@@ -85,15 +75,15 @@ export function useFilteredExposures({
             return;
           }
           
-          // Only apply date filter if filter is active
-          const legShouldBeProcessed = !isFilterActive || isDateWithinPricingPeriod(
+          // Check if leg pricing period overlaps with the selected date range
+          const legOverlapsWithDateRange = isDateWithinPricingPeriod(
             startDate, 
             endDate, 
             leg.pricingPeriodStart, 
             leg.pricingPeriodEnd
           );
           
-          if (!legShouldBeProcessed) {
+          if (!legOverlapsWithDateRange) {
             console.log(`Skipping leg ${leg.legReference} - pricing period doesn't overlap with selected date range`);
             return;
           }
@@ -127,13 +117,10 @@ export function useFilteredExposures({
                 
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  // Ensure month code is standardized
-                  const standardizedMonthCode = standardizeMonthCode(monthCode);
-                  
-                  if (!physicalDistributions[instrument][standardizedMonthCode]) {
-                    physicalDistributions[instrument][standardizedMonthCode] = 0;
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
                   }
-                  physicalDistributions[instrument][standardizedMonthCode] += monthValue;
+                  physicalDistributions[instrument][monthCode] += monthValue;
                   processedPhysicalExposures++;
                 });
               });
@@ -155,13 +142,10 @@ export function useFilteredExposures({
                 
                 // Add generated monthly values to our accumulated distributions
                 Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
-                  // Ensure month code is standardized
-                  const standardizedMonthCode = standardizeMonthCode(monthCode);
-                  
-                  if (!physicalDistributions[instrument][standardizedMonthCode]) {
-                    physicalDistributions[instrument][standardizedMonthCode] = 0;
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
                   }
-                  physicalDistributions[instrument][standardizedMonthCode] += monthValue;
+                  physicalDistributions[instrument][monthCode] += monthValue;
                   processedPhysicalExposures++;
                 });
               });
@@ -194,13 +178,10 @@ export function useFilteredExposures({
                 
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  // Ensure month code is standardized
-                  const standardizedMonthCode = standardizeMonthCode(monthCode);
-                  
-                  if (!pricingDistributions[instrument][standardizedMonthCode]) {
-                    pricingDistributions[instrument][standardizedMonthCode] = 0;
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
                   }
-                  pricingDistributions[instrument][standardizedMonthCode] += monthValue;
+                  pricingDistributions[instrument][monthCode] += monthValue;
                   processedPricingExposures++;
                 });
               });
@@ -222,13 +203,10 @@ export function useFilteredExposures({
                 
                 // Add generated monthly values to our accumulated distributions
                 Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
-                  // Ensure month code is standardized
-                  const standardizedMonthCode = standardizeMonthCode(monthCode);
-                  
-                  if (!pricingDistributions[instrument][standardizedMonthCode]) {
-                    pricingDistributions[instrument][standardizedMonthCode] = 0;
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
                   }
-                  pricingDistributions[instrument][standardizedMonthCode] += monthValue;
+                  pricingDistributions[instrument][monthCode] += monthValue;
                   processedPricingExposures++;
                 });
               });
@@ -250,90 +228,50 @@ export function useFilteredExposures({
       const physicalDailyDistributions = calculateDailyDistributionByInstrument(physicalDistributions);
       const pricingDailyDistributions = calculateDailyDistributionByInstrument(pricingDistributions);
       
-      // Filter daily distributions by date range (only if filter is active)
-      const totalPhysicalExposures: Record<Instrument, number> = {};
-      const totalPricingExposures: Record<Instrument, number> = {};
+      // Filter daily distributions by date range
+      const filteredPhysicalDailyDistributions = filterDailyDistributionsByDateRange(
+        physicalDailyDistributions,
+        startDate,
+        endDate
+      );
       
-      if (isFilterActive) {
-        // Filter daily distributions by date range
-        const filteredPhysicalDailyDistributions = filterDailyDistributionsByDateRange(
-          physicalDailyDistributions,
-          startDate,
-          endDate
-        );
-        
-        const filteredPricingDailyDistributions = filterDailyDistributionsByDateRange(
-          pricingDailyDistributions,
-          startDate,
-          endDate
-        );
-        
-        console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
-        console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
-        
-        // Calculate total exposures from filtered daily distributions
-        const filteredPhysicalExposures = calculateTotalExposureFromDailyDistributions(
-          filteredPhysicalDailyDistributions
-        );
-        
-        const filteredPricingExposures = calculateTotalExposureFromDailyDistributions(
-          filteredPricingDailyDistributions
-        );
-        
-        console.log('Filtered physical exposures:', filteredPhysicalExposures);
-        console.log('Filtered pricing exposures:', filteredPricingExposures);
-        
-        // Use the filtered exposures
-        Object.assign(totalPhysicalExposures, filteredPhysicalExposures);
-        Object.assign(totalPricingExposures, filteredPricingExposures);
-      } else {
-        // Calculate total exposures from all daily distributions
-        const allPhysicalExposures = calculateTotalExposureFromDailyDistributions(
-          physicalDailyDistributions
-        );
-        
-        const allPricingExposures = calculateTotalExposureFromDailyDistributions(
-          pricingDailyDistributions
-        );
-        
-        console.log('All physical exposures:', allPhysicalExposures);
-        console.log('All pricing exposures:', allPricingExposures);
-        
-        // Use all exposures
-        Object.assign(totalPhysicalExposures, allPhysicalExposures);
-        Object.assign(totalPricingExposures, allPricingExposures);
-      }
+      const filteredPricingDailyDistributions = filterDailyDistributionsByDateRange(
+        pricingDailyDistributions,
+        startDate,
+        endDate
+      );
+      
+      console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
+      console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
+      
+      // Calculate total exposures from filtered daily distributions
+      const totalPhysicalExposures = calculateTotalExposureFromDailyDistributions(
+        filteredPhysicalDailyDistributions
+      );
+      
+      const totalPricingExposures = calculateTotalExposureFromDailyDistributions(
+        filteredPricingDailyDistributions
+      );
+      
+      console.log('Total physical exposures:', totalPhysicalExposures);
+      console.log('Total pricing exposures:', totalPricingExposures);
       
       return {
         physical: totalPhysicalExposures,
-        pricing: totalPricingExposures,
-        isFilterActive,
-        filterStartDate: isFilterActive ? startDate : undefined,
-        filterEndDate: isFilterActive ? endDate : undefined
+        pricing: totalPricingExposures
       } as FilteredExposureResult;
     } catch (error) {
       console.error("Error calculating filtered exposures:", error);
-      return { 
-        physical: {}, 
-        pricing: {}, 
-        isFilterActive,
-        filterStartDate: isFilterActive ? startDate : undefined,
-        filterEndDate: isFilterActive ? endDate : undefined
-      } as FilteredExposureResult;
+      return { physical: {}, pricing: {} } as FilteredExposureResult;
     } finally {
       setIsCalculating(false);
     }
-  }, [trades, tradesLoading, startDate, endDate, isFilterActive]);
+  }, [trades, tradesLoading, startDate, endDate]);
   
   const updateDateRange = (newStartDate: Date, newEndDate: Date) => {
     console.log("Updating date range:", newStartDate, newEndDate);
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    setIsFilterActive(true);
-  };
-  
-  const resetDateFilter = () => {
-    setIsFilterActive(false);
   };
   
   // Clear cache when trades change
@@ -346,10 +284,8 @@ export function useFilteredExposures({
     isLoading: tradesLoading || isCalculating,
     error: tradesError,
     updateDateRange,
-    resetDateFilter,
     startDate,
     endDate,
-    isFilterActive,
     refetchTrades
   };
 }
