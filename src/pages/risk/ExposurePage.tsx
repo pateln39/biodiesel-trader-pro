@@ -20,7 +20,7 @@ import { Helmet } from 'react-helmet-async';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getNextMonths, formatMonthCode } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
-import TableErrorState from '@/pages/risk/TableErrorState';
+import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
   mapProductToCanonical, 
@@ -1280,4 +1280,3 @@ const ExposurePage = () => {
 };
 
 export default ExposurePage;
-

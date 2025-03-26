@@ -37,11 +37,6 @@ export type PartialExposureResult = {
   dailyDistribution?: Partial<Record<Instrument, Partial<DailyDistribution>>>;
 };
 
-export interface PricingFormula {
-  tokens: FormulaToken[];
-  exposures: ExposureResult;
-}
-
 export type PartialPricingFormula = {
   tokens: FormulaToken[];
   exposures?: PartialExposureResult;

@@ -1,5 +1,5 @@
 import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
-import { distributeQuantityByWorkingDays, distributeQuantityByDays } from './workingDaysUtils';
+import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
