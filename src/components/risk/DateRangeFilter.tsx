@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   CalendarIcon, 
-  RefreshCw 
+  RefreshCw,
+  InfoIcon
 } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { validateDateRange } from '@/utils/validationUtils';
 import { toast } from 'sonner';
+import { countWorkingDays, getWorkingDaysInMonth } from '@/utils/workingDaysUtils';
 
 interface DateRangeFilterProps {
   onFilterChange: (startDate: Date, endDate: Date) => void;
@@ -52,10 +54,46 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     });
   };
 
+  const checkWorkingDays = () => {
+    // Calculate working days in the selected date range
+    const workingDays = countWorkingDays(startDate, endDate);
+    
+    // Get working days for each month in the range
+    const months = [];
+    const currentMonth = new Date(startDate);
+    currentMonth.setDate(1); // Set to first day of month
+    
+    while (currentMonth <= endDate) {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const monthName = format(currentMonth, 'MMM yyyy');
+      const daysInMonth = getWorkingDaysInMonth(year, month);
+      
+      months.push(`${monthName}: ${daysInMonth} working days`);
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Show toast with working days information
+    toast.info('Working Days Analysis', {
+      description: (
+        <div className="space-y-2 mt-2 text-sm">
+          <div><strong>Total working days:</strong> {workingDays}</div>
+          <div><strong>By month:</strong></div>
+          <ul className="list-disc pl-5">
+            {months.map((month, index) => (
+              <li key={index}>{month}</li>
+            ))}
+          </ul>
+        </div>
+      ),
+      duration: 10000
+    });
+  };
+
   return (
     <Card className="mb-4">
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="text-sm font-medium mb-1 block">Start Date</label>
             <DatePicker 
@@ -82,6 +120,17 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Apply Date Range
+            </Button>
+          </div>
+
+          <div className="flex items-end">
+            <Button 
+              onClick={checkWorkingDays}
+              variant="outline" 
+              className="flex-1"
+            >
+              <InfoIcon className="h-4 w-4 mr-2" />
+              Check Working Days
             </Button>
           </div>
         </div>

@@ -30,19 +30,26 @@ export function countWorkingDays(startDate: Date, endDate: Date): number {
   
   // If dates are invalid or end is before start, return 0
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+    console.warn(`Invalid date range: ${start} to ${end}`);
     return 0;
   }
   
   let count = 0;
   const current = new Date(start);
+  const workingDays: string[] = [];
   
   // Count each day between start and end (inclusive)
   while (current <= end) {
     if (!isWeekend(current)) {
       count++;
+      workingDays.push(current.toISOString().split('T')[0]);
     }
     current.setDate(current.getDate() + 1);
   }
+  
+  // Log detailed information about the calculation
+  console.log(`Working days from ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}: ${count}`);
+  console.log(`Working days: ${workingDays.join(', ')}`);
   
   return count;
 }
@@ -64,6 +71,9 @@ export function distributeQuantityByWorkingDays(
     console.log("Invalid inputs for distribution:", { startDate, endDate, totalQuantity });
     return {};
   }
+  
+  // Log initial date range and quantity for debugging
+  console.log(`Distributing quantity ${totalQuantity} for period: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
   
   // Calculate total working days
   const totalWorkingDays = countWorkingDays(startDate, endDate);
@@ -88,6 +98,9 @@ export function distributeQuantityByWorkingDays(
     // Adjust for pricing period boundaries
     const effectiveStart = startDate > monthStart ? startDate : monthStart;
     const effectiveEnd = endDate < monthEnd ? endDate : monthEnd;
+    
+    // Log the effective date range for this month
+    console.log(`Month ${formatMonthCode(currentMonth)} date range: ${effectiveStart.toISOString().split('T')[0]} to ${effectiveEnd.toISOString().split('T')[0]}`);
     
     // Count working days in this month's portion of the pricing period
     const workingDaysInMonth = countWorkingDays(effectiveStart, effectiveEnd);
@@ -192,5 +205,19 @@ export function getMonthlyDistribution(
   }
   
   return result;
+}
+
+/**
+ * Adds helper method to get working days in a month for debugging
+ * @param year The year
+ * @param month The month (0-based, 0 = January)
+ * @returns Number of working days in the month
+ */
+export function getWorkingDaysInMonth(year: number, month: number): number {
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0); // Last day of month
+  
+  console.log(`Calculating working days for ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+  return countWorkingDays(startDate, endDate);
 }
 
