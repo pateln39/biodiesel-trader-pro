@@ -183,7 +183,6 @@ const ExposurePage = () => {
         physicalTradeLegs.forEach(leg => {
           console.log(`Processing physical leg ${leg.leg_reference}:`, leg);
           
-          // Parse formulas to get exposure data
           const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
           
@@ -193,7 +192,6 @@ const ExposurePage = () => {
           
           allProductsFound.add(canonicalProduct);
           
-          // Ensure product exists in all months
           periods.forEach(month => {
             if (!exposuresByMonth[month][canonicalProduct]) {
               exposuresByMonth[month][canonicalProduct] = {
@@ -205,7 +203,6 @@ const ExposurePage = () => {
             }
           });
           
-          // Check if we have monthly distribution data in either formula
           const physicalDistribution = getMonthlyDistribution(mtmFormula.exposures, 'physical');
           const pricingDistribution = getMonthlyDistribution(pricingFormula.exposures, 'pricing');
           
@@ -216,13 +213,11 @@ const ExposurePage = () => {
           console.log(`Leg ${leg.leg_reference} has monthly distribution:`, hasMonthlyDistribution);
           
           if (hasMonthlyDistribution) {
-            // Process physical exposure distribution from MTM formula
             if (Object.keys(physicalDistribution).length > 0) {
               Object.entries(physicalDistribution).forEach(([product, monthDistribution]) => {
                 const canonicalBaseProduct = mapProductToCanonical(product);
                 allProductsFound.add(canonicalBaseProduct);
                 
-                // Apply monthly distribution
                 Object.entries(monthDistribution).forEach(([month, exposure]) => {
                   if (periods.includes(month) && 
                       exposuresByMonth[month] && 
@@ -237,14 +232,11 @@ const ExposurePage = () => {
               });
             } 
             else if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-              // If no monthly distribution, but the pricing period is defined,
-              // we distribute the physical exposure across the pricing period
               if (leg.pricing_period_start && leg.pricing_period_end) {
                 Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(baseProduct);
                   allProductsFound.add(canonicalBaseProduct);
                   
-                  // Calculate distribution by working days
                   const startDate = new Date(leg.pricing_period_start as string);
                   const endDate = new Date(leg.pricing_period_end as string);
                   const weightValue = typeof weight === 'number' ? weight : quantity;
@@ -252,23 +244,19 @@ const ExposurePage = () => {
                   const monthlyDistribution = {};
                   const actualValue = weightValue;
                   
-                  // Get start and end month
                   const startMonth = formatMonthCode(startDate);
                   const endMonth = formatMonthCode(endDate);
                   
-                  // If both dates are in the same month
                   if (startMonth === endMonth) {
                     if (periods.includes(startMonth) && exposuresByMonth[startMonth][canonicalBaseProduct]) {
                       exposuresByMonth[startMonth][canonicalBaseProduct].physical += actualValue;
                       console.log(`Adding entire physical exposure for ${canonicalBaseProduct} in ${startMonth}: ${actualValue}`);
                     }
                   } 
-                  // If dates span multiple months, let's divide the exposure evenly
                   else {
                     const startMonthDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
                     const endMonthDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
                     
-                    // Count total months
                     let monthCount = 0;
                     const currentMonth = new Date(startMonthDate);
                     while (currentMonth <= endMonthDate) {
@@ -276,7 +264,6 @@ const ExposurePage = () => {
                       currentMonth.setMonth(currentMonth.getMonth() + 1);
                     }
                     
-                    // Distribute evenly across months
                     const perMonthValue = actualValue / monthCount;
                     
                     const distributionMonth = new Date(startMonthDate);
@@ -293,7 +280,6 @@ const ExposurePage = () => {
                   }
                 });
               }
-              // Legacy approach - just use primary month if no pricing period or monthly distribution
               else if (leg.trading_period) {
                 const primaryMonth = leg.trading_period;
                 
@@ -308,7 +294,6 @@ const ExposurePage = () => {
                   }
                 });
               }
-              // Last resort - derive month from pricing_period_start
               else if (leg.pricing_period_start) {
                 const date = new Date(leg.pricing_period_start);
                 const primaryMonth = formatMonthCode(date);
@@ -324,15 +309,13 @@ const ExposurePage = () => {
                   }
                 });
               }
-            } 
+            }
             
-            // Process pricing exposure distribution from pricing formula
             if (Object.keys(pricingDistribution).length > 0) {
               Object.entries(pricingDistribution).forEach(([product, monthDistribution]) => {
                 const canonicalBaseProduct = mapProductToCanonical(product);
                 allProductsFound.add(canonicalBaseProduct);
                 
-                // Apply monthly distribution
                 Object.entries(monthDistribution).forEach(([month, exposure]) => {
                   if (periods.includes(month) && 
                       exposuresByMonth[month] && 
@@ -346,28 +329,22 @@ const ExposurePage = () => {
                 });
               });
             }
-            // If no monthly distribution for pricing, try to use physical distribution structure
             else if (Object.keys(physicalDistribution).length > 0 && pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              // For each product that has pricing exposure
               Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
                 const canonicalInstrument = mapProductToCanonical(instrument);
                 allProductsFound.add(canonicalInstrument);
                 
-                // Try to match the distribution pattern of the physical exposure
                 const pricingValue = Number(value) || 0;
                 let totalPhysicalExposure = 0;
                 
-                // Calculate total physical exposure for normalization
                 for (const product in physicalDistribution) {
                   for (const month in physicalDistribution[product]) {
                     totalPhysicalExposure += Number(physicalDistribution[product][month]) || 0;
                   }
                 }
                 
-                // If there's no physical exposure, we can't normalize
                 if (totalPhysicalExposure === 0) return;
                 
-                // Distribute pricing using the same pattern as physical
                 for (const product in physicalDistribution) {
                   for (const month in physicalDistribution[product]) {
                     if (periods.includes(month) && exposuresByMonth[month][canonicalInstrument]) {
@@ -382,9 +359,7 @@ const ExposurePage = () => {
                 }
               });
             }
-            // If no monthly distribution for pricing, use legacy approach
             else if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              // Try to use trading_period first
               if (leg.trading_period) {
                 const primaryMonth = leg.trading_period;
                 
@@ -399,7 +374,6 @@ const ExposurePage = () => {
                   }
                 });
               }
-              // If no trading_period, try to derive from pricing_period_start
               else if (leg.pricing_period_start) {
                 const date = new Date(leg.pricing_period_start);
                 const primaryMonth = formatMonthCode(date);
@@ -416,13 +390,10 @@ const ExposurePage = () => {
                 });
               }
             }
-          } 
-          // Legacy approach - no monthly distribution available
+          }
           else {
-            // Check if we have a pricing period defined for more precise distribution
             const hasPricingPeriod = leg.pricing_period_start && leg.pricing_period_end;
             
-            // Determine which month to use - trading_period first, then derived from pricing_period_start
             let primaryMonth = leg.trading_period || '';
             
             if (!primaryMonth && leg.pricing_period_start) {
@@ -430,7 +401,6 @@ const ExposurePage = () => {
               primaryMonth = formatMonthCode(date);
             }
             
-            // Skip if no monthly information is available
             if (!primaryMonth && !hasPricingPeriod) {
               console.log(`Skipping leg ${leg.leg_reference} - no monthly information available`);
               return;
@@ -800,3 +770,350 @@ const ExposurePage = () => {
                       paper: 0,
                       netExposure: 0
                     };
+                  }
+                  
+                  const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
+                  exposuresByMonth[month][canonicalBaseProduct].paper += actualExposure;
+                  
+                  if (!mtmFormula.exposures.pricing || 
+                      !(pBaseProduct in (mtmFormula.exposures.pricing || {}))) {
+                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                  }
+                });
+                
+                if (mtmFormula.exposures.pricing) {
+                  Object.entries(mtmFormula.exposures.pricing).forEach(([pBaseProduct, weight]) => {
+                    const canonicalBaseProduct = mapProductToCanonical(pBaseProduct);
+                    allProductsFound.add(canonicalBaseProduct);
+                    
+                    if (!exposuresByMonth[month][canonicalBaseProduct]) {
+                      exposuresByMonth[month][canonicalBaseProduct] = {
+                        physical: 0,
+                        pricing: 0,
+                        paper: 0,
+                        netExposure: 0
+                      };
+                    }
+                    
+                    const actualExposure = typeof weight === 'number' ? weight * buySellMultiplier : 0;
+                    exposuresByMonth[month][canonicalBaseProduct].pricing += actualExposure;
+                  });
+                }
+              } else {
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+                const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+                exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+              }
+            } else {
+              if (!exposuresByMonth[month][canonicalProduct]) {
+                exposuresByMonth[month][canonicalProduct] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+              const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+              exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+              exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+            }
+          }
+        });
+      }
+    }
+    
+    Object.keys(exposuresByMonth).forEach(month => {
+      Object.keys(exposuresByMonth[month]).forEach(product => {
+        const data = exposuresByMonth[month][product];
+        data.netExposure = calculateNetExposure(data.physical, data.pricing);
+      });
+    });
+    
+    const exposureArray = periods.map(month => {
+      const products = exposuresByMonth[month] || {};
+      
+      const monthTotals: ExposureData = {
+        physical: 0,
+        pricing: 0,
+        paper: 0,
+        netExposure: 0
+      };
+      
+      Object.values(products).forEach(data => {
+        monthTotals.physical += data.physical;
+        monthTotals.pricing += data.pricing;
+        monthTotals.paper += data.paper;
+        monthTotals.netExposure += data.netExposure;
+      });
+      
+      return {
+        month,
+        products,
+        totals: monthTotals
+      };
+    });
+    
+    return {
+      monthlyData: exposureArray,
+      productsFound: Array.from(allProductsFound)
+    };
+  }, [tradeData, periods]);
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure | Trading Risk Management</title>
+      </Helmet>
+      
+      <div className="container p-4 mx-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Exposure Report</h1>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
+        
+        <Card>
+          <CardContent className="p-6">
+            {isLoading ? (
+              <TableLoadingState columns={5} rows={5} />
+            ) : error ? (
+              <TableErrorState 
+                error={error as Error} 
+                retryFn={refetch} 
+              />
+            ) : (
+              <>
+                <div className="mb-4 flex flex-wrap gap-4">
+                  <div className="flex flex-col">
+                    <h3 className="text-lg font-semibold mb-2">Categories</h3>
+                    <div className="space-y-2">
+                      {CATEGORY_ORDER.map((category) => (
+                        <div key={category} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`category-${category}`}
+                            checked={visibleCategories.includes(category)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setVisibleCategories([...visibleCategories, category]);
+                              } else {
+                                setVisibleCategories(
+                                  visibleCategories.filter(c => c !== category)
+                                );
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`category-${category}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {category}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col">
+                    <h3 className="text-lg font-semibold mb-2">Products</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {exposureData?.productsFound.sort().map((product) => (
+                        <div key={product} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`product-${product}`}
+                            checked={selectedProducts.length === 0 || selectedProducts.includes(product)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedProducts([...selectedProducts, product]);
+                              } else {
+                                setSelectedProducts(
+                                  selectedProducts.filter(p => p !== product)
+                                );
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`product-${product}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {formatExposureTableProduct(product)}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border rounded-md overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-background z-10 min-w-[150px]">
+                          Product / Month
+                        </TableHead>
+                        {exposureData?.monthlyData.map((data) => (
+                          <TableHead key={data.month} className="text-center">
+                            {data.month}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {BIODIESEL_PRODUCTS.filter(p => 
+                        selectedProducts.length === 0 || selectedProducts.includes(p)
+                      ).map((product) => (
+                        <TableRow key={product}>
+                          <TableCell 
+                            className={`sticky left-0 bg-background z-10 font-medium ${
+                              shouldUseSpecialBackground(product) ? 
+                              getExposureProductBackgroundClass(product) : ''
+                            }`}
+                          >
+                            {formatExposureTableProduct(product)}
+                          </TableCell>
+                          {exposureData?.monthlyData.map((month) => {
+                            const productData = month.products[product];
+                            if (!productData) return <TableCell key={month.month}>-</TableCell>;
+                            
+                            return (
+                              <TableCell 
+                                key={month.month} 
+                                className="text-right"
+                              >
+                                <div className="flex flex-col">
+                                  {visibleCategories.includes('Physical') && 
+                                    <span className="text-sm">
+                                      P: {productData.physical.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Pricing') && 
+                                    <span className="text-sm">
+                                      F: {productData.pricing.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Paper') && 
+                                    <span className="text-sm">
+                                      S: {productData.paper.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Exposure') && 
+                                    <span className="font-bold text-sm">
+                                      E: {productData.netExposure.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                </div>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                      
+                      {PRICING_INSTRUMENT_PRODUCTS.filter(p => 
+                        selectedProducts.length === 0 || selectedProducts.includes(p)
+                      ).map((product) => (
+                        <TableRow key={product}>
+                          <TableCell 
+                            className={`sticky left-0 bg-background z-10 font-medium ${
+                              shouldUseSpecialBackground(product) ? 
+                              getExposureProductBackgroundClass(product) : ''
+                            }`}
+                          >
+                            {formatExposureTableProduct(product)}
+                          </TableCell>
+                          {exposureData?.monthlyData.map((month) => {
+                            const productData = month.products[product];
+                            if (!productData) return <TableCell key={month.month}>-</TableCell>;
+                            
+                            return (
+                              <TableCell 
+                                key={month.month} 
+                                className="text-right"
+                              >
+                                <div className="flex flex-col">
+                                  {visibleCategories.includes('Physical') && 
+                                    <span className="text-sm">
+                                      P: {productData.physical.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Pricing') && 
+                                    <span className="text-sm">
+                                      F: {productData.pricing.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Paper') && 
+                                    <span className="text-sm">
+                                      S: {productData.paper.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                  {visibleCategories.includes('Exposure') && 
+                                    <span className="font-bold text-sm">
+                                      E: {productData.netExposure.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                  }
+                                </div>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-bold">
+                        <TableCell className="sticky left-0 bg-background z-10">
+                          TOTALS
+                        </TableCell>
+                        {exposureData?.monthlyData.map((month) => (
+                          <TableCell 
+                            key={month.month} 
+                            className="text-right"
+                          >
+                            <div className="flex flex-col">
+                              {visibleCategories.includes('Physical') && 
+                                <span className="text-sm">
+                                  P: {month.totals.physical.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                </span>
+                              }
+                              {visibleCategories.includes('Pricing') && 
+                                <span className="text-sm">
+                                  F: {month.totals.pricing.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                </span>
+                              }
+                              {visibleCategories.includes('Paper') && 
+                                <span className="text-sm">
+                                  S: {month.totals.paper.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                </span>
+                              }
+                              {visibleCategories.includes('Exposure') && 
+                                <span className="font-bold text-sm">
+                                  E: {month.totals.netExposure.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                </span>
+                              }
+                            </div>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
