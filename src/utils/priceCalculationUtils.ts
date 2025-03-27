@@ -1,643 +1,382 @@
 import { FormulaToken, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types/pricing';
 import { Instrument } from '@/types/common';
-import { supabase } from '@/integrations/supabase/client';
-import { formulaToDisplayString } from './formulaUtils';
+import { Direction } from '@/types/common';
+import { evaluateFormula } from './formulaEvaluator';
+import { fetchHistoricalPrices, fetchSpotPrices } from '@/services/priceService';
+import { differenceInDays, isAfter, isBefore, isEqual, isWithinInterval, startOfDay } from 'date-fns';
 
-// Pricing period types
-export type PricingPeriodType = 'historical' | 'current' | 'forward';
+export type PricingPeriodType = 'historical' | 'current' | 'future';
 
-// Function to determine pricing period type based on start and end dates
-export const determinePricingPeriodType = (
-  startDate: Date,
-  endDate: Date
-): PricingPeriodType => {
-  const currentDate = new Date();
-  
-  // If both dates are in the past
-  if (endDate < currentDate) {
+// Function to determine what type of pricing period a date range represents
+export const determinePricingPeriodType = (startDate: Date, endDate: Date): PricingPeriodType => {
+  const today = startOfDay(new Date());
+
+  // If both dates are in the past, it's a historical period
+  if (isBefore(endDate, today)) {
     return 'historical';
   }
   
-  // If both dates are in the future
-  if (startDate > currentDate) {
-    return 'forward';
+  // If both dates are in the future, it's a future period
+  if (isAfter(startDate, today)) {
+    return 'future';
   }
   
-  // If the current date falls within the period
+  // Otherwise, it's a current period (spans today)
   return 'current';
 };
 
-// Function to fetch historical prices for a given instrument and date range
-export const fetchHistoricalPrices = async (
-  instrument: Instrument,
-  startDate: Date,
-  endDate: Date
-): Promise<{ date: Date; price: number }[]> => {
-  // Find the instrument_id based on the display_name
-  const { data: instrumentData, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('display_name', instrument)
-    .single();
+// Fixed components for premium calculations
+export interface PremiumCalculation {
+  premium: number;
+  freightCost: number;
+  blendingCost: number;
+  customsCost: number;
+  operationalCost: number;
+  marginValue: number;
+}
 
-  if (instrumentError || !instrumentData) {
-    console.error(`Error finding instrument ${instrument}:`, instrumentError);
-    return [];
-  }
-
-  const instrumentId = instrumentData.id;
-
-  const { data, error } = await supabase
-    .from('historical_prices')
-    .select('price_date, price')
-    .eq('instrument_id', instrumentId)
-    .gte('price_date', startDate.toISOString().split('T')[0])
-    .lte('price_date', endDate.toISOString().split('T')[0])
-    .order('price_date', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching historical prices:', error);
-    return [];
-  }
-
-  return data.map(item => ({
-    date: new Date(item.price_date),
-    price: item.price
-  }));
-};
-
-// Function to fetch forward prices for a given instrument and date range
-export const fetchForwardPrices = async (
-  instrument: Instrument,
-  startDate: Date,
-  endDate: Date
-): Promise<{ date: Date; price: number }[]> => {
-  // Find the instrument_id based on the display_name
-  const { data: instrumentData, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('display_name', instrument)
-    .single();
-
-  if (instrumentError || !instrumentData) {
-    console.error(`Error finding instrument ${instrument}:`, instrumentError);
-    return [];
-  }
-
-  const instrumentId = instrumentData.id;
-
-  const { data, error } = await supabase
-    .from('forward_prices')
-    .select('forward_month, price')
-    .eq('instrument_id', instrumentId)
-    .gte('forward_month', startDate.toISOString().split('T')[0])
-    .lte('forward_month', endDate.toISOString().split('T')[0])
-    .order('forward_month', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching forward prices:', error);
-    return [];
-  }
-
-  return data.map(item => ({
-    date: new Date(item.forward_month),
-    price: item.price
-  }));
-};
-
-// New function to fetch the most recent price for a given instrument
-export const fetchMostRecentPrice = async (
-  instrument: Instrument
-): Promise<{ date: Date; price: number } | null> => {
-  // Find the instrument_id based on the display_name
-  const { data: instrumentData, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('display_name', instrument)
-    .single();
-
-  if (instrumentError || !instrumentData) {
-    console.error(`Error finding instrument ${instrument}:`, instrumentError);
-    return null;
-  }
-
-  const instrumentId = instrumentData.id;
-
-  // Try to get the most recent historical price first
-  const { data: histData, error: histError } = await supabase
-    .from('historical_prices')
-    .select('price_date, price')
-    .eq('instrument_id', instrumentId)
-    .order('price_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // If no historical price is found, check forward prices
-  if (!histData && !histError) {
-    const { data: fwdData, error: fwdError } = await supabase
-      .from('forward_prices')
-      .select('forward_month, price')
-      .eq('instrument_id', instrumentId)
-      .order('forward_month', { ascending: true }) // Get the closest forward month
-      .limit(1)
-      .maybeSingle();
-
-    if (fwdError || !fwdData) {
-      console.error(`No recent price found for instrument ${instrument}`);
-      return null;
-    }
-
+// Parse a premium calculation object from fixed components
+export const parsePremiumCalculation = (fixedComponents?: FixedComponent[]): PremiumCalculation => {
+  if (!fixedComponents || fixedComponents.length === 0) {
     return {
-      date: new Date(fwdData.forward_month),
-      price: fwdData.price
+      premium: 0,
+      freightCost: 0,
+      blendingCost: 0,
+      customsCost: 0,
+      operationalCost: 0,
+      marginValue: 0
     };
   }
-
-  if (histError) {
-    console.error('Error fetching most recent price:', histError);
-    return null;
-  }
-
-  if (histData) {
-    return {
-      date: new Date(histData.price_date),
-      price: histData.price
-    };
-  }
-
-  return null;
-};
-
-// Calculate average price for a collection of price points
-export const calculateAveragePrice = (prices: { date: Date; price: number }[]): number => {
-  if (prices.length === 0) return 0;
-  const sum = prices.reduce((total, { price }) => total + price, 0);
-  return sum / prices.length;
-};
-
-// Extract fixed components from formula tokens
-const extractFixedComponents = (tokens: FormulaToken[]): FixedComponent[] => {
-  const fixedComponents: FixedComponent[] = [];
   
-  tokens.forEach((token, index) => {
-    if (token.type === 'fixedValue') {
-      // Check if this is part of an operation with the surrounding tokens
-      const prevToken = index > 0 ? tokens[index - 1] : null;
-      const nextToken = index < tokens.length - 1 ? tokens[index + 1] : null;
-      
-      // For display purposes, include the operator if it exists
-      let displayValue = token.value;
-      
-      if (prevToken && prevToken.type === 'operator') {
-        displayValue = `${prevToken.value}${token.value}`;
-      } else if (nextToken && nextToken.type === 'operator') {
-        // Only prefix with + if it's not already signed
-        if (!displayValue.startsWith('-') && !displayValue.startsWith('+')) {
-          displayValue = `+${displayValue}`;
-        }
-      }
-      
-      fixedComponents.push({
-        value: parseFloat(token.value),
-        description: `Fixed value ${token.value}`,
-        displayValue
-      });
+  const result: PremiumCalculation = {
+    premium: 0,
+    freightCost: 0,
+    blendingCost: 0,
+    customsCost: 0,
+    operationalCost: 0,
+    marginValue: 0
+  };
+  
+  fixedComponents.forEach(component => {
+    const lowerDesc = component.description.toLowerCase();
+    
+    if (lowerDesc.includes('premium')) {
+      result.premium = component.value;
+    } else if (lowerDesc.includes('freight')) {
+      result.freightCost = component.value;
+    } else if (lowerDesc.includes('blending')) {
+      result.blendingCost = component.value;
+    } else if (lowerDesc.includes('customs')) {
+      result.customsCost = component.value;
+    } else if (lowerDesc.includes('operational')) {
+      result.operationalCost = component.value;
+    } else if (lowerDesc.includes('margin')) {
+      result.marginValue = component.value;
     }
   });
   
-  return fixedComponents;
-};
-
-// Parse and evaluate a formula token
-const evaluateFormula = (
-  tokens: FormulaToken[],
-  instrumentPrices: Record<Instrument, number>
-): number => {
-  if (!tokens || tokens.length === 0) return 0;
-  
-  // Process tokens to handle implied multiplication, etc.
-  let position = 0;
-  
-  // Parse expression with operator precedence (addition, subtraction)
-  const parseExpression = (): number => {
-    let left = parseTerm();
-    
-    while (position < tokens.length && 
-          (tokens[position].type === 'operator' && 
-           (tokens[position].value === '+' || tokens[position].value === '-'))) {
-      const operator = tokens[position].value;
-      position++;
-      const right = parseTerm();
-      
-      if (operator === '+') {
-        left += right;
-      } else if (operator === '-') {
-        left -= right;
-      }
-    }
-    
-    return left;
-  };
-  
-  // Parse term (multiplication, division)
-  const parseTerm = (): number => {
-    let left = parseFactor();
-    
-    while (position < tokens.length && 
-          (tokens[position].type === 'operator' && 
-           (tokens[position].value === '*' || tokens[position].value === '/'))) {
-      const operator = tokens[position].value;
-      position++;
-      const right = parseFactor();
-      
-      if (operator === '*') {
-        left *= right;
-      } else if (operator === '/') {
-        if (right !== 0) {
-          left /= right;
-        } else {
-          console.error('Division by zero in formula');
-        }
-      }
-    }
-    
-    // Check for percentage after a term
-    if (position < tokens.length && tokens[position].type === 'percentage') {
-      const percentValue = parseFloat(tokens[position].value) / 100;
-      left *= percentValue;
-      position++;
-    }
-    
-    return left;
-  };
-  
-  // Parse factor (value, parenthesized expression)
-  const parseFactor = (): number => {
-    if (position >= tokens.length) {
-      return 0;
-    }
-    
-    const token = tokens[position];
-    
-    if (token.type === 'openBracket') {
-      position++; // Skip open bracket
-      const value = parseExpression();
-      
-      if (position < tokens.length && tokens[position].type === 'closeBracket') {
-        position++; // Skip close bracket
-      }
-      
-      // Check for percentage after parenthesis
-      if (position < tokens.length && tokens[position].type === 'percentage') {
-        const percentValue = parseFloat(tokens[position].value) / 100;
-        position++;
-        return value * percentValue;
-      }
-      
-      return value;
-    } else if (token.type === 'instrument') {
-      position++;
-      const instrumentValue = instrumentPrices[token.value as Instrument] || 0;
-      
-      // Check for percentage after instrument
-      if (position < tokens.length && tokens[position].type === 'percentage') {
-        const percentValue = parseFloat(tokens[position].value) / 100;
-        position++;
-        return instrumentValue * percentValue;
-      }
-      
-      return instrumentValue;
-    } else if (token.type === 'fixedValue') {
-      position++;
-      const value = parseFloat(token.value);
-      
-      // Check for percentage after fixed value
-      if (position < tokens.length && tokens[position].type === 'percentage') {
-        const percentValue = parseFloat(tokens[position].value) / 100;
-        position++;
-        return value * percentValue;
-      }
-      
-      return value;
-    } else if (token.type === 'percentage') {
-      position++;
-      return parseFloat(token.value) / 100;
-    } else if (token.type === 'operator' && (token.value === '+' || token.value === '-')) {
-      // Unary plus or minus
-      position++;
-      const factor = parseFactor();
-      return token.value === '-' ? -factor : factor;
-    }
-    
-    // Skip unknown tokens
-    position++;
-    return 0;
-  };
-  
-  const result = parseExpression();
   return result;
 };
 
-// Apply formula to calculate the final price
-export const applyPricingFormula = (
-  formula: PricingFormula, 
-  instrumentPrices: Record<Instrument, number>
-): number => {
-  if (!formula || !formula.tokens || formula.tokens.length === 0) return 0;
-  
-  try {
-    return evaluateFormula(formula.tokens, instrumentPrices);
-  } catch (error) {
-    console.error('Error evaluating formula:', error);
-    return 0;
-  }
-};
-
-// Calculate trade leg price based on its formula and date range
+// Main function to calculate the price for a trade leg's formula
 export const calculateTradeLegPrice = async (
-  formula: PricingFormula,
-  startDate: Date,
+  formula: PricingFormula, 
+  startDate: Date, 
   endDate: Date
-): Promise<{
-  price: number;
-  periodType: PricingPeriodType;
-  priceDetails: PriceDetail;
-}> => {
-  if (!formula || !formula.tokens || formula.tokens.length === 0) {
+): Promise<{ price: number; periodType: PricingPeriodType; details?: PriceDetail }> => {
+  try {
+    console.log('[PRICE] Calculating trade leg price:', { startDate, endDate });
+    
+    if (!formula || !formula.tokens || formula.tokens.length === 0) {
+      return { price: 0, periodType: 'future' };
+    }
+    
+    // Determine the type of pricing period we're dealing with
+    const periodType = determinePricingPeriodType(startDate, endDate);
+    console.log('[PRICE] Period type:', periodType);
+    
+    // Extract all instruments from the formula
+    const instrumentTokens = formula.tokens.filter(token => token.type === 'instrument');
+    
+    if (instrumentTokens.length === 0) {
+      return { price: 0, periodType };
+    }
+    
+    const instruments = instrumentTokens.map(token => token.value as Instrument);
+    console.log('[PRICE] Found instruments:', instruments);
+    
+    // Fetch historical prices for all instruments
+    const historicalPrices = await fetchHistoricalPrices(instruments, startDate, endDate);
+    
+    // Prepare the price details object
+    const priceDetails: PriceDetail = {
+      instruments: {} as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>,
+      evaluatedPrice: 0,
+      fixedComponents: []
+    };
+    
+    // Create an average price map for formula evaluation
+    const averagePriceMap: Record<string, number> = {};
+    
+    // For each instrument, calculate the average price over the pricing period
+    for (const instrument of instruments) {
+      const instrumentPrices = historicalPrices[instrument] || [];
+      
+      if (instrumentPrices.length === 0) {
+        console.warn(`[PRICE] No historical prices found for ${instrument}`);
+        averagePriceMap[instrument] = 0;
+        
+        priceDetails.instruments[instrument] = {
+          average: 0,
+          prices: []
+        };
+        
+        continue;
+      }
+      
+      // Calculate the average price
+      const sum = instrumentPrices.reduce((total, p) => total + p.price, 0);
+      const average = instrumentPrices.length > 0 ? sum / instrumentPrices.length : 0;
+      
+      console.log(`[PRICE] Average price for ${instrument}: ${average} (from ${instrumentPrices.length} prices)`);
+      
+      averagePriceMap[instrument] = average;
+      
+      // Store all prices in the details object
+      priceDetails.instruments[instrument] = {
+        average,
+        prices: instrumentPrices
+      };
+    }
+    
+    // Add fixed components to the price details
+    const fixedComponents: FixedComponent[] = [];
+    
+    const fixedValueTokens = formula.tokens.filter(token => token.type === 'fixedValue');
+    
+    for (const token of fixedValueTokens) {
+      const value = parseFloat(token.value);
+      if (!isNaN(value)) {
+        fixedComponents.push({
+          value,
+          description: `Fixed component`,
+          displayValue: value.toString()
+        });
+      }
+    }
+    
+    priceDetails.fixedComponents = fixedComponents;
+    
+    // Evaluate the formula with the average prices
+    const calculatedPrice = evaluateFormula(formula.tokens, (token) => {
+      if (token.type === 'instrument') {
+        return averagePriceMap[token.value] || 0;
+      }
+      return parseFloat(token.value);
+    });
+    
+    priceDetails.evaluatedPrice = calculatedPrice;
+    
+    console.log('[PRICE] Calculated price:', calculatedPrice);
+    
     return {
-      price: 0,
-      periodType: 'historical',
-      priceDetails: {
-        instruments: {},
-        evaluatedPrice: 0
-      }
+      price: calculatedPrice,
+      periodType,
+      details: priceDetails
     };
+  } catch (error) {
+    console.error('[PRICE] Error calculating trade leg price:', error);
+    return { price: 0, periodType: 'future' };
   }
-  
-  const periodType = determinePricingPeriodType(startDate, endDate);
-  const instrumentPrices: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Platts LSGO': 0,
-    'Platts diesel': 0,
-  };
-  
-  const priceDetails: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }> = {
-    'Argus UCOME': { average: 0, prices: [] },
-    'Argus RME': { average: 0, prices: [] },
-    'Argus FAME0': { average: 0, prices: [] },
-    'Platts LSGO': { average: 0, prices: [] },
-    'Platts diesel': { average: 0, prices: [] },
-  };
-
-  // Extract fixed components from the formula
-  const fixedComponents = extractFixedComponents(formula.tokens);
-
-  // Track which instruments are used in the formula for exposure calculation
-  const usedInstruments = new Set<Instrument>();
-  let hasInstrument = false;
-
-  // Collect price data for each instrument in the formula
-  for (const token of formula.tokens) {
-    if (token.type === 'instrument') {
-      hasInstrument = true;
-      const instrument = token.value as Instrument;
-      usedInstruments.add(instrument);
-      let prices: { date: Date; price: number }[] = [];
-      
-      // Fetch appropriate prices based on period type
-      if (periodType === 'historical' || periodType === 'current') {
-        prices = await fetchHistoricalPrices(instrument, startDate, endDate);
-      } else {
-        prices = await fetchForwardPrices(instrument, startDate, endDate);
-      }
-      
-      const average = calculateAveragePrice(prices);
-      
-      instrumentPrices[instrument] = average;
-      priceDetails[instrument] = { average, prices };
-    }
-  }
-  
-  // If there are no instruments but there are fixed values, create a default date range
-  if (!hasInstrument && fixedComponents.length > 0) {
-    // Create a synthetic price series covering the pricing period
-    const syntheticDates: Date[] = [];
-    const currentDate = new Date(startDate);
-    
-    // Generate dates covering the pricing period
-    while (currentDate <= endDate) {
-      syntheticDates.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    // Use the first instrument as a placeholder
-    const placeholderInstrument = 'Argus UCOME' as Instrument;
-    usedInstruments.add(placeholderInstrument);
-    
-    // Create synthetic price points with value 0
-    const syntheticPrices = syntheticDates.map(date => ({ 
-      date, 
-      price: 0 
-    }));
-    
-    priceDetails[placeholderInstrument] = { 
-      average: 0, 
-      prices: syntheticPrices
-    };
-  }
-  
-  // Apply the formula to calculate the final price
-  const finalPrice = applyPricingFormula(formula, instrumentPrices);
-  
-  // Only include instruments that were used in the formula
-  const filteredInstruments = Object.fromEntries(
-    Object.entries(priceDetails)
-      .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
-  ) as Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
-  
-  const fixedComponentsArray = extractFixedComponents(formula.tokens);
-  
-  return {
-    price: finalPrice,
-    periodType,
-    priceDetails: {
-      instruments: filteredInstruments,
-      evaluatedPrice: finalPrice,
-      ...(fixedComponentsArray.length > 0 ? { fixedComponents: fixedComponentsArray } : {})
-    }
-  };
 };
 
-// Calculate MTM price using most recent prices
+// Calculate Mark-to-Market price for a formula using spot prices
 export const calculateMTMPrice = async (
   formula: PricingFormula
-): Promise<{
-  price: number;
-  priceDetails: MTMPriceDetail;
-}> => {
-  if (!formula || !formula.tokens || formula.tokens.length === 0) {
+): Promise<{ price: number; details?: MTMPriceDetail }> => {
+  try {
+    console.log('[MTM] Calculating MTM price');
+    
+    if (!formula || !formula.tokens || formula.tokens.length === 0) {
+      return { price: 0 };
+    }
+    
+    // Extract all instruments from the formula
+    const instrumentTokens = formula.tokens.filter(token => token.type === 'instrument');
+    
+    if (instrumentTokens.length === 0) {
+      return { price: 0 };
+    }
+    
+    const instruments = instrumentTokens.map(token => token.value as Instrument);
+    console.log('[MTM] Found instruments:', instruments);
+    
+    // Fetch spot prices for all instruments
+    const spotPrices = await fetchSpotPrices(instruments);
+    
+    // Prepare the MTM price details object
+    const mtmPriceDetails: MTMPriceDetail = {
+      instruments: {} as Record<Instrument, { price: number; date: Date | null }>,
+      evaluatedPrice: 0,
+      fixedComponents: []
+    };
+    
+    // Create a price map for formula evaluation
+    const priceMap: Record<string, number> = {};
+    
+    // For each instrument, get the spot price
+    for (const instrument of instruments) {
+      const spotPrice = spotPrices[instrument];
+      
+      if (!spotPrice) {
+        console.warn(`[MTM] No spot price found for ${instrument}`);
+        priceMap[instrument] = 0;
+        
+        mtmPriceDetails.instruments[instrument] = {
+          price: 0,
+          date: null
+        };
+        
+        continue;
+      }
+      
+      console.log(`[MTM] Spot price for ${instrument}: ${spotPrice.price} (from ${spotPrice.date})`);
+      
+      priceMap[instrument] = spotPrice.price;
+      
+      // Store the price in the details object
+      mtmPriceDetails.instruments[instrument] = {
+        price: spotPrice.price,
+        date: spotPrice.date
+      };
+    }
+    
+    // Add fixed components to the MTM price details
+    const fixedComponents: FixedComponent[] = [];
+    
+    const fixedValueTokens = formula.tokens.filter(token => token.type === 'fixedValue');
+    
+    for (const token of fixedValueTokens) {
+      const value = parseFloat(token.value);
+      if (!isNaN(value)) {
+        fixedComponents.push({
+          value,
+          description: `Fixed component`,
+          displayValue: value.toString()
+        });
+      }
+    }
+    
+    mtmPriceDetails.fixedComponents = fixedComponents;
+    
+    // Evaluate the formula with the spot prices
+    const calculatedPrice = evaluateFormula(formula.tokens, (token) => {
+      if (token.type === 'instrument') {
+        return priceMap[token.value] || 0;
+      }
+      return parseFloat(token.value);
+    });
+    
+    mtmPriceDetails.evaluatedPrice = calculatedPrice;
+    
+    console.log('[MTM] Calculated MTM price:', calculatedPrice);
+    
     return {
-      price: 0,
-      priceDetails: {
-        instruments: {},
-        evaluatedPrice: 0
-      }
+      price: calculatedPrice,
+      details: mtmPriceDetails
     };
+  } catch (error) {
+    console.error('[MTM] Error calculating MTM price:', error);
+    return { price: 0 };
   }
-  
-  const instrumentPrices: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Platts LSGO': 0,
-    'Platts diesel': 0,
-  };
-  
-  const priceDetails: Record<Instrument, { price: number; date: Date | null }> = {
-    'Argus UCOME': { price: 0, date: null },
-    'Argus RME': { price: 0, date: null },
-    'Argus FAME0': { price: 0, date: null },
-    'Platts LSGO': { price: 0, date: null },
-    'Platts diesel': { price: 0, date: null },
-  };
-
-  // Extract fixed components from the formula
-  const fixedComponents = extractFixedComponents(formula.tokens);
-
-  // Track which instruments are used in the formula
-  const usedInstruments = new Set<Instrument>();
-  let hasInstrument = false;
-
-  // Collect most recent price data for each instrument in the formula
-  for (const token of formula.tokens) {
-    if (token.type === 'instrument') {
-      hasInstrument = true;
-      const instrument = token.value as Instrument;
-      usedInstruments.add(instrument);
-      
-      // Fetch most recent price for this instrument
-      const recentPrice = await fetchMostRecentPrice(instrument);
-      
-      if (recentPrice) {
-        instrumentPrices[instrument] = recentPrice.price;
-        priceDetails[instrument] = { price: recentPrice.price, date: recentPrice.date };
-      } else {
-        // If no price found, leave as 0
-        instrumentPrices[instrument] = 0;
-        priceDetails[instrument] = { price: 0, date: null };
-      }
-    }
-  }
-  
-  // If there are no instruments but there are fixed values, create a default display entry
-  if (!hasInstrument && fixedComponents.length > 0) {
-    // Use today's date
-    const today = new Date();
-    
-    // Use the first instrument as a placeholder
-    const placeholderInstrument = 'Argus UCOME' as Instrument;
-    usedInstruments.add(placeholderInstrument);
-    
-    priceDetails[placeholderInstrument] = { 
-      price: 0, 
-      date: today
-    };
-  }
-  
-  // Apply the formula to calculate the final price
-  const finalPrice = applyPricingFormula(formula, instrumentPrices);
-  
-  // Filter the instruments to only those used in the formula
-  const filteredInstruments = Object.fromEntries(
-    Object.entries(priceDetails)
-      .filter(([instrument]) => usedInstruments.has(instrument as Instrument))
-  ) as Record<Instrument, { price: number; date: Date | null }>;
-  
-  const fixedComponentsArray = extractFixedComponents(formula.tokens);
-  
-  return {
-    price: finalPrice,
-    priceDetails: {
-      instruments: filteredInstruments,
-      evaluatedPrice: finalPrice,
-      ...(fixedComponentsArray.length > 0 ? { fixedComponents: fixedComponentsArray } : {})
-    }
-  };
 };
 
-// Calculate MTM value based on trade price and MTM price
+// Calculate the MTM value based on original price and MTM price
 export const calculateMTMValue = (
-  tradePrice: number,
+  originalPrice: number,
   mtmPrice: number,
   quantity: number,
   buySell: 'buy' | 'sell'
 ): number => {
-  // The new MTM calculation: (tradePrice - mtmPrice) * quantity * buySellFactor
-  const buySellFactor = buySell.toLowerCase() === 'buy' ? -1 : 1;
+  const priceDifference = mtmPrice - originalPrice;
   
-  return (tradePrice - mtmPrice) * quantity * buySellFactor;
+  // For buys, a positive price difference is a gain, negative is a loss
+  // For sells, a positive price difference is a loss, negative is a gain
+  const multiplier = buySell === 'buy' ? 1 : -1;
+  
+  return priceDifference * quantity * multiplier;
 };
 
-// Update a trade leg's price in the database
-export const updateTradeLegPrice = async (
-  legId: string, 
-  price: number,
-  mtmPrice?: number
-): Promise<boolean> => {
-  const updates: any = { 
-    calculated_price: price,
-    last_calculation_date: new Date().toISOString()
-  };
-  
-  // If MTM price is provided, update that too
-  if (mtmPrice !== undefined) {
-    updates.mtm_calculated_price = mtmPrice;
-    updates.mtm_last_calculation_date = new Date().toISOString();
-  }
-  
-  const { error } = await supabase
-    .from('trade_legs')
-    .update(updates)
-    .eq('id', legId);
-  
-  if (error) {
-    console.error('Error updating trade leg price:', error);
-    return false;
-  }
-  
-  return true;
-};
-
-// Calculate exposure for a trade with the given formula and quantity
-export const calculateExposure = (
-  formula: PricingFormula,
-  quantity: number,
-  buySell: 'buy' | 'sell'
+// Get mock prices for development
+export const getMockPrices = (
+  instruments: Instrument[]
 ): Record<Instrument, number> => {
-  const exposure: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Platts LSGO': 0,
-    'Platts diesel': 0,
+  const mockPrices: Partial<Record<Instrument, number>> = {
+    'Argus UCOME': 1250,
+    'Argus RME': 950,
+    'Argus FAME0': 850,
+    'Platts LSGO': 700,
+    'Platts Diesel': 720,
+    'Argus HVO': 1350,
+    'ICE GASOIL FUTURES': 680,
   };
   
-  if (!formula || !formula.tokens) return exposure;
+  const result = {} as Record<Instrument, number>;
   
-  // Direction multiplier: buy = -1 (we are exposed to price increases)
-  // sell = 1 (we are exposed to price decreases)
-  const directionMultiplier = buySell.toLowerCase() === 'buy' ? -1 : 1;
+  for (const instrument of instruments) {
+    result[instrument] = mockPrices[instrument] || 0;
+  }
   
-  // For each instrument in the formula, calculate exposure
-  formula.tokens.forEach(token => {
-    if (token.type === 'instrument') {
-      const instrument = token.value as Instrument;
-      // Simple exposure calculation: quantity * direction
-      exposure[instrument] = quantity * directionMultiplier;
+  return result;
+};
+
+// Get mock historical prices for development
+export const getMockHistoricalPrices = (
+  instruments: Instrument[],
+  startDate: Date,
+  endDate: Date
+): Record<Instrument, { date: Date; price: number }[]> => {
+  const basePrices: Partial<Record<Instrument, number>> = {
+    'Argus UCOME': 1250,
+    'Argus RME': 950,
+    'Argus FAME0': 850,
+    'Platts LSGO': 700,
+    'Platts Diesel': 720,
+    'Argus HVO': 1350,
+    'ICE GASOIL FUTURES': 680,
+  };
+  
+  const result = {} as Record<Instrument, { date: Date; price: number }[]>;
+  
+  const days = differenceInDays(endDate, startDate) + 1;
+  
+  for (const instrument of instruments) {
+    const basePrice = basePrices[instrument] || 0;
+    const prices: { date: Date; price: number }[] = [];
+    
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      
+      // Add some randomness to the price
+      const randomFactor = 0.98 + Math.random() * 0.04; // Random between 0.98 and 1.02
+      const price = basePrice * randomFactor;
+      
+      prices.push({
+        date,
+        price
+      });
     }
-  });
+    
+    result[instrument] = prices;
+  }
   
-  return exposure;
+  return result;
+};
+
+// Get a random mock price with some volatility
+export const getRandomPrice = (basePrice: number): number => {
+  const volatility = 0.05; // 5% volatility
+  const change = (Math.random() - 0.5) * 2 * volatility; // Random between -volatility and +volatility
+  return basePrice * (1 + change);
 };

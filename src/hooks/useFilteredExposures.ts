@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useTrades } from './useTrades';
 import { Instrument } from '@/types/common';
@@ -46,7 +45,11 @@ export function useFilteredExposures({
   const filteredExposures = useMemo(() => {
     if (tradesLoading || !trades || trades.length === 0) {
       console.log("No trades to calculate exposures from");
-      return { physical: {}, pricing: {}, paper: {} } as FilteredExposureResult;
+      return { 
+        physical: {} as Record<Instrument, number>, 
+        pricing: {} as Record<Instrument, number>, 
+        paper: {} as Record<Instrument, number> 
+      } as FilteredExposureResult;
     }
     
     setIsCalculating(true);
@@ -54,12 +57,12 @@ export function useFilteredExposures({
     
     try {
       // Collect monthly distributions from all physical trades
-      const physicalDistributions: Record<Instrument, MonthlyDistribution> = {};
-      const pricingDistributions: Record<Instrument, MonthlyDistribution> = {};
+      const physicalDistributions: Record<Instrument, MonthlyDistribution> = {} as Record<Instrument, MonthlyDistribution>;
+      const pricingDistributions: Record<Instrument, MonthlyDistribution> = {} as Record<Instrument, MonthlyDistribution>;
       
       // Store pricing periods for each instrument
-      const physicalPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
-      const pricingPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
+      const physicalPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {} as Record<Instrument, { start: Date, end: Date }>;
+      const pricingPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {} as Record<Instrument, { start: Date, end: Date }>;
       
       // Collect paper trade exposures
       const paperExposuresByPeriod: Record<string, Record<Instrument, number>> = {};
@@ -120,22 +123,22 @@ export function useFilteredExposures({
               
               // Process each instrument's monthly distribution
               Object.entries(physicalMonthlyDist).forEach(([instrument, distribution]) => {
-                if (!physicalDistributions[instrument]) {
-                  physicalDistributions[instrument] = {};
+                if (!physicalDistributions[instrument as Instrument]) {
+                  physicalDistributions[instrument as Instrument] = {};
                 }
                 
                 // Store pricing period for this instrument
-                physicalPricingPeriods[instrument] = {
+                physicalPricingPeriods[instrument as Instrument] = {
                   start: leg.pricingPeriodStart!,
                   end: leg.pricingPeriodEnd!
                 };
                 
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  if (!physicalDistributions[instrument][monthCode]) {
-                    physicalDistributions[instrument][monthCode] = 0;
+                  if (!physicalDistributions[instrument as Instrument][monthCode]) {
+                    physicalDistributions[instrument as Instrument][monthCode] = 0;
                   }
-                  physicalDistributions[instrument][monthCode] += monthValue;
+                  physicalDistributions[instrument as Instrument][monthCode] += monthValue;
                   processedPhysicalExposures++;
                 });
               });
@@ -144,12 +147,12 @@ export function useFilteredExposures({
               
               // Create even distribution based on the pricing period for each instrument
               Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
-                if (!physicalDistributions[instrument]) {
-                  physicalDistributions[instrument] = {};
+                if (!physicalDistributions[instrument as Instrument]) {
+                  physicalDistributions[instrument as Instrument] = {};
                 }
                 
                 // Store pricing period for this instrument
-                physicalPricingPeriods[instrument] = {
+                physicalPricingPeriods[instrument as Instrument] = {
                   start: leg.pricingPeriodStart!,
                   end: leg.pricingPeriodEnd!
                 };
@@ -163,10 +166,10 @@ export function useFilteredExposures({
                 
                 // Add generated monthly values to our accumulated distributions
                 Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
-                  if (!physicalDistributions[instrument][monthCode]) {
-                    physicalDistributions[instrument][monthCode] = 0;
+                  if (!physicalDistributions[instrument as Instrument][monthCode]) {
+                    physicalDistributions[instrument as Instrument][monthCode] = 0;
                   }
-                  physicalDistributions[instrument][monthCode] += monthValue;
+                  physicalDistributions[instrument as Instrument][monthCode] += monthValue;
                   processedPhysicalExposures++;
                 });
               });
@@ -193,22 +196,22 @@ export function useFilteredExposures({
               
               // Process each instrument's monthly distribution
               Object.entries(pricingMonthlyDist).forEach(([instrument, distribution]) => {
-                if (!pricingDistributions[instrument]) {
-                  pricingDistributions[instrument] = {};
+                if (!pricingDistributions[instrument as Instrument]) {
+                  pricingDistributions[instrument as Instrument] = {};
                 }
                 
                 // Store pricing period for this instrument
-                pricingPricingPeriods[instrument] = {
+                pricingPricingPeriods[instrument as Instrument] = {
                   start: leg.pricingPeriodStart!,
                   end: leg.pricingPeriodEnd!
                 };
                 
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  if (!pricingDistributions[instrument][monthCode]) {
-                    pricingDistributions[instrument][monthCode] = 0;
+                  if (!pricingDistributions[instrument as Instrument][monthCode]) {
+                    pricingDistributions[instrument as Instrument][monthCode] = 0;
                   }
-                  pricingDistributions[instrument][monthCode] += monthValue;
+                  pricingDistributions[instrument as Instrument][monthCode] += monthValue;
                   processedPricingExposures++;
                 });
               });
@@ -217,12 +220,12 @@ export function useFilteredExposures({
               
               // Create even distribution based on the pricing period for each instrument
               Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
-                if (!pricingDistributions[instrument]) {
-                  pricingDistributions[instrument] = {};
+                if (!pricingDistributions[instrument as Instrument]) {
+                  pricingDistributions[instrument as Instrument] = {};
                 }
                 
                 // Store pricing period for this instrument
-                pricingPricingPeriods[instrument] = {
+                pricingPricingPeriods[instrument as Instrument] = {
                   start: leg.pricingPeriodStart!,
                   end: leg.pricingPeriodEnd!
                 };
@@ -236,71 +239,36 @@ export function useFilteredExposures({
                 
                 // Add generated monthly values to our accumulated distributions
                 Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
-                  if (!pricingDistributions[instrument][monthCode]) {
-                    pricingDistributions[instrument][monthCode] = 0;
+                  if (!pricingDistributions[instrument as Instrument][monthCode]) {
+                    pricingDistributions[instrument as Instrument][monthCode] = 0;
                   }
-                  pricingDistributions[instrument][monthCode] += monthValue;
+                  pricingDistributions[instrument as Instrument][monthCode] += monthValue;
                   processedPricingExposures++;
                 });
               });
             }
           }
+          
         });
         
         if (tradeHasValidLeg) {
           processedTrades++;
         }
       });
+      
+      console.log(`Processed ${processedTrades} trades with ${processedLegs} legs`);
+      console.log(`Found ${processedPhysicalExposures} physical exposures`);
+      console.log(`Found ${processedPricingExposures} pricing exposures`);
       
       // Process paper trades
-      paperTrades.forEach(trade => {
-        let tradeHasValidLeg = false;
-        
-        trade.legs.forEach(leg => {
-          // Skip legs without exposures
-          if (!leg.exposures) {
-            console.log(`Skipping paper trade leg without exposures: ${leg.legReference}`);
-            return;
-          }
-          
-          processedLegs++;
-          tradeHasValidLeg = true;
-          
-          // Get the trading period (month)
-          const period = leg.period;
-          if (!period) {
-            console.log(`Skipping paper trade leg without period: ${leg.legReference}`);
-            return;
-          }
-          
-          // Initialize period entry if not exists
-          if (!paperExposuresByPeriod[period]) {
-            paperExposuresByPeriod[period] = {};
-          }
-          
-          // Process paper exposures
-          if (leg.exposures.paper) {
-            Object.entries(leg.exposures.paper).forEach(([instrument, value]) => {
-              if (!paperExposuresByPeriod[period][instrument]) {
-                paperExposuresByPeriod[period][instrument] = 0;
-              }
-              
-              paperExposuresByPeriod[period][instrument] += Number(value) || 0;
-              processedPaperExposures++;
-            });
-          }
-        });
-        
-        if (tradeHasValidLeg) {
-          processedTrades++;
-        }
-      });
+      const paperExposures = processPaperTradeExposures(paperTrades);
+      console.log(`Found ${Object.keys(paperExposures).length} paper exposures`);
       
-      console.log(`Processed ${processedTrades} trades and ${processedLegs} legs`);
-      console.log(`Found ${processedPhysicalExposures} physical, ${processedPricingExposures} pricing, and ${processedPaperExposures} paper exposure entries`);
-      console.log('Paper exposures by period:', paperExposuresByPeriod);
+      // Filter paper exposures by date range
+      const filteredPaperExposures = filterPaperTradeDistributions(paperExposures, startDate, endDate);
+      console.log(`After filtering, have ${Object.keys(filteredPaperExposures).length} paper exposures`);
       
-      // Convert monthly distributions to daily distributions (with pricing periods)
+      // Convert to daily distributions
       const physicalDailyDistributions = calculateDailyDistributionByInstrument(
         physicalDistributions,
         physicalPricingPeriods
@@ -311,91 +279,52 @@ export function useFilteredExposures({
         pricingPricingPeriods
       );
       
-      // Filter daily distributions by date range (with pricing periods)
-      const filteredPhysicalDailyDistributions = filterDailyDistributionsByDateRange(
+      // Filter the daily distributions by date range
+      const filteredPhysicalDistributions = filterDailyDistributionsByDateRange(
         physicalDailyDistributions,
         startDate,
-        endDate,
-        physicalPricingPeriods
+        endDate
       );
       
-      const filteredPricingDailyDistributions = filterDailyDistributionsByDateRange(
+      const filteredPricingDistributions = filterDailyDistributionsByDateRange(
         pricingDailyDistributions,
         startDate,
-        endDate,
-        pricingPricingPeriods
+        endDate
       );
       
-      // Process paper trade exposures
-      let filteredPaperExposures: Record<Instrument, number> = {};
-      
-      // For each period with paper exposures
-      Object.entries(paperExposuresByPeriod).forEach(([period, exposures]) => {
-        // Convert to daily distributions
-        const paperDailyDistributions = processPaperTradeExposures(exposures, period);
-        
-        // Filter by date range
-        const filteredPaperDailyDistributions = filterPaperTradeDistributions(
-          paperDailyDistributions,
-          startDate,
-          endDate,
-          period
-        );
-        
-        // Calculate totals for this period
-        const periodTotals = calculateTotalExposureFromDailyDistributions(
-          filteredPaperDailyDistributions
-        );
-        
-        // Merge with overall paper exposures
-        Object.entries(periodTotals).forEach(([instrument, value]) => {
-          if (!filteredPaperExposures[instrument]) {
-            filteredPaperExposures[instrument] = 0;
-          }
-          filteredPaperExposures[instrument] += value;
-        });
-      });
-      
-      console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
-      console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
-      console.log('Filtered paper exposures:', filteredPaperExposures);
-      
-      // Calculate total exposures from filtered daily distributions
-      const totalPhysicalExposures = calculateTotalExposureFromDailyDistributions(
-        filteredPhysicalDailyDistributions
+      // Calculate total exposure from daily distributions
+      const physicalExposure = calculateTotalExposureFromDailyDistributions(
+        filteredPhysicalDistributions
       );
       
-      const totalPricingExposures = calculateTotalExposureFromDailyDistributions(
-        filteredPricingDailyDistributions
+      const pricingExposure = calculateTotalExposureFromDailyDistributions(
+        filteredPricingDistributions
       );
       
-      console.log('Total physical exposures:', totalPhysicalExposures);
-      console.log('Total pricing exposures:', totalPricingExposures);
-      console.log('Total paper exposures:', filteredPaperExposures);
+      // Combine all exposures
+      const result: FilteredExposureResult = {
+        physical: physicalExposure || ({} as Record<Instrument, number>),
+        pricing: pricingExposure || ({} as Record<Instrument, number>),
+        paper: filteredPaperExposures || ({} as Record<Instrument, number>)
+      };
       
-      return {
-        physical: totalPhysicalExposures,
-        pricing: totalPricingExposures,
-        paper: filteredPaperExposures
-      } as FilteredExposureResult;
-    } catch (error) {
-      console.error("Error calculating filtered exposures:", error);
-      return { physical: {}, pricing: {}, paper: {} } as FilteredExposureResult;
-    } finally {
       setIsCalculating(false);
+      return result;
+    } catch (error) {
+      console.error('Error calculating filtered exposures:', error);
+      setIsCalculating(false);
+      return { 
+        physical: {} as Record<Instrument, number>, 
+        pricing: {} as Record<Instrument, number>, 
+        paper: {} as Record<Instrument, number> 
+      } as FilteredExposureResult;
     }
   }, [trades, tradesLoading, startDate, endDate]);
   
-  const updateDateRange = (newStartDate: Date, newEndDate: Date) => {
-    console.log("Updating date range:", newStartDate, newEndDate);
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
-  };
-  
-  // Clear cache when trades change
+  // Clear cache when date range changes
   useEffect(() => {
     clearDailyDistributionCache();
-  }, [trades]);
+  }, [startDate, endDate]);
   
   return {
     filteredExposures,

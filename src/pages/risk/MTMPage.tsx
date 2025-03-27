@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -81,6 +82,7 @@ const MTMPage = () => {
         mtmFormula: leg.mtmFormula,
         calculatedPrice: 0,
         mtmCalculatedPrice: 0,
+        periodType: undefined as PricingPeriodType | undefined,
       };
     }) || []
   );
