@@ -11,6 +11,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 const PaperTradeEditPage = () => {
   const { id } = useParams();
@@ -113,7 +114,7 @@ const PaperTradeEditPage = () => {
           };
         }
         
-        // Create each leg
+        // Create each leg with consistent date formatting
         const legData = {
           paper_trade_id: id,
           leg_reference: leg.legReference,

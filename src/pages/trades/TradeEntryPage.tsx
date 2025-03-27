@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +13,7 @@ import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -22,12 +21,6 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
-  
-  // Format date to YYYY-MM-DD without timezone conversion
-  const formatDateForStorage = (date: Date | null): string | null => {
-    if (!date) return null;
-    return format(date, 'yyyy-MM-dd');
-  };
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -63,7 +56,6 @@ const TradeEntryPage = () => {
         inco_term: leg.incoTerm,
         quantity: leg.quantity,
         tolerance: leg.tolerance,
-        // Fix date issue: use date-fns format to preserve the local date without timezone conversion
         loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
         loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
         pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),

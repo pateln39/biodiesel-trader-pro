@@ -13,6 +13,7 @@ import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Prod
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { calculateExposures } from '@/utils/formulaCalculation';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -206,10 +207,11 @@ const TradeEditPage = () => {
           inco_term: leg.incoTerm,
           quantity: leg.quantity,
           tolerance: leg.tolerance,
-          loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
-          loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
-          pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
-          pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
+          // Use formatDateForStorage to ensure consistent date handling
+          loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
+          loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
+          pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
+          pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
