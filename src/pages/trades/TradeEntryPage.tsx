@@ -14,6 +14,7 @@ import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -21,6 +22,12 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
+  
+  // Format date to YYYY-MM-DD without timezone conversion
+  const formatDateForStorage = (date: Date | null): string | null => {
+    if (!date) return null;
+    return format(date, 'yyyy-MM-dd');
+  };
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -56,11 +63,11 @@ const TradeEntryPage = () => {
         inco_term: leg.incoTerm,
         quantity: leg.quantity,
         tolerance: leg.tolerance,
-        // Fix date issue: format dates to YYYY-MM-DD to ensure consistent date handling
-        loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
-        loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
-        pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
-        pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
+        // Fix date issue: use date-fns format to preserve the local date without timezone conversion
+        loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
+        loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
+        pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
+        pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
         unit: leg.unit,
         payment_term: leg.paymentTerm,
         credit_status: leg.creditStatus,

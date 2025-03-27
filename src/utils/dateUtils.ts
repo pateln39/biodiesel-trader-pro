@@ -3,6 +3,8 @@
  * Utility functions for date operations
  */
 
+import { format } from 'date-fns';
+
 /**
  * Generates an array of month codes for the next N months starting from the current month
  * Format: MMM-YY (e.g., "Mar-24")
@@ -78,4 +80,16 @@ export function isValidFuturePeriod(periodCode: string): boolean {
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Format a date as YYYY-MM-DD for database storage
+ * This preserves the local date without timezone conversion
+ * 
+ * @param date The date to format
+ * @returns Formatted date string or null if date is null
+ */
+export function formatDateForStorage(date: Date | null): string | null {
+  if (!date) return null;
+  return format(date, 'yyyy-MM-dd');
 }
