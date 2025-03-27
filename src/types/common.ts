@@ -1,51 +1,13 @@
 
-// Common types used across multiple domains
+export type Instrument = string;
+export type OperatorType = "+" | "-" | "*" | "/" | "%" | "()";
 
-// String literal type for different instruments
-export type Instrument = 
-  'Argus UCOME' | 
-  'Argus RME' | 
-  'Argus FAME0' | 
-  'Platts LSGO' | 
-  'Platts Diesel' | 
-  'Argus HVO' | 
-  'ICE GASOIL FUTURES';
-
-// Transaction direction type
-export type Direction = 'buy' | 'sell';
-
-// Define common numeric types with precision for specific domains
-export type Quantity = number;
-export type Price = number;
-export type Amount = number;
-
-// Base Trade interface
-export interface Trade {
-  id: string;
-  tradeReference: string;
-  tradeType: 'physical' | 'paper';
-  counterparty: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Base Parent Trade interface
-export interface ParentTrade {
-  id: string;
-  tradeReference: string;
-  tradeType: string;
-  counterparty: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Database types for Supabase
 export interface DbParentTrade {
   id: string;
   trade_reference: string;
   trade_type: string;
+  physical_type: string | null;
   counterparty: string;
-  physical_type?: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,53 +18,75 @@ export interface DbTradeLeg {
   leg_reference: string;
   buy_sell: string;
   product: string;
-  sustainability?: string;
-  inco_term?: string;
+  sustainability: string | null;
+  inco_term: string | null;
   quantity: number;
-  tolerance?: number;
-  loading_period_start?: string;
-  loading_period_end?: string;
-  pricing_period_start?: string;
-  pricing_period_end?: string;
-  unit?: string;
-  payment_term?: string;
-  credit_status?: string;
-  pricing_formula?: any;
-  mtm_formula?: any;
+  tolerance: number | null;
+  loading_period_start: string | null;
+  loading_period_end: string | null;
+  pricing_period_start: string | null;
+  pricing_period_end: string | null;
+  unit: string | null;
+  payment_term: string | null;
+  credit_status: string | null;
+  pricing_formula: any | null;
   created_at: string;
   updated_at: string;
+  broker?: string;
+  instrument?: string;
+  price?: number;
+  mtm_formula?: any | null;
 }
 
-// Movement and Audit interfaces
-export interface Movement {
+// Base trade interface (parent trade)
+export interface ParentTrade {
   id: string;
-  movementReference: string;
-  tradeLegId: string;
-  nominatedDate?: Date;
-  nominationValidDate?: Date;
-  status: string;
-  vesselName?: string;
-  loadport?: string;
-  disport?: string;
-  blDate?: Date;
-  blQuantity?: number;
-  actualized: boolean;
-  actualizedDate?: Date;
-  actualizedQuantity?: number;
-  cashFlowDate?: Date;
-  inspector?: string;
-  comments?: string;
+  tradeReference: string;
+  tradeType: import('./index').TradeType;
+  counterparty: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
+// For backward compatibility
+export interface Trade {
+  id: string;
+  tradeReference: string;
+  tradeType: import('./index').TradeType;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Movement {
+  id: string;
+  tradeId: string;
+  legId?: string;
+  scheduledQuantity: number;
+  nominatedDate?: Date;
+  vesselName?: string;
+  loadport?: string;
+  inspector?: string;
+  blDate?: Date;
+  actualQuantity?: number;
+  status: "scheduled" | "in-progress" | "completed";
+}
+
 export interface AuditLog {
   id: string;
-  recordId: string;
-  tableName: string;
-  operation: string;
-  userId?: string;
   timestamp: Date;
-  oldData?: any;
-  newData?: any;
+  entityType: "trade" | "movement";
+  entityId: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  userId: string;
+}
+
+export interface ExposureReportItem {
+  month: string;
+  grade: string;
+  physical: number;
+  pricing: number;
+  paper: number;
+  netExposure: number;
 }

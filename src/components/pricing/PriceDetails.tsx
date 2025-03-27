@@ -20,8 +20,7 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument } from '@/types/common';
-import { PricingFormula, PriceDetail, MTMPriceDetail } from '@/types/pricing';
+import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface PriceDetailsProps {

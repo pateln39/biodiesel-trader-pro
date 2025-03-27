@@ -1,3 +1,4 @@
+
 import { 
   DailyDistribution, 
   DailyDistributionByInstrument, 
@@ -142,49 +143,6 @@ export function calculateDailyDistribution(
     if (!isWeekend(currentDate)) {
       const dateString = format(currentDate, 'yyyy-MM-dd');
       dailyDistribution[dateString] = valuePerDay;
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return dailyDistribution;
-}
-
-/**
- * Calculate daily distribution for paper trades
- * @param totalExposure The total exposure amount for the paper trade
- * @param tradingPeriod The trading period code (e.g. "Mar-25")
- * @returns Daily distribution object
- */
-export function calculateDailyDistributionForPaperTrade(
-  totalExposure: number,
-  tradingPeriod: string
-): DailyDistribution {
-  console.log(`Calculating daily distribution for paper trade with ${totalExposure} in ${tradingPeriod}`);
-  
-  // Convert trading period to start/end dates (first and last day of month)
-  const { start, end } = monthCodeToDates(tradingPeriod);
-  
-  // Calculate working days in the entire month
-  const workingDaysInMonth = countWorkingDays(start, end);
-  console.log(`Working days in ${tradingPeriod}: ${workingDaysInMonth}`);
-  
-  if (workingDaysInMonth === 0) {
-    console.warn(`No working days found in the period ${tradingPeriod}`);
-    return {};
-  }
-  
-  // Calculate daily exposure value
-  const dailyExposure = totalExposure / workingDaysInMonth;
-  console.log(`Daily exposure for ${tradingPeriod}: ${dailyExposure} (${totalExposure} ÷ ${workingDaysInMonth})`);
-  
-  // Distribute to all working days in the month
-  const dailyDistribution: DailyDistribution = {};
-  const currentDate = new Date(start);
-  
-  while (currentDate <= end) {
-    if (!isWeekend(currentDate)) {
-      const dateString = format(currentDate, 'yyyy-MM-dd');
-      dailyDistribution[dateString] = dailyExposure;
     }
     currentDate.setDate(currentDate.getDate() + 1);
   }
@@ -365,78 +323,4 @@ export function getCachedDailyDistribution(
  */
 export function clearDailyDistributionCache(): void {
   dailyDistributionCache.clear();
-}
-
-/**
- * Process paper trade exposures and convert to daily distributions
- * @param paperExposures Record of paper exposures by instrument
- * @param tradingPeriod The trading period (e.g. "Mar-25")
- * @returns Daily distributions by instrument
- */
-export function processPaperTradeExposures(
-  paperExposures: Record<Instrument, number>,
-  tradingPeriod: string
-): DailyDistributionByInstrument {
-  console.log(`Processing paper trade exposures for period ${tradingPeriod}:`, paperExposures);
-  
-  const result: DailyDistributionByInstrument = {};
-  
-  Object.entries(paperExposures).forEach(([instrument, exposure]) => {
-    if (exposure !== 0) {
-      // Calculate daily distribution for this instrument's exposure
-      result[instrument] = calculateDailyDistributionForPaperTrade(exposure, tradingPeriod);
-    }
-  });
-  
-  return result;
-}
-
-/**
- * Filter paper trade daily distributions by date range
- * @param paperDailyDistributions Daily distributions from paper trades
- * @param filterStart Start date of filter range
- * @param filterEnd End date of filter range
- * @param tradingPeriod The trading period (month) of the paper trade
- * @returns Filtered daily distributions by instrument
- */
-export function filterPaperTradeDistributions(
-  paperDailyDistributions: DailyDistributionByInstrument,
-  filterStart: Date,
-  filterEnd: Date,
-  tradingPeriod: string
-): DailyDistributionByInstrument {
-  console.log(`Filtering paper trade distributions for ${tradingPeriod} with range ${filterStart.toISOString()} to ${filterEnd.toISOString()}`);
-  
-  // Convert trading period to month start/end
-  const { start: periodStart, end: periodEnd } = monthCodeToDates(tradingPeriod);
-  
-  const result: DailyDistributionByInstrument = {};
-  
-  Object.entries(paperDailyDistributions).forEach(([instrument, dailyDist]) => {
-    // Get overlapping days between filter range and trading period
-    const overlap = getOverlappingDays(filterStart, filterEnd, periodStart, periodEnd);
-    
-    if (overlap) {
-      // Filter the daily distribution to only include overlapping days
-      const filtered: DailyDistribution = {};
-      
-      Object.entries(dailyDist).forEach(([dateString, value]) => {
-        try {
-          const date = parse(dateString, 'yyyy-MM-dd', new Date());
-          
-          if (isWithinInterval(date, { start: overlap.start, end: overlap.end })) {
-            filtered[dateString] = value;
-          }
-        } catch (error) {
-          console.error(`Error filtering paper distribution for date ${dateString}:`, error);
-        }
-      });
-      
-      if (Object.keys(filtered).length > 0) {
-        result[instrument] = filtered;
-      }
-    }
-  });
-  
-  return result;
 }
