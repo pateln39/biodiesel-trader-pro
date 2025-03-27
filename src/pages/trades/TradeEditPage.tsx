@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -159,6 +160,40 @@ const TradeEditPage = () => {
       }
 
       for (const leg of updatedTradeData.legs) {
+        // Recalculate pricing formula exposures
+        const updatedPricingExposures = calculateExposures(
+          leg.formula.tokens,
+          leg.quantity,
+          leg.buySell,
+          leg.product,
+          leg.pricingPeriodStart,
+          leg.pricingPeriodEnd,
+          'price'
+        );
+
+        // Update the pricing formula with recalculated exposures
+        const updatedPricingFormula = {
+          tokens: leg.formula.tokens,
+          exposures: updatedPricingExposures
+        };
+
+        // Recalculate MTM formula exposures
+        const updatedMtmExposures = calculateExposures(
+          leg.mtmFormula.tokens,
+          leg.quantity,
+          leg.buySell,
+          leg.product,
+          leg.pricingPeriodStart,
+          leg.pricingPeriodEnd,
+          'mtm'
+        );
+
+        // Update the MTM formula with recalculated exposures
+        const updatedMtmFormula = {
+          tokens: leg.mtmFormula.tokens,
+          exposures: updatedMtmExposures
+        };
+
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -174,8 +209,8 @@ const TradeEditPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
+          pricing_formula: updatedPricingFormula,  // Use the updated pricing formula
+          mtm_formula: updatedMtmFormula,          // Use the updated MTM formula
           updated_at: new Date().toISOString()
         };
 
