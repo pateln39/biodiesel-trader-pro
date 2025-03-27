@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -870,22 +871,35 @@ const ExposurePage = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Checkbox.Group
-            value={selectedProducts}
-            onValueChange={setSelectedProducts}
-            className="flex flex-wrap gap-2"
-          >
+          <div className="flex flex-wrap gap-2">
             {allProducts.map(product => (
-              <Checkbox key={product} value={product}>
-                {product}
-              </Checkbox>
+              <div key={product} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={`product-${product}`}
+                  checked={selectedProducts.includes(product)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedProducts([...selectedProducts, product]);
+                    } else {
+                      setSelectedProducts(selectedProducts.filter(p => p !== product));
+                    }
+                  }}
+                />
+                <label 
+                  htmlFor={`product-${product}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {product}
+                </label>
+              </div>
             ))}
-          </Checkbox.Group>
+          </div>
         </div>
         <DateRangeFilter
-          startDate={startDate}
-          endDate={endDate}
-          onDateRangeChange={updateDateRange}
+          onFilterChange={(start, end) => updateDateRange(start, end)}
+          isLoading={isLoading || filteredExposuresLoading}
+          initialStartDate={startDate}
+          initialEndDate={endDate}
         />
         <Table>
           <TableHeader>
