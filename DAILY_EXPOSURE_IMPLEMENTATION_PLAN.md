@@ -1,7 +1,7 @@
 
 # Daily Exposure Distribution Implementation Plan (Revised)
 
-This document outlines the revised implementation plan for adding date range filtering to the exposure reporting page by calculating daily distributions on-the-fly from existing monthly distributions. This implementation focuses specifically on physical trades first, with paper trades to be addressed in a future phase.
+This document outlines the revised implementation plan for adding date range filtering to the exposure reporting page by calculating daily distributions on-the-fly from existing monthly distributions. This implementation focuses on both physical trades and paper trades.
 
 ## 1. Types and Utilities Updates
 
@@ -107,8 +107,7 @@ export interface DailyDistributionByInstrument {
 - Date range filtering will be an additional feature, not a replacement
 
 ### 6.2 Scope Limitation
-- This implementation focuses only on physical trades
-- Paper trades will be addressed in a future phase
+- This implementation covers both physical trades and paper trades
 - No database schema changes are required
 
 ### 6.3 Clean State
@@ -176,40 +175,40 @@ export interface DailyDistributionByInstrument {
   - Next month row: +363.60mt UCOME
   - All other month rows: 0mt
 
-## 8. Implementation Details (**NEW SECTION**)
+## 8. Implementation Details for Paper Trades
 
-### 8.1 Improved Daily Distribution Calculation
+### 8.1 Paper Trade Date Range Filtering
 
-The current implementation has the following issues:
-1. **Incorrect daily exposure calculation**: Daily exposure is calculated by dividing monthly exposure by working days in a month. Instead, it should divide total exposure by total working days in the pricing period.
-2. **Incorrect filtering**: When applying date filters, all days in the filter are counted rather than only days that overlap with the pricing period.
+Unlike physical trades, paper trades are always for a single month period. This simplifies the daily distribution calculation but requires some special handling:
 
-To fix these issues, we need to:
+1. **Paper Trade Characteristics**:
+   - Each paper trade applies to exactly one month
+   - Monthly distribution is already stored in the trade exposures
+   - The pricing period for paper trades always matches the month of the trade
 
-1. **Update the `calculateDailyDistribution` function**:
+2. **Daily Distribution Calculation for Paper Trades**:
    ```typescript
-   export function calculateDailyDistribution(
-     monthlyDistribution: MonthlyDistribution,
-     pricingStart: Date,
-     pricingEnd: Date
+   export function calculateDailyDistributionForPaperTrade(
+     totalExposure: number,
+     tradingPeriod: string // e.g., "Mar-25"
    ): DailyDistribution {
+     // Convert trading period to start/end dates (first and last day of month)
+     const { start, end } = monthCodeToDates(tradingPeriod);
+     
+     // Calculate working days in the entire month
+     const workingDaysInMonth = countWorkingDays(start, end);
+     
+     // Calculate daily exposure value
+     const dailyExposure = totalExposure / workingDaysInMonth;
+     
+     // Distribute to all working days in the month
      const dailyDistribution: DailyDistribution = {};
+     const currentDate = new Date(start);
      
-     // Calculate total working days in the pricing period
-     const totalWorkingDaysInPricingPeriod = countWorkingDays(pricingStart, pricingEnd);
-     
-     // Calculate total exposure across all months
-     const totalExposure = Object.values(monthlyDistribution).reduce((sum, value) => sum + value, 0);
-     
-     // Calculate value per working day across the entire pricing period
-     const valuePerDay = totalExposure / totalWorkingDaysInPricingPeriod;
-     
-     // Distribute values to each working day in the pricing period
-     const currentDate = new Date(pricingStart);
-     while (currentDate <= pricingEnd) {
+     while (currentDate <= end) {
        if (!isWeekend(currentDate)) {
          const dateString = format(currentDate, 'yyyy-MM-dd');
-         dailyDistribution[dateString] = valuePerDay;
+         dailyDistribution[dateString] = dailyExposure;
        }
        currentDate.setDate(currentDate.getDate() + 1);
      }
@@ -218,123 +217,120 @@ To fix these issues, we need to:
    }
    ```
 
-2. **Create a helper function to get overlapping days**:
+3. **Integration with Existing Filtering Logic**:
+   - Reuse the same filtering functions as physical trades
+   - Ensure the `getOverlappingDays` function properly handles month-based paper trade periods
+
+### 8.2 Paper Trade Exposure Calculation Example
+
+**Example: Paper trade for RME DIFF 1000mt in Mar-25**
+
+1. **Initial Setup**:
+   - Trading period: Mar-25
+   - Total exposure: +1000mt RME and -1000mt LSGO (both paper and pricing exposures)
+   - Month has 21 working days in total
+
+2. **Daily Distribution Calculation**:
+   - Daily exposure = 1000mt ÷ 21 = 47.62mt per working day
+   - This applies to both RME (+47.62mt/day) and LSGO (-47.62mt/day)
+
+3. **Date Range Filtering Scenarios**:
+
+   **Scenario A: Filter range Mar 1-15, 2025 (10 working days)**
+   - Overlap: Mar 1-15 (10 working days)
+   - Filtered exposure: 
+     - RME: +476.2mt (10 days × 47.62mt/day)
+     - LSGO: -476.2mt (10 days × 47.62mt/day)
+   - Exposure table shows:
+     - March row: +476.2mt RME, -476.2mt LSGO
+     - All other month rows: 0mt
+
+   **Scenario B: Filter range Mar 15 - Apr 15, 2025**
+   - Overlap with paper trade: Only Mar 15-31 (13 working days)
+   - Filtered exposure:
+     - RME: +619.06mt (13 days × 47.62mt/day)
+     - LSGO: -619.06mt (13 days × 47.62mt/day)
+   - Exposure table shows:
+     - March row: +619.06mt RME, -619.06mt LSGO
+     - April row: 0mt (paper trade is only for March)
+     - All other month rows: 0mt
+
+   **Scenario C: Filter range Feb 15 - Mar 5, 2025**
+   - Overlap with paper trade: Only Mar 1-5 (5 working days)
+   - Filtered exposure:
+     - RME: +238.1mt (5 days × 47.62mt/day)
+     - LSGO: -238.1mt (5 days × 47.62mt/day)
+   - Exposure table shows:
+     - February row: 0mt (paper trade is only for March)
+     - March row: +238.1mt RME, -238.1mt LSGO
+     - All other month rows: 0mt
+
+### 8.3 Combined Physical and Paper Trade Filtering
+
+When both physical and paper trades exist in the system:
+
+1. Calculate daily distributions separately for each trade type:
+   - Physical trades: Based on pricing period that may span multiple months
+   - Paper trades: Based on the single month trading period
+
+2. Apply the same date range filter to both sets of daily distributions
+
+3. Combine the filtered results to show the total exposure in the exposure table
+
+### 8.4 Implementation Changes for Paper Trades
+
+1. **Extend the `useFilteredExposures` hook**:
    ```typescript
-   export function getOverlappingDays(
-     filterStart: Date,
-     filterEnd: Date,
-     pricingStart: Date,
-     pricingEnd: Date
-   ): { start: Date, end: Date } | null {
-     // If date ranges don't overlap, return null
-     if (filterEnd < pricingStart || filterStart > pricingEnd) {
-       return null;
-     }
-     
-     // Get the later of the two start dates
-     const overlapStart = filterStart > pricingStart ? filterStart : pricingStart;
-     
-     // Get the earlier of the two end dates
-     const overlapEnd = filterEnd < pricingEnd ? filterEnd : pricingEnd;
-     
-     return { start: overlapStart, end: overlapEnd };
+   // Update to process both physical and paper trades
+   const { physicalExposures, paperExposures } = useExposures();
+   
+   // Apply filtering to both types of exposures
+   const filteredPhysicalExposures = filterPhysicalExposures(physicalExposures, startDate, endDate);
+   const filteredPaperExposures = filterPaperExposures(paperExposures, startDate, endDate);
+   
+   // Combine results for the UI
+   const combinedExposures = combineExposures(filteredPhysicalExposures, filteredPaperExposures);
+   ```
+
+2. **Create helper function for paper trade filtering**:
+   ```typescript
+   export function filterPaperExposures(
+     paperExposures: Record<string, any>,
+     startDate: Date,
+     endDate: Date
+   ) {
+     // Iterate through paper trades and apply filtering
+     // Return filtered exposures in the same format as the UI expects
    }
    ```
 
-3. **Update the `filterDailyDistributionByDateRange` function**:
+3. **Create helper function to combine exposures**:
    ```typescript
-   export function filterDailyDistributionByDateRange(
-     dailyDistribution: DailyDistribution,
-     filterStart: Date,
-     filterEnd: Date,
-     pricingStart: Date,
-     pricingEnd: Date
-   ): DailyDistribution {
-     const filteredDistribution: DailyDistribution = {};
-     
-     // Get overlapping date range
-     const overlap = getOverlappingDays(filterStart, filterEnd, pricingStart, pricingEnd);
-     
-     // If there's no overlap, return empty distribution
-     if (!overlap) {
-       return filteredDistribution;
-     }
-     
-     // Filter daily distribution to only include dates in the overlapping range
-     Object.entries(dailyDistribution).forEach(([dateString, value]) => {
-       const date = parse(dateString, 'yyyy-MM-dd', new Date());
-       
-       if (isWithinInterval(date, { start: overlap.start, end: overlap.end })) {
-         filteredDistribution[dateString] = value;
-       }
-     });
-     
-     return filteredDistribution;
+   export function combineExposures(
+     physicalExposures: Record<string, any>,
+     paperExposures: Record<string, any>
+   ) {
+     // Combine both sets of exposures by summing values for the same products and months
+     // Return combined exposures in the format expected by the UI
    }
    ```
 
-4. **Update the `useFilteredExposures` hook** to use the new calculation logic and properly display the exposure table with monthly view.
+### 8.5 Key Differences from Physical Trade Implementation
 
-### 8.2 Calculation Examples
+1. **Pricing Period Determination**:
+   - Physical trades: Multi-month pricing periods possible
+   - Paper trades: Always exactly one month
 
-**Example: Physical trade with 1,000mt UCOME, March 20 - April 18 pricing period**
+2. **Daily Exposure Calculation**:
+   - Physical trades: Total exposure ÷ working days in entire pricing period
+   - Paper trades: Monthly exposure ÷ working days in that specific month
 
-1. **Calculate Daily Exposure:**
-   - Total working days: 22 business days
-   - Daily exposure: 1,000mt ÷ 22 = 45.45mt per day
+3. **Distribution Source**:
+   - Physical trades: Derived from monthly distribution
+   - Paper trades: Derived directly from the trade's exposure data
 
-2. **Date Range Filter: March 1-21**
-   - Overlapping days: March 20-21 (2 days)
-   - Filtered exposure: 2 × 45.45mt = 90.90mt in March
+4. **Data Access Path**:
+   - Physical trades: Accessed from `trade_legs` table with exposures JSON
+   - Paper trades: Accessed from `paper_trade_legs` table with exposures JSON
 
-3. **Date Range Filter: April 1-10**
-   - Overlapping days: April 1-10 (8 days)
-   - Filtered exposure: 8 × 45.45mt = 363.60mt in April
-
-4. **Date Range Filter: March 25 - April 5**
-   - Overlapping days in March: March 25-31 (5 days)
-   - Overlapping days in April: April 1-5 (3 days)
-   - Filtered exposure in March: 5 × 45.45mt = 227.25mt
-   - Filtered exposure in April: 3 × 45.45mt = 136.35mt
-   - Total filtered exposure: 363.60mt
-
-## 9. UI Enhancement - Show All Month Rows (**NEW SECTION**)
-
-### 9.1 Current Behavior
-Currently, when a date range filter is applied, the exposures are aggregated and the table shows only one row with the filtered exposures. This makes it difficult to see how the exposures are distributed across different months.
-
-### 9.2 Desired Behavior
-After applying a date range filter, the exposure table should:
-1. Continue to display all month rows, including future and past months
-2. Set exposure values to 0 for months that don't overlap with the filtered date range
-3. Only show actual exposure values for months that fall within the filtered date range
-4. Maintain all existing functionality, including the calculated totals
-
-### 9.3 Implementation Changes
-To achieve this, the following changes will be made:
-
-1. **Modify the `ExposurePage.tsx` component**:
-   - Update the `exposureData` useMemo to transform the filtered exposures into a complete monthly grid
-   - Instead of showing a single row for filtered exposures, expand it to show all months
-   - Set exposure values to 0 for months outside the filtered date range
-   - Preserve the original monthly view structure while applying the date range filter
-
-2. **No changes to the underlying filtering logic**:
-   - The `useFilteredExposures` hook calculations remain unchanged
-   - The daily distribution calculation remains unchanged
-   - Only the presentation of the data in the exposure table will be modified
-
-### 9.4 Example UI Result
-
-When a user applies a date range filter of March 1-21:
-- The March row will show the filtered exposure value (e.g., 90.90mt UCOME)
-- All other month rows (January, February, April, etc.) will show 0 exposure
-- The total row will still show the correct sum (90.90mt UCOME)
-
-This approach ensures that:
-1. Users always see the familiar monthly table structure
-2. The context of when exposures occur is clear
-3. The filtering functionality works correctly
-4. The totals are accurately calculated
-
-No database or calculation logic changes are required, only UI presentation adjustments.
+Despite these differences, the core filtering logic remains the same: calculate a daily distribution, then filter it based on the overlapping days between the selected date range and the trade's applicable period.
