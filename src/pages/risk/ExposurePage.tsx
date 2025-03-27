@@ -116,7 +116,6 @@ const ExposurePage = () => {
     return ALLOWED_PRODUCTS.filter(p => !p.includes('Argus'));
   }, [ALLOWED_PRODUCTS]);
 
-  // Initialize the filtered exposures hook with current month
   const {
     filteredExposures,
     isLoading: filteredExposuresLoading,
@@ -177,37 +176,29 @@ const ExposurePage = () => {
     }
   });
 
-  // Use either filtered or regular exposure data based on date filter
   const exposureData = useMemo(() => {
     if (isDateFilterActive) {
-      // When date filter is active, distribute filtered exposures across the regular month structure
-      // instead of collapsing into a single row
       const monthlyExposures = periods.map(month => {
         const productsData: Record<string, ExposureData> = {};
         const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
         
-        // Check if the current month is within the date filter range
         let isMonthInFilter = false;
         try {
-          // Parse the month code to a date object (e.g., "Mar-24" to Date)
           const [monthStr, yearStr] = month.split('-');
           const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const monthIndex = monthNames.findIndex(m => m === monthStr);
           
           if (monthIndex !== -1) {
             const year = 2000 + parseInt(yearStr);
-            const monthDate = new Date(year, monthIndex, 15); // Use middle of month for comparison
+            const monthDate = new Date(year, monthIndex, 15);
             
-            // Check if this month falls within the filter date range
             isMonthInFilter = isWithinInterval(monthDate, { start: startDate, end: endDate });
           }
         } catch (e) {
           console.error("Error parsing month:", month, e);
         }
         
-        // For months outside the filter range, set all values to zero
         if (!isMonthInFilter) {
-          // Initialize all products with zero values
           ALLOWED_PRODUCTS.forEach(product => {
             productsData[product] = {
               physical: 0, 
@@ -217,15 +208,12 @@ const ExposurePage = () => {
             };
           });
         } else {
-          // For months inside the filter range, use the filtered exposure values
-          
-          // Process physical exposures
           Object.entries(filteredExposures.physical).forEach(([product, exposure]) => {
             if (ALLOWED_PRODUCTS.includes(product)) {
               productsData[product] = {
                 physical: exposure,
                 pricing: filteredExposures.pricing[product] || 0,
-                paper: 0, // No paper trades in this implementation
+                paper: 0,
                 netExposure: calculateNetExposure(exposure, filteredExposures.pricing[product] || 0)
               };
               
@@ -234,7 +222,6 @@ const ExposurePage = () => {
             }
           });
           
-          // Process pricing instruments that might not have physical exposure
           Object.entries(filteredExposures.pricing).forEach(([product, exposure]) => {
             if (ALLOWED_PRODUCTS.includes(product) && !productsData[product]) {
               productsData[product] = {
@@ -248,7 +235,6 @@ const ExposurePage = () => {
             }
           });
           
-          // Add zero values for products that weren't included in the filtered exposures
           ALLOWED_PRODUCTS.forEach(product => {
             if (!productsData[product]) {
               productsData[product] = {
@@ -852,4 +838,85 @@ const ExposurePage = () => {
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         if (productTotals[product]) {
-          productTotals
+          productTotals[product].physical += exposure.physical;
+          productTotals[product].pricing += exposure.pricing;
+          productTotals[product].paper += exposure.paper;
+          productTotals[product].netExposure = calculateNetExposure(
+            productTotals[product].physical, 
+            productTotals[product].pricing
+          );
+        }
+      });
+    });
+    
+    return { totals, productTotals };
+  }, [exposureData, allProducts]);
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure Page</title>
+      </Helmet>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Exposure Page</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsDateFilterActive(!isDateFilterActive)}>
+              {isDateFilterActive ? 'Hide Date Filter' : 'Show Date Filter'}
+            </Button>
+            <Button variant="outline" onClick={() => refetch()}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox.Group
+            value={selectedProducts}
+            onValueChange={setSelectedProducts}
+            className="flex flex-wrap gap-2"
+          >
+            {allProducts.map(product => (
+              <Checkbox key={product} value={product}>
+                {product}
+              </Checkbox>
+            ))}
+          </Checkbox.Group>
+        </div>
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onDateRangeChange={updateDateRange}
+        />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Month</TableHead>
+              {visibleCategories.map(category => (
+                <TableHead key={category}>{category}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {exposureData.map(monthData => (
+              <TableRow key={monthData.month}>
+                <TableCell>{monthData.month}</TableCell>
+                {visibleCategories.map(category => (
+                  <TableCell key={category}>
+                    {monthData.products[category] ? monthData.products[category][category] : 0}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            Refresh
+          </Button>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
