@@ -194,6 +194,10 @@ const TradeEditPage = () => {
           exposures: updatedMtmExposures
         };
 
+        // Convert the formulas to plain objects to satisfy the Json type requirements
+        const pricingFormulaJson = JSON.parse(JSON.stringify(updatedPricingFormula));
+        const mtmFormulaJson = JSON.parse(JSON.stringify(updatedMtmFormula));
+
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -209,8 +213,8 @@ const TradeEditPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          pricing_formula: updatedPricingFormula,  // Use the updated pricing formula
-          mtm_formula: updatedMtmFormula,          // Use the updated MTM formula
+          pricing_formula: pricingFormulaJson,  // Use the JSON-compatible version
+          mtm_formula: mtmFormulaJson,          // Use the JSON-compatible version
           updated_at: new Date().toISOString()
         };
 
