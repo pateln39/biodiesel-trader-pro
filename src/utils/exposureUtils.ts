@@ -257,27 +257,36 @@ export function processPaperTradeForDailyDistribution(
   
   // Process each leg
   trade.legs.forEach(leg => {
-    if (!leg.exposures?.monthlyDistribution) {
-      return; // Skip legs without monthly distribution
+    // Paper trades don't have monthlyDistribution, they have direct paper/pricing exposures
+    if (!leg.exposures) {
+      return; // Skip legs without exposures
     }
     
-    // Calculate daily distribution for this leg
-    const legDistribution = calculateDailyDistribution(
-      leg.exposures.monthlyDistribution,
-      filterStart,
-      filterEnd
-    );
-    
-    // Merge with the result
-    Object.entries(legDistribution).forEach(([instrument, dailyDist]) => {
-      if (!result[instrument]) {
-        result[instrument] = {};
-      }
+    // Process paper exposures
+    if (leg.exposures.paper) {
+      // Create daily distribution for paper exposures
+      const paperDaily = processPaperTradeExposures(
+        leg.exposures.paper as Record<Instrument, number>,
+        leg.period
+      );
       
-      Object.entries(dailyDist).forEach(([date, quantity]) => {
-        result[instrument][date] = (result[instrument][date] || 0) + quantity;
+      // Merge with result
+      Object.entries(paperDaily).forEach(([instrument, dailyDist]) => {
+        if (!result[instrument]) {
+          result[instrument] = {};
+        }
+        
+        Object.entries(dailyDist).forEach(([date, quantity]) => {
+          result[instrument][date] = (result[instrument][date] || 0) + quantity;
+        });
       });
-    });
+    }
+    
+    // Process pricing exposures if needed
+    if (leg.exposures.pricing) {
+      // Similar processing for pricing exposures can be added here if needed
+      // For now, we're focusing on paper exposures
+    }
   });
   
   return result;
