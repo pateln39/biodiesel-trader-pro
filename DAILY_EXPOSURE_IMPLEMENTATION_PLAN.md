@@ -297,3 +297,44 @@ To fix these issues, we need to:
    - Filtered exposure in March: 5 × 45.45mt = 227.25mt
    - Filtered exposure in April: 3 × 45.45mt = 136.35mt
    - Total filtered exposure: 363.60mt
+
+## 9. UI Enhancement - Show All Month Rows (**NEW SECTION**)
+
+### 9.1 Current Behavior
+Currently, when a date range filter is applied, the exposures are aggregated and the table shows only one row with the filtered exposures. This makes it difficult to see how the exposures are distributed across different months.
+
+### 9.2 Desired Behavior
+After applying a date range filter, the exposure table should:
+1. Continue to display all month rows, including future and past months
+2. Set exposure values to 0 for months that don't overlap with the filtered date range
+3. Only show actual exposure values for months that fall within the filtered date range
+4. Maintain all existing functionality, including the calculated totals
+
+### 9.3 Implementation Changes
+To achieve this, the following changes will be made:
+
+1. **Modify the `ExposurePage.tsx` component**:
+   - Update the `exposureData` useMemo to transform the filtered exposures into a complete monthly grid
+   - Instead of showing a single row for filtered exposures, expand it to show all months
+   - Set exposure values to 0 for months outside the filtered date range
+   - Preserve the original monthly view structure while applying the date range filter
+
+2. **No changes to the underlying filtering logic**:
+   - The `useFilteredExposures` hook calculations remain unchanged
+   - The daily distribution calculation remains unchanged
+   - Only the presentation of the data in the exposure table will be modified
+
+### 9.4 Example UI Result
+
+When a user applies a date range filter of March 1-21:
+- The March row will show the filtered exposure value (e.g., 90.90mt UCOME)
+- All other month rows (January, February, April, etc.) will show 0 exposure
+- The total row will still show the correct sum (90.90mt UCOME)
+
+This approach ensures that:
+1. Users always see the familiar monthly table structure
+2. The context of when exposures occur is clear
+3. The filtering functionality works correctly
+4. The totals are accurately calculated
+
+No database or calculation logic changes are required, only UI presentation adjustments.
