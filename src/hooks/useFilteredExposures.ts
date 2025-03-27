@@ -8,11 +8,14 @@ import {
   filterDailyDistributionsByDateRange,
   calculateTotalExposureFromDailyDistributions,
   clearDailyDistributionCache,
-  isDateWithinPricingPeriod
+  isDateWithinPricingPeriod,
+  processPaperTradeExposures,
+  filterPaperTradeDistributions
 } from '@/utils/exposureUtils';
 import { getMonthlyDistribution, distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { PhysicalTrade } from '@/types/physical';
+import { PaperTrade } from '@/types/paper';
 
 interface UseFilteredExposuresProps {
   startDate?: Date;
@@ -22,6 +25,7 @@ interface UseFilteredExposuresProps {
 interface FilteredExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
+  paper?: Record<Instrument, number>;
 }
 
 export function useFilteredExposures({ 
@@ -42,7 +46,7 @@ export function useFilteredExposures({
   const filteredExposures = useMemo(() => {
     if (tradesLoading || !trades || trades.length === 0) {
       console.log("No trades to calculate exposures from");
-      return { physical: {}, pricing: {} } as FilteredExposureResult;
+      return { physical: {}, pricing: {}, paper: {} } as FilteredExposureResult;
     }
     
     setIsCalculating(true);
@@ -57,15 +61,23 @@ export function useFilteredExposures({
       const physicalPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
       const pricingPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
       
+      // Collect paper trade exposures
+      const paperExposuresByPeriod: Record<string, Record<Instrument, number>> = {};
+      
       // Process physical trades only
       const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
       console.log(`Found ${physicalTrades.length} physical trades`);
+      
+      // Process paper trades separately
+      const paperTrades = trades.filter(trade => trade.tradeType === 'paper') as PaperTrade[];
+      console.log(`Found ${paperTrades.length} paper trades`);
       
       // Track how many trades and legs are processed
       let processedTrades = 0;
       let processedLegs = 0;
       let processedPhysicalExposures = 0;
       let processedPricingExposures = 0;
+      let processedPaperExposures = 0;
       
       // Process trades that have valid pricing periods
       physicalTrades.forEach(trade => {
@@ -240,12 +252,53 @@ export function useFilteredExposures({
         }
       });
       
+      // Process paper trades
+      paperTrades.forEach(trade => {
+        let tradeHasValidLeg = false;
+        
+        trade.legs.forEach(leg => {
+          // Skip legs without exposures
+          if (!leg.exposures) {
+            console.log(`Skipping paper trade leg without exposures: ${leg.legReference}`);
+            return;
+          }
+          
+          processedLegs++;
+          tradeHasValidLeg = true;
+          
+          // Get the trading period (month)
+          const period = leg.period;
+          if (!period) {
+            console.log(`Skipping paper trade leg without period: ${leg.legReference}`);
+            return;
+          }
+          
+          // Initialize period entry if not exists
+          if (!paperExposuresByPeriod[period]) {
+            paperExposuresByPeriod[period] = {};
+          }
+          
+          // Process paper exposures
+          if (leg.exposures.paper) {
+            Object.entries(leg.exposures.paper).forEach(([instrument, value]) => {
+              if (!paperExposuresByPeriod[period][instrument]) {
+                paperExposuresByPeriod[period][instrument] = 0;
+              }
+              
+              paperExposuresByPeriod[period][instrument] += Number(value) || 0;
+              processedPaperExposures++;
+            });
+          }
+        });
+        
+        if (tradeHasValidLeg) {
+          processedTrades++;
+        }
+      });
+      
       console.log(`Processed ${processedTrades} trades and ${processedLegs} legs`);
-      console.log(`Found ${processedPhysicalExposures} physical exposure entries and ${processedPricingExposures} pricing exposure entries`);
-      console.log('Physical distributions:', physicalDistributions);
-      console.log('Pricing distributions:', pricingDistributions);
-      console.log('Physical pricing periods:', physicalPricingPeriods);
-      console.log('Pricing pricing periods:', pricingPricingPeriods);
+      console.log(`Found ${processedPhysicalExposures} physical, ${processedPricingExposures} pricing, and ${processedPaperExposures} paper exposure entries`);
+      console.log('Paper exposures by period:', paperExposuresByPeriod);
       
       // Convert monthly distributions to daily distributions (with pricing periods)
       const physicalDailyDistributions = calculateDailyDistributionByInstrument(
@@ -273,8 +326,39 @@ export function useFilteredExposures({
         pricingPricingPeriods
       );
       
+      // Process paper trade exposures
+      let filteredPaperExposures: Record<Instrument, number> = {};
+      
+      // For each period with paper exposures
+      Object.entries(paperExposuresByPeriod).forEach(([period, exposures]) => {
+        // Convert to daily distributions
+        const paperDailyDistributions = processPaperTradeExposures(exposures, period);
+        
+        // Filter by date range
+        const filteredPaperDailyDistributions = filterPaperTradeDistributions(
+          paperDailyDistributions,
+          startDate,
+          endDate,
+          period
+        );
+        
+        // Calculate totals for this period
+        const periodTotals = calculateTotalExposureFromDailyDistributions(
+          filteredPaperDailyDistributions
+        );
+        
+        // Merge with overall paper exposures
+        Object.entries(periodTotals).forEach(([instrument, value]) => {
+          if (!filteredPaperExposures[instrument]) {
+            filteredPaperExposures[instrument] = 0;
+          }
+          filteredPaperExposures[instrument] += value;
+        });
+      });
+      
       console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
       console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
+      console.log('Filtered paper exposures:', filteredPaperExposures);
       
       // Calculate total exposures from filtered daily distributions
       const totalPhysicalExposures = calculateTotalExposureFromDailyDistributions(
@@ -287,14 +371,16 @@ export function useFilteredExposures({
       
       console.log('Total physical exposures:', totalPhysicalExposures);
       console.log('Total pricing exposures:', totalPricingExposures);
+      console.log('Total paper exposures:', filteredPaperExposures);
       
       return {
         physical: totalPhysicalExposures,
-        pricing: totalPricingExposures
+        pricing: totalPricingExposures,
+        paper: filteredPaperExposures
       } as FilteredExposureResult;
     } catch (error) {
       console.error("Error calculating filtered exposures:", error);
-      return { physical: {}, pricing: {} } as FilteredExposureResult;
+      return { physical: {}, pricing: {}, paper: {} } as FilteredExposureResult;
     } finally {
       setIsCalculating(false);
     }
