@@ -1,4 +1,5 @@
-import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types';
+
+import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types/pricing';
 import { supabase } from '@/integrations/supabase/client';
 import { formulaToDisplayString } from './formulaUtils';
 

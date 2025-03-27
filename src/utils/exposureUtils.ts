@@ -4,7 +4,7 @@ import {
   MonthlyDistribution 
 } from '@/types/pricing';
 import { Instrument } from '@/types/common';
-import { countWorkingDays, isWeekend, standardizeMonthCode, monthCodeToDates } from './workingDaysUtils';
+import { countWorkingDays, isWeekend, standardizeMonthCode } from './workingDaysUtils';
 import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'date-fns';
 
 /**

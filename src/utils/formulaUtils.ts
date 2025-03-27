@@ -1,5 +1,5 @@
 
-import { FormulaToken, Instrument, PricingFormula, ExposureResult, PartialPricingFormula } from '@/types';
+import { FormulaToken, Instrument, PricingFormula, ExposureResult, PartialPricingFormula } from '@/types/pricing';
 import { createEmptyExposureResult, calculateExposures } from './formulaCalculation';
 
 // Generate a unique ID for formula tokens
