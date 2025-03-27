@@ -1,562 +1,440 @@
-
-import { ExposureResult, DailyDistribution, DailyDistributionByInstrument, MonthlyDistribution } from '@/types';
+import { 
+  DailyDistribution, 
+  DailyDistributionByInstrument, 
+  MonthlyDistribution 
+} from '@/types/pricing';
 import { Instrument } from '@/types/common';
-import { PaperTrade } from '@/types/paper';
-import { PhysicalTrade } from '@/types/physical';
-import { countWorkingDays, formatMonthCode, standardizeMonthCode } from './workingDaysUtils';
-// Import monthCodeToDates from workingDaysUtils to avoid conflict
-import { monthCodeToDates } from './workingDaysUtils';
+import { countWorkingDays, isWeekend, standardizeMonthCode, monthCodeToDates } from './workingDaysUtils';
+import { format, isWithinInterval, parse, isAfter, isBefore, max, min } from 'date-fns';
 
-// Store a cache of daily distributions to avoid recalculating
-let dailyDistributionCache: Record<string, DailyDistributionByInstrument> = {};
-
-// Clear the cache when trades change
-export function clearDailyDistributionCache(): void {
-  dailyDistributionCache = {};
+/**
+ * Check if a date range (startDate-endDate) overlaps with a pricing period (pricingStart-pricingEnd)
+ * Safely handles potentially undefined pricing period dates
+ * @param startDate Start of selected date range
+ * @param endDate End of selected date range
+ * @param pricingStart Start of pricing period
+ * @param pricingEnd End of pricing period
+ * @returns True if there is an overlap, false otherwise
+ */
+export function isDateWithinPricingPeriod(
+  startDate: Date,
+  endDate: Date,
+  pricingStart: Date | null | undefined,
+  pricingEnd: Date | null | undefined
+): boolean {
+  // If either pricing date is missing, we can't determine overlap, so return false
+  if (!pricingStart || !pricingEnd) {
+    return false;
+  }
+  
+  // Check if date ranges overlap
+  // Two date ranges overlap if the start of one is before or equal to the end of the other,
+  // AND the end of one is after or equal to the start of the other
+  return (
+    isBeforeOrEqual(startDate, pricingEnd) && 
+    isAfterOrEqual(endDate, pricingStart)
+  );
 }
 
-// Get days overlap between a date range and a pricing period
+/**
+ * Helper function to check if date1 is before or equal to date2
+ */
+function isBeforeOrEqual(date1: Date, date2: Date): boolean {
+  return isBefore(date1, date2) || date1.getTime() === date2.getTime();
+}
+
+/**
+ * Helper function to check if date1 is after or equal to date2
+ */
+function isAfterOrEqual(date1: Date, date2: Date): boolean {
+  return isAfter(date1, date2) || date1.getTime() === date2.getTime();
+}
+
+/**
+ * Get the overlapping days between two date ranges
+ * @param filterStart Start of filter date range
+ * @param filterEnd End of filter date range
+ * @param pricingStart Start of pricing period
+ * @param pricingEnd End of pricing period
+ * @returns Object with start and end dates of the overlap, or null if no overlap
+ */
 export function getOverlappingDays(
   filterStart: Date,
   filterEnd: Date,
-  periodStart: Date,
-  periodEnd: Date
-): { start: Date; end: Date } | null {
-  // Ensure dates are properly compared
-  const start = new Date(Math.max(filterStart.getTime(), periodStart.getTime()));
-  const end = new Date(Math.min(filterEnd.getTime(), periodEnd.getTime()));
-  
-  // If no overlap, return null
-  if (start > end) {
+  pricingStart: Date,
+  pricingEnd: Date
+): { start: Date, end: Date } | null {
+  // If date ranges don't overlap, return null
+  if (!isDateWithinPricingPeriod(filterStart, filterEnd, pricingStart, pricingEnd)) {
     return null;
   }
+  
+  // Get the later of the two start dates
+  const overlapStart = filterStart > pricingStart ? filterStart : pricingStart;
+  
+  // Get the earlier of the two end dates
+  const overlapEnd = filterEnd < pricingEnd ? filterEnd : pricingEnd;
+  
+  return { start: overlapStart, end: overlapEnd };
+}
+
+/**
+ * Convert a month code (e.g., "Mar-24") to start and end dates
+ * @param monthCode The month code in format "MMM-YY"
+ * @returns Object with start and end dates for the month
+ */
+export function monthCodeToDates(monthCode: string): { start: Date, end: Date } {
+  // Ensure the month code is standardized
+  const standardizedMonthCode = standardizeMonthCode(monthCode);
+  
+  // Parse the month code (e.g., "Mar-24")
+  const [monthStr, yearStr] = standardizedMonthCode.split('-');
+  const year = 2000 + parseInt(yearStr);
+  
+  // Get the month number (0-11)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthIndex = monthNames.findIndex(m => m === monthStr);
+  
+  if (monthIndex === -1) {
+    throw new Error(`Invalid month code: ${monthCode} (standardized: ${standardizedMonthCode})`);
+  }
+  
+  // Create the start date (first day of month)
+  const start = new Date(year, monthIndex, 1);
+  
+  // Create the end date (last day of month)
+  const end = new Date(year, monthIndex + 1, 0);
   
   return { start, end };
 }
 
-// Check if a date is within a pricing period
-export function isDateWithinPricingPeriod(
-  date: Date,
-  periodStart: Date,
-  periodEnd: Date
-): boolean {
-  return date >= periodStart && date <= periodEnd;
-}
-
-// Calculate daily distribution from monthly distribution
+/**
+ * Calculate daily distribution from monthly distribution considering pricing period
+ * @param monthlyDistribution The monthly distribution object
+ * @param pricingStart Start date of pricing period
+ * @param pricingEnd End date of pricing period 
+ * @returns Daily distribution object
+ */
 export function calculateDailyDistribution(
-  monthlyDistribution: Record<string, MonthlyDistribution>,
-  filterStart?: Date,
-  filterEnd?: Date
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
+  monthlyDistribution: MonthlyDistribution,
+  pricingStart: Date,
+  pricingEnd: Date
+): DailyDistribution {
+  const dailyDistribution: DailyDistribution = {};
   
-  // Process each instrument's monthly distribution
-  Object.entries(monthlyDistribution).forEach(([instrument, distribution]) => {
-    result[instrument] = {};
-    
-    // Process each month in the distribution
-    Object.entries(distribution).forEach(([monthCode, quantity]) => {
-      // Convert month code to date range
-      const { start, end } = monthCodeToDates(monthCode);
-      
-      // If filter dates are provided, check for overlap
-      if (filterStart && filterEnd) {
-        const overlap = getOverlappingDays(filterStart, filterEnd, start, end);
-        if (!overlap) return; // Skip if no overlap
-        
-        // Adjust start and end dates to the overlap period
-        const adjustedStart = overlap.start;
-        const adjustedEnd = overlap.end;
-        
-        // Calculate working days in the overlap period
-        const workingDaysInPeriod = countWorkingDays(adjustedStart, adjustedEnd);
-        const totalWorkingDaysInMonth = countWorkingDays(start, end);
-        
-        // Calculate the proportion of the month that overlaps with the filter period
-        const proportion = workingDaysInPeriod / totalWorkingDaysInMonth;
-        
-        // Distribute the quantity proportionally to each working day in the overlap
-        if (workingDaysInPeriod > 0) {
-          const dailyQuantity = (quantity * proportion) / workingDaysInPeriod;
-          
-          // Create a date iterator
-          const currentDate = new Date(adjustedStart);
-          while (currentDate <= adjustedEnd) {
-            if (!countWorkingDays(currentDate, currentDate)) {
-              // Skip weekends
-              currentDate.setDate(currentDate.getDate() + 1);
-              continue;
-            }
-            
-            const dateString = currentDate.toISOString().split('T')[0];
-            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
-            
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        }
-      } else {
-        // No filter - distribute across all working days in the month
-        const workingDaysInMonth = countWorkingDays(start, end);
-        
-        if (workingDaysInMonth > 0) {
-          const dailyQuantity = quantity / workingDaysInMonth;
-          
-          // Create a date iterator
-          const currentDate = new Date(start);
-          while (currentDate <= end) {
-            if (!countWorkingDays(currentDate, currentDate)) {
-              // Skip weekends
-              currentDate.setDate(currentDate.getDate() + 1);
-              continue;
-            }
-            
-            const dateString = currentDate.toISOString().split('T')[0];
-            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
-            
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        }
-      }
-    });
-  });
+  // Calculate total working days in the pricing period
+  const totalWorkingDaysInPricingPeriod = countWorkingDays(pricingStart, pricingEnd);
   
-  return result;
-}
-
-// Calculate daily distribution by instrument with pricing periods
-export function calculateDailyDistributionByInstrument(
-  monthlyDistribution: Record<string, MonthlyDistribution>,
-  pricingPeriods: Record<string, { start: Date, end: Date }>
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
+  if (totalWorkingDaysInPricingPeriod === 0) {
+    console.warn(`No working days found in pricing period from ${format(pricingStart, 'yyyy-MM-dd')} to ${format(pricingEnd, 'yyyy-MM-dd')}`);
+    return dailyDistribution;
+  }
   
-  // Process each instrument's monthly distribution
-  Object.entries(monthlyDistribution).forEach(([instrument, distribution]) => {
-    // Check if we have a cached result
-    const cacheKey = `${instrument}-${JSON.stringify(distribution)}`;
-    if (dailyDistributionCache[cacheKey]) {
-      result[instrument] = dailyDistributionCache[cacheKey][instrument];
-      return;
+  // Calculate total exposure across all months
+  const totalExposure = Object.values(monthlyDistribution).reduce((sum, value) => sum + value, 0);
+  
+  // Calculate value per working day across the entire pricing period
+  const valuePerDay = totalExposure / totalWorkingDaysInPricingPeriod;
+  
+  // Distribute values to each working day in the pricing period
+  const currentDate = new Date(pricingStart);
+  while (currentDate <= pricingEnd) {
+    if (!isWeekend(currentDate)) {
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      dailyDistribution[dateString] = valuePerDay;
     }
-    
-    result[instrument] = {};
-    
-    // Get pricing period for this instrument
-    const pricingPeriod = pricingPeriods[instrument];
-    
-    // Process each month in the distribution
-    Object.entries(distribution).forEach(([monthCode, quantity]) => {
-      // Convert month code to date range
-      const { start, end } = monthCodeToDates(monthCode);
-      
-      // If there's a pricing period, check for overlap
-      if (pricingPeriod) {
-        const overlap = getOverlappingDays(pricingPeriod.start, pricingPeriod.end, start, end);
-        if (!overlap) return; // Skip if no overlap
-        
-        // Adjust start and end dates to the overlap period
-        const adjustedStart = overlap.start;
-        const adjustedEnd = overlap.end;
-        
-        // Calculate working days in the overlap period
-        const workingDaysInPeriod = countWorkingDays(adjustedStart, adjustedEnd);
-        const totalWorkingDaysInMonth = countWorkingDays(start, end);
-        
-        // Calculate the proportion of the month that overlaps with the pricing period
-        const proportion = workingDaysInPeriod / totalWorkingDaysInMonth;
-        
-        // Distribute the quantity proportionally to each working day in the overlap
-        if (workingDaysInPeriod > 0) {
-          const dailyQuantity = (quantity * proportion) / workingDaysInPeriod;
-          
-          // Create a date iterator
-          const currentDate = new Date(adjustedStart);
-          while (currentDate <= adjustedEnd) {
-            if (!countWorkingDays(currentDate, currentDate)) {
-              // Skip weekends
-              currentDate.setDate(currentDate.getDate() + 1);
-              continue;
-            }
-            
-            const dateString = currentDate.toISOString().split('T')[0];
-            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
-            
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        }
-      } else {
-        // No pricing period - distribute across all working days in the month
-        const workingDaysInMonth = countWorkingDays(start, end);
-        
-        if (workingDaysInMonth > 0) {
-          const dailyQuantity = quantity / workingDaysInMonth;
-          
-          // Create a date iterator
-          const currentDate = new Date(start);
-          while (currentDate <= end) {
-            if (!countWorkingDays(currentDate, currentDate)) {
-              // Skip weekends
-              currentDate.setDate(currentDate.getDate() + 1);
-              continue;
-            }
-            
-            const dateString = currentDate.toISOString().split('T')[0];
-            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
-            
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1);
-          }
-        }
-      }
-    });
-    
-    // Cache the result
-    dailyDistributionCache[cacheKey] = { [instrument]: result[instrument] };
-  });
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
   
-  return result;
+  return dailyDistribution;
 }
 
-// Process physical trade for daily distribution
-export function processPhysicalTradeForDailyDistribution(
-  trade: PhysicalTrade,
-  filterStart?: Date,
-  filterEnd?: Date
-): DailyDistributionByInstrument {
-  // Check if the trade has monthly distribution data
-  if (!trade.formula?.exposures?.monthlyDistribution) {
-    console.log(`Trade ${trade.tradeReference} has no monthly distribution data`);
+/**
+ * Calculate daily distribution for paper trades
+ * @param totalExposure The total exposure amount for the paper trade
+ * @param tradingPeriod The trading period code (e.g. "Mar-25")
+ * @returns Daily distribution object
+ */
+export function calculateDailyDistributionForPaperTrade(
+  totalExposure: number,
+  tradingPeriod: string
+): DailyDistribution {
+  console.log(`Calculating daily distribution for paper trade with ${totalExposure} in ${tradingPeriod}`);
+  
+  // Convert trading period to start/end dates (first and last day of month)
+  const { start, end } = monthCodeToDates(tradingPeriod);
+  
+  // Calculate working days in the entire month
+  const workingDaysInMonth = countWorkingDays(start, end);
+  console.log(`Working days in ${tradingPeriod}: ${workingDaysInMonth}`);
+  
+  if (workingDaysInMonth === 0) {
+    console.warn(`No working days found in the period ${tradingPeriod}`);
     return {};
   }
   
-  return calculateDailyDistribution(
-    trade.formula.exposures.monthlyDistribution,
-    filterStart,
-    filterEnd
-  );
-}
-
-// Process paper trade for daily distribution
-export function processPaperTradeForDailyDistribution(
-  trade: PaperTrade,
-  filterStart?: Date, 
-  filterEnd?: Date
-): DailyDistributionByInstrument {
-  // For paper trades, we need to handle the distribution differently
-  // as they might not have the same structure as physical trades
-  const result: DailyDistributionByInstrument = {};
+  // Calculate daily exposure value
+  const dailyExposure = totalExposure / workingDaysInMonth;
+  console.log(`Daily exposure for ${tradingPeriod}: ${dailyExposure} (${totalExposure} ÷ ${workingDaysInMonth})`);
   
-  // Check if the trade has legs with exposures
-  if (!trade.legs || trade.legs.length === 0) {
-    return result;
+  // Distribute to all working days in the month
+  const dailyDistribution: DailyDistribution = {};
+  const currentDate = new Date(start);
+  
+  while (currentDate <= end) {
+    if (!isWeekend(currentDate)) {
+      const dateString = format(currentDate, 'yyyy-MM-dd');
+      dailyDistribution[dateString] = dailyExposure;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
   }
   
-  // Process each leg
-  trade.legs.forEach(leg => {
-    // Paper trades don't have monthlyDistribution, they have direct paper/pricing exposures
-    if (!leg.exposures) {
-      return; // Skip legs without exposures
-    }
-    
-    // Process paper exposures
-    if (leg.exposures.paper) {
-      // Create daily distribution for paper exposures
-      const paperDaily = processPaperTradeExposures(
-        leg.exposures.paper as Record<Instrument, number>,
-        leg.period
-      );
-      
-      // Merge with result
-      Object.entries(paperDaily).forEach(([instrument, dailyDist]) => {
-        if (!result[instrument]) {
-          result[instrument] = {};
-        }
-        
-        Object.entries(dailyDist).forEach(([date, quantity]) => {
-          result[instrument][date] = (result[instrument][date] || 0) + quantity;
-        });
-      });
-    }
-    
-    // Process pricing exposures if needed
-    if (leg.exposures.pricing) {
-      // Similar processing for pricing exposures can be added here if needed
-      // For now, we're focusing on paper exposures
-    }
-  });
-  
-  return result;
+  return dailyDistribution;
 }
 
-// Process paper trade exposures by period
-export function processPaperTradeExposures(
-  exposures: Record<Instrument, number>,
-  period: string
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
-  
-  // Convert period to date range
-  const { start, end } = monthCodeToDates(period);
-  
-  // Calculate working days in the period
-  const workingDaysInPeriod = countWorkingDays(start, end);
-  
-  // Process each instrument
-  Object.entries(exposures).forEach(([instrument, quantity]) => {
-    result[instrument] = {};
-    
-    if (workingDaysInPeriod > 0) {
-      const dailyQuantity = quantity / workingDaysInPeriod;
-      
-      // Create a date iterator
-      const currentDate = new Date(start);
-      while (currentDate <= end) {
-        if (!countWorkingDays(currentDate, currentDate)) {
-          // Skip weekends
-          currentDate.setDate(currentDate.getDate() + 1);
-          continue;
-        }
-        
-        const dateString = currentDate.toISOString().split('T')[0];
-        result[instrument][dateString] = dailyQuantity;
-        
-        // Move to next day
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    }
-  });
-  
-  return result;
-}
-
-// Filter daily distribution by date range
+/**
+ * Filter daily distribution by date range, considering pricing period overlap
+ * @param dailyDistribution The daily distribution object
+ * @param filterStart Start date of the filter range
+ * @param filterEnd End date of the filter range
+ * @param pricingStart Start date of pricing period
+ * @param pricingEnd End date of pricing period
+ * @returns Filtered daily distribution
+ */
 export function filterDailyDistributionByDateRange(
-  dailyDistribution: DailyDistributionByInstrument,
-  startDate: Date,
-  endDate: Date
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
+  dailyDistribution: DailyDistribution,
+  filterStart: Date,
+  filterEnd: Date,
+  pricingStart: Date,
+  pricingEnd: Date
+): DailyDistribution {
+  const filteredDistribution: DailyDistribution = {};
   
-  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
-    result[instrument] = {};
-    
-    Object.entries(distribution).forEach(([dateStr, quantity]) => {
-      if (dateStr >= startDateStr && dateStr <= endDateStr) {
-        result[instrument][dateStr] = quantity;
-      }
-    });
-  });
+  // Get overlapping date range
+  const overlap = getOverlappingDays(filterStart, filterEnd, pricingStart, pricingEnd);
   
-  return result;
-}
-
-// Filter daily distributions by date range with pricing periods
-export function filterDailyDistributionsByDateRange(
-  dailyDistribution: DailyDistributionByInstrument,
-  startDate: Date,
-  endDate: Date,
-  pricingPeriods?: Record<string, { start: Date, end: Date }>
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  
-  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
-    result[instrument] = {};
-    
-    // Get pricing period for this instrument
-    const pricingPeriod = pricingPeriods ? pricingPeriods[instrument] : null;
-    
-    Object.entries(distribution).forEach(([dateStr, quantity]) => {
-      const date = new Date(dateStr);
-      
-      // Check if date is within filter range
-      const isWithinFilter = dateStr >= startDateStr && dateStr <= endDateStr;
-      
-      // Check if date is within pricing period (if provided)
-      const isWithinPricing = pricingPeriod 
-        ? isDateWithinPricingPeriod(date, pricingPeriod.start, pricingPeriod.end) 
-        : true;
-      
-      // Only include if date is within both ranges
-      if (isWithinFilter && isWithinPricing) {
-        result[instrument][dateStr] = quantity;
-      }
-    });
-  });
-  
-  return result;
-}
-
-// Filter paper trade distributions by date range
-export function filterPaperTradeDistributions(
-  dailyDistribution: DailyDistributionByInstrument,
-  startDate: Date,
-  endDate: Date,
-  period: string
-): DailyDistributionByInstrument {
-  const result: DailyDistributionByInstrument = {};
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  
-  // Convert period to date range
-  const { start: periodStart, end: periodEnd } = monthCodeToDates(period);
-  
-  // Check if filter range overlaps with period
-  const overlap = getOverlappingDays(startDate, endDate, periodStart, periodEnd);
+  // If there's no overlap, return empty distribution
   if (!overlap) {
-    return result;
+    return filteredDistribution;
   }
   
-  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
-    result[instrument] = {};
-    
-    Object.entries(distribution).forEach(([dateStr, quantity]) => {
-      if (dateStr >= startDateStr && dateStr <= endDateStr) {
-        result[instrument][dateStr] = quantity;
+  // Filter daily distribution to only include dates in the overlapping range
+  Object.entries(dailyDistribution).forEach(([dateString, value]) => {
+    try {
+      const date = parse(dateString, 'yyyy-MM-dd', new Date());
+      
+      if (isWithinInterval(date, { start: overlap.start, end: overlap.end })) {
+        filteredDistribution[dateString] = value;
       }
-    });
-  });
-  
-  return result;
-}
-
-// Calculate total exposure values by instrument
-export function calculateTotalExposureByInstrument(
-  dailyDistribution: DailyDistributionByInstrument
-): Record<Instrument, number> {
-  const result: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Argus HVO': 0,
-    'Platts LSGO': 0,
-    'Platts Diesel': 0,
-    'ICE GASOIL FUTURES': 0,
-  };
-  
-  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
-    if (instrument in result) {
-      result[instrument as Instrument] = Object.values(distribution).reduce(
-        (sum, value) => sum + value, 
-        0
-      );
+    } catch (error) {
+      console.error(`Error filtering distribution for date ${dateString}:`, error);
     }
   });
   
-  return result;
+  return filteredDistribution;
 }
 
-// Calculate total exposure from daily distributions
-export function calculateTotalExposureFromDailyDistributions(
-  dailyDistribution: DailyDistributionByInstrument
-): Record<Instrument, number> {
-  return calculateTotalExposureByInstrument(dailyDistribution);
+/**
+ * Sum all values in a daily distribution
+ * @param dailyDistribution The daily distribution object
+ * @returns Total sum of all values
+ */
+export function sumDailyDistribution(dailyDistribution: DailyDistribution): number {
+  return Object.values(dailyDistribution).reduce((sum, value) => sum + value, 0);
 }
 
-// Combine multiple daily distributions into one
-export function combineDailyDistributions(
-  distributions: DailyDistributionByInstrument[]
+/**
+ * Convert instrument monthly distributions to daily distributions
+ * @param instrumentDistributions Record of instruments and their monthly distributions
+ * @param pricingPeriods Record of instruments and their pricing periods
+ * @returns Record of instruments and their daily distributions
+ */
+export function calculateDailyDistributionByInstrument(
+  instrumentDistributions: Record<Instrument, MonthlyDistribution>,
+  pricingPeriods: Record<Instrument, { start: Date, end: Date }>
 ): DailyDistributionByInstrument {
   const result: DailyDistributionByInstrument = {};
   
-  distributions.forEach(distribution => {
-    Object.entries(distribution).forEach(([instrument, dailyDist]) => {
-      if (!result[instrument]) {
-        result[instrument] = {};
-      }
-      
-      Object.entries(dailyDist).forEach(([date, quantity]) => {
-        result[instrument][date] = (result[instrument][date] || 0) + quantity;
-      });
-    });
+  Object.entries(instrumentDistributions).forEach(([instrument, monthlyDist]) => {
+    const pricingPeriod = pricingPeriods[instrument];
+    if (pricingPeriod) {
+      result[instrument] = calculateDailyDistribution(
+        monthlyDist, 
+        pricingPeriod.start, 
+        pricingPeriod.end
+      );
+    } else {
+      console.warn(`No pricing period found for instrument ${instrument}`);
+    }
   });
   
   return result;
 }
 
-// Merge exposure objects
-export function mergeExposures(
-  exposures: ExposureResult[]
-): ExposureResult {
-  const result: ExposureResult = {
-    physical: {
-      'Argus UCOME': 0,
-      'Argus RME': 0,
-      'Argus FAME0': 0,
-      'Argus HVO': 0,
-      'Platts LSGO': 0,
-      'Platts Diesel': 0,
-      'ICE GASOIL FUTURES': 0,
-    },
-    pricing: {
-      'Argus UCOME': 0,
-      'Argus RME': 0,
-      'Argus FAME0': 0,
-      'Argus HVO': 0,
-      'Platts LSGO': 0,
-      'Platts Diesel': 0,
-      'ICE GASOIL FUTURES': 0,
-    },
-    monthlyDistribution: {}
-  };
+/**
+ * Filter daily distributions by date range for all instruments, considering pricing periods
+ * @param dailyDistributions Record of instruments and their daily distributions
+ * @param filterStart Start date of the range
+ * @param filterEnd End date of the range
+ * @param pricingPeriods Record of instruments and their pricing periods
+ * @returns Filtered daily distributions by instrument
+ */
+export function filterDailyDistributionsByDateRange(
+  dailyDistributions: DailyDistributionByInstrument,
+  filterStart: Date,
+  filterEnd: Date,
+  pricingPeriods: Record<Instrument, { start: Date, end: Date }>
+): DailyDistributionByInstrument {
+  const result: DailyDistributionByInstrument = {};
   
-  // Merge physical and pricing exposures
-  exposures.forEach(exposure => {
-    // Merge physical exposures
-    Object.entries(exposure.physical).forEach(([instrument, value]) => {
-      result.physical[instrument as Instrument] = 
-        (result.physical[instrument as Instrument] || 0) + value;
-    });
-    
-    // Merge pricing exposures
-    Object.entries(exposure.pricing).forEach(([instrument, value]) => {
-      result.pricing[instrument as Instrument] = 
-        (result.pricing[instrument as Instrument] || 0) + value;
-    });
-    
-    // Merge paper exposures if they exist
-    if (exposure.paper) {
-      if (!result.paper) {
-        result.paper = {
-          'Argus UCOME': 0,
-          'Argus RME': 0,
-          'Argus FAME0': 0,
-          'Argus HVO': 0,
-          'Platts LSGO': 0,
-          'Platts Diesel': 0,
-          'ICE GASOIL FUTURES': 0,
-        };
-      }
-      
-      Object.entries(exposure.paper).forEach(([instrument, value]) => {
-        result.paper![instrument as Instrument] = 
-          (result.paper![instrument as Instrument] || 0) + value;
-      });
+  Object.entries(dailyDistributions).forEach(([instrument, dailyDist]) => {
+    const pricingPeriod = pricingPeriods[instrument];
+    if (pricingPeriod) {
+      result[instrument] = filterDailyDistributionByDateRange(
+        dailyDist, 
+        filterStart, 
+        filterEnd,
+        pricingPeriod.start,
+        pricingPeriod.end
+      );
+    } else {
+      console.warn(`No pricing period found for instrument ${instrument}`);
     }
+  });
+  
+  return result;
+}
+
+/**
+ * Calculate total exposure values from filtered daily distributions
+ * @param filteredDailyDistributions Filtered daily distributions by instrument
+ * @returns Record of instruments and their total exposure values
+ */
+export function calculateTotalExposureFromDailyDistributions(
+  filteredDailyDistributions: DailyDistributionByInstrument
+): Record<Instrument, number> {
+  const result: Record<string, number> = {};
+  
+  Object.entries(filteredDailyDistributions).forEach(([instrument, dailyDist]) => {
+    const totalExposure = sumDailyDistribution(dailyDist);
+    if (totalExposure !== 0) {
+      result[instrument] = totalExposure;
+    }
+  });
+  
+  return result as Record<Instrument, number>;
+}
+
+// Cache for daily distributions to optimize performance
+const dailyDistributionCache = new Map<string, DailyDistribution>();
+
+/**
+ * Get or calculate daily distribution with caching
+ * @param monthlyDistribution The monthly distribution object
+ * @param pricingStart Start of pricing period
+ * @param pricingEnd End of pricing period
+ * @param cacheKey A unique key for caching (e.g., instrument name)
+ * @returns Daily distribution object
+ */
+export function getCachedDailyDistribution(
+  monthlyDistribution: MonthlyDistribution,
+  pricingStart: Date,
+  pricingEnd: Date,
+  cacheKey: string
+): DailyDistribution {
+  // Create a cache signature based on the monthly distribution, pricing period and key
+  const cacheSignature = `${cacheKey}:${JSON.stringify(monthlyDistribution)}:${format(pricingStart, 'yyyy-MM-dd')}:${format(pricingEnd, 'yyyy-MM-dd')}`;
+  
+  // Check if we have a cached result
+  if (dailyDistributionCache.has(cacheSignature)) {
+    return dailyDistributionCache.get(cacheSignature)!;
+  }
+  
+  // Calculate new distribution
+  const dailyDistribution = calculateDailyDistribution(monthlyDistribution, pricingStart, pricingEnd);
+  
+  // Cache the result
+  dailyDistributionCache.set(cacheSignature, dailyDistribution);
+  
+  return dailyDistribution;
+}
+
+/**
+ * Clear the daily distribution cache
+ * Useful when trades change and cache needs to be invalidated
+ */
+export function clearDailyDistributionCache(): void {
+  dailyDistributionCache.clear();
+}
+
+/**
+ * Process paper trade exposures and convert to daily distributions
+ * @param paperExposures Record of paper exposures by instrument
+ * @param tradingPeriod The trading period (e.g. "Mar-25")
+ * @returns Daily distributions by instrument
+ */
+export function processPaperTradeExposures(
+  paperExposures: Record<Instrument, number>,
+  tradingPeriod: string
+): DailyDistributionByInstrument {
+  console.log(`Processing paper trade exposures for period ${tradingPeriod}:`, paperExposures);
+  
+  const result: DailyDistributionByInstrument = {};
+  
+  Object.entries(paperExposures).forEach(([instrument, exposure]) => {
+    if (exposure !== 0) {
+      // Calculate daily distribution for this instrument's exposure
+      result[instrument] = calculateDailyDistributionForPaperTrade(exposure, tradingPeriod);
+    }
+  });
+  
+  return result;
+}
+
+/**
+ * Filter paper trade daily distributions by date range
+ * @param paperDailyDistributions Daily distributions from paper trades
+ * @param filterStart Start date of filter range
+ * @param filterEnd End date of filter range
+ * @param tradingPeriod The trading period (month) of the paper trade
+ * @returns Filtered daily distributions by instrument
+ */
+export function filterPaperTradeDistributions(
+  paperDailyDistributions: DailyDistributionByInstrument,
+  filterStart: Date,
+  filterEnd: Date,
+  tradingPeriod: string
+): DailyDistributionByInstrument {
+  console.log(`Filtering paper trade distributions for ${tradingPeriod} with range ${filterStart.toISOString()} to ${filterEnd.toISOString()}`);
+  
+  // Convert trading period to month start/end
+  const { start: periodStart, end: periodEnd } = monthCodeToDates(tradingPeriod);
+  
+  const result: DailyDistributionByInstrument = {};
+  
+  Object.entries(paperDailyDistributions).forEach(([instrument, dailyDist]) => {
+    // Get overlapping days between filter range and trading period
+    const overlap = getOverlappingDays(filterStart, filterEnd, periodStart, periodEnd);
     
-    // Merge monthly distributions
-    if (exposure.monthlyDistribution) {
-      if (!result.monthlyDistribution) {
-        result.monthlyDistribution = {};
-      }
+    if (overlap) {
+      // Filter the daily distribution to only include overlapping days
+      const filtered: DailyDistribution = {};
       
-      Object.entries(exposure.monthlyDistribution).forEach(([instrument, distribution]) => {
-        if (!result.monthlyDistribution![instrument]) {
-          result.monthlyDistribution![instrument] = {};
+      Object.entries(dailyDist).forEach(([dateString, value]) => {
+        try {
+          const date = parse(dateString, 'yyyy-MM-dd', new Date());
+          
+          if (isWithinInterval(date, { start: overlap.start, end: overlap.end })) {
+            filtered[dateString] = value;
+          }
+        } catch (error) {
+          console.error(`Error filtering paper distribution for date ${dateString}:`, error);
         }
-        
-        Object.entries(distribution).forEach(([month, value]) => {
-          result.monthlyDistribution![instrument][month] = 
-            (result.monthlyDistribution![instrument][month] || 0) + value;
-        });
       });
+      
+      if (Object.keys(filtered).length > 0) {
+        result[instrument] = filtered;
+      }
     }
   });
   
