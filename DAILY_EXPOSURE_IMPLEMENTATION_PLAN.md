@@ -105,6 +105,7 @@ export interface DailyDistributionByInstrument {
 - The implementation will maintain the existing exposure table format
 - No existing functionality will be broken
 - Date range filtering will be an additional feature, not a replacement
+- **Physical trade calculations in the exposure reporting page when the date range filter is applied MUST BE UNAFFECTED by paper trade implementation**
 
 ### 6.2 Scope Limitation
 - This implementation covers both physical trades and paper trades
@@ -179,14 +180,34 @@ export interface DailyDistributionByInstrument {
 
 ### 8.1 Paper Trade Date Range Filtering
 
-Unlike physical trades, paper trades are always for a single month period. This simplifies the daily distribution calculation but requires some special handling:
+Unlike physical trades, paper trades are significantly different in structure:
 
-1. **Paper Trade Characteristics**:
-   - Each paper trade applies to exactly one month
-   - Monthly distribution is already stored in the trade exposures
-   - The pricing period for paper trades always matches the month of the trade
+1. **IMPORTANT: Paper Trade Exposure Structure**:
+   - Paper trades DO NOT have a `monthlyDistribution` object
+   - Exposures are stored directly in the leg's exposure object like this:
+   ```json
+   {
+     "paper": {
+       "Argus RME": 1000,
+       "Platts LSGO": -1000
+     },
+     "pricing": {
+       "Argus RME": 1000,
+       "Platts LSGO": -1000
+     },
+     "physical": {}
+   }
+   ```
+   - These values already represent the full monthly exposure for a single month
+   - The period property on the leg (e.g., "Mar-25") indicates which month the exposure applies to
 
-2. **Daily Distribution Calculation for Paper Trades**:
+2. **Separate Functions Required for Paper Trades**:
+   - We MUST create a separate function specifically for paper trades
+   - Cannot reuse the physical trade calculation function which expects monthlyDistribution
+   - The new function will take the paper exposures directly from the leg's exposures object
+   - It will distribute these values across working days in the specified month period
+
+3. **Daily Distribution Calculation for Paper Trades**:
    ```typescript
    export function calculateDailyDistributionForPaperTrade(
      totalExposure: number,
@@ -217,9 +238,24 @@ Unlike physical trades, paper trades are always for a single month period. This 
    }
    ```
 
-3. **Integration with Existing Filtering Logic**:
-   - Reuse the same filtering functions as physical trades
-   - Ensure the `getOverlappingDays` function properly handles month-based paper trade periods
+4. **Processing Paper Trade Exposures**:
+   ```typescript
+   export function processPaperTradeExposures(
+     paperExposures: Record<Instrument, number>,
+     tradingPeriod: string
+   ): DailyDistributionByInstrument {
+     const result: DailyDistributionByInstrument = {};
+     
+     Object.entries(paperExposures).forEach(([instrument, exposure]) => {
+       if (exposure !== 0) {
+         // Calculate daily distribution for this instrument's exposure
+         result[instrument] = calculateDailyDistributionForPaperTrade(exposure, tradingPeriod);
+       }
+     });
+     
+     return result;
+   }
+   ```
 
 ### 8.2 Paper Trade Exposure Calculation Example
 
@@ -269,11 +305,12 @@ Unlike physical trades, paper trades are always for a single month period. This 
 
 When both physical and paper trades exist in the system:
 
-1. Calculate daily distributions separately for each trade type:
-   - Physical trades: Based on pricing period that may span multiple months
-   - Paper trades: Based on the single month trading period
+1. **CRITICAL**: Physical and paper trades must be processed separately:
+   - Physical trades: Use monthlyDistribution and pricing periods
+   - Paper trades: Use direct exposure values and single month periods
+   - **The physical trade calculations in the exposure reporting page MUST NOT BE AFFECTED by paper trade implementation**
 
-2. Apply the same date range filter to both sets of daily distributions
+2. Apply the same date range filter to both sets of daily distributions through separate processing pipelines
 
 3. Combine the filtered results to show the total exposure in the exposure table
 
@@ -317,20 +354,21 @@ When both physical and paper trades exist in the system:
 
 ### 8.5 Key Differences from Physical Trade Implementation
 
-1. **Pricing Period Determination**:
-   - Physical trades: Multi-month pricing periods possible
-   - Paper trades: Always exactly one month
+1. **Exposure Structure**:
+   - Physical trades: Use monthlyDistribution with multiple month entries
+   - Paper trades: Direct exposure values for a single month period
 
-2. **Daily Exposure Calculation**:
-   - Physical trades: Total exposure ÷ working days in entire pricing period
-   - Paper trades: Monthly exposure ÷ working days in that specific month
+2. **Daily Exposure Calculation Functions**:
+   - Physical trades: `calculateDailyDistribution` for monthlyDistribution
+   - Paper trades: `calculateDailyDistributionForPaperTrade` for direct exposures
 
 3. **Distribution Source**:
    - Physical trades: Derived from monthly distribution
-   - Paper trades: Derived directly from the trade's exposure data
+   - Paper trades: Derived directly from the leg's exposures object
 
 4. **Data Access Path**:
-   - Physical trades: Accessed from `trade_legs` table with exposures JSON
-   - Paper trades: Accessed from `paper_trade_legs` table with exposures JSON
+   - Physical trades: Accessed from formula-derived monthlyDistribution
+   - Paper trades: Accessed directly from leg.exposures object
 
-Despite these differences, the core filtering logic remains the same: calculate a daily distribution, then filter it based on the overlapping days between the selected date range and the trade's applicable period.
+Despite these differences, the filtering logic is conceptually similar: calculate a daily distribution, then filter it based on the overlapping days between the selected date range and the applicable period. However, the implementation must use separate functions to handle the different data structures.
+
