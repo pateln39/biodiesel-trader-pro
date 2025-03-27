@@ -1,3 +1,4 @@
+
 import { 
   DailyDistribution, 
   DailyDistributionByInstrument, 
@@ -322,14 +323,4 @@ export function getCachedDailyDistribution(
  */
 export function clearDailyDistributionCache(): void {
   dailyDistributionCache.clear();
-}
-
-/**
- * Format a number with a sign and commas for display
- * @param num The number to format
- * @returns Formatted string with sign and commas
- */
-export function formatNumber(num: number): string {
-  const sign = num > 0 ? '+' : '';
-  return `${sign}${num.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }

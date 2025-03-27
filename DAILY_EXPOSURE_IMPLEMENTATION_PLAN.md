@@ -301,39 +301,23 @@ To fix these issues, we need to:
 ## 9. UI Enhancement - Show All Month Rows (**NEW SECTION**)
 
 ### 9.1 Current Behavior
-Currently, the exposure table displays all months in a grid format with product columns, showing exposures distributed across months. When we implement date range filtering, we need to preserve this exact layout.
-
-### Current Table Layout
-
-Below are screenshots of the current exposure table layout that must be maintained:
-
-![Empty Exposure Table](/public/lovable-uploads/3c8376b0-4d3d-44a7-8682-a34c2b702c46.png)
-*Figure 1: Current exposure table with zero values*
-
-![Exposure Table with Values](/public/lovable-uploads/dc10e5a2-243c-4737-a9f8-3cda8326b8f8.png)
-*Figure 2: Current exposure table with sample values*
+Currently, when a date range filter is applied, the exposures are aggregated and the table shows only one row with the filtered exposures. This makes it difficult to see how the exposures are distributed across different months.
 
 ### 9.2 Desired Behavior
-When a date range filter is applied, the exposure table should:
-1. **Maintain the exact same layout** as shown in the screenshots above
-2. **Keep all month rows visible** (do not aggregate or remove any rows)
-3. **Keep all product columns visible** (do not remove any columns)
-4. Only modify the exposure values in cells based on the date range filter:
-   - Show actual exposure values for dates that overlap with the filter
-   - Show zero exposure ("+0") for dates that don't overlap with the filter
-5. Ensure totals are correctly calculated based on the filtered values
+After applying a date range filter, the exposure table should:
+1. Continue to display all month rows, including future and past months
+2. Set exposure values to 0 for months that don't overlap with the filtered date range
+3. Only show actual exposure values for months that fall within the filtered date range
+4. Maintain all existing functionality, including the calculated totals
 
 ### 9.3 Implementation Changes
 To achieve this, the following changes will be made:
 
 1. **Modify the `ExposurePage.tsx` component**:
-   - Keep the existing table structure entirely intact
-   - When a date filter is applied, process the exposure data to:
-     - Preserve all month rows and product columns
-     - Set values to zero for cells that don't overlap with the date range
-     - Show actual calculated values for cells that do overlap
-   - Re-calculate totals based on the filtered values
-   - Display the date range filter above the table
+   - Update the `exposureData` useMemo to transform the filtered exposures into a complete monthly grid
+   - Instead of showing a single row for filtered exposures, expand it to show all months
+   - Set exposure values to 0 for months outside the filtered date range
+   - Preserve the original monthly view structure while applying the date range filter
 
 2. **No changes to the underlying filtering logic**:
    - The `useFilteredExposures` hook calculations remain unchanged
@@ -342,17 +326,15 @@ To achieve this, the following changes will be made:
 
 ### 9.4 Example UI Result
 
-When a user applies a date range filter of March 1-21 to the data shown in Figure 2:
-- The March row will show the filtered exposure values (e.g., +90.91mt UCOME, -90.91mt LSGO)
-- All other month rows will continue to be displayed but will show "+0" exposure
-- The total row will show the sum of the filtered values (same as the March row in this example)
-- The entire table structure will remain unchanged
+When a user applies a date range filter of March 1-21:
+- The March row will show the filtered exposure value (e.g., 90.90mt UCOME)
+- All other month rows (January, February, April, etc.) will show 0 exposure
+- The total row will still show the correct sum (90.90mt UCOME)
 
 This approach ensures that:
-1. Users always see the familiar monthly table structure exactly as shown in the screenshots
+1. Users always see the familiar monthly table structure
 2. The context of when exposures occur is clear
-3. The filtering functionality works correctly without changing the UI layout
+3. The filtering functionality works correctly
 4. The totals are accurately calculated
 
-No changes will be made to the table structure, column arrangement, or row display. The implementation will only affect the exposure values in the cells when a date filter is applied.
-
+No database or calculation logic changes are required, only UI presentation adjustments.

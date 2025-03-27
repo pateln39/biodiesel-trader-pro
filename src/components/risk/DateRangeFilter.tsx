@@ -1,119 +1,136 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  CalendarIcon, 
+  RefreshCw,
+  InfoIcon
+} from 'lucide-react';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { validateDateRange } from '@/utils/validationUtils';
+import { toast } from 'sonner';
+import { countWorkingDays, getWorkingDaysInMonth } from '@/utils/workingDaysUtils';
 
-export interface DateRangeFilterProps {
-  startDate: Date;
-  endDate: Date;
-  onDateRangeChange: (startDate: Date, endDate: Date) => void;
+interface DateRangeFilterProps {
+  onFilterChange: (startDate: Date, endDate: Date) => void;
+  isLoading?: boolean;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
-export function DateRangeFilter({ 
-  startDate, 
-  endDate, 
-  onDateRangeChange 
-}: DateRangeFilterProps) {
-  const [selectedStartDate, setSelectedStartDate] = React.useState<Date>(startDate);
-  const [selectedEndDate, setSelectedEndDate] = React.useState<Date>(endDate);
-  const [isStartOpen, setIsStartOpen] = React.useState(false);
-  const [isEndOpen, setIsEndOpen] = React.useState(false);
+const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ 
+  onFilterChange,
+  isLoading = false,
+  initialStartDate,
+  initialEndDate
+}) => {
+  const currentDate = new Date();
+  const [startDate, setStartDate] = useState<Date>(initialStartDate || startOfMonth(currentDate));
+  const [endDate, setEndDate] = useState<Date>(initialEndDate || endOfMonth(currentDate));
 
-  const handleStartDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedStartDate(date);
-      setIsStartOpen(false);
-      
-      // If end date is before new start date, update end date
-      if (selectedEndDate < date) {
-        setSelectedEndDate(date);
-      }
-    }
-  };
-
-  const handleEndDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedEndDate(date);
-      setIsEndOpen(false);
-      
-      // If start date is after new end date, update start date
-      if (selectedStartDate > date) {
-        setSelectedStartDate(date);
-      }
-    }
-  };
+  useEffect(() => {
+    if (initialStartDate) setStartDate(initialStartDate);
+    if (initialEndDate) setEndDate(initialEndDate);
+  }, [initialStartDate, initialEndDate]);
 
   const handleApplyFilter = () => {
-    onDateRangeChange(selectedStartDate, selectedEndDate);
+    // Validate date range
+    if (!validateDateRange(startDate, endDate, 'Date range')) {
+      return;
+    }
+    
+    // Apply the filter
+    onFilterChange(startDate, endDate);
+    toast.success('Date range applied', {
+      description: `Filtering from ${format(startDate, 'MMM dd, yyyy')} to ${format(endDate, 'MMM dd, yyyy')}`
+    });
+  };
+
+  const checkWorkingDays = () => {
+    // Calculate working days in the selected date range
+    const workingDays = countWorkingDays(startDate, endDate);
+    
+    // Get working days for each month in the range
+    const months = [];
+    const currentMonth = new Date(startDate);
+    currentMonth.setDate(1); // Set to first day of month
+    
+    while (currentMonth <= endDate) {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const monthName = format(currentMonth, 'MMM yyyy');
+      const daysInMonth = getWorkingDaysInMonth(year, month);
+      
+      months.push(`${monthName}: ${daysInMonth} working days`);
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+    
+    // Show toast with working days information
+    toast.info('Working Days Analysis', {
+      description: (
+        <div className="space-y-2 mt-2 text-sm">
+          <div><strong>Total working days:</strong> {workingDays}</div>
+          <div><strong>By month:</strong></div>
+          <ul className="list-disc pl-5">
+            {months.map((month, index) => (
+              <li key={index}>{month}</li>
+            ))}
+          </ul>
+        </div>
+      ),
+      duration: 10000
+    });
   };
 
   return (
-    <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2 mb-4">
-      <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium">From:</span>
-        <Popover open={isStartOpen} onOpenChange={setIsStartOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "justify-start text-left font-normal w-[180px]",
-                !selectedStartDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selectedStartDate ? (
-                format(selectedStartDate, "PPP")
-              ) : (
-                <span>Pick a date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedStartDate}
-              onSelect={handleStartDateSelect}
-              initialFocus
+    <Card className="mb-4">
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block">Start Date</label>
+            <DatePicker 
+              date={startDate} 
+              setDate={setStartDate} 
+              placeholder="Select start date"
             />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium">To:</span>
-        <Popover open={isEndOpen} onOpenChange={setIsEndOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "justify-start text-left font-normal w-[180px]",
-                !selectedEndDate && "text-muted-foreground"
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {selectedEndDate ? (
-                format(selectedEndDate, "PPP")
-              ) : (
-                <span>Pick a date</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedEndDate}
-              onSelect={handleEndDateSelect}
-              initialFocus
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-1 block">End Date</label>
+            <DatePicker 
+              date={endDate} 
+              setDate={setEndDate} 
+              placeholder="Select end date"
             />
-          </PopoverContent>
-        </Popover>
-      </div>
+          </div>
+          
+          <div className="flex items-end">
+            <Button 
+              onClick={handleApplyFilter} 
+              disabled={isLoading}
+              className="flex-1"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Apply Date Range
+            </Button>
+          </div>
 
-      <Button onClick={handleApplyFilter}>Apply Filter</Button>
-    </div>
+          <div className="flex items-end">
+            <Button 
+              onClick={checkWorkingDays}
+              variant="outline" 
+              className="flex-1"
+            >
+              <InfoIcon className="h-4 w-4 mr-2" />
+              Check Working Days
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default DateRangeFilter;
