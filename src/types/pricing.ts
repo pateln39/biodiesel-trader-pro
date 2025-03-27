@@ -20,7 +20,7 @@ export interface DailyDistributionByInstrument {
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
-  paper?: Record<Instrument, number>; // Added for paper trade exposures
+  paper?: Record<Instrument, number>; 
   monthlyDistribution?: Record<string, MonthlyDistribution>; // Add this field to fix the errors
 }
 

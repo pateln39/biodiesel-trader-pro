@@ -1,9 +1,19 @@
+
 import { ExposureResult, DailyDistribution, DailyDistributionByInstrument, MonthlyDistribution } from '@/types';
 import { Instrument } from '@/types/common';
 import { PaperTrade } from '@/types/paper';
 import { PhysicalTrade } from '@/types/physical';
-import { countWorkingDays, formatMonthCode, standardizeMonthCode, monthCodeToDates } from './workingDaysUtils';
-// Remove the conflicting import and use the function from workingDaysUtils instead
+import { countWorkingDays, formatMonthCode, standardizeMonthCode } from './workingDaysUtils';
+// Import monthCodeToDates from workingDaysUtils to avoid conflict
+import { monthCodeToDates } from './workingDaysUtils';
+
+// Store a cache of daily distributions to avoid recalculating
+let dailyDistributionCache: Record<string, DailyDistributionByInstrument> = {};
+
+// Clear the cache when trades change
+export function clearDailyDistributionCache(): void {
+  dailyDistributionCache = {};
+}
 
 // Get days overlap between a date range and a pricing period
 export function getOverlappingDays(
@@ -22,6 +32,15 @@ export function getOverlappingDays(
   }
   
   return { start, end };
+}
+
+// Check if a date is within a pricing period
+export function isDateWithinPricingPeriod(
+  date: Date,
+  periodStart: Date,
+  periodEnd: Date
+): boolean {
+  return date >= periodStart && date <= periodEnd;
 }
 
 // Calculate daily distribution from monthly distribution
@@ -107,6 +126,101 @@ export function calculateDailyDistribution(
   return result;
 }
 
+// Calculate daily distribution by instrument with pricing periods
+export function calculateDailyDistributionByInstrument(
+  monthlyDistribution: Record<string, MonthlyDistribution>,
+  pricingPeriods: Record<string, { start: Date, end: Date }>
+): DailyDistributionByInstrument {
+  const result: DailyDistributionByInstrument = {};
+  
+  // Process each instrument's monthly distribution
+  Object.entries(monthlyDistribution).forEach(([instrument, distribution]) => {
+    // Check if we have a cached result
+    const cacheKey = `${instrument}-${JSON.stringify(distribution)}`;
+    if (dailyDistributionCache[cacheKey]) {
+      result[instrument] = dailyDistributionCache[cacheKey][instrument];
+      return;
+    }
+    
+    result[instrument] = {};
+    
+    // Get pricing period for this instrument
+    const pricingPeriod = pricingPeriods[instrument];
+    
+    // Process each month in the distribution
+    Object.entries(distribution).forEach(([monthCode, quantity]) => {
+      // Convert month code to date range
+      const { start, end } = monthCodeToDates(monthCode);
+      
+      // If there's a pricing period, check for overlap
+      if (pricingPeriod) {
+        const overlap = getOverlappingDays(pricingPeriod.start, pricingPeriod.end, start, end);
+        if (!overlap) return; // Skip if no overlap
+        
+        // Adjust start and end dates to the overlap period
+        const adjustedStart = overlap.start;
+        const adjustedEnd = overlap.end;
+        
+        // Calculate working days in the overlap period
+        const workingDaysInPeriod = countWorkingDays(adjustedStart, adjustedEnd);
+        const totalWorkingDaysInMonth = countWorkingDays(start, end);
+        
+        // Calculate the proportion of the month that overlaps with the pricing period
+        const proportion = workingDaysInPeriod / totalWorkingDaysInMonth;
+        
+        // Distribute the quantity proportionally to each working day in the overlap
+        if (workingDaysInPeriod > 0) {
+          const dailyQuantity = (quantity * proportion) / workingDaysInPeriod;
+          
+          // Create a date iterator
+          const currentDate = new Date(adjustedStart);
+          while (currentDate <= adjustedEnd) {
+            if (!countWorkingDays(currentDate, currentDate)) {
+              // Skip weekends
+              currentDate.setDate(currentDate.getDate() + 1);
+              continue;
+            }
+            
+            const dateString = currentDate.toISOString().split('T')[0];
+            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
+            
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+      } else {
+        // No pricing period - distribute across all working days in the month
+        const workingDaysInMonth = countWorkingDays(start, end);
+        
+        if (workingDaysInMonth > 0) {
+          const dailyQuantity = quantity / workingDaysInMonth;
+          
+          // Create a date iterator
+          const currentDate = new Date(start);
+          while (currentDate <= end) {
+            if (!countWorkingDays(currentDate, currentDate)) {
+              // Skip weekends
+              currentDate.setDate(currentDate.getDate() + 1);
+              continue;
+            }
+            
+            const dateString = currentDate.toISOString().split('T')[0];
+            result[instrument][dateString] = (result[instrument][dateString] || 0) + dailyQuantity;
+            
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+      }
+    });
+    
+    // Cache the result
+    dailyDistributionCache[cacheKey] = { [instrument]: result[instrument] };
+  });
+  
+  return result;
+}
+
 // Process physical trade for daily distribution
 export function processPhysicalTradeForDailyDistribution(
   trade: PhysicalTrade,
@@ -169,6 +283,47 @@ export function processPaperTradeForDailyDistribution(
   return result;
 }
 
+// Process paper trade exposures by period
+export function processPaperTradeExposures(
+  exposures: Record<Instrument, number>,
+  period: string
+): DailyDistributionByInstrument {
+  const result: DailyDistributionByInstrument = {};
+  
+  // Convert period to date range
+  const { start, end } = monthCodeToDates(period);
+  
+  // Calculate working days in the period
+  const workingDaysInPeriod = countWorkingDays(start, end);
+  
+  // Process each instrument
+  Object.entries(exposures).forEach(([instrument, quantity]) => {
+    result[instrument] = {};
+    
+    if (workingDaysInPeriod > 0) {
+      const dailyQuantity = quantity / workingDaysInPeriod;
+      
+      // Create a date iterator
+      const currentDate = new Date(start);
+      while (currentDate <= end) {
+        if (!countWorkingDays(currentDate, currentDate)) {
+          // Skip weekends
+          currentDate.setDate(currentDate.getDate() + 1);
+          continue;
+        }
+        
+        const dateString = currentDate.toISOString().split('T')[0];
+        result[instrument][dateString] = dailyQuantity;
+        
+        // Move to next day
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+  });
+  
+  return result;
+}
+
 // Filter daily distribution by date range
 export function filterDailyDistributionByDateRange(
   dailyDistribution: DailyDistributionByInstrument,
@@ -190,6 +345,110 @@ export function filterDailyDistributionByDateRange(
   });
   
   return result;
+}
+
+// Filter daily distributions by date range with pricing periods
+export function filterDailyDistributionsByDateRange(
+  dailyDistribution: DailyDistributionByInstrument,
+  startDate: Date,
+  endDate: Date,
+  pricingPeriods?: Record<string, { start: Date, end: Date }>
+): DailyDistributionByInstrument {
+  const result: DailyDistributionByInstrument = {};
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
+    result[instrument] = {};
+    
+    // Get pricing period for this instrument
+    const pricingPeriod = pricingPeriods ? pricingPeriods[instrument] : null;
+    
+    Object.entries(distribution).forEach(([dateStr, quantity]) => {
+      const date = new Date(dateStr);
+      
+      // Check if date is within filter range
+      const isWithinFilter = dateStr >= startDateStr && dateStr <= endDateStr;
+      
+      // Check if date is within pricing period (if provided)
+      const isWithinPricing = pricingPeriod 
+        ? isDateWithinPricingPeriod(date, pricingPeriod.start, pricingPeriod.end) 
+        : true;
+      
+      // Only include if date is within both ranges
+      if (isWithinFilter && isWithinPricing) {
+        result[instrument][dateStr] = quantity;
+      }
+    });
+  });
+  
+  return result;
+}
+
+// Filter paper trade distributions by date range
+export function filterPaperTradeDistributions(
+  dailyDistribution: DailyDistributionByInstrument,
+  startDate: Date,
+  endDate: Date,
+  period: string
+): DailyDistributionByInstrument {
+  const result: DailyDistributionByInstrument = {};
+  const startDateStr = startDate.toISOString().split('T')[0];
+  const endDateStr = endDate.toISOString().split('T')[0];
+  
+  // Convert period to date range
+  const { start: periodStart, end: periodEnd } = monthCodeToDates(period);
+  
+  // Check if filter range overlaps with period
+  const overlap = getOverlappingDays(startDate, endDate, periodStart, periodEnd);
+  if (!overlap) {
+    return result;
+  }
+  
+  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
+    result[instrument] = {};
+    
+    Object.entries(distribution).forEach(([dateStr, quantity]) => {
+      if (dateStr >= startDateStr && dateStr <= endDateStr) {
+        result[instrument][dateStr] = quantity;
+      }
+    });
+  });
+  
+  return result;
+}
+
+// Calculate total exposure values by instrument
+export function calculateTotalExposureByInstrument(
+  dailyDistribution: DailyDistributionByInstrument
+): Record<Instrument, number> {
+  const result: Record<Instrument, number> = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Argus HVO': 0,
+    'Platts LSGO': 0,
+    'Platts Diesel': 0,
+    'ICE GASOIL FUTURES': 0,
+  };
+  
+  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
+    if (instrument in result) {
+      result[instrument as Instrument] = Object.values(distribution).reduce(
+        (sum, value) => sum + value, 
+        0
+      );
+    }
+  });
+  
+  return result;
+}
+
+// Calculate total exposure from daily distributions
+export function calculateTotalExposureFromDailyDistributions(
+  dailyDistribution: DailyDistributionByInstrument
+): Record<Instrument, number> {
+  return calculateTotalExposureByInstrument(dailyDistribution);
 }
 
 // Combine multiple daily distributions into one
@@ -289,32 +548,6 @@ export function mergeExposures(
             (result.monthlyDistribution![instrument][month] || 0) + value;
         });
       });
-    }
-  });
-  
-  return result;
-}
-
-// Calculate total exposure values by instrument
-export function calculateTotalExposureByInstrument(
-  dailyDistribution: DailyDistributionByInstrument
-): Record<Instrument, number> {
-  const result: Record<Instrument, number> = {
-    'Argus UCOME': 0,
-    'Argus RME': 0,
-    'Argus FAME0': 0,
-    'Argus HVO': 0,
-    'Platts LSGO': 0,
-    'Platts Diesel': 0,
-    'ICE GASOIL FUTURES': 0,
-  };
-  
-  Object.entries(dailyDistribution).forEach(([instrument, distribution]) => {
-    if (instrument in result) {
-      result[instrument as Instrument] = Object.values(distribution).reduce(
-        (sum, value) => sum + value, 
-        0
-      );
     }
   });
   
