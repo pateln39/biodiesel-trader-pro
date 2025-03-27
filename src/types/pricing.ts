@@ -50,17 +50,18 @@ export interface PartialPricingFormula {
 export interface FixedComponent {
   value: number;
   description: string;
+  displayValue?: string; // Adding displayValue property
 }
 
 // Price detail interfaces
 export interface PriceDetail {
-  instrumentComponents: Record<string, number>;
-  fixedComponents: FixedComponent[];
-  totalPrice: number;
+  instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
+  evaluatedPrice: number;
+  fixedComponents?: FixedComponent[];
 }
 
 export interface MTMPriceDetail {
-  instrumentComponents: Record<string, number>;
-  fixedComponents: FixedComponent[];
-  totalPrice: number;
+  instruments: Record<Instrument, { price: number; date: Date | null }>;
+  evaluatedPrice: number;
+  fixedComponents?: FixedComponent[];
 }

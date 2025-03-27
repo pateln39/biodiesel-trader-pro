@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula } from '@/types/pricing';
+import { FormulaToken, PricingFormula } from '@/types/pricing';
+import { Instrument } from '@/types/common';
 import { 
   createInstrumentToken,
   createFixedValueToken,

@@ -1,5 +1,5 @@
-
-import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types/pricing';
+import { FormulaToken, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types/pricing';
+import { Instrument } from '@/types/common';
 import { supabase } from '@/integrations/supabase/client';
 import { formulaToDisplayString } from './formulaUtils';
 
@@ -199,6 +199,7 @@ const extractFixedComponents = (tokens: FormulaToken[]): FixedComponent[] => {
       
       fixedComponents.push({
         value: parseFloat(token.value),
+        description: `Fixed value ${token.value}`,
         displayValue
       });
     }
@@ -471,7 +472,7 @@ export const calculateTradeLegPrice = async (
 
 // Calculate MTM price using most recent prices
 export const calculateMTMPrice = async (
-  formula: PricingFormula,
+  formula: PricingFormula
 ): Promise<{
   price: number;
   priceDetails: MTMPriceDetail;

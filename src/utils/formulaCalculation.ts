@@ -1,5 +1,6 @@
 
-import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types/pricing';
+import { FormulaToken, ExposureResult, PricingFormula } from '@/types/pricing';
+import { Instrument } from '@/types/common';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
 import { MonthlyDistribution } from '@/types/pricing';
 
