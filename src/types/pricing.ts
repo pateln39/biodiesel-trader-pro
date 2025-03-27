@@ -1,4 +1,3 @@
-
 import { Instrument } from './common';
 
 // Single month pricing distribution (e.g., { "Mar-24": 3000 })
@@ -21,7 +20,7 @@ export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
   paper?: Record<Instrument, number>; 
-  monthlyDistribution?: Record<string, MonthlyDistribution>; // Add this field to fix the errors
+  monthlyDistribution?: Record<string, MonthlyDistribution>;
 }
 
 // Formula token types

@@ -247,12 +247,12 @@ export function useFilteredExposures({
           
           if (leg.exposures.paper) {
             Object.entries(leg.exposures.paper).forEach(([instrument, value]) => {
-              if (!paperExposuresByPeriod[period][instrument]) {
-                paperExposuresByPeriod[period][instrument] = 0;
+              if (!paperExposuresByPeriod[period][instrument as Instrument]) {
+                paperExposuresByPeriod[period][instrument as Instrument] = 0;
               }
               
               const numericValue = typeof value === 'number' ? value : Number(value) || 0;
-              paperExposuresByPeriod[period][instrument] += numericValue;
+              paperExposuresByPeriod[period][instrument as Instrument] += numericValue;
               processedPaperExposures++;
             });
           }
@@ -294,7 +294,10 @@ export function useFilteredExposures({
       let filteredPaperExposures: Record<Instrument, number> = {};
       
       Object.entries(paperExposuresByPeriod).forEach(([period, exposures]) => {
-        const paperDailyDistributions = processPaperTradeExposures(exposures, period);
+        const paperDailyDistributions = processPaperTradeExposures(
+          exposures as Record<Instrument, number>,
+          period
+        );
         
         const filteredPaperDailyDistributions = filterPaperTradeDistributions(
           paperDailyDistributions,
@@ -308,10 +311,10 @@ export function useFilteredExposures({
         );
         
         Object.entries(periodTotals).forEach(([instrument, value]) => {
-          if (!filteredPaperExposures[instrument]) {
-            filteredPaperExposures[instrument] = 0;
+          if (!filteredPaperExposures[instrument as Instrument]) {
+            filteredPaperExposures[instrument as Instrument] = 0;
           }
-          filteredPaperExposures[instrument] += value;
+          filteredPaperExposures[instrument as Instrument] += value;
         });
       });
       
