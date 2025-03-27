@@ -53,6 +53,10 @@ export function useFilteredExposures({
       const physicalDistributions: Record<Instrument, MonthlyDistribution> = {};
       const pricingDistributions: Record<Instrument, MonthlyDistribution> = {};
       
+      // Store pricing periods for each instrument
+      const physicalPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
+      const pricingPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
+      
       // Process physical trades only
       const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
       console.log(`Found ${physicalTrades.length} physical trades`);
@@ -63,7 +67,7 @@ export function useFilteredExposures({
       let processedPhysicalExposures = 0;
       let processedPricingExposures = 0;
       
-      // Process trades that have valid pricing periods overlapping with the selected date range
+      // Process trades that have valid pricing periods
       physicalTrades.forEach(trade => {
         let tradeHasValidLeg = false;
         
@@ -75,16 +79,9 @@ export function useFilteredExposures({
             return;
           }
           
-          // Check if leg pricing period overlaps with the selected date range
-          const legOverlapsWithDateRange = isDateWithinPricingPeriod(
-            startDate, 
-            endDate, 
-            leg.pricingPeriodStart, 
-            leg.pricingPeriodEnd
-          );
-          
-          if (!legOverlapsWithDateRange) {
-            console.log(`Skipping leg ${leg.legReference} - pricing period doesn't overlap with selected date range`);
+          // Check if leg has pricing period dates
+          if (!leg.pricingPeriodStart || !leg.pricingPeriodEnd) {
+            console.log(`Skipping leg ${leg.legReference} - missing pricing period dates`);
             return;
           }
           
@@ -115,6 +112,12 @@ export function useFilteredExposures({
                   physicalDistributions[instrument] = {};
                 }
                 
+                // Store pricing period for this instrument
+                physicalPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
                   if (!physicalDistributions[instrument][monthCode]) {
@@ -133,10 +136,16 @@ export function useFilteredExposures({
                   physicalDistributions[instrument] = {};
                 }
                 
+                // Store pricing period for this instrument
+                physicalPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
                 // Generate month distribution based on working days in pricing period
                 const evenDistribution = distributeQuantityByWorkingDays(
-                  leg.pricingPeriodStart,
-                  leg.pricingPeriodEnd,
+                  leg.pricingPeriodStart!,
+                  leg.pricingPeriodEnd!,
                   value as number
                 );
                 
@@ -176,6 +185,12 @@ export function useFilteredExposures({
                   pricingDistributions[instrument] = {};
                 }
                 
+                // Store pricing period for this instrument
+                pricingPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
                   if (!pricingDistributions[instrument][monthCode]) {
@@ -194,10 +209,16 @@ export function useFilteredExposures({
                   pricingDistributions[instrument] = {};
                 }
                 
+                // Store pricing period for this instrument
+                pricingPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
                 // Generate month distribution based on working days in pricing period
                 const evenDistribution = distributeQuantityByWorkingDays(
-                  leg.pricingPeriodStart,
-                  leg.pricingPeriodEnd,
+                  leg.pricingPeriodStart!,
+                  leg.pricingPeriodEnd!,
                   value as number
                 );
                 
@@ -223,22 +244,33 @@ export function useFilteredExposures({
       console.log(`Found ${processedPhysicalExposures} physical exposure entries and ${processedPricingExposures} pricing exposure entries`);
       console.log('Physical distributions:', physicalDistributions);
       console.log('Pricing distributions:', pricingDistributions);
+      console.log('Physical pricing periods:', physicalPricingPeriods);
+      console.log('Pricing pricing periods:', pricingPricingPeriods);
       
-      // Convert monthly distributions to daily distributions
-      const physicalDailyDistributions = calculateDailyDistributionByInstrument(physicalDistributions);
-      const pricingDailyDistributions = calculateDailyDistributionByInstrument(pricingDistributions);
+      // Convert monthly distributions to daily distributions (with pricing periods)
+      const physicalDailyDistributions = calculateDailyDistributionByInstrument(
+        physicalDistributions,
+        physicalPricingPeriods
+      );
       
-      // Filter daily distributions by date range
+      const pricingDailyDistributions = calculateDailyDistributionByInstrument(
+        pricingDistributions,
+        pricingPricingPeriods
+      );
+      
+      // Filter daily distributions by date range (with pricing periods)
       const filteredPhysicalDailyDistributions = filterDailyDistributionsByDateRange(
         physicalDailyDistributions,
         startDate,
-        endDate
+        endDate,
+        physicalPricingPeriods
       );
       
       const filteredPricingDailyDistributions = filterDailyDistributionsByDateRange(
         pricingDailyDistributions,
         startDate,
-        endDate
+        endDate,
+        pricingPricingPeriods
       );
       
       console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
