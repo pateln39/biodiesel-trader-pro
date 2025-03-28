@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -848,3 +849,8 @@ const ExposurePage = () => {
       totalRow: biodieselTotal + pricingInstrumentTotal
     };
   }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
+
+  // Adding the missing component closing bracket here
+}; // <-- This was the missing closing brace for ExposurePage component
+
+export default ExposurePage;
