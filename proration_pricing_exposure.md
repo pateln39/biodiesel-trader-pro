@@ -1,3 +1,4 @@
+
 # Implementation Plan: Prorated Pricing Exposure for Physical Trades
 
 This document outlines the detailed implementation plan for enhancing the physical trade system to support prorated pricing exposure calculations across multiple months based on business days.
@@ -12,6 +13,8 @@ The current system assigns all pricing exposure to a single month based on the l
 2. Pricing exposure will be prorated across months based on business days within the pricing period.
 3. Monthly distribution data will be pre-calculated and stored within the trade data structure.
 4. Rounding will preserve the sign of the exposure values.
+5. **The layout of the exposure table MUST NOT be changed in any way.**
+6. **All existing functionality must be preserved without any regression.**
 
 ## Implementation Steps
 
@@ -400,63 +403,6 @@ const processPhysicalTrades = (trades: PhysicalTrade[], selectedPeriod: string):
 };
 ```
 
-### Step 6: Update Formula Builder Component
-
-Add code in `src/components/trades/FormulaBuilder.tsx` to display monthly distribution information:
-
-```typescript
-// Add to FormulaBuilder component props
-interface FormulaBuilderProps {
-  // ... existing props
-  showMonthlyDistribution?: boolean;
-}
-
-// Inside component
-const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
-  // ... existing props
-  showMonthlyDistribution = false
-}) => {
-  // ... existing code
-  
-  const renderMonthlyDistribution = () => {
-    if (!showMonthlyDistribution || !value.monthlyDistribution) {
-      return null;
-    }
-    
-    return (
-      <div className="mt-4 space-y-2">
-        <Label className="text-base font-medium">Monthly Pricing Distribution</Label>
-        {Object.entries(value.monthlyDistribution).map(([instrument, monthData]) => (
-          <div key={instrument} className="space-y-1">
-            <div className="text-sm font-medium">{instrument}</div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(monthData).map(([month, exposure]) => (
-                <Badge 
-                  key={`${instrument}-${month}`} 
-                  variant="outline" 
-                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
-                >
-                  {month}: {formatExposure(exposure)} MT
-                </Badge>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-  
-  // Add to return JSX
-  return (
-    <div className="space-y-4">
-      {/* ... existing code */}
-      
-      {renderMonthlyDistribution()}
-    </div>
-  );
-};
-```
-
 ## Testing Plan
 
 1. **Unit Tests**
@@ -483,9 +429,12 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 - [ ] Types are properly updated and used
 - [ ] Physical trade form updates distribution when required fields change
 - [ ] Exposure page correctly uses the monthly distribution data
-- [ ] Formula builder displays the monthly distribution for debugging
 - [ ] All edge cases have been addressed
 - [ ] Performance remains acceptable
+- [ ] **No changes have been made to the exposure table layout**
+- [ ] **All existing hooks and files are correctly imported**
+- [ ] **All syntax has been double-checked for errors**
+- [ ] **No existing functionality has been broken**
 
 ## Example Trade Scenario
 
