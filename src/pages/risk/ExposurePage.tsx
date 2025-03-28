@@ -30,6 +30,12 @@ export default function ExposurePage() {
       return [];
     }
     
+    // Safety check: If filteredExposures is undefined or physical/pricing are missing, return empty array
+    if (!filteredExposures || !filteredExposures.physical || !filteredExposures.pricing) {
+      console.warn('Missing expected data structure in filteredExposures:', filteredExposures);
+      return [];
+    }
+    
     // Get the current month and format it
     const currentDate = new Date();
     const monthStr = format(currentDate, 'MMM-yy');
