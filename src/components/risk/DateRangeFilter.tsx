@@ -14,21 +14,35 @@ import { toast } from 'sonner';
 import { countWorkingDays, getWorkingDaysInMonth } from '@/utils/workingDaysUtils';
 
 interface DateRangeFilterProps {
-  onFilterChange: (startDate: Date, endDate: Date) => void;
+  onFilterChange?: (startDate: Date, endDate: Date) => void;
+  onApply?: (startDate: Date, endDate: Date) => void;
+  onClear?: () => void;
+  isActive?: boolean;
   isLoading?: boolean;
   initialStartDate?: Date;
+  defaultStartDate?: Date;
   initialEndDate?: Date;
+  defaultEndDate?: Date;
 }
 
 const DateRangeFilter: React.FC<DateRangeFilterProps> = ({ 
   onFilterChange,
+  onApply,
+  onClear,
+  isActive,
   isLoading = false,
   initialStartDate,
-  initialEndDate
+  defaultStartDate,
+  initialEndDate,
+  defaultEndDate
 }) => {
   const currentDate = new Date();
-  const [startDate, setStartDate] = useState<Date>(initialStartDate || startOfMonth(currentDate));
-  const [endDate, setEndDate] = useState<Date>(initialEndDate || endOfMonth(currentDate));
+  const [startDate, setStartDate] = useState<Date>(
+    initialStartDate || defaultStartDate || startOfMonth(currentDate)
+  );
+  const [endDate, setEndDate] = useState<Date>(
+    initialEndDate || defaultEndDate || endOfMonth(currentDate)
+  );
 
   useEffect(() => {
     if (initialStartDate) setStartDate(initialStartDate);
@@ -42,10 +56,23 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
     }
     
     // Apply the filter
-    onFilterChange(startDate, endDate);
+    if (onFilterChange) {
+      onFilterChange(startDate, endDate);
+    }
+    
+    if (onApply) {
+      onApply(startDate, endDate);
+    }
+    
     toast.success('Date range applied', {
       description: `Filtering from ${format(startDate, 'MMM dd, yyyy')} to ${format(endDate, 'MMM dd, yyyy')}`
     });
+  };
+  
+  const handleClearFilter = () => {
+    if (onClear) {
+      onClear();
+    }
   };
 
   const checkWorkingDays = () => {
@@ -106,7 +133,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
             />
           </div>
           
-          <div className="flex items-end">
+          <div className="flex items-end space-x-2">
             <Button 
               onClick={handleApplyFilter} 
               disabled={isLoading}
@@ -115,6 +142,16 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Apply Date Range
             </Button>
+            
+            {isActive && (
+              <Button 
+                onClick={handleClearFilter}
+                variant="outline"
+                className="flex-1"
+              >
+                Clear
+              </Button>
+            )}
           </div>
 
           <div className="flex items-end">
