@@ -81,17 +81,26 @@ export interface PartialPricingFormula {
 // Price detail interfaces
 export interface FixedComponent {
   value: number;
+  displayValue?: string;
 }
 
 export interface PriceDetail {
-  instrumentPrice?: number;
+  instruments?: Record<Instrument, { 
+    average: number; 
+    prices: { date: Date; price: number }[] 
+  }>;
+  evaluatedPrice?: number;
   fixedComponents?: FixedComponent[];
   totalFixedValue?: number;
   finalPrice?: number;
 }
 
 export interface MTMPriceDetail {
-  instrumentPrice?: number;
+  instruments?: Record<Instrument, { 
+    price: number; 
+    date: Date | null 
+  }>;
+  evaluatedPrice?: number;
   fixedComponents?: FixedComponent[];
   finalMTM?: number;
 }
