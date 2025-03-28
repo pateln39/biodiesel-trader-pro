@@ -754,4 +754,128 @@ const ExposurePage = () => {
       totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       
       Object.entries(monthData.products).forEach(([product, exposure]) => {
-        if (productTotals[product])
+        if (productTotals[product]) {
+          productTotals[product].physical += exposure.physical;
+          productTotals[product].pricing += exposure.pricing;
+          productTotals[product].paper += exposure.paper;
+          
+          productTotals[product].netExposure = calculateNetExposure(
+            productTotals[product].physical,
+            productTotals[product].pricing
+          );
+        }
+      });
+    });
+    
+    return { totals, productTotals };
+  }, [exposureData, allProducts]);
+  
+  const handleCategoryToggle = (category: string) => {
+    setVisibleCategories(prev =>
+      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
+    );
+  };
+
+  const isCategoryVisible = (category: string) => {
+    return visibleCategories.includes(category);
+  };
+
+  const handleProductSelection = (product: string) => {
+    setSelectedProducts(prev =>
+      prev.includes(product) ? prev.filter(p => p !== product) : [...prev, product]
+    );
+  };
+
+  const isProductSelected = (product: string) => {
+    return selectedProducts.includes(product);
+  };
+
+  const filteredExposureData = useMemo(() => {
+    return exposureData.map(monthData => {
+      const filteredProducts: Record<string, ExposureData> = {};
+      
+      Object.entries(monthData.products).forEach(([product, exposure]) => {
+        if (selectedProducts.includes(product)) {
+          filteredProducts[product] = exposure;
+        }
+      });
+      
+      return {
+        ...monthData,
+        products: filteredProducts
+      };
+    });
+  }, [exposureData, selectedProducts]);
+
+  const filteredGrandTotals = useMemo(() => {
+    const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+    const productTotals: Record<string, ExposureData> = {};
+    
+    allProducts.forEach(product => {
+      if (selectedProducts.includes(product)) {
+        productTotals[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+      }
+    });
+    
+    filteredExposureData.forEach(monthData => {
+      totals.physical += monthData.totals.physical;
+      totals.pricing += monthData.totals.pricing;
+      totals.paper += monthData.totals.paper;
+      
+      totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
+      
+      Object.entries(monthData.products).forEach(([product, exposure]) => {
+        if (productTotals[product]) {
+          productTotals[product].physical += exposure.physical;
+          productTotals[product].pricing += exposure.pricing;
+          productTotals[product].paper += exposure.paper;
+          
+          productTotals[product].netExposure = calculateNetExposure(
+            productTotals[product].physical,
+            productTotals[product].pricing
+          );
+        }
+      });
+    });
+    
+    return { totals, productTotals };
+  }, [filteredExposureData, allProducts, selectedProducts]);
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure</title>
+      </Helmet>
+      
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Exposure</CardTitle>
+          </CardHeader>
+          
+          <CardContent className="space-y-4">
+            {isLoading || instrumentsLoading ? (
+              <TableLoadingState />
+            ) : error ? (
+              <TableErrorState error={error} onRetry={refetch} />
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Filters</h3>
+                    <div className="flex space-x-4">
+                      {CATEGORY_ORDER.map(category => (
+                        <Button
+                          key={category}
+                          variant={isCategoryVisible(category) ? 'default' : 'outline'}
+                          onClick={() => handleCategoryToggle(category)}
+                        >
+                          {category}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold">Products</h3>
+                    <div className="flex flex-wrap gap-2">
