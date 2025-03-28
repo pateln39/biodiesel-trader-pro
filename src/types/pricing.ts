@@ -18,11 +18,9 @@ export interface MonthlyDistribution {
   [monthCode: string]: number; // e.g., "Mar-24": 363.63
 }
 
-/**
- * Daily distribution for exposure calculations
- * For physical exposures, values are ALWAYS assigned to the loading period start month
- * For pricing exposures, values are prorated across the pricing period
- */
+// Daily distribution for exposure calculations
+// For physical exposures, values are assigned to the loading period start month
+// For pricing exposures, values are prorated across the pricing period
 export interface DailyDistribution {
   [dateString: string]: number; // e.g., "2023-03-15": 3000
 }
