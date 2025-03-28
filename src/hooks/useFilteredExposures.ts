@@ -2,9 +2,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useTrades } from './useTrades';
 import { Instrument } from '@/types/common';
-import { clearDailyDistributionCache, isDateWithinPricingPeriod } from '@/utils/exposureUtils';
-import { standardizeMonthCode } from '@/utils/workingDaysUtils';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { MonthlyDistribution, ExposureResult } from '@/types/pricing';
+import { 
+  calculateDailyDistributionByInstrument,
+  filterDailyDistributionsByDateRange,
+  calculateTotalExposureFromDailyDistributions,
+  clearDailyDistributionCache,
+  isDateWithinPricingPeriod
+} from '@/utils/exposureUtils';
+import { getMonthlyDistribution, distributeQuantityByWorkingDays } from '@/utils/workingDaysUtils';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import { PhysicalTrade } from '@/types/physical';
 
 interface UseFilteredExposuresProps {
@@ -42,17 +49,29 @@ export function useFilteredExposures({
     console.log('Calculating filtered exposures with date range:', startDate, endDate);
     
     try {
-      // Initialize exposure results objects
-      const physicalExposures: Record<Instrument, number> = {};
-      const pricingExposures: Record<Instrument, number> = {};
+      // Collect monthly distributions from all physical trades
+      const physicalDistributions: Record<Instrument, MonthlyDistribution> = {};
+      const pricingDistributions: Record<Instrument, MonthlyDistribution> = {};
+      
+      // Store pricing periods for each instrument
+      const physicalPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
+      const pricingPricingPeriods: Record<Instrument, { start: Date, end: Date }> = {};
       
       // Process physical trades only
       const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
       console.log(`Found ${physicalTrades.length} physical trades`);
       
-      // Process trades with valid legs
+      // Track how many trades and legs are processed
+      let processedTrades = 0;
+      let processedLegs = 0;
+      let processedPhysicalExposures = 0;
+      let processedPricingExposures = 0;
+      
+      // Process trades that have valid pricing periods
       physicalTrades.forEach(trade => {
-        // Process legs to collect exposures
+        let tradeHasValidLeg = false;
+        
+        // Process legs to collect monthly distributions
         trade.legs.forEach(leg => {
           // Check for required formula properties
           if (!leg.formula || !leg.mtmFormula) {
@@ -60,79 +79,236 @@ export function useFilteredExposures({
             return;
           }
           
+          // Check if leg has pricing period dates
+          if (!leg.pricingPeriodStart || !leg.pricingPeriodEnd) {
+            console.log(`Skipping leg ${leg.legReference} - missing pricing period dates`);
+            return;
+          }
+          
+          processedLegs++;
+          tradeHasValidLeg = true;
+
           // PHYSICAL EXPOSURES - Get from mtmFormula
-          if (leg.mtmFormula?.exposures?.physical && leg.loadingPeriodStart) {
+          if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
             console.log(`Processing physical exposures from mtmFormula for leg ${leg.legReference}`);
             
-            // Get the loading period start month
-            const loadingStartMonth = new Date(leg.loadingPeriodStart);
-            const monthStr = format(loadingStartMonth, 'MMM-yy'); // e.g. "Mar-24"
-            const filterMonth = standardizeMonthCode(monthStr);
-            
-            // Determine if the loading month falls within our filter date range
-            const filterMonthStart = new Date(loadingStartMonth.getFullYear(), loadingStartMonth.getMonth(), 1);
-            const filterMonthEnd = new Date(loadingStartMonth.getFullYear(), loadingStartMonth.getMonth() + 1, 0);
-            
-            const isMonthInFilterRange = isDateWithinPricingPeriod(
-              startDate,
-              endDate,
-              filterMonthStart,
-              filterMonthEnd
+            // Get explicit monthly distribution if available
+            const physicalMonthlyDist = getMonthlyDistribution(
+              leg.mtmFormula.exposures, 
+              'physical'
             );
             
-            console.log(`Loading month ${filterMonth} falls within filter range: ${isMonthInFilterRange}`);
+            // Check if we got any monthly distributions from the formula
+            const hasExplicitMonthlyDistribution = 
+              physicalMonthlyDist && 
+              Object.keys(physicalMonthlyDist).length > 0;
             
-            // If the month is in our filter range, include the exposures
-            if (isMonthInFilterRange) {
-              Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
-                if (!physicalExposures[instrument]) {
-                  physicalExposures[instrument] = 0;
+            if (hasExplicitMonthlyDistribution) {
+              console.log(`Found explicit monthly distribution for physical:`, physicalMonthlyDist);
+              
+              // Process each instrument's monthly distribution
+              Object.entries(physicalMonthlyDist).forEach(([instrument, distribution]) => {
+                if (!physicalDistributions[instrument]) {
+                  physicalDistributions[instrument] = {};
                 }
-                physicalExposures[instrument] += value as number;
-                console.log(`Adding physical exposure for ${instrument} in month ${filterMonth}: ${value}`);
+                
+                // Store pricing period for this instrument
+                physicalPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
+                // Add monthly values to our accumulated distributions
+                Object.entries(distribution).forEach(([monthCode, monthValue]) => {
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
+                  }
+                  physicalDistributions[instrument][monthCode] += monthValue;
+                  processedPhysicalExposures++;
+                });
+              });
+            } else {
+              console.log(`No explicit monthly distribution for physical, re-calculating based on loading period start`);
+              
+              // Instead of prorating, we need to calculate and use loading period start month
+              Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
+                if (!physicalDistributions[instrument]) {
+                  physicalDistributions[instrument] = {};
+                }
+                
+                // Store pricing period for this instrument for use with daily distribution
+                physicalPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
+                // For physical exposure, use the loading period start date to determine the month
+                if (leg.loadingPeriodStart) {
+                  const loadingStartMonth = new Date(leg.loadingPeriodStart);
+                  const monthName = loadingStartMonth.toLocaleString('en-US', { month: 'short' });
+                  const year = loadingStartMonth.getFullYear().toString().slice(-2);
+                  const monthCode = `${monthName}-${year}`;
+                  
+                  console.log(`Assigning physical exposure for ${instrument} to loading month ${monthCode}: ${value}`);
+                  
+                  // Put 100% of the exposure in the loading month
+                  if (!physicalDistributions[instrument][monthCode]) {
+                    physicalDistributions[instrument][monthCode] = 0;
+                  }
+                  
+                  physicalDistributions[instrument][monthCode] += value as number;
+                  processedPhysicalExposures++;
+                } else {
+                  console.log(`No loading period start date for leg ${leg.legReference}, using pricing period for physical exposure`);
+                  
+                  // Fallback to pricing period as before if no loading period start
+                  const evenDistribution = distributeQuantityByWorkingDays(
+                    leg.pricingPeriodStart!,
+                    leg.pricingPeriodEnd!,
+                    value as number
+                  );
+                  
+                  // Add generated monthly values to our accumulated distributions
+                  Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
+                    if (!physicalDistributions[instrument][monthCode]) {
+                      physicalDistributions[instrument][monthCode] = 0;
+                    }
+                    physicalDistributions[instrument][monthCode] += monthValue;
+                    processedPhysicalExposures++;
+                  });
+                }
               });
             }
           }
           
-          // PRICING EXPOSURES - Process separately with prorating
-          if (leg.formula?.exposures?.pricing && leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+          // PRICING EXPOSURES - Get from regular formula - NO CHANGES NEEDED
+          if (leg.formula && leg.formula.exposures && leg.formula.exposures.pricing) {
             console.log(`Processing pricing exposures from formula for leg ${leg.legReference}`);
             
-            // Check if the pricing period overlaps with our filter range
-            const isPricingPeriodInRange = isDateWithinPricingPeriod(
-              startDate,
-              endDate,
-              leg.pricingPeriodStart,
-              leg.pricingPeriodEnd
+            // Get explicit monthly distribution if available
+            const pricingMonthlyDist = getMonthlyDistribution(
+              leg.formula.exposures, 
+              'pricing'
             );
             
-            if (isPricingPeriodInRange) {
-              // For pricing exposures, we prorate based on the overlap ratio
-              const pricingStartDate = leg.pricingPeriodStart > startDate ? leg.pricingPeriodStart : startDate;
-              const pricingEndDate = leg.pricingPeriodEnd < endDate ? leg.pricingPeriodEnd : endDate;
+            // Check if we got any monthly distributions from the formula
+            const hasExplicitMonthlyDistribution = 
+              pricingMonthlyDist && 
+              Object.keys(pricingMonthlyDist).length > 0;
+            
+            if (hasExplicitMonthlyDistribution) {
+              console.log(`Found explicit monthly distribution for pricing:`, pricingMonthlyDist);
               
-              // Simple ratio calculation (can be improved with working days)
-              const totalDays = (leg.pricingPeriodEnd.getTime() - leg.pricingPeriodStart.getTime()) / (1000 * 60 * 60 * 24) + 1;
-              const overlapDays = (pricingEndDate.getTime() - pricingStartDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
-              const ratio = overlapDays / totalDays;
-              
-              Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
-                if (!pricingExposures[instrument]) {
-                  pricingExposures[instrument] = 0;
+              // Process each instrument's monthly distribution
+              Object.entries(pricingMonthlyDist).forEach(([instrument, distribution]) => {
+                if (!pricingDistributions[instrument]) {
+                  pricingDistributions[instrument] = {};
                 }
-                // Apply ratio to get the prorated amount
-                const proratedValue = (value as number) * ratio;
-                pricingExposures[instrument] += proratedValue;
-                console.log(`Adding pricing exposure for ${instrument}: ${value} * ${ratio} = ${proratedValue}`);
+                
+                // Store pricing period for this instrument
+                pricingPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
+                // Add monthly values to our accumulated distributions
+                Object.entries(distribution).forEach(([monthCode, monthValue]) => {
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
+                  }
+                  pricingDistributions[instrument][monthCode] += monthValue;
+                  processedPricingExposures++;
+                });
+              });
+            } else {
+              console.log(`No explicit monthly distribution for pricing, creating one based on pricing period`);
+              
+              // Create even distribution based on the pricing period for each instrument
+              Object.entries(leg.formula.exposures.pricing).forEach(([instrument, value]) => {
+                if (!pricingDistributions[instrument]) {
+                  pricingDistributions[instrument] = {};
+                }
+                
+                // Store pricing period for this instrument
+                pricingPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
+                // Generate month distribution based on working days in pricing period
+                const evenDistribution = distributeQuantityByWorkingDays(
+                  leg.pricingPeriodStart!,
+                  leg.pricingPeriodEnd!,
+                  value as number
+                );
+                
+                // Add generated monthly values to our accumulated distributions
+                Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
+                  }
+                  pricingDistributions[instrument][monthCode] += monthValue;
+                  processedPricingExposures++;
+                });
               });
             }
           }
         });
+        
+        if (tradeHasValidLeg) {
+          processedTrades++;
+        }
       });
       
+      console.log(`Processed ${processedTrades} trades and ${processedLegs} legs`);
+      console.log(`Found ${processedPhysicalExposures} physical exposure entries and ${processedPricingExposures} pricing exposure entries`);
+      console.log('Physical distributions:', physicalDistributions);
+      console.log('Pricing distributions:', pricingDistributions);
+      
+      // Convert monthly distributions to daily distributions (with pricing periods)
+      const physicalDailyDistributions = calculateDailyDistributionByInstrument(
+        physicalDistributions,
+        physicalPricingPeriods
+      );
+      
+      const pricingDailyDistributions = calculateDailyDistributionByInstrument(
+        pricingDistributions,
+        pricingPricingPeriods
+      );
+      
+      // Filter daily distributions by date range (with pricing periods)
+      const filteredPhysicalDailyDistributions = filterDailyDistributionsByDateRange(
+        physicalDailyDistributions,
+        startDate,
+        endDate,
+        physicalPricingPeriods
+      );
+      
+      const filteredPricingDailyDistributions = filterDailyDistributionsByDateRange(
+        pricingDailyDistributions,
+        startDate,
+        endDate,
+        pricingPricingPeriods
+      );
+      
+      console.log('Filtered physical daily distributions:', filteredPhysicalDailyDistributions);
+      console.log('Filtered pricing daily distributions:', filteredPricingDailyDistributions);
+      
+      // Calculate total exposures from filtered daily distributions
+      const totalPhysicalExposures = calculateTotalExposureFromDailyDistributions(
+        filteredPhysicalDailyDistributions
+      );
+      
+      const totalPricingExposures = calculateTotalExposureFromDailyDistributions(
+        filteredPricingDailyDistributions
+      );
+      
+      console.log('Total physical exposures:', totalPhysicalExposures);
+      console.log('Total pricing exposures:', totalPricingExposures);
+      
       return {
-        physical: physicalExposures,
-        pricing: pricingExposures
+        physical: totalPhysicalExposures,
+        pricing: totalPricingExposures
       } as FilteredExposureResult;
     } catch (error) {
       console.error("Error calculating filtered exposures:", error);

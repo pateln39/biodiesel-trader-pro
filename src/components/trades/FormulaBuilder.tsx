@@ -79,7 +79,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         
         const newExposures = {
           physical: physicalExposure,
-          pricing: pricingExposure
+          pricing: pricingExposure,
+          monthlyDistribution: fullExposures.monthlyDistribution
         };
         
         if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
@@ -108,7 +109,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         
         const newExposures = {
           physical: physicalExposure,
-          pricing: pricingExposure
+          pricing: pricingExposure,
+          monthlyDistribution: fullExposures.monthlyDistribution
         };
         
         if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
@@ -267,7 +269,8 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
-        }
+        },
+        monthlyDistribution: {}
       }
     });
   };

@@ -1,3 +1,4 @@
+
 import { FormulaToken, Instrument, PricingFormula, ExposureResult, PartialPricingFormula } from '@/types';
 import { createEmptyExposureResult, calculateExposures } from './formulaCalculation';
 
@@ -133,11 +134,15 @@ export const ensureCompleteExposures = (formula: PartialPricingFormula | undefin
     ...(formula.exposures.pricing || {})
   };
   
+  // Preserve the monthly distribution if it exists
+  const monthlyDistribution = formula.exposures.monthlyDistribution || {};
+  
   return {
     ...formula,
     exposures: {
       physical: mergedPhysical,
-      pricing: mergedPricing
+      pricing: mergedPricing,
+      monthlyDistribution
     }
   };
 };
