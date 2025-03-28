@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FormulaNode,
   FormulaToken,
   PricingFormula,
-  Instrument,
-  createEmptyFormula
-} from '@/types/pricing';
+  Instrument
+} from '@/types';
 import {
   generateNodeId,
   createInstrumentToken,
@@ -15,7 +15,8 @@ import {
   createOpenBracketToken,
   createCloseBracketToken,
   formulaToString,
-  formulaToDisplayString
+  formulaToDisplayString,
+  createEmptyFormula
 } from '@/utils/formulaUtils';
 import {
   isValue,
@@ -25,7 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Delete, Percent, NumberIcon, LetterCase, FunctionSquare } from 'lucide-react';
+import { MoreHorizontal, Delete, Percent, Hash, Type, FunctionSquare } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -334,7 +335,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               onClick={handleAddFixedValue}
               disabled={isEditingFixedValue}
             >
-              <NumberIcon className="h-4 w-4 mr-2" />
+              <Hash className="h-4 w-4 mr-2" />
               Fixed Value
             </Button>
             <Button

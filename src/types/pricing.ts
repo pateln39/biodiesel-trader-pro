@@ -1,6 +1,8 @@
 
 import { Instrument, OperatorType } from './common';
 
+export type { Instrument };  // Export Instrument type
+
 export interface FormulaNode {
   id: string;
   type: "instrument" | "fixedValue" | "operator" | "group" | "percentage" | "openBracket" | "closeBracket";
