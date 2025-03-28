@@ -20,8 +20,7 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
-  },
-  monthlyDistribution: {}
+  }
 });
 
 // Helper function to check if a token is an instrument
@@ -393,7 +392,7 @@ const extractInstrumentsFromAST = (
   return instruments;
 };
 
-// Calculate exposures including monthly distributions
+// Calculate exposures with simplified approach for physical exposures
 export function calculateExposures(
   tokens: FormulaToken[],
   quantity: number,
@@ -421,166 +420,10 @@ export function calculateExposures(
   const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell);
   const pricingExposure = calculatePricingExposure(tokens, quantity, buySell);
   
-  // Create monthly distribution if we have pricing period dates
-  const monthlyDistribution: Record<string, Record<string, number>> = {};
-  
-  if (pricingPeriodStart && pricingPeriodEnd) {
-    console.log(`Generating ${formulaType} monthly distribution for ${pricingPeriodStart.toISOString()} to ${pricingPeriodEnd.toISOString()}`);
-    
-    // For price formula, we distribute physical exposures
-    // For MTM formula, we distribute MTM physical exposures
-    if (formulaType === 'price') {
-      // Process physical exposures for price formula distribution
-      Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
-        if (exposure !== 0) {
-          console.log(`Distributing price physical exposure for ${instrument}: ${exposure}`);
-          
-          // Generate distribution based on working days
-          const distribution = distributeQuantityByWorkingDays(
-            pricingPeriodStart,
-            pricingPeriodEnd,
-            Math.abs(exposure)
-          );
-          
-          // Apply the sign from the original exposure
-          const signedDistribution: Record<string, number> = {};
-          const sign = Math.sign(exposure);
-          
-          Object.entries(distribution).forEach(([month, value]) => {
-            signedDistribution[month] = value * sign;
-            console.log(`Physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-          });
-          
-          monthlyDistribution[instrument] = signedDistribution;
-        }
-      });
-      
-      // Process pricing exposures for price formula distribution
-      Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
-        if (exposure !== 0) {
-          console.log(`Distributing price pricing exposure for ${instrument}: ${exposure}`);
-          
-          // Generate distribution based on working days
-          const distribution = distributeQuantityByWorkingDays(
-            pricingPeriodStart,
-            pricingPeriodEnd,
-            Math.abs(exposure)
-          );
-          
-          // Apply the sign from the original exposure
-          const signedDistribution: Record<string, number> = {};
-          const sign = Math.sign(exposure);
-          
-          Object.entries(distribution).forEach(([month, value]) => {
-            signedDistribution[month] = value * sign;
-            console.log(`Pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-          });
-          
-          // Add to existing distribution or create new
-          if (monthlyDistribution[instrument]) {
-            Object.entries(signedDistribution).forEach(([month, value]) => {
-              // For price formula, pricing exposures override physical exposures
-              monthlyDistribution[instrument][month] = value;
-            });
-          } else {
-            monthlyDistribution[instrument] = signedDistribution;
-          }
-        }
-      });
-    } 
-    else if (formulaType === 'mtm') {
-      // For MTM formula, distribute physical exposures based on loading period start date
-      // and pricing exposures based on pricing period (as before)
-      
-      // 1. Handle physical exposures - new logic using loadingPeriodStart
-      Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
-        if (exposure !== 0) {
-          console.log(`Handling MTM physical exposure for ${instrument}: ${exposure}`);
-          
-          if (loadingPeriodStart) {
-            // Get month code for the loading period start month (e.g., "Mar-25")
-            const loadingStartMonth = new Date(loadingPeriodStart);
-            const monthName = loadingStartMonth.toLocaleString('en-US', { month: 'short' });
-            const year = loadingStartMonth.getFullYear().toString().slice(-2);
-            const monthCode = `${monthName}-${year}`;
-            
-            console.log(`Assigning MTM physical exposure to loading period start month: ${monthCode}`);
-            
-            // Create a distribution with 100% of the exposure in the loading month
-            const signedDistribution: Record<string, number> = {
-              [monthCode]: exposure
-            };
-            
-            // Store the distribution for this instrument
-            monthlyDistribution[instrument] = signedDistribution;
-          } else {
-            console.log(`No loading period start date provided for MTM physical exposure, using pricing period instead`);
-            
-            // Fallback to pricing period if no loading period start is provided
-            const distribution = distributeQuantityByWorkingDays(
-              pricingPeriodStart,
-              pricingPeriodEnd,
-              Math.abs(exposure)
-            );
-            
-            // Apply the sign from the original physical exposure
-            const signedDistribution: Record<string, number> = {};
-            const sign = Math.sign(exposure);
-            
-            Object.entries(distribution).forEach(([month, value]) => {
-              signedDistribution[month] = value * sign;
-              console.log(`MTM physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-            });
-            
-            monthlyDistribution[instrument] = signedDistribution;
-          }
-        }
-      });
-      
-      // 2. Handle pricing exposures - keep the existing logic for pricing exposure distribution
-      // MTM pricing exposures are still prorated over the pricing period (not changed)
-      Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
-        if (exposure !== 0) {
-          console.log(`Distributing MTM pricing exposure for ${instrument}: ${exposure}`);
-          
-          // Generate distribution based on working days (keep prorating for pricing exposures)
-          const distribution = distributeQuantityByWorkingDays(
-            pricingPeriodStart,
-            pricingPeriodEnd,
-            Math.abs(exposure)
-          );
-          
-          // Apply the sign from the original exposure
-          const signedDistribution: Record<string, number> = {};
-          const sign = Math.sign(exposure);
-          
-          Object.entries(distribution).forEach(([month, value]) => {
-            signedDistribution[month] = value * sign;
-            console.log(`MTM pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
-          });
-          
-          // Store the distribution for this instrument, or merge with existing
-          if (monthlyDistribution[instrument]) {
-            // Don't override physical exposures that were already set
-            Object.entries(signedDistribution).forEach(([month, value]) => {
-              // For pricing exposures, we don't want to overwrite physical exposures
-              // that were set based on loading period
-              if (!monthlyDistribution[instrument][month]) {
-                monthlyDistribution[instrument][month] = value;
-              }
-            });
-          } else {
-            monthlyDistribution[instrument] = signedDistribution;
-          }
-        }
-      });
-    }
-  }
-  
+  // Remove monthly distribution from the ExposureResult - this is no longer needed
   return {
     physical: physicalExposure,
-    pricing: pricingExposure,
-    monthlyDistribution
+    pricing: pricingExposure
   };
 }
 
