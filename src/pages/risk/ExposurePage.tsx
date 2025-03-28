@@ -849,10 +849,9 @@ const ExposurePage = () => {
           />
           
           {isLoading || filteredExposuresLoading ? (
-            <TableLoadingState message="Loading exposure data..." />
+            <TableLoadingState />
           ) : error || filteredExposuresError ? (
             <TableErrorState 
-              message="Error loading exposure data"
               error={(error || filteredExposuresError) || 'Unknown error'}
               onRetry={() => {
                 if (error) refetch();

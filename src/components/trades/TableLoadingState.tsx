@@ -8,9 +8,8 @@ interface TableLoadingStateProps {
 
 const TableLoadingState: React.FC<TableLoadingStateProps> = ({ message = "Loading..." }) => {
   return (
-    <div className="p-8 flex flex-col items-center space-y-4">
+    <div className="p-8 flex justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      {message && <p className="text-sm text-muted-foreground">{message}</p>}
     </div>
   );
 };

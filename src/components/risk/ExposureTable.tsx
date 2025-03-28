@@ -40,13 +40,12 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
   error
 }) => {
   if (isLoading) {
-    return <TableLoadingState message="Loading exposure data..." />;
+    return <TableLoadingState />;
   }
 
   if (error) {
     return (
       <TableErrorState
-        message="Error loading exposure data"
         error={error}
         onRetry={() => {}}
       />

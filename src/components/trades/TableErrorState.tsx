@@ -11,7 +11,7 @@ interface TableErrorStateProps {
 
 const TableErrorState: React.FC<TableErrorStateProps> = ({ error, onRetry, message = "Failed to load data" }) => {
   return (
-    <div className="p-8 flex flex-col items-center text-center space-y-4">
+    <div className="p-8 flex flex-col items-center space-y-4">
       <AlertCircle className="h-10 w-10 text-destructive" />
       <div>
         <h3 className="font-medium">{message}</h3>
