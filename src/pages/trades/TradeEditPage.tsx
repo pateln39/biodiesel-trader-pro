@@ -178,7 +178,7 @@ const TradeEditPage = () => {
           exposures: updatedPricingExposures
         };
 
-        // Recalculate MTM formula exposures, now with loadingPeriodStart
+        // Recalculate MTM formula exposures
         const updatedMtmExposures = calculateExposures(
           leg.mtmFormula.tokens,
           leg.quantity,
@@ -186,8 +186,7 @@ const TradeEditPage = () => {
           leg.product,
           leg.pricingPeriodStart,
           leg.pricingPeriodEnd,
-          'mtm',
-          leg.loadingPeriodStart
+          'mtm'
         );
 
         // Update the MTM formula with recalculated exposures

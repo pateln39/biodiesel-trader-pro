@@ -1,74 +1,73 @@
 
-import { Instrument } from './common';
+import { Instrument, OperatorType } from './common';
 
-export interface PricingInstrument {
+export interface FormulaNode {
   id: string;
-  instrumentCode: string;
-  displayName: string;
-  description?: string;
-  isActive: boolean;
-  category?: string;
-  createdAt: string;
-  updatedAt: string;
+  type: "instrument" | "fixedValue" | "operator" | "group" | "percentage" | "openBracket" | "closeBracket";
+  value: string;
+  children?: FormulaNode[];
 }
 
-export interface HistoricalPrice {
+export interface FormulaToken {
   id: string;
-  instrumentId: string;
-  priceDate: string;
-  price: number;
-  createdAt: string;
-  updatedAt: string;
-  instrument?: PricingInstrument;
+  type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket";
+  value: string;
 }
 
-export interface ForwardPrice {
-  id: string;
-  instrumentId: string;
-  forwardMonth: string;
-  price: number;
-  createdAt: string;
-  updatedAt: string;
-  instrument?: PricingInstrument;
+export interface MonthlyDistribution {
+  [monthCode: string]: number; // e.g., "Mar-24": 363.63
 }
 
-export interface PriceUploadData {
-  date: string;
-  instrument: string;
-  price: number;
+// Daily distribution for exposure calculations
+// For physical exposures, values are assigned to the loading period start month
+// For pricing exposures, values are prorated across the pricing period
+export interface DailyDistribution {
+  [dateString: string]: number; // e.g., "2023-03-15": 3000
+}
+
+// New type to organize daily distributions by instrument
+export interface DailyDistributionByInstrument {
+  [instrument: string]: DailyDistribution;
 }
 
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
+  monthlyDistribution?: Record<Instrument, MonthlyDistribution>;
 }
 
-export interface MonthlyDistribution {
-  [monthKey: string]: number; // e.g. "Jan-23": 1000
+export interface PricingFormula {
+  tokens: FormulaToken[];
+  exposures: ExposureResult;
 }
 
-export interface InstrumentWithExposures extends PricingInstrument {
-  exposures: number[];
+// Utility type to handle potentially incomplete data from the database
+export type PartialExposureResult = {
+  physical?: Partial<Record<Instrument, number>>;
+  pricing?: Partial<Record<Instrument, number>>;
+  monthlyDistribution?: Partial<Record<Instrument, Partial<MonthlyDistribution>>>;
+};
+
+export type PartialPricingFormula = {
+  tokens: FormulaToken[];
+  exposures?: PartialExposureResult;
+};
+
+// Define FixedComponent type for formula analysis
+export interface FixedComponent {
+  value: number;
+  displayValue: string;
 }
 
-export interface MTMRecord {
-  month: string;
-  [key: string]: any;
+// Enhanced price detail interfaces
+export interface PriceDetail {
+  instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
+  evaluatedPrice: number;
+  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
 }
 
-export interface MTMData {
-  records: MTMRecord[];
-  total: Record<string, number>;
-  grandTotal: number;
-}
-
-export interface PNLRecord {
-  month: string;
-  [key: string]: any;
-}
-
-export interface PNLData {
-  records: PNLRecord[];
-  total: Record<string, number>;
-  grandTotal: number;
+export interface MTMPriceDetail {
+  instruments: Record<Instrument, { price: number; date: Date | null }>;
+  evaluatedPrice: number;
+  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
 }
