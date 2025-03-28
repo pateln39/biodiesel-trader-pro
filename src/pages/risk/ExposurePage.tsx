@@ -94,25 +94,21 @@ const ExposurePage = () => {
     },
   };
 
-  // Helper function to get the month code for a trade leg
   const getMonthCodeForTrade = (trade: PhysicalTrade | PhysicalTradeLeg): string => {
     const date = trade.loadingPeriodStart;
     return formatMonthCode(date);
   };
 
-  // Process physical trades for exposure calculation
   const processPhysicalTrades = (trades: PhysicalTrade[], selectedPeriod: string): ExposureData => {
     const exposureData: ExposureData = initializeExposureData();
     
     trades.forEach((trade) => {
       trade.legs.forEach((leg) => {
-        // Process physical exposure - based on loading period start date
         const loadingMonthCode = getMonthCodeForTrade(leg);
         
         if (loadingMonthCode === selectedPeriod) {
           const physicalExposure = leg.formula?.exposures?.physical || {};
           
-          // Add physical exposure to the selected period
           Object.entries(physicalExposure).forEach(([product, amount]) => {
             if (amount !== 0) {
               exposureData.physical[product] = (exposureData.physical[product] || 0) + amount;
@@ -120,16 +116,13 @@ const ExposurePage = () => {
           });
         }
         
-        // Process pricing exposure - use monthly distribution if available
         if (leg.formula?.monthlyDistribution) {
-          // Use pre-calculated monthly distribution
           Object.entries(leg.formula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
             if (monthlyValues[selectedPeriod]) {
               exposureData.pricing[instrument] = (exposureData.pricing[instrument] || 0) + monthlyValues[selectedPeriod];
             }
           });
         } else {
-          // Fallback to old method if monthly distribution is not available
           const pricingMonthCode = getMonthCodeForTrade(leg);
           
           if (pricingMonthCode === selectedPeriod) {
