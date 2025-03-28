@@ -38,71 +38,13 @@ export interface PriceUploadData {
   price: number;
 }
 
-// Adding FormulaToken type
-export interface FormulaToken {
-  id: string;
-  type: 'instrument' | 'fixedValue' | 'percentage' | 'operator' | 'openBracket' | 'closeBracket';
-  value: string;
-}
-
-// Adding ExposureResult interface with monthlyDistribution property
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
-  monthlyDistribution?: Record<string, Record<string, number>>;
 }
 
 export interface MonthlyDistribution {
   [monthKey: string]: number; // e.g. "Jan-23": 1000
-}
-
-// Add DailyDistribution (needed for imports but will be empty)
-export interface DailyDistribution {
-  [dateKey: string]: number; // e.g. "2023-01-15": 100
-}
-
-// Add DailyDistributionByInstrument (needed for imports but will be empty)
-export interface DailyDistributionByInstrument {
-  [instrument: string]: DailyDistribution;
-}
-
-// Add PricingFormula interface
-export interface PricingFormula {
-  tokens: FormulaToken[];
-  exposures: ExposureResult;
-}
-
-// Add PartialPricingFormula for formula utilities
-export interface PartialPricingFormula {
-  tokens: FormulaToken[];
-  exposures?: Partial<ExposureResult>;
-}
-
-// Price detail interfaces
-export interface FixedComponent {
-  value: number;
-  displayValue?: string;
-}
-
-export interface PriceDetail {
-  instruments?: Record<Instrument, { 
-    average: number; 
-    prices: { date: Date; price: number }[] 
-  }>;
-  evaluatedPrice?: number;
-  fixedComponents?: FixedComponent[];
-  totalFixedValue?: number;
-  finalPrice?: number;
-}
-
-export interface MTMPriceDetail {
-  instruments?: Record<Instrument, { 
-    price: number; 
-    date: Date | null 
-  }>;
-  evaluatedPrice?: number;
-  fixedComponents?: FixedComponent[];
-  finalMTM?: number;
 }
 
 export interface InstrumentWithExposures extends PricingInstrument {

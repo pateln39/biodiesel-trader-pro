@@ -5,7 +5,6 @@ import { Instrument } from '@/types/common';
 import { MonthlyDistribution } from '@/types/pricing';
 import { getMonthlyDistribution } from '@/utils/workingDaysUtils';
 import { PhysicalTrade } from '@/types/physical';
-import { createEmptyExposures } from '@/utils/exposureUtils';
 
 interface FilteredExposureResult {
   physical: Record<Instrument, number>;
@@ -19,11 +18,7 @@ export function useFilteredExposures() {
   const filteredExposures = useMemo(() => {
     if (tradesLoading || !trades || trades.length === 0) {
       console.log("No trades to calculate exposures from");
-      // Return a properly structured result with empty data
-      return { 
-        physical: createEmptyExposures(), 
-        pricing: createEmptyExposures() 
-      } as FilteredExposureResult;
+      return { physical: {}, pricing: {} } as FilteredExposureResult;
     }
     
     try {
@@ -68,8 +63,8 @@ export function useFilteredExposures() {
             
             // Process each instrument's physical exposure
             Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
-              if (!physicalDistributions[instrument as Instrument]) {
-                physicalDistributions[instrument as Instrument] = {};
+              if (!physicalDistributions[instrument]) {
+                physicalDistributions[instrument] = {};
               }
               
               // For physical exposure, use the loading period start date to determine the month
@@ -82,11 +77,11 @@ export function useFilteredExposures() {
                 console.log(`Assigning physical exposure for ${instrument} to loading month ${monthCode}: ${value}`);
                 
                 // Put 100% of the exposure in the loading month
-                if (!physicalDistributions[instrument as Instrument][monthCode]) {
-                  physicalDistributions[instrument as Instrument][monthCode] = 0;
+                if (!physicalDistributions[instrument][monthCode]) {
+                  physicalDistributions[instrument][monthCode] = 0;
                 }
                 
-                physicalDistributions[instrument as Instrument][monthCode] += value as number;
+                physicalDistributions[instrument][monthCode] += value as number;
                 processedPhysicalExposures++;
               } else if (value !== 0) {
                 console.log(`No loading period start date for leg ${leg.legReference}, using pricing period for physical exposure`);
@@ -98,11 +93,11 @@ export function useFilteredExposures() {
                 const monthCode = `${monthName}-${year}`;
                 
                 // Put 100% of the exposure in the first pricing month if no loading date
-                if (!physicalDistributions[instrument as Instrument][monthCode]) {
-                  physicalDistributions[instrument as Instrument][monthCode] = 0;
+                if (!physicalDistributions[instrument][monthCode]) {
+                  physicalDistributions[instrument][monthCode] = 0;
                 }
                 
-                physicalDistributions[instrument as Instrument][monthCode] += value as number;
+                physicalDistributions[instrument][monthCode] += value as number;
                 processedPhysicalExposures++;
               }
             });
@@ -128,16 +123,16 @@ export function useFilteredExposures() {
               
               // Process each instrument's monthly distribution
               Object.entries(pricingMonthlyDist).forEach(([instrument, distribution]) => {
-                if (!pricingDistributions[instrument as Instrument]) {
-                  pricingDistributions[instrument as Instrument] = {};
+                if (!pricingDistributions[instrument]) {
+                  pricingDistributions[instrument] = {};
                 }
                 
                 // Add monthly values to our accumulated distributions
                 Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  if (!pricingDistributions[instrument as Instrument][monthCode]) {
-                    pricingDistributions[instrument as Instrument][monthCode] = 0;
+                  if (!pricingDistributions[instrument][monthCode]) {
+                    pricingDistributions[instrument][monthCode] = 0;
                   }
-                  pricingDistributions[instrument as Instrument][monthCode] += monthValue;
+                  pricingDistributions[instrument][monthCode] += monthValue;
                   processedPricingExposures++;
                 });
               });
@@ -155,30 +150,26 @@ export function useFilteredExposures() {
       console.log('Physical distributions:', physicalDistributions);
       console.log('Pricing distributions:', pricingDistributions);
       
-      // Start with empty exposures for each instrument
+      // Build final result combining all monthly distributions
       const result: FilteredExposureResult = {
-        physical: createEmptyExposures(),
-        pricing: createEmptyExposures()
+        physical: {},
+        pricing: {}
       };
       
       // Sum up values for each instrument from the monthly distributions
       Object.entries(physicalDistributions).forEach(([instrument, monthlyValues]) => {
-        result.physical[instrument as Instrument] = Object.values(monthlyValues).reduce((sum, val) => sum + val, 0);
+        result.physical[instrument] = Object.values(monthlyValues).reduce((sum, val) => sum + val, 0);
       });
       
       Object.entries(pricingDistributions).forEach(([instrument, monthlyValues]) => {
-        result.pricing[instrument as Instrument] = Object.values(monthlyValues).reduce((sum, val) => sum + val, 0);
+        result.pricing[instrument] = Object.values(monthlyValues).reduce((sum, val) => sum + val, 0);
       });
       
       console.log('Final exposures:', result);
       return result;
     } catch (error) {
       console.error("Error calculating exposures:", error);
-      // Return a properly structured result with empty data on error
-      return { 
-        physical: createEmptyExposures(), 
-        pricing: createEmptyExposures() 
-      } as FilteredExposureResult;
+      return { physical: {}, pricing: {} } as FilteredExposureResult;
     }
   }, [trades, tradesLoading]);
   

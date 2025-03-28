@@ -1,23 +1,12 @@
-
 import React, { useMemo } from 'react';
 import { useFilteredExposures } from '@/hooks/useFilteredExposures';
 import { format } from 'date-fns';
+import { columns, data } from '@/data/mockData';
 import DashboardCard from '@/components/DashboardCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { RefreshCw } from 'lucide-react';
-
-// Define columns for the exposure table
-const columns = [
-  { header: 'Argus UCOME', accessorKey: 'Argus UCOME' },
-  { header: 'Argus RME', accessorKey: 'Argus RME' },
-  { header: 'Argus FAME0', accessorKey: 'Argus FAME0' },
-  { header: 'Argus HVO', accessorKey: 'Argus HVO' },
-  { header: 'Platts LSGO', accessorKey: 'Platts LSGO' },
-  { header: 'Platts Diesel', accessorKey: 'Platts Diesel' },
-  { header: 'ICE GASOIL FUTURES', accessorKey: 'ICE GASOIL FUTURES' },
-];
 
 export default function ExposurePage() {
   const { filteredExposures, isLoading, error, refetchTrades } = useFilteredExposures();
@@ -27,12 +16,6 @@ export default function ExposurePage() {
   const exposureData = useMemo(() => {
     // If we're loading or there's an error, return empty data
     if (isLoading || error) {
-      return [];
-    }
-    
-    // Safety check: If filteredExposures is undefined or physical/pricing are missing, return empty array
-    if (!filteredExposures || !filteredExposures.physical || !filteredExposures.pricing) {
-      console.warn('Missing expected data structure in filteredExposures:', filteredExposures);
       return [];
     }
     
