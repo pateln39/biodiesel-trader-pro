@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Table,
@@ -29,7 +28,7 @@ interface ExposureTableProps {
     otherProducts: string[];
   };
   isLoading: boolean;
-  error: Error | null;
+  error: Error | string | null;
 }
 
 const ExposureTable: React.FC<ExposureTableProps> = ({
@@ -48,7 +47,8 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
     return (
       <TableErrorState
         message="Error loading exposure data"
-        error={error?.toString() || 'Unknown error'}
+        error={error}
+        onRetry={() => {}}
       />
     );
   }
