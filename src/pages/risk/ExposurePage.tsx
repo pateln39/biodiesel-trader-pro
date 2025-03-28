@@ -116,7 +116,6 @@ const ExposurePage = () => {
     return ALLOWED_PRODUCTS.filter(p => !p.includes('Argus'));
   }, [ALLOWED_PRODUCTS]);
 
-  // Initialize the filtered exposures hook with current month
   const {
     filteredExposures,
     isLoading: filteredExposuresLoading,
@@ -179,26 +178,21 @@ const ExposurePage = () => {
     }
   });
 
-  // Use either filtered or regular exposure data based on date filter
   const exposureData = useMemo(() => {
     if (isDateFilterActive) {
-      // When date filter is active, convert filtered exposures to the same format
-      // as the original exposure data for compatibility with existing table
       const monthlyExposures: MonthlyExposure[] = [];
       
-      // If we're filtering, we'll only show one month that represents the filtered period
       const filteredMonth = `${format(startDate, 'MMM')}-${format(startDate, 'yy')} to ${format(endDate, 'MMM')}-${format(endDate, 'yy')}`;
       
       const productsData: Record<string, ExposureData> = {};
       const totals: ExposureData = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
       
-      // Process physical exposures
       Object.entries(filteredExposures.physical).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product)) {
           productsData[product] = {
             physical: exposure,
             pricing: filteredExposures.pricing[product] || 0,
-            paper: 0, // No paper trades in this implementation
+            paper: 0,
             netExposure: calculateNetExposure(exposure, filteredExposures.pricing[product] || 0)
           };
           
@@ -207,7 +201,6 @@ const ExposurePage = () => {
         }
       });
       
-      // Process pricing instruments that might not have physical exposure
       Object.entries(filteredExposures.pricing).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product) && !productsData[product]) {
           productsData[product] = {
@@ -256,8 +249,6 @@ const ExposurePage = () => {
             
             let primaryMonth = leg.trading_period || '';
             
-            // When determining the primary month for physical exposure
-            // First use trading_period, then use loading_period_start, then pricing_period_start as fallbacks
             if (!primaryMonth && leg.loading_period_start) {
               const date = new Date(leg.loading_period_start);
               primaryMonth = formatMonthCode(date);
@@ -290,17 +281,14 @@ const ExposurePage = () => {
             const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
             const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
             
-            // For PHYSICAL EXPOSURES: Use loading_period_start to determine the month
             if (mtmFormula.tokens.length > 0 && leg.mtm_formula) {
               if (mtmFormula.exposures && mtmFormula.exposures.physical) {
                 Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
                   const canonicalBaseProduct = mapProductToCanonical(baseProduct);
                   allProductsFound.add(canonicalBaseProduct);
                   
-                  // Important change: For physical exposures, determine the month from loading_period_start
                   let physicalExposureMonth = primaryMonth;
                   
-                  // Use loading_period_start for physical exposure if available
                   if (leg.loading_period_start) {
                     const loadingDate = new Date(leg.loading_period_start);
                     physicalExposureMonth = formatMonthCode(loadingDate);
@@ -313,7 +301,6 @@ const ExposurePage = () => {
                   }
                 });
               } else if (primaryMonth && leg.loading_period_start) {
-                // If no exposures.physical but we have loading_period_start, use that for the physical exposure
                 const loadingDate = new Date(leg.loading_period_start);
                 const physicalExposureMonth = formatMonthCode(loadingDate);
                 
@@ -322,18 +309,13 @@ const ExposurePage = () => {
                   exposuresByMonth[physicalExposureMonth][canonicalProduct].physical += quantity;
                 }
               } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
-                // Fallback to the primary month if no loading_period_start
                 exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
               }
             } else if (primaryMonth && exposuresByMonth[primaryMonth][canonicalProduct]) {
-              // For simple cases with no formula, use primary month
               exposuresByMonth[primaryMonth][canonicalProduct].physical += quantity;
             }
             
-            // For PRICING EXPOSURES: Keep using monthly distribution from formula if available
-            // or distribute across pricing period
             if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              // Check for explicit monthly distribution in the formula
               const pricingMonthlyDistribution = getMonthlyDistribution(pricingFormula.exposures, 'pricing');
               
               if (Object.keys(pricingMonthlyDistribution).length > 0) {
@@ -348,7 +330,6 @@ const ExposurePage = () => {
                   });
                 });
               } else {
-                // No monthly distribution, assign to primary month
                 Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
                   const canonicalInstrument = mapProductToCanonical(instrument);
                   allProductsFound.add(canonicalInstrument);
@@ -720,4 +701,417 @@ const ExposurePage = () => {
                     });
                   }
                 } else {
-                  if (!exposuresByMonth
+                  if (!exposuresByMonth[month][canonicalProduct]) {
+                    exposuresByMonth[month][canonicalProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+                  const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+                  exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                  exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+                }
+              } else {
+                if (!exposuresByMonth[month][canonicalProduct]) {
+                  exposuresByMonth[month][canonicalProduct] = {
+                    physical: 0,
+                    pricing: 0,
+                    paper: 0,
+                    netExposure: 0
+                  };
+                }
+                
+                const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+                const paperExposure = (leg.quantity || 0) * buySellMultiplier;
+                exposuresByMonth[month][canonicalProduct].paper += paperExposure;
+                exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
+              }
+            }
+          });
+        }
+      }
+      
+      periods.forEach(month => {
+        if (exposuresByMonth[month]) {
+          Object.keys(exposuresByMonth[month]).forEach(product => {
+            if (exposuresByMonth[month][product]) {
+              const { physical, pricing } = exposuresByMonth[month][product];
+              exposuresByMonth[month][product].netExposure = calculateNetExposure(physical, pricing);
+            }
+          });
+        }
+      });
+      
+      return periods.map(month => {
+        const products: ProductExposure = {};
+        let totalPhysical = 0;
+        let totalPricing = 0;
+        let totalPaper = 0;
+        
+        if (exposuresByMonth[month]) {
+          Object.entries(exposuresByMonth[month]).forEach(([productName, productData]) => {
+            if (productData.physical !== 0 || productData.pricing !== 0 || productData.paper !== 0) {
+              products[productName] = productData;
+              totalPhysical += productData.physical;
+              totalPricing += productData.pricing;
+              totalPaper += productData.paper;
+            }
+          });
+        }
+        
+        const netTotalExposure = calculateNetExposure(totalPhysical, totalPricing);
+        
+        return {
+          month,
+          products,
+          totals: {
+            physical: totalPhysical,
+            pricing: totalPricing,
+            paper: totalPaper,
+            netExposure: netTotalExposure
+          }
+        };
+      });
+    }
+  }, [periods, tradeData, ALLOWED_PRODUCTS, isDateFilterActive, filteredExposures, startDate, endDate]);
+  
+  useEffect(() => {
+    setSelectedProducts([]);
+  }, [isDateFilterActive]);
+  
+  const handleDateFilterApply = (start: Date, end: Date) => {
+    updateDateRange(start, end);
+    setIsDateFilterActive(true);
+  };
+  
+  const handleDateFilterClear = () => {
+    setIsDateFilterActive(false);
+    refetchTrades();
+  };
+  
+  const handleExportCSV = () => {
+    console.log('Exporting to CSV');
+  };
+  
+  const toggleCategory = (category: string) => {
+    if (visibleCategories.includes(category)) {
+      setVisibleCategories(visibleCategories.filter(c => c !== category));
+    } else {
+      setVisibleCategories([...visibleCategories, category]);
+    }
+  };
+  
+  const toggleProductSelection = (product: string) => {
+    if (selectedProducts.includes(product)) {
+      setSelectedProducts(selectedProducts.filter(p => p !== product));
+    } else {
+      setSelectedProducts([...selectedProducts, product]);
+    }
+  };
+  
+  const shouldShowProduct = (product: string) => {
+    if (selectedProducts.length === 0) {
+      return true;
+    }
+    return selectedProducts.includes(product);
+  };
+  
+  const groupProducts = (monthData: MonthlyExposure) => {
+    const pricingProducts: string[] = [];
+    const biodieselProducts: string[] = [];
+    const otherProducts: string[] = [];
+    
+    Object.keys(monthData.products).forEach(product => {
+      if (BIODIESEL_PRODUCTS.includes(product)) {
+        biodieselProducts.push(product);
+      } else if (PRICING_INSTRUMENT_PRODUCTS.includes(product)) {
+        pricingProducts.push(product);
+      } else {
+        otherProducts.push(product);
+      }
+    });
+    
+    return {
+      pricingProducts: pricingProducts.sort(),
+      biodieselProducts: biodieselProducts.sort(),
+      otherProducts: otherProducts.sort()
+    };
+  };
+  
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure | Risk</title>
+      </Helmet>
+      
+      <div className="container mx-auto py-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Exposure Overview</h1>
+          
+          <div className="flex items-center space-x-2">
+            <DateRangeFilter 
+              onApply={handleDateFilterApply} 
+              onClear={handleDateFilterClear}
+              isActive={isDateFilterActive}
+              defaultStartDate={startDate}
+              defaultEndDate={endDate}
+            />
+            
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="physical-toggle"
+                    checked={visibleCategories.includes('Physical')}
+                    onCheckedChange={() => toggleCategory('Physical')}
+                  />
+                  <label
+                    htmlFor="physical-toggle"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Physical
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="pricing-toggle"
+                    checked={visibleCategories.includes('Pricing')}
+                    onCheckedChange={() => toggleCategory('Pricing')}
+                  />
+                  <label
+                    htmlFor="pricing-toggle"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Pricing
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="paper-toggle" 
+                    checked={visibleCategories.includes('Paper')}
+                    onCheckedChange={() => toggleCategory('Paper')}
+                  />
+                  <label
+                    htmlFor="paper-toggle"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Paper
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="exposure-toggle"
+                    checked={visibleCategories.includes('Exposure')}
+                    onCheckedChange={() => toggleCategory('Exposure')}
+                  />
+                  <label
+                    htmlFor="exposure-toggle"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Net Exposure
+                  </label>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-md font-medium mb-3">Products</h3>
+              <div className="flex flex-wrap gap-3">
+                {ALLOWED_PRODUCTS.map(product => (
+                  <div key={product} className="flex items-center space-x-2 bg-gray-50 rounded-md p-2">
+                    <Checkbox 
+                      id={`product-${product}`}
+                      checked={selectedProducts.length === 0 || selectedProducts.includes(product)}
+                      onCheckedChange={() => toggleProductSelection(product)}
+                    />
+                    <label
+                      htmlFor={`product-${product}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      {formatExposureTableProduct(product)}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          {isLoading || filteredExposuresLoading ? (
+            <TableLoadingState message="Loading exposure data..." />
+          ) : error || filteredExposuresError ? (
+            <TableErrorState 
+              message="Error loading exposure data"
+              error={(error || filteredExposuresError)?.toString() || 'Unknown error'}
+            />
+          ) : (
+            exposureData.map((monthData, index) => (
+              <Card key={monthData.month} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="bg-gray-50 p-4 border-b">
+                    <h3 className="text-lg font-medium">{monthData.month}</h3>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Product</TableHead>
+                        {visibleCategories.includes('Physical') && (
+                          <TableHead>Physical</TableHead>
+                        )}
+                        {visibleCategories.includes('Pricing') && (
+                          <TableHead>Pricing</TableHead>
+                        )}
+                        {visibleCategories.includes('Paper') && (
+                          <TableHead>Paper</TableHead>
+                        )}
+                        {visibleCategories.includes('Exposure') && (
+                          <TableHead>Net Exposure</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.keys(monthData.products).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={visibleCategories.length + 1} className="text-center py-4">
+                            No exposure data for this month
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {(() => {
+                            const { pricingProducts, biodieselProducts, otherProducts } = groupProducts(monthData);
+                            
+                            return (
+                              <>
+                                {pricingProducts.length > 0 && pricingProducts.map(product => {
+                                  if (!shouldShowProduct(product)) return null;
+                                  const { physical, pricing, paper, netExposure } = monthData.products[product];
+                                  return (
+                                    <TableRow key={product} className={shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ""}>
+                                      <TableCell className="font-medium">
+                                        {formatExposureTableProduct(product)}
+                                        {isPricingInstrument(product) && <span className="ml-1 text-xs text-gray-500">(Instrument)</span>}
+                                      </TableCell>
+                                      {visibleCategories.includes('Physical') && (
+                                        <TableCell>{physical.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Pricing') && (
+                                        <TableCell>{pricing.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Paper') && (
+                                        <TableCell>{paper.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Exposure') && (
+                                        <TableCell className={netExposure > 0 ? "text-green-600" : netExposure < 0 ? "text-red-600" : ""}>
+                                          {netExposure.toFixed(2)}
+                                        </TableCell>
+                                      )}
+                                    </TableRow>
+                                  );
+                                })}
+                                
+                                {biodieselProducts.length > 0 && biodieselProducts.map(product => {
+                                  if (!shouldShowProduct(product)) return null;
+                                  const { physical, pricing, paper, netExposure } = monthData.products[product];
+                                  return (
+                                    <TableRow key={product} className={shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ""}>
+                                      <TableCell className="font-medium">
+                                        {formatExposureTableProduct(product)}
+                                      </TableCell>
+                                      {visibleCategories.includes('Physical') && (
+                                        <TableCell>{physical.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Pricing') && (
+                                        <TableCell>{pricing.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Paper') && (
+                                        <TableCell>{paper.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Exposure') && (
+                                        <TableCell className={netExposure > 0 ? "text-green-600" : netExposure < 0 ? "text-red-600" : ""}>
+                                          {netExposure.toFixed(2)}
+                                        </TableCell>
+                                      )}
+                                    </TableRow>
+                                  );
+                                })}
+                                
+                                {otherProducts.length > 0 && otherProducts.map(product => {
+                                  if (!shouldShowProduct(product)) return null;
+                                  const { physical, pricing, paper, netExposure } = monthData.products[product];
+                                  return (
+                                    <TableRow key={product}>
+                                      <TableCell className="font-medium">
+                                        {formatExposureTableProduct(product)}
+                                      </TableCell>
+                                      {visibleCategories.includes('Physical') && (
+                                        <TableCell>{physical.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Pricing') && (
+                                        <TableCell>{pricing.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Paper') && (
+                                        <TableCell>{paper.toFixed(2)}</TableCell>
+                                      )}
+                                      {visibleCategories.includes('Exposure') && (
+                                        <TableCell className={netExposure > 0 ? "text-green-600" : netExposure < 0 ? "text-red-600" : ""}>
+                                          {netExposure.toFixed(2)}
+                                        </TableCell>
+                                      )}
+                                    </TableRow>
+                                  );
+                                })}
+                                
+                                <TableRow className="bg-gray-50 font-semibold">
+                                  <TableCell>TOTAL</TableCell>
+                                  {visibleCategories.includes('Physical') && (
+                                    <TableCell>{monthData.totals.physical.toFixed(2)}</TableCell>
+                                  )}
+                                  {visibleCategories.includes('Pricing') && (
+                                    <TableCell>{monthData.totals.pricing.toFixed(2)}</TableCell>
+                                  )}
+                                  {visibleCategories.includes('Paper') && (
+                                    <TableCell>{monthData.totals.paper.toFixed(2)}</TableCell>
+                                  )}
+                                  {visibleCategories.includes('Exposure') && (
+                                    <TableCell className={monthData.totals.netExposure > 0 ? "text-green-600" : monthData.totals.netExposure < 0 ? "text-red-600" : ""}>
+                                      {monthData.totals.netExposure.toFixed(2)}
+                                    </TableCell>
+                                  )}
+                                </TableRow>
+                              </>
+                            );
+                          })()}
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
