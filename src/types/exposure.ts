@@ -30,3 +30,12 @@ export interface FilteredExposureResult {
   physical: Record<string, number>;
   pricing: Record<string, number>;
 }
+
+export interface PricingInstrument {
+  id: string;
+  display_name: string;
+  instrument_code: string;
+  is_active: boolean;
+  description?: string;
+  category?: string;
+}

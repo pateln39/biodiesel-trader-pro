@@ -21,7 +21,12 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 import ExposureCategoryFilter from '@/components/risk/ExposureCategoryFilter';
 import ProductFilterSelection from '@/components/risk/ProductFilterSelection';
 import ExposureTable from '@/components/risk/ExposureTable';
-import { MonthlyExposure, ProductGroups } from '@/types/exposure';
+import { 
+  MonthlyExposure, 
+  ProductExposure, 
+  ExposureData, 
+  PricingInstrument 
+} from '@/types/exposure';
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
