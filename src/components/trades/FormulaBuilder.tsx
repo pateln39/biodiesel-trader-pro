@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X } from 'lucide-react';
-import { FormulaToken, PricingFormula } from '@/types/pricing';
-import { Instrument } from '@/types/common';
+import { FormulaToken, Instrument, PricingFormula } from '@/types';
 import { 
   createInstrumentToken,
   createFixedValueToken,
@@ -146,8 +144,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   const handleAddFixedValue = () => {
     if (!canAddTokenType(value.tokens, 'fixedValue')) return;
-    const numericValue = Number(fixedValue) || 0;
-    const newToken = createFixedValueToken(numericValue);
+    const newToken = createFixedValueToken(Number(fixedValue) || 0);
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
@@ -165,8 +162,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   const handleAddPercentage = () => {
     if (!canAddTokenType(value.tokens, 'percentage')) return;
-    const numericValue = Number(percentageValue) || 0;
-    const newToken = createPercentageToken(numericValue);
+    const newToken = createPercentageToken(Number(percentageValue) || 0);
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,

@@ -1,8 +1,6 @@
-
-import { FormulaToken, ExposureResult, PricingFormula } from '@/types/pricing';
-import { Instrument } from '@/types/common';
+import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
 import { distributeQuantityByWorkingDays } from './workingDaysUtils';
-import { MonthlyDistribution } from '@/types/pricing';
+import { MonthlyDistribution } from '@/types';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
   physical: {
@@ -403,11 +401,13 @@ export function calculateExposures(
   selectedProduct?: string,
   pricingPeriodStart?: Date,
   pricingPeriodEnd?: Date,
-  formulaType: 'price' | 'mtm' = 'price'
+  formulaType: 'price' | 'mtm' = 'price',
+  loadingPeriodStart?: Date
 ): ExposureResult {
   console.log(`Calculating ${formulaType} exposures with dates:`, {
     pricingPeriodStart: pricingPeriodStart?.toISOString(),
     pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
+    loadingPeriodStart: loadingPeriodStart?.toISOString(),
     quantity,
     buySell,
     selectedProduct,
@@ -489,34 +489,91 @@ export function calculateExposures(
       });
     } 
     else if (formulaType === 'mtm') {
-      // For MTM formula, we need to match the signs from the physical exposures
-      // MTM physical exposures should be distributed with their signs preserved
+      // For MTM formula, distribute physical exposures based on loading period start date
+      // and pricing exposures based on pricing period (as before)
+      
+      // 1. Handle physical exposures - new logic using loadingPeriodStart
       Object.entries(physicalExposure).forEach(([instrument, exposure]) => {
         if (exposure !== 0) {
-          console.log(`Distributing MTM physical exposure for ${instrument}: ${exposure}`);
+          console.log(`Handling MTM physical exposure for ${instrument}: ${exposure}`);
           
-          // Generate distribution based on working days
+          if (loadingPeriodStart) {
+            // Get month code for the loading period start month (e.g., "Mar-25")
+            const loadingStartMonth = new Date(loadingPeriodStart);
+            const monthName = loadingStartMonth.toLocaleString('en-US', { month: 'short' });
+            const year = loadingStartMonth.getFullYear().toString().slice(-2);
+            const monthCode = `${monthName}-${year}`;
+            
+            console.log(`Assigning MTM physical exposure to loading period start month: ${monthCode}`);
+            
+            // Create a distribution with 100% of the exposure in the loading month
+            const signedDistribution: Record<string, number> = {
+              [monthCode]: exposure
+            };
+            
+            // Store the distribution for this instrument
+            monthlyDistribution[instrument] = signedDistribution;
+          } else {
+            console.log(`No loading period start date provided for MTM physical exposure, using pricing period instead`);
+            
+            // Fallback to pricing period if no loading period start is provided
+            const distribution = distributeQuantityByWorkingDays(
+              pricingPeriodStart,
+              pricingPeriodEnd,
+              Math.abs(exposure)
+            );
+            
+            // Apply the sign from the original physical exposure
+            const signedDistribution: Record<string, number> = {};
+            const sign = Math.sign(exposure);
+            
+            Object.entries(distribution).forEach(([month, value]) => {
+              signedDistribution[month] = value * sign;
+              console.log(`MTM physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
+            });
+            
+            monthlyDistribution[instrument] = signedDistribution;
+          }
+        }
+      });
+      
+      // 2. Handle pricing exposures - keep the existing logic for pricing exposure distribution
+      // MTM pricing exposures are still prorated over the pricing period (not changed)
+      Object.entries(pricingExposure).forEach(([instrument, exposure]) => {
+        if (exposure !== 0) {
+          console.log(`Distributing MTM pricing exposure for ${instrument}: ${exposure}`);
+          
+          // Generate distribution based on working days (keep prorating for pricing exposures)
           const distribution = distributeQuantityByWorkingDays(
             pricingPeriodStart,
             pricingPeriodEnd,
             Math.abs(exposure)
           );
           
-          // Apply the sign from the original physical exposure
+          // Apply the sign from the original exposure
           const signedDistribution: Record<string, number> = {};
           const sign = Math.sign(exposure);
           
           Object.entries(distribution).forEach(([month, value]) => {
             signedDistribution[month] = value * sign;
-            console.log(`MTM physical monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
+            console.log(`MTM pricing monthly distribution for ${instrument} ${month}: ${value} * ${sign} = ${value * sign}`);
           });
           
-          monthlyDistribution[instrument] = signedDistribution;
+          // Store the distribution for this instrument, or merge with existing
+          if (monthlyDistribution[instrument]) {
+            // Don't override physical exposures that were already set
+            Object.entries(signedDistribution).forEach(([month, value]) => {
+              // For pricing exposures, we don't want to overwrite physical exposures
+              // that were set based on loading period
+              if (!monthlyDistribution[instrument][month]) {
+                monthlyDistribution[instrument][month] = value;
+              }
+            });
+          } else {
+            monthlyDistribution[instrument] = signedDistribution;
+          }
         }
       });
-      
-      // MTM pricing exposures are not distributed as they affect the MTM valuation
-      // but don't contribute to the monthly distribution
     }
   }
   

@@ -1,15 +1,10 @@
 
-// Export all types from the various type files
-
-// Export common types
+// Re-export all types
 export * from './common';
-
-// Export trade types
 export * from './trade';
-export * from './paper';
-export * from './physical';
-
-// Export pricing types
 export * from './pricing';
+export * from './physical';
+export * from './paper';  // Export paper types
 
-// Export any other domain-specific types
+// Add TradeType here to resolve circular dependency
+export type TradeType = "physical" | "paper";
