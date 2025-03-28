@@ -23,30 +23,25 @@ import {
   calculatePricingExposure,
   createEmptyExposureResult
 } from '@/utils/formulaCalculation';
-import { formatMonthCode } from '@/utils/dateUtils';
 
 interface FormulaBuilderProps {
   value: PricingFormula;
-  onChange?: (value: PricingFormula) => void;
-  readOnly?: boolean;
-  tradeQuantity?: number;
+  onChange: (formula: PricingFormula) => void;
+  tradeQuantity: number;
   buySell?: 'buy' | 'sell';
   selectedProduct?: string;
-  formulaType?: 'price' | 'mtm';
+  formulaType: 'price' | 'mtm';
   otherFormula?: PricingFormula;
-  showMonthlyDistribution?: boolean;
 }
 
-const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
-  value,
+const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
+  value, 
   onChange,
-  readOnly = false,
-  tradeQuantity = 0,
+  tradeQuantity,
   buySell = 'buy',
   selectedProduct,
-  formulaType = 'price',
-  otherFormula,
-  showMonthlyDistribution = false
+  formulaType,
+  otherFormula
 }) => {
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
   const [fixedValue, setFixedValue] = useState<string>('0');
@@ -194,38 +189,10 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     return Math.round(value).toLocaleString('en-US');
   };
 
-  const getExposureColorClass = (value: number) => {
-    if (value > 0) return "text-green-600";
-    if (value < 0) return "text-red-600";
-    return "text-gray-500";
-  };
-
-  const renderMonthlyDistribution = () => {
-    if (!showMonthlyDistribution || !value.monthlyDistribution) {
-      return null;
-    }
-    
-    return (
-      <div className="mt-4 space-y-2">
-        <Label className="text-base font-medium">Monthly Pricing Distribution</Label>
-        {Object.entries(value.monthlyDistribution).map(([instrument, monthData]) => (
-          <div key={instrument} className="space-y-1">
-            <div className="text-sm font-medium">{instrument}</div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(monthData).map(([month, exposure]) => (
-                <Badge 
-                  key={`${instrument}-${month}`} 
-                  variant="outline" 
-                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
-                >
-                  {month}: {formatExposure(exposure)} MT
-                </Badge>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  const getExposureColorClass = (value: number): string => {
+    if (value > 0) return 'text-green-600 border-green-200 bg-green-50';
+    if (value < 0) return 'text-red-600 border-red-200 bg-red-50';
+    return '';
   };
 
   return (
@@ -465,8 +432,6 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           </div>
         </div>
       </div>
-      
-      {renderMonthlyDistribution()}
     </div>
   );
 };
