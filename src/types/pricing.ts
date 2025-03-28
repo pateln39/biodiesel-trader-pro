@@ -19,13 +19,13 @@ export interface MonthlyDistribution {
 }
 
 // Daily distribution for exposure calculations
-// For physical exposures, values are assigned to the loading period start month
+// For physical exposures from MTM formula, values are assigned to the loading period start month
 // For pricing exposures, values are prorated across the pricing period
 export interface DailyDistribution {
   [dateString: string]: number; // e.g., "2023-03-15": 3000
 }
 
-// New type to organize daily distributions by instrument
+// Type to organize daily distributions by instrument
 export interface DailyDistributionByInstrument {
   [instrument: string]: DailyDistribution;
 }

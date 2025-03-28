@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useTrades } from './useTrades';
 import { Instrument } from '@/types/common';
@@ -92,45 +91,9 @@ export function useFilteredExposures({
           if (leg.mtmFormula && leg.mtmFormula.exposures && leg.mtmFormula.exposures.physical) {
             console.log(`Processing physical exposures from mtmFormula for leg ${leg.legReference}`);
             
-            // Get explicit monthly distribution if available
-            const physicalMonthlyDist = getMonthlyDistribution(
-              leg.mtmFormula.exposures, 
-              'physical'
-            );
-            
-            // Check if we got any monthly distributions from the formula
-            const hasExplicitMonthlyDistribution = 
-              physicalMonthlyDist && 
-              Object.keys(physicalMonthlyDist).length > 0;
-            
-            if (hasExplicitMonthlyDistribution) {
-              console.log(`Found explicit monthly distribution for physical:`, physicalMonthlyDist);
-              
-              // Process each instrument's monthly distribution
-              Object.entries(physicalMonthlyDist).forEach(([instrument, distribution]) => {
-                if (!physicalDistributions[instrument]) {
-                  physicalDistributions[instrument] = {};
-                }
-                
-                // Store pricing period for this instrument
-                physicalPricingPeriods[instrument] = {
-                  start: leg.pricingPeriodStart!,
-                  end: leg.pricingPeriodEnd!
-                };
-                
-                // Add monthly values to our accumulated distributions
-                Object.entries(distribution).forEach(([monthCode, monthValue]) => {
-                  if (!physicalDistributions[instrument][monthCode]) {
-                    physicalDistributions[instrument][monthCode] = 0;
-                  }
-                  physicalDistributions[instrument][monthCode] += monthValue;
-                  processedPhysicalExposures++;
-                });
-              });
-            } else {
-              console.log(`No explicit monthly distribution for physical, re-calculating based on loading period start`);
-              
-              // Instead of prorating, we need to calculate and use loading period start month
+            // For physical exposure, use the loading period start date to determine the month
+            // Don't use existing monthly distributions in the formula - always recalculate
+            if (leg.loadingPeriodStart) {
               Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
                 if (!physicalDistributions[instrument]) {
                   physicalDistributions[instrument] = {};
@@ -142,41 +105,51 @@ export function useFilteredExposures({
                   end: leg.pricingPeriodEnd!
                 };
                 
-                // For physical exposure, use the loading period start date to determine the month
-                if (leg.loadingPeriodStart) {
-                  const loadingStartMonth = new Date(leg.loadingPeriodStart);
-                  const monthName = loadingStartMonth.toLocaleString('en-US', { month: 'short' });
-                  const year = loadingStartMonth.getFullYear().toString().slice(-2);
-                  const monthCode = `${monthName}-${year}`;
-                  
-                  console.log(`Assigning physical exposure for ${instrument} to loading month ${monthCode}: ${value}`);
-                  
-                  // Put 100% of the exposure in the loading month
-                  if (!physicalDistributions[instrument][monthCode]) {
-                    physicalDistributions[instrument][monthCode] = 0;
-                  }
-                  
-                  physicalDistributions[instrument][monthCode] += value as number;
-                  processedPhysicalExposures++;
-                } else {
-                  console.log(`No loading period start date for leg ${leg.legReference}, using pricing period for physical exposure`);
-                  
-                  // Fallback to pricing period as before if no loading period start
-                  const evenDistribution = distributeQuantityByWorkingDays(
-                    leg.pricingPeriodStart!,
-                    leg.pricingPeriodEnd!,
-                    value as number
-                  );
-                  
-                  // Add generated monthly values to our accumulated distributions
-                  Object.entries(evenDistribution).forEach(([monthCode, monthValue]) => {
-                    if (!physicalDistributions[instrument][monthCode]) {
-                      physicalDistributions[instrument][monthCode] = 0;
-                    }
-                    physicalDistributions[instrument][monthCode] += monthValue;
-                    processedPhysicalExposures++;
-                  });
+                const loadingStartMonth = new Date(leg.loadingPeriodStart!);
+                const monthName = loadingStartMonth.toLocaleString('en-US', { month: 'short' });
+                const year = loadingStartMonth.getFullYear().toString().slice(-2);
+                const monthCode = `${monthName}-${year}`;
+                
+                console.log(`Assigning physical exposure for ${instrument} to loading month ${monthCode}: ${value}`);
+                
+                // Put 100% of the exposure in the loading month
+                if (!physicalDistributions[instrument][monthCode]) {
+                  physicalDistributions[instrument][monthCode] = 0;
                 }
+                
+                physicalDistributions[instrument][monthCode] += value as number;
+                processedPhysicalExposures++;
+              });
+            } else {
+              console.log(`No loading period start date for leg ${leg.legReference}, using pricing period as fallback`);
+              
+              // Fallback to pricing period if no loading period start is provided
+              Object.entries(leg.mtmFormula.exposures.physical).forEach(([instrument, value]) => {
+                if (!physicalDistributions[instrument]) {
+                  physicalDistributions[instrument] = {};
+                }
+                
+                // Store pricing period for this instrument
+                physicalPricingPeriods[instrument] = {
+                  start: leg.pricingPeriodStart!,
+                  end: leg.pricingPeriodEnd!
+                };
+                
+                // Generate month distribution based on pricing period start date only
+                const pricingStartMonth = new Date(leg.pricingPeriodStart!);
+                const monthName = pricingStartMonth.toLocaleString('en-US', { month: 'short' });
+                const year = pricingStartMonth.getFullYear().toString().slice(-2);
+                const monthCode = `${monthName}-${year}`;
+                
+                console.log(`Fallback: Assigning physical exposure for ${instrument} to pricing start month ${monthCode}: ${value}`);
+                
+                // Put 100% of the exposure in the pricing start month as fallback
+                if (!physicalDistributions[instrument][monthCode]) {
+                  physicalDistributions[instrument][monthCode] = 0;
+                }
+                
+                physicalDistributions[instrument][monthCode] += value as number;
+                processedPhysicalExposures++;
               });
             }
           }
