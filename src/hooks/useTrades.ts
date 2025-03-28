@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -87,7 +86,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
               buySell: leg.buy_sell as BuySell,
               product: leg.product as Product,
               sustainability: leg.sustainability || '',
-              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              incoTerm: leg.inco_term || 'FOB') as IncoTerm,
               quantity: leg.quantity,
               tolerance: leg.tolerance || 0,
               loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),

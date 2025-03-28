@@ -1,4 +1,3 @@
-
 import { Instrument, OperatorType } from './common';
 
 export interface FormulaNode {
