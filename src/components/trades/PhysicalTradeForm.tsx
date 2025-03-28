@@ -521,7 +521,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       otherFormula={leg.mtmFormula || createEmptyFormula()}
                       pricingPeriodStart={leg.pricingPeriodStart}
                       pricingPeriodEnd={leg.pricingPeriodEnd}
-                      loadingPeriodStart={leg.loadingPeriodStart}
                     />
                   </TabsContent>
                   
@@ -539,7 +538,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       otherFormula={leg.formula || createEmptyFormula()}
                       pricingPeriodStart={leg.pricingPeriodStart}
                       pricingPeriodEnd={leg.pricingPeriodEnd}
-                      loadingPeriodStart={leg.loadingPeriodStart}
                     />
                   </TabsContent>
                 </Tabs>

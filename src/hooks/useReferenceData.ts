@@ -1,7 +1,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Instrument } from '@/types';
 
 export const useReferenceData = () => {
   const fetchCounterparties = async () => {
@@ -34,17 +33,6 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
-  // Define the available instruments
-  const instruments: Instrument[] = [
-    'Argus UCOME',
-    'Argus RME',
-    'Argus FAME0',
-    'Argus HVO',
-    'Platts LSGO',
-    'Platts Diesel',
-    'ICE GASOIL FUTURES',
-  ];
-
   const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
@@ -63,7 +51,6 @@ export const useReferenceData = () => {
   return {
     counterparties,
     sustainabilityOptions,
-    creditStatusOptions,
-    instruments
+    creditStatusOptions
   };
 };

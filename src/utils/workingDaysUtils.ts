@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for working days calculations
  */
@@ -213,6 +212,36 @@ export function standardizeMonthCode(monthCode: string): string {
   
   console.warn(`Unable to standardize month code: ${monthCode}`);
   return monthCode;
+}
+
+/**
+ * Convert a month code (e.g., "Mar-24") to start and end dates
+ * @param monthCode The month code in format "MMM-YY"
+ * @returns Object with start and end dates for the month
+ */
+export function monthCodeToDates(monthCode: string): { start: Date, end: Date } {
+  // Ensure the month code is standardized
+  const standardizedMonthCode = standardizeMonthCode(monthCode);
+  
+  // Parse the month code (e.g., "Mar-24")
+  const [monthStr, yearStr] = standardizedMonthCode.split('-');
+  const year = 2000 + parseInt(yearStr);
+  
+  // Get the month number (0-11)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthIndex = monthNames.findIndex(m => m === monthStr);
+  
+  if (monthIndex === -1) {
+    throw new Error(`Invalid month code: ${monthCode} (standardized: ${standardizedMonthCode})`);
+  }
+  
+  // Create the start date (first day of month)
+  const start = new Date(year, monthIndex, 1);
+  
+  // Create the end date (last day of month)
+  const end = new Date(year, monthIndex + 1, 0);
+  
+  return { start, end };
 }
 
 /**

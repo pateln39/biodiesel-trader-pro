@@ -1,75 +1,67 @@
 
-import { Instrument, OperatorType } from './common';
+import { Instrument } from './common';
 
-export type { Instrument };  // Export Instrument type
-
-export interface FormulaNode {
-  id: string;
-  type: "instrument" | "fixedValue" | "operator" | "group" | "percentage" | "openBracket" | "closeBracket";
-  value: string;
-  children?: FormulaNode[];
-}
-
-export interface FormulaToken {
-  id: string;
-  type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket";
-  value: string;
-}
-
+// Single month pricing distribution (e.g., { "Mar-24": 3000 })
 export interface MonthlyDistribution {
-  [monthCode: string]: number; // e.g., "Mar-24": 363.63
+  [monthCode: string]: number;
 }
 
-// Daily distribution for exposure calculations
-// For physical exposures from MTM formula, values are assigned to the loading period start month
-// For pricing exposures, values are prorated across the pricing period
+// Daily distribution type for on-the-fly calculations
 export interface DailyDistribution {
   [dateString: string]: number; // e.g., "2023-03-15": 3000
 }
 
-// Type to organize daily distributions by instrument
+// Daily distribution organized by instrument
 export interface DailyDistributionByInstrument {
   [instrument: string]: DailyDistribution;
 }
 
+// Result type for exposure calculations
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
-  monthlyDistribution?: Record<Instrument, MonthlyDistribution>;
+  paper?: Record<Instrument, number>; 
+  monthlyDistribution?: Record<string, Record<string, number>>;
 }
 
+// Formula token types
+export type TokenType = 'instrument' | 'fixedValue' | 'percentage' | 'operator' | 'openBracket' | 'closeBracket';
+
+// Formula token interface
+export interface FormulaToken {
+  id: string;
+  type: TokenType;
+  value: string;
+}
+
+// Pricing formula interface
 export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
 }
 
-// Utility type to handle potentially incomplete data from the database
-export type PartialExposureResult = {
-  physical?: Partial<Record<Instrument, number>>;
-  pricing?: Partial<Record<Instrument, number>>;
-  monthlyDistribution?: Partial<Record<Instrument, Partial<MonthlyDistribution>>>;
-};
-
-export type PartialPricingFormula = {
+// Partial pricing formula for parsing
+export interface PartialPricingFormula {
   tokens: FormulaToken[];
-  exposures?: PartialExposureResult;
-};
-
-// Define FixedComponent type for formula analysis
-export interface FixedComponent {
-  value: number;
-  displayValue: string;
+  exposures?: Partial<ExposureResult>;
 }
 
-// Enhanced price detail interfaces
+// Price component interfaces
+export interface FixedComponent {
+  value: number;
+  description: string;
+  displayValue?: string; // Adding displayValue property
+}
+
+// Price detail interfaces
 export interface PriceDetail {
   instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
-  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
+  fixedComponents?: FixedComponent[];
 }
 
 export interface MTMPriceDetail {
   instruments: Record<Instrument, { price: number; date: Date | null }>;
   evaluatedPrice: number;
-  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
+  fixedComponents?: FixedComponent[];
 }
