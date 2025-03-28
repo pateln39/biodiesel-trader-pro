@@ -4,7 +4,9 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { 
   Card, 
-  CardContent 
+  CardContent,
+  CardHeader,
+  CardTitle 
 } from '@/components/ui/card';
 import {
   Table,
@@ -187,23 +189,19 @@ const ExposurePage = () => {
       
       if (physicalTradeLegs && physicalTradeLegs.length > 0) {
         physicalTradeLegs.forEach(leg => {
-          // For physical exposures, use loading period start date
           const loadingStartDate = leg.loading_period_start ? new Date(leg.loading_period_start) : null;
           
           let physicalExposureMonth = '';
           if (loadingStartDate) {
             physicalExposureMonth = formatMonthCode(loadingStartDate);
           } else {
-            // Fallback to trading_period if loading_period_start is not available
             physicalExposureMonth = leg.trading_period || '';
           }
           
-          // Skip if month is not valid or not in our periods list
           if (!physicalExposureMonth || !periods.includes(physicalExposureMonth)) {
             return;
           }
           
-          // For pricing exposures, use the pricing period range and prorate across months
           const pricingStartDate = leg.pricing_period_start ? new Date(leg.pricing_period_start) : null;
           const pricingEndDate = leg.pricing_period_end ? new Date(leg.pricing_period_end) : null;
           
@@ -223,7 +221,6 @@ const ExposurePage = () => {
             };
           }
           
-          // Add physical exposure to the loading month
           const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
           
           if (mtmFormula.tokens.length > 0 && mtmFormula.exposures && mtmFormula.exposures.physical) {
@@ -240,7 +237,6 @@ const ExposurePage = () => {
                 };
               }
               
-              // Apply the appropriate sign for the physical exposure
               const actualExposure = typeof weight === 'number' 
                 ? quantity * weight 
                 : 0;
@@ -251,7 +247,6 @@ const ExposurePage = () => {
             exposuresByMonth[physicalExposureMonth][canonicalProduct].physical += quantity;
           }
           
-          // Handle pricing exposure - distribute across months based on business days
           if (pricingStartDate && pricingEndDate) {
             const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
             
@@ -260,11 +255,9 @@ const ExposurePage = () => {
                 const canonicalInstrument = mapProductToCanonical(instrument);
                 allProductsFound.add(canonicalInstrument);
                 
-                // The total pricing exposure value for this instrument
                 const totalExposureValue = Number(value) || 0;
                 const coefficientSign = Math.sign(totalExposureValue);
                 
-                // Distribute this exposure across all periods in the pricing window
                 periods.forEach(periodMonth => {
                   if (!exposuresByMonth[periodMonth][canonicalInstrument]) {
                     exposuresByMonth[periodMonth][canonicalInstrument] = {
@@ -282,13 +275,10 @@ const ExposurePage = () => {
                   );
                   
                   if (proportion > 0) {
-                    // Calculate the prorated exposure for this month
                     let proratedExposure = totalExposureValue * proportion;
                     
-                    // Round to 2 decimal places while preserving sign
                     proratedExposure = roundWithSignPreservation(proratedExposure, 2);
                     
-                    // Apply the correct sign based on buy/sell and coefficient 
                     const signedExposure = applyTradeExposureSign(
                       Math.abs(proratedExposure),
                       isBuy,
@@ -879,3 +869,58 @@ const ExposurePage = () => {
                   <div>
                     <h3 className="text-lg font-semibold">Products</h3>
                     <div className="flex flex-wrap gap-2">
+                      {allProducts.map(product => (
+                        <Checkbox
+                          key={product}
+                          checked={selectedProducts.includes(product)}
+                          onChange={() => handleProductSelection(product)}
+                        >
+                          {formatExposureTableProduct(product)}
+                        </Checkbox>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      {ALLOWED_PRODUCTS.map(product => (
+                        <TableHead key={product}>{formatExposureTableProduct(product)}</TableHead>
+                      ))}
+                      <TableHead>Net Exposure</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  
+                  <TableBody>
+                    {exposureData.map(monthData => {
+                      const filteredProducts = Object.entries(monthData.products)
+                        .filter(([product]) => selectedProducts.includes(product))
+                        .reduce((acc, [product, exposure]) => {
+                          acc[product] = exposure;
+                          return acc;
+                        }, {});
+                      
+                      return (
+                        <TableRow key={monthData.month}>
+                          <TableCell>{monthData.month}</TableCell>
+                          {ALLOWED_PRODUCTS.map(product => (
+                            <TableCell key={product}>{filteredProducts[product]?.netExposure || 0}</TableCell>
+                          ))}
+                          <TableCell>{monthData.totals.netExposure}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
