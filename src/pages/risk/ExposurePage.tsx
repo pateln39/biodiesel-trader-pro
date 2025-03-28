@@ -847,4 +847,4 @@ const ExposurePage = () => {
       pricingInstrumentTotal,
       totalRow: biodieselTotal + pricingInstrumentTotal
     };
-  }, [grandTotals, BIOD
+  }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
