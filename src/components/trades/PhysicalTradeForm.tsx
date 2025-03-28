@@ -15,6 +15,7 @@ import { createEmptyFormula } from '@/utils/formulaUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
+import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -94,7 +95,24 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
+    
     newLegs[legIndex].formula = formula;
+    
+    if (newLegs[legIndex].pricingPeriodStart && newLegs[legIndex].pricingPeriodEnd) {
+      const monthlyDistribution = calculateMonthlyPricingDistribution(
+        formula.tokens,
+        newLegs[legIndex].quantity || 0,
+        newLegs[legIndex].buySell,
+        newLegs[legIndex].pricingPeriodStart,
+        newLegs[legIndex].pricingPeriodEnd
+      );
+      
+      newLegs[legIndex].formula = {
+        ...formula,
+        monthlyDistribution
+      };
+    }
+    
     setLegs(newLegs);
   };
 
@@ -127,23 +145,65 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       field === 'pricingPeriodEnd'
     ) {
       (newLegs[index] as any)[field] = value as Date;
+      
+      if (field === 'pricingPeriodStart' || field === 'pricingPeriodEnd') {
+        const leg = newLegs[index];
+        
+        if (leg.formula && leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+          const monthlyDistribution = calculateMonthlyPricingDistribution(
+            leg.formula.tokens,
+            leg.quantity || 0,
+            leg.buySell,
+            leg.pricingPeriodStart,
+            leg.pricingPeriodEnd
+          );
+          
+          leg.formula = {
+            ...leg.formula,
+            monthlyDistribution
+          };
+        }
+      }
     } else if (field === 'buySell') {
       (newLegs[index] as any)[field] = value as BuySell;
-    } else if (field === 'product') {
-      (newLegs[index] as any)[field] = value as Product;
-    } else if (field === 'sustainability') {
-      (newLegs[index] as any)[field] = value as string;
-    } else if (field === 'incoTerm') {
-      (newLegs[index] as any)[field] = value as IncoTerm;
-    } else if (field === 'unit') {
-      (newLegs[index] as any)[field] = value as Unit;
-    } else if (field === 'paymentTerm') {
-      (newLegs[index] as any)[field] = value as PaymentTerm;
-    } else if (field === 'creditStatus') {
-      (newLegs[index] as any)[field] = value as CreditStatus;
-    } else {
+      
+      const leg = newLegs[index];
+      if (leg.formula && leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+        const monthlyDistribution = calculateMonthlyPricingDistribution(
+          leg.formula.tokens,
+          leg.quantity || 0,
+          value as BuySell,
+          leg.pricingPeriodStart,
+          leg.pricingPeriodEnd
+        );
+        
+        leg.formula = {
+          ...leg.formula,
+          monthlyDistribution
+        };
+      }
+    } else if (field === 'quantity') {
       (newLegs[index] as any)[field] = Number(value);
+      
+      const leg = newLegs[index];
+      if (leg.formula && leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+        const monthlyDistribution = calculateMonthlyPricingDistribution(
+          leg.formula.tokens,
+          Number(value) || 0,
+          leg.buySell,
+          leg.pricingPeriodStart,
+          leg.pricingPeriodEnd
+        );
+        
+        leg.formula = {
+          ...leg.formula,
+          monthlyDistribution
+        };
+      }
+    } else {
+      (newLegs[index] as any)[field] = value;
     }
+    
     setLegs(newLegs);
   };
 

@@ -1,4 +1,5 @@
-import { FormulaToken, ExposureResult, Instrument, PricingFormula } from '@/types';
+import { FormulaToken, ExposureResult, Instrument, PricingFormula, MonthlyDistribution } from '@/types';
+import { getBusinessDaysByMonth, formatMonthCode, distributeValueByBusinessDays } from '@/utils/dateUtils';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
   physical: {
@@ -493,3 +494,38 @@ export const formulaToString = (tokens: FormulaToken[]): string => {
     return token.value;
   }).join(' ');
 };
+
+/**
+ * Calculate the monthly distribution of pricing exposure
+ * @param formula The pricing formula
+ * @param quantity Trade quantity
+ * @param buySell Buy or sell direction
+ * @param pricingPeriodStart Start of pricing period
+ * @param pricingPeriodEnd End of pricing period
+ * @returns Monthly distribution object
+ */
+export function calculateMonthlyPricingDistribution(
+  formula: FormulaToken[],
+  quantity: number,
+  buySell: 'buy' | 'sell',
+  pricingPeriodStart: Date,
+  pricingPeriodEnd: Date
+): MonthlyDistribution {
+  // Get base pricing exposures
+  const pricingExposures = calculatePricingExposure(formula, quantity, buySell);
+  
+  // Get business days distribution by month
+  const businessDaysByMonth = getBusinessDaysByMonth(pricingPeriodStart, pricingPeriodEnd);
+  
+  // Initialize result
+  const monthlyDistribution: MonthlyDistribution = {};
+  
+  // For each instrument with non-zero exposure, distribute across months
+  Object.entries(pricingExposures).forEach(([instrument, totalExposure]) => {
+    if (totalExposure === 0) return;
+    
+    monthlyDistribution[instrument] = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
+  });
+  
+  return monthlyDistribution;
+}

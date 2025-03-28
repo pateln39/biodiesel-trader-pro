@@ -19,9 +19,16 @@ export interface ExposureResult {
   pricing: Record<Instrument, number>;
 }
 
+export interface MonthlyDistribution {
+  [instrument: string]: {
+    [monthCode: string]: number; // Month code format: "MMM-YY" (e.g., "Mar-24")
+  };
+}
+
 export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
+  monthlyDistribution?: MonthlyDistribution; // Added this field
 }
 
 // Utility type to handle potentially incomplete data from the database
@@ -33,6 +40,7 @@ export type PartialExposureResult = {
 export type PartialPricingFormula = {
   tokens: FormulaToken[];
   exposures?: PartialExposureResult;
+  monthlyDistribution?: MonthlyDistribution; // Added this field
 };
 
 // Define FixedComponent type for formula analysis
