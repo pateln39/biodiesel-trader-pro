@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { getNextMonths } from '@/utils/dateUtils';
+import { getNextMonths, formatMonthCode } from '@/utils/dateUtils';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
@@ -183,9 +183,7 @@ const ExposurePage = () => {
           
           if (!month && leg.pricing_period_start) {
             const date = new Date(leg.pricing_period_start);
-            const monthName = date.toLocaleDateString('en-US', { month: 'short' });
-            const year = date.getFullYear().toString().slice(2);
-            month = `${monthName}-${year}`;
+            month = formatMonthCode(date);
           }
           
           if (!month || !periods.includes(month)) {
@@ -235,7 +233,28 @@ const ExposurePage = () => {
           }
           
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-          if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          
+          if (pricingFormula.monthlyDistribution) {
+            Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
+              const canonicalInstrument = mapProductToCanonical(instrument);
+              allProductsFound.add(canonicalInstrument);
+              
+              Object.entries(monthlyValues).forEach(([monthCode, value]) => {
+                if (periods.includes(monthCode) && value !== 0) {
+                  if (!exposuresByMonth[monthCode][canonicalInstrument]) {
+                    exposuresByMonth[monthCode][canonicalInstrument] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  exposuresByMonth[monthCode][canonicalInstrument].pricing += value;
+                }
+              });
+            });
+          } else if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
             Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProductsFound.add(canonicalInstrument);
