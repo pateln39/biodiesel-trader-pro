@@ -164,8 +164,15 @@ export function parseExcelDate(value: any): DateParsingResult {
 }
 
 /**
- * Format a date as YYYY-MM-DD for database storage
+ * Format a date as YYYY-MM-DD for database storage,
+ * ensuring that the date is preserved without timezone adjustments
  */
 export function formatDateForStorage(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+  // Extract the year, month, and day from the date
+  // Use UTC methods to prevent timezone shifts
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
 }

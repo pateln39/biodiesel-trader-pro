@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -151,10 +152,10 @@ const TradeEditPage = () => {
           inco_term: leg.incoTerm,
           quantity: leg.quantity,
           tolerance: leg.tolerance,
-          loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
-          loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
-          pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
-          pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
+          loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
+          loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
+          pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
+          pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
@@ -224,7 +225,7 @@ const TradeEditPage = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Trade</h1>
           <p className="text-muted-foreground">
-            Edit trade {tradeData.tradeReference}
+            Edit trade {tradeData?.tradeReference}
           </p>
         </div>
 
@@ -239,7 +240,7 @@ const TradeEditPage = () => {
           </CardHeader>
           <CardContent>
             <PhysicalTradeForm 
-              tradeReference={tradeData.tradeReference} 
+              tradeReference={tradeData?.tradeReference || ''}
               onSubmit={handleSubmit} 
               onCancel={handleCancel} 
               isEditMode={true}
