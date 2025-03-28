@@ -82,17 +82,16 @@ export function isValidFuturePeriod(periodCode: string): boolean {
 
 /**
  * Format a date as YYYY-MM-DD for database storage,
- * ensuring that the date is preserved without timezone adjustments
+ * preserving the date exactly as it appears in the UI without timezone adjustments
  * 
  * @param date The date to format
  * @returns Formatted date string in YYYY-MM-DD format
  */
 export function formatDateForStorage(date: Date): string {
-  // Extract the year, month, and day from the date
-  // Use UTC methods to prevent timezone shifts
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-  const day = String(date.getUTCDate()).padStart(2, '0');
+  // Extract the year, month, and day using local date methods to prevent timezone shifts
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const day = String(date.getDate()).padStart(2, '0');
   
   return `${year}-${month}-${day}`;
 }
