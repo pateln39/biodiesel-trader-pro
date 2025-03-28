@@ -1,4 +1,3 @@
-import { roundWithSignPreservation } from './numberUtils';
 
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
@@ -103,18 +102,13 @@ export const formatDate = (date: Date): string => {
   });
 };
 
-/**
- * Calculates the net exposure by adding physical and pricing components
- * ensuring that the sign is preserved correctly
- * 
- * @param physicalExposure Physical exposure value
- * @param pricingExposure Pricing exposure value
- * @returns Net exposure value
- */
-export function calculateNetExposure(physicalExposure: number, pricingExposure: number): number {
-  const netExposure = physicalExposure + pricingExposure;
-  return roundWithSignPreservation(netExposure, 2);
-}
+// Updated to exclude Paper column when calculating netExposure
+export const calculateNetExposure = (
+  physical: number,
+  pricing: number
+): number => {
+  return physical + pricing;
+};
 
 // Generate instrument name from product and relationship type (for database storage)
 export const generateInstrumentName = (
@@ -142,3 +136,4 @@ export const isPricingInstrument = (product: string): boolean => {
   const pricingInstruments = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
   return pricingInstruments.includes(product);
 };
+
