@@ -12,8 +12,6 @@ import { toast } from 'sonner';
 import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { calculateExposures } from '@/utils/formulaCalculation';
-import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -30,6 +28,7 @@ const TradeEditPage = () => {
       }
 
       try {
+        // Fetch parent trade data
         const { data: parentTrade, error: parentError } = await supabase
           .from('parent_trades')
           .select('*')
@@ -40,10 +39,12 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
+        // Only handle physical trades
         if (parentTrade.trade_type !== 'physical') {
           throw new Error("Only physical trades are supported");
         }
 
+        // Fetch trade legs
         const { data: tradeLegs, error: legsError } = await supabase
           .from('trade_legs')
           .select('*')
@@ -54,17 +55,8 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
+        // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
-          const pricingPeriodStart = tradeLegs[0].pricing_period_start 
-            ? new Date(tradeLegs[0].pricing_period_start) 
-            : new Date();
-          const pricingPeriodEnd = tradeLegs[0].pricing_period_end 
-            ? new Date(tradeLegs[0].pricing_period_end) 
-            : new Date();
-
-          const formula = validateAndParsePricingFormula(tradeLegs[0].pricing_formula);
-          const mtmFormula = validateAndParsePricingFormula(tradeLegs[0].mtm_formula);
-
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -81,45 +73,33 @@ const TradeEditPage = () => {
             tolerance: tradeLegs[0].tolerance || 0,
             loadingPeriodStart: tradeLegs[0].loading_period_start ? new Date(tradeLegs[0].loading_period_start) : new Date(),
             loadingPeriodEnd: tradeLegs[0].loading_period_end ? new Date(tradeLegs[0].loading_period_end) : new Date(),
-            pricingPeriodStart: pricingPeriodStart,
-            pricingPeriodEnd: pricingPeriodEnd,
+            pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
+            pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
             unit: (tradeLegs[0].unit || 'MT') as Unit,
             paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
-            formula: formula,
-            mtmFormula: mtmFormula,
-            legs: tradeLegs.map(leg => {
-              const legPricingStart = leg.pricing_period_start 
-                ? new Date(leg.pricing_period_start) 
-                : new Date();
-              const legPricingEnd = leg.pricing_period_end 
-                ? new Date(leg.pricing_period_end) 
-                : new Date();
-              
-              const legFormula = validateAndParsePricingFormula(leg.pricing_formula);
-              const legMtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-
-              return {
-                id: leg.id,
-                parentTradeId: leg.parent_trade_id,
-                legReference: leg.leg_reference,
-                buySell: leg.buy_sell as BuySell,
-                product: leg.product as Product,
-                sustainability: leg.sustainability || '',
-                incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-                quantity: leg.quantity,
-                tolerance: leg.tolerance || 0,
-                loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-                loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-                pricingPeriodStart: legPricingStart,
-                pricingPeriodEnd: legPricingEnd,
-                unit: (leg.unit || 'MT') as Unit,
-                paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-                creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-                formula: legFormula,
-                mtmFormula: legMtmFormula
-              };
-            })
+            formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
+            mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
+            legs: tradeLegs.map(leg => ({
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              sustainability: leg.sustainability || '',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+              formula: validateAndParsePricingFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+            }))
           };
           setTradeData(physicalTrade);
         } else {
@@ -144,6 +124,7 @@ const TradeEditPage = () => {
     try {
       if (!id) return;
 
+      // Update the parent trade
       const parentTradeUpdate = {
         trade_reference: updatedTradeData.tradeReference,
         physical_type: updatedTradeData.physicalType,
@@ -160,45 +141,8 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
+      // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
-        // Recalculate pricing formula exposures
-        const updatedPricingExposures = calculateExposures(
-          leg.formula.tokens,
-          leg.quantity,
-          leg.buySell,
-          leg.product,
-          leg.pricingPeriodStart,
-          leg.pricingPeriodEnd,
-          'price'
-        );
-
-        // Update the pricing formula with recalculated exposures
-        const updatedPricingFormula = {
-          tokens: leg.formula.tokens,
-          exposures: updatedPricingExposures
-        };
-
-        // Recalculate MTM formula exposures
-        const updatedMtmExposures = calculateExposures(
-          leg.mtmFormula.tokens,
-          leg.quantity,
-          leg.buySell,
-          leg.product,
-          leg.pricingPeriodStart,
-          leg.pricingPeriodEnd,
-          'mtm'
-        );
-
-        // Update the MTM formula with recalculated exposures
-        const updatedMtmFormula = {
-          tokens: leg.mtmFormula.tokens,
-          exposures: updatedMtmExposures
-        };
-
-        // Convert the formulas to plain objects to satisfy the Json type requirements
-        const pricingFormulaJson = JSON.parse(JSON.stringify(updatedPricingFormula));
-        const mtmFormulaJson = JSON.parse(JSON.stringify(updatedMtmFormula));
-
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -207,19 +151,19 @@ const TradeEditPage = () => {
           inco_term: leg.incoTerm,
           quantity: leg.quantity,
           tolerance: leg.tolerance,
-          // Use formatDateForStorage to ensure consistent date handling
-          loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
-          loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
-          pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
-          pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
+          loading_period_start: leg.loadingPeriodStart?.toISOString().split('T')[0],
+          loading_period_end: leg.loadingPeriodEnd?.toISOString().split('T')[0],
+          pricing_period_start: leg.pricingPeriodStart?.toISOString().split('T')[0],
+          pricing_period_end: leg.pricingPeriodEnd?.toISOString().split('T')[0],
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          pricing_formula: pricingFormulaJson,  // Use the JSON-compatible version
-          mtm_formula: mtmFormulaJson,          // Use the JSON-compatible version
+          pricing_formula: leg.formula,
+          mtm_formula: leg.mtmFormula,
           updated_at: new Date().toISOString()
         };
 
+        // Update the existing leg
         const { error: legUpdateError } = await supabase
           .from('trade_legs')
           .update(legData)
@@ -230,12 +174,14 @@ const TradeEditPage = () => {
         }
       }
 
+      // Force invalidate the trades query cache to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ['trades'] });
 
       toast.success("Trade updated", {
         description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
       });
 
+      // Navigate back to trades page with state to indicate successful update
       navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
     } catch (error: any) {
       console.error('Error updating trade:', error);

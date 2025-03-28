@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,6 @@ import { TradeType } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -56,10 +56,10 @@ const TradeEntryPage = () => {
         inco_term: leg.incoTerm,
         quantity: leg.quantity,
         tolerance: leg.tolerance,
-        loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
-        loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
-        pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
-        pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
+        loading_period_start: leg.loadingPeriodStart,
+        loading_period_end: leg.loadingPeriodEnd,
+        pricing_period_start: leg.pricingPeriodStart,
+        pricing_period_end: leg.pricingPeriodEnd,
         unit: leg.unit,
         payment_term: leg.paymentTerm,
         credit_status: leg.creditStatus,

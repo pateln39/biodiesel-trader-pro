@@ -32,8 +32,6 @@ interface FormulaBuilderProps {
   selectedProduct?: string;
   formulaType: 'price' | 'mtm';
   otherFormula?: PricingFormula;
-  pricingPeriodStart?: Date;
-  pricingPeriodEnd?: Date;
 }
 
 const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
@@ -43,9 +41,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   buySell = 'buy',
   selectedProduct,
   formulaType,
-  otherFormula,
-  pricingPeriodStart,
-  pricingPeriodEnd
+  otherFormula
 }) => {
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
   const [fixedValue, setFixedValue] = useState<string>('0');
@@ -53,41 +49,19 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   useEffect(() => {
     if (value.tokens.length > 0 && tradeQuantity !== 0) {
-      console.log(`Calculating exposures for ${formulaType} formula with dates:`, {
-        pricingPeriodStart: pricingPeriodStart?.toISOString(),
-        pricingPeriodEnd: pricingPeriodEnd?.toISOString(),
-        tradeQuantity,
-        buySell,
-        formulaTokens: value.tokens.map(t => `${t.type}:${t.value}`).join(', ')
-      });
-
       if (formulaType === 'price') {
         const pricingExposure = calculatePricingExposure(value.tokens, tradeQuantity, buySell);
         const physicalExposure = otherFormula && otherFormula.tokens.length > 0 
           ? calculatePhysicalExposure(otherFormula.tokens, tradeQuantity, buySell)
           : createEmptyExposureResult().physical;
         
-        const fullExposures = calculateExposures(
-          value.tokens, 
-          tradeQuantity, 
-          buySell, 
-          selectedProduct, 
-          pricingPeriodStart, 
-          pricingPeriodEnd,
-          'price'
-        );
-        
-        const newExposures = {
-          physical: physicalExposure,
-          pricing: pricingExposure,
-          monthlyDistribution: fullExposures.monthlyDistribution
-        };
-        
-        if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
-          console.log('Updating price formula exposures:', newExposures);
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
           onChange({
             ...value,
-            exposures: newExposures
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
           });
         }
       } 
@@ -97,32 +71,18 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           ? calculatePricingExposure(otherFormula.tokens, tradeQuantity, buySell)
           : createEmptyExposureResult().pricing;
         
-        const fullExposures = calculateExposures(
-          value.tokens, 
-          tradeQuantity, 
-          buySell, 
-          selectedProduct, 
-          pricingPeriodStart, 
-          pricingPeriodEnd,
-          'mtm'
-        );
-        
-        const newExposures = {
-          physical: physicalExposure,
-          pricing: pricingExposure,
-          monthlyDistribution: fullExposures.monthlyDistribution
-        };
-        
-        if (JSON.stringify(newExposures) !== JSON.stringify(value.exposures)) {
-          console.log('Updating mtm formula exposures:', newExposures);
+        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
           onChange({
             ...value,
-            exposures: newExposures
+            exposures: {
+              physical: physicalExposure,
+              pricing: pricingExposure
+            }
           });
         }
       }
     }
-  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType, pricingPeriodStart, pricingPeriodEnd, selectedProduct, onChange]);
+  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType]);
 
   const handleAddInstrument = () => {
     if (!canAddTokenType(value.tokens, 'instrument')) return;
@@ -130,15 +90,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -148,15 +100,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -166,15 +110,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -184,15 +120,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -202,15 +130,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -220,15 +140,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = [...value.tokens, newToken];
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -236,15 +148,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     const newTokens = value.tokens.filter(token => token.id !== tokenId);
     onChange({
       tokens: newTokens,
-      exposures: calculateExposures(
-        newTokens, 
-        tradeQuantity, 
-        buySell, 
-        selectedProduct, 
-        pricingPeriodStart, 
-        pricingPeriodEnd,
-        formulaType
-      )
+      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
     });
   };
 
@@ -269,8 +173,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
-        },
-        monthlyDistribution: {}
+        }
       }
     });
   };

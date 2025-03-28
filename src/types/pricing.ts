@@ -1,3 +1,4 @@
+
 import { Instrument, OperatorType } from './common';
 
 export interface FormulaNode {
@@ -13,26 +14,9 @@ export interface FormulaToken {
   value: string;
 }
 
-export interface MonthlyDistribution {
-  [monthCode: string]: number; // e.g., "Mar-24": 363.63
-}
-
-// Daily distribution for exposure calculations
-// For physical exposures, values are assigned to the loading period start month
-// For pricing exposures, values are prorated across the pricing period
-export interface DailyDistribution {
-  [dateString: string]: number; // e.g., "2023-03-15": 3000
-}
-
-// New type to organize daily distributions by instrument
-export interface DailyDistributionByInstrument {
-  [instrument: string]: DailyDistribution;
-}
-
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
-  monthlyDistribution?: Record<Instrument, MonthlyDistribution>;
 }
 
 export interface PricingFormula {
@@ -44,7 +28,6 @@ export interface PricingFormula {
 export type PartialExposureResult = {
   physical?: Partial<Record<Instrument, number>>;
   pricing?: Partial<Record<Instrument, number>>;
-  monthlyDistribution?: Partial<Record<Instrument, Partial<MonthlyDistribution>>>;
 };
 
 export type PartialPricingFormula = {

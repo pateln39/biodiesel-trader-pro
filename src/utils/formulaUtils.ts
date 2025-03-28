@@ -134,15 +134,11 @@ export const ensureCompleteExposures = (formula: PartialPricingFormula | undefin
     ...(formula.exposures.pricing || {})
   };
   
-  // Preserve the monthly distribution if it exists
-  const monthlyDistribution = formula.exposures.monthlyDistribution || {};
-  
   return {
     ...formula,
     exposures: {
       physical: mergedPhysical,
-      pricing: mergedPricing,
-      monthlyDistribution
+      pricing: mergedPricing
     }
   };
 };
