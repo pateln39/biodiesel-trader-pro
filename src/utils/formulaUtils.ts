@@ -98,7 +98,8 @@ export const validateAndParsePricingFormula = (rawFormula: any): PricingFormula 
   // Now we can safely cast to PartialPricingFormula
   const partialFormula: PartialPricingFormula = {
     tokens: rawFormula.tokens,
-    exposures: rawFormula.exposures
+    exposures: rawFormula.exposures,
+    monthlyDistribution: rawFormula.monthlyDistribution // Preserve monthly distribution
   };
   
   // Use ensureCompleteExposures to fill in any missing exposure data
@@ -135,7 +136,7 @@ export const ensureCompleteExposures = (formula: PartialPricingFormula | undefin
   };
   
   return {
-    ...formula,
+    ...formula, // This preserves any additional properties like monthlyDistribution
     exposures: {
       physical: mergedPhysical,
       pricing: mergedPricing

@@ -28,7 +28,7 @@ export interface MonthlyDistribution {
 export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
-  monthlyDistribution?: MonthlyDistribution; // Added this field
+  monthlyDistribution?: MonthlyDistribution;
 }
 
 // Utility type to handle potentially incomplete data from the database
@@ -40,6 +40,7 @@ export type PartialExposureResult = {
 export type PartialPricingFormula = {
   tokens: FormulaToken[];
   exposures?: PartialExposureResult;
+  monthlyDistribution?: MonthlyDistribution; // Added this field to match PricingFormula
 };
 
 // Define FixedComponent type for formula analysis
