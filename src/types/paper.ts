@@ -44,6 +44,8 @@ export interface PaperTradeLeg {
 
 // Complete paper trade with parent and legs
 export interface PaperTrade extends Trade {
+  id: string;
+  tradeReference: string;
   tradeType: "paper";
   broker: string;
   legs: PaperTradeLeg[];

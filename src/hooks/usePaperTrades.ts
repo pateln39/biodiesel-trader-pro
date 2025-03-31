@@ -16,6 +16,145 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
+export const createPaperTrade = async (
+  formData: Partial<PaperTrade>,
+  options?: { onSuccess?: () => void }
+): Promise<PaperTrade> => {
+  try {
+    if (!formData.tradeReference) {
+      throw new Error('Trade reference is required');
+    }
+    
+    const { data: paperTrade, error: paperTradeError } = await supabase
+      .from('paper_trades')
+      .insert({
+        trade_reference: formData.tradeReference,
+        counterparty: formData.broker || 'Paper Trade',
+        broker: formData.broker
+      })
+      .select('id')
+      .single();
+      
+    if (paperTradeError) {
+      throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
+    }
+    
+    if (formData.legs && formData.legs.length > 0) {
+      for (let i = 0; i < formData.legs.length; i++) {
+        const leg = formData.legs[i];
+        const legReference = generateLegReference(formData.tradeReference || '', i);
+        
+        let tradingPeriod = leg.period;
+        
+        let pricingPeriodStart = null;
+        let pricingPeriodEnd = null;
+        
+        if (tradingPeriod) {
+          try {
+            const [month, year] = tradingPeriod.split('-');
+            const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+              .findIndex(m => m === month);
+            
+            if (monthIndex !== -1) {
+              const fullYear = 2000 + parseInt(year);
+              
+              pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
+              
+              const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
+              pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+            }
+          } catch (e) {
+            console.error('Error parsing period date:', e);
+          }
+        }
+        
+        const exposures = {
+          physical: {},
+          paper: {},
+          pricing: {}
+        };
+        
+        if (leg.relationshipType === 'FP') {
+          const canonicalProduct = mapProductToCanonical(leg.product);
+          exposures.paper[canonicalProduct] = leg.quantity || 0;
+          
+          exposures.pricing[canonicalProduct] = leg.quantity || 0;
+        } else if (leg.rightSide) {
+          const canonicalLeftProduct = mapProductToCanonical(leg.product);
+          const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
+          
+          exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
+          exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
+          
+          exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
+          exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
+        }
+        
+        const instrument = generateInstrumentName(
+          leg.product, 
+          leg.relationshipType,
+          leg.rightSide?.product
+        );
+        
+        let mtmFormulaForDb = null;
+        if (leg.mtmFormula) {
+          mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
+        } else {
+          mtmFormulaForDb = {};
+        }
+        
+        if (leg.rightSide) {
+          mtmFormulaForDb.rightSide = {
+            ...leg.rightSide,
+            price: leg.rightSide.price || 0
+          };
+        }
+        
+        const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
+        
+        const legData = {
+          leg_reference: legReference,
+          paper_trade_id: paperTrade.id,
+          buy_sell: leg.buySell,
+          product: mapProductToCanonical(leg.product) as Product,
+          quantity: leg.quantity,
+          price: leg.price,
+          broker: leg.broker || formData.broker,
+          period: tradingPeriod,
+          trading_period: tradingPeriod,
+          formula: formulaForDb,
+          mtm_formula: mtmFormulaForDb,
+          pricing_period_start: pricingPeriodStart,
+          pricing_period_end: pricingPeriodEnd,
+          instrument: instrument,
+          exposures: JSON.parse(JSON.stringify(exposures))
+        };
+        
+        const { error: legError } = await supabase
+          .from('paper_trade_legs')
+          .insert(legData);
+          
+        if (legError) {
+          throw new Error(`Error creating trade leg: ${legError.message}`);
+        }
+      }
+    }
+    
+    return {
+      id: paperTrade.id,
+      tradeReference: formData.tradeReference,
+      tradeType: 'paper',
+      broker: formData.broker || '',
+      counterparty: formData.counterparty,
+      created_at: new Date(paperTrade.created_at),
+      updated_at: new Date(paperTrade.updated_at),
+      legs: []
+    } as PaperTrade;
+  } catch (error: any) {
+    throw new Error(`Error creating paper trade: ${error.message}`);
+  }
+};
+
 export const usePaperTrades = () => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
@@ -251,13 +390,17 @@ export const usePaperTrades = () => {
   }, [setupRealtimeSubscriptions]);
   
   const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
-    mutationFn: async (trade: Partial<PaperTrade>) => {
+    mutationFn: async (tradeData: Partial<PaperTrade>) => {
+      if (!tradeData.tradeReference) {
+        throw new Error('Trade reference is required');
+      }
+      
       const { data: paperTrade, error: paperTradeError } = await supabase
         .from('paper_trades')
         .insert({
-          trade_reference: trade.tradeReference,
-          counterparty: trade.broker || 'Paper Trade',
-          broker: trade.broker
+          trade_reference: tradeData.tradeReference,
+          counterparty: tradeData.broker || 'Paper Trade',
+          broker: tradeData.broker
         })
         .select('id')
         .single();
@@ -266,10 +409,10 @@ export const usePaperTrades = () => {
         throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
       }
       
-      if (trade.legs && trade.legs.length > 0) {
-        for (let i = 0; i < trade.legs.length; i++) {
-          const leg = trade.legs[i];
-          const legReference = generateLegReference(trade.tradeReference || '', i);
+      if (tradeData.legs && tradeData.legs.length > 0) {
+        for (let i = 0; i < tradeData.legs.length; i++) {
+          const leg = tradeData.legs[i];
+          const legReference = generateLegReference(tradeData.tradeReference || '', i);
           
           let tradingPeriod = leg.period;
           
@@ -346,7 +489,7 @@ export const usePaperTrades = () => {
             product: mapProductToCanonical(leg.product) as Product,
             quantity: leg.quantity,
             price: leg.price,
-            broker: leg.broker || trade.broker,
+            broker: leg.broker || tradeData.broker,
             period: tradingPeriod,
             trading_period: tradingPeriod,
             formula: formulaForDb,
@@ -367,7 +510,7 @@ export const usePaperTrades = () => {
         }
       }
       
-      return { ...trade, id: paperTrade.id };
+      return { ...tradeData, id: paperTrade.id };
     },
     onSuccess: () => {
       setTimeout(() => {

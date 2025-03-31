@@ -1,6 +1,4 @@
-
-
-import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula } from '@/types';
+import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula, Instrument } from '@/types';
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
@@ -57,7 +55,7 @@ const calculateEfpMTMPrice = async (
   leg: PhysicalTradeLeg
 ): Promise<{ price: number; details: MTMPriceDetail }> => {
   const details: MTMPriceDetail = {
-    instruments: {},
+    instruments: {} as Record<Instrument, { price: number; date: Date | null }>,
     evaluatedPrice: 0,
     fixedComponents: []
   };
@@ -109,7 +107,7 @@ const calculateStandardMTMPrice = async (
   formula: PricingFormula
 ): Promise<{ price: number; details: MTMPriceDetail }> => {
   const details: MTMPriceDetail = {
-    instruments: {},
+    instruments: {} as Record<Instrument, { price: number; date: Date | null }>,
     evaluatedPrice: 0
   };
   
@@ -257,4 +255,3 @@ export const applyPricingFormula = (
   
   return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
 };
-

@@ -81,7 +81,7 @@ const TradeEditPage = () => {
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
-            pricingType: tradeLegs[0].pricing_type || 'standard',
+            pricingType: (tradeLegs[0].pricing_type as PricingType) || 'standard',
             legs: tradeLegs.map(leg => ({
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
@@ -101,7 +101,7 @@ const TradeEditPage = () => {
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
               formula: validateAndParsePricingFormula(leg.pricing_formula),
               mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-              pricingType: leg.pricing_type || 'standard' as PricingType,
+              pricingType: (leg.pricing_type as PricingType) || 'standard',
               efpPremium: leg.efp_premium,
               efpAgreedStatus: leg.efp_agreed_status,
               efpFixedValue: leg.efp_fixed_value,

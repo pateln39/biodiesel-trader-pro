@@ -41,7 +41,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg) => leg.parent_trade_id === parent.id);
+      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
@@ -69,7 +69,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          pricingType: firstLeg.pricing_type || 'standard',
+          pricingType: firstLeg.pricing_type as PricingType || 'standard',
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -89,8 +89,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-            // Use the database pricing_type field
-            pricingType: leg.pricing_type || 'standard',
+            // Cast the pricing_type to PricingType
+            pricingType: leg.pricing_type as PricingType || 'standard',
             // Add EFP fields
             efpPremium: leg.efp_premium,
             efpAgreedStatus: leg.efp_agreed_status,
