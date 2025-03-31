@@ -1,4 +1,3 @@
-
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -24,8 +23,8 @@ export const mapProductToCanonical = (product: string): string => {
     case 'Platts diesel':
     case 'Platts Diesel': 
       return 'Platts Diesel';
-    case 'ICE GASOIL FUTURES (EFP)': // Add EFP case
-      return 'ICE GASOIL FUTURES (EFP)';
+    case 'ICE GASOIL FUTURES (EFP)':
+      return 'EFP';
     default:
       return product;
   }
@@ -41,7 +40,8 @@ export const stripProductPrefix = (product: string): string => {
   return product
     .replace('Argus ', '')
     .replace('Platts ', '')
-    .replace('ICE ', '');
+    .replace('ICE ', '')
+    .replace('GASOIL FUTURES (EFP)', 'EFP');
 };
 
 /**
@@ -50,6 +50,11 @@ export const stripProductPrefix = (product: string): string => {
  */
 export const formatExposureTableProduct = (product: string): string => {
   if (!product) return '';
+  
+  // Special case for EFP
+  if (product === 'EFP') {
+    return 'EFP';
+  }
   
   // Special case for GASOIL
   if (product === 'ICE GASOIL FUTURES') {
@@ -170,7 +175,7 @@ export const isPricingInstrument = (product: string): boolean => {
   // These are the only products that should appear in the exposure table
   const pricingInstruments = [
     'ICE GASOIL FUTURES',
-    'ICE GASOIL FUTURES (EFP)', // Add EFP as a pricing instrument
+    'EFP',
     'Platts LSGO',
     'Platts Diesel',
     'Argus UCOME',
@@ -188,7 +193,7 @@ export const isPricingInstrument = (product: string): boolean => {
 export const shouldUseSpecialBackground = (product: string): boolean => {
   const specialBackgroundProducts = [
     'ICE GASOIL FUTURES',
-    'ICE GASOIL FUTURES (EFP)', // Add EFP to special background products
+    'EFP',
     'Platts LSGO',
     'Platts Diesel',
   ];
