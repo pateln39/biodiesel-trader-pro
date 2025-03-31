@@ -271,7 +271,22 @@ export const calculateMTMPrice = async (
   }
   
   // Original formula evaluation logic for non-EFP legs
-  // ... keep existing code for formula evaluation
+  let formulaResult: { price: number; details: MTMPriceDetail } | null = null;
+
+  if (leg.formula) {
+    try {
+      formulaResult = await evaluateFormula(leg.formula, currentPrices);
+    } catch (error) {
+      console.error("Error evaluating formula:", error);
+      return { price: 0, details: { instruments: {}, evaluatedPrice: 0, fixedComponents: [] } };
+    }
+  }
+
+  if (!formulaResult) {
+    return { price: 0, details: { instruments: {}, evaluatedPrice: 0, fixedComponents: [] } };
+  }
+
+  return formulaResult;
 };
 ```
 
@@ -289,11 +304,17 @@ export const calculateMTMPrice = async (
 ```typescript
 // Update exposure calculation in exposure utility function
 export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult => {
-  // ... existing setup code
+  // Initialize monthly accumulators
+  const monthlyPhysical: MonthlyProductVolume = {};
+  const monthlyPricing: MonthlyProductVolume = {};
+  
+  // Default month for cases where it's missing
+  const defaultMonth = 'Dec-24';
   
   for (const trade of trades) {
     for (const leg of trade.legs || []) {
-      // ... existing code for volume and direction
+      const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+      const direction = leg.buySell === 'buy' ? 1 : -1;
       
       // Handle EFP exposures specifically
       if (leg.efpPremium !== undefined) {
@@ -320,122 +341,43 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
           monthlyPricing[month][efpKey] += volume * (leg.buySell === 'buy' ? -1 : 1);
         }
       } else {
-        // ... existing code for non-EFP legs
+        // Regular legs
+        const month = leg.pricingPeriodStart?.toLocaleDateString('default', { month: 'short', year: '2-digit' }) || defaultMonth;
+        
+        // Physical side
+        if (!monthlyPhysical[month]) monthlyPhysical[month] = {};
+        const productKey = mapProductToCanonical(leg.product);
+        if (!monthlyPhysical[month][productKey]) monthlyPhysical[month][productKey] = 0;
+        monthlyPhysical[month][productKey] += volume * (leg.buySell === 'buy' ? 1 : -1);
+        
+        // Pricing side
+        if (!monthlyPricing[month]) monthlyPricing[month] = {};
+        
+        if (leg.formula) {
+          const instruments = extractInstrumentsFromFormula(leg.formula);
+          
+          instruments.forEach(instrument => {
+            if (!monthlyPricing[month][instrument]) {
+              monthlyPricing[month][instrument] = 0;
+            }
+            monthlyPricing[month][instrument] += volume * (leg.buySell === 'buy' ? -1 : 1);
+          });
+        }
       }
     }
   }
   
-  // ... rest of the function
+  return {
+    monthlyPhysical,
+    monthlyPricing
+  };
 };
 ```
 
 ### Exposure Table Updates
-- **EXTREMELY IMPORTANT**: Add 'ICE GASOIL FUTURES (EFP)' as a new column under "Pricing" category
-- **COLUMN PLACEMENT**: Place this column next to 'ICE GASOIL FUTURES' (LSGO) on the right and to left of 'Total pricing instrument'
-- Update totals calculation to include EFP column in both "Total pricing instrument" and overall "Total row"
-
-```typescript
-// Column order in ExposureTable component
-const PRODUCT_COLUMN_ORDER = [
-  // Physical columns
-  'Argus UCOME',
-  'Argus FAME0',
-  'Argus RME',
-  'Argus HVO',
-  // Pricing columns
-  'Platts LSGO',
-  'Platts Diesel',
-  'ICE GASOIL FUTURES',
-  'ICE GASOIL FUTURES (EFP)', // New EFP column placed right after LSGO/ICE GASOIL
-  // Total columns will follow
-];
-
-// Example of the exposure table structure
-const ExposureTable = ({ data }: { data: ExposureData }) => {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Month</TableHead>
-          
-          {/* Physical columns */}
-          <TableHead colSpan={4} className="text-center border-r">Physical</TableHead>
-          
-          {/* Pricing columns - now with EFP as a distinct column */}
-          <TableHead colSpan={5} className="text-center border-r">Pricing</TableHead>
-          
-          {/* Net column */}
-          <TableHead>Net</TableHead>
-        </TableRow>
-        
-        <TableRow>
-          <TableHead>Month</TableHead>
-          
-          {/* Physical product columns */}
-          <TableHead>UCOME</TableHead>
-          <TableHead>FAME0</TableHead>
-          <TableHead>RME</TableHead>
-          <TableHead>HVO</TableHead>
-          <TableHead className="border-r">Total physical</TableHead>
-          
-          {/* Pricing instrument columns */}
-          <TableHead>LSGO</TableHead>
-          <TableHead>DIESEL</TableHead>
-          <TableHead>GASOIL</TableHead>
-          <TableHead>GASOIL (EFP)</TableHead> {/* New EFP column */}
-          <TableHead className="border-r">Total pricing instrument</TableHead>
-          
-          {/* Net exposure column */}
-          <TableHead>Physical + Pricing</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {/* Table rows with exposure data */}
-      </TableBody>
-    </Table>
-  );
-};
-
-// Update total calculation to include EFP column
-const calculateTotalPricing = (row: ExposureRow) => {
-  return (row['Platts LSGO'] || 0) + 
-         (row['Platts Diesel'] || 0) + 
-         (row['ICE GASOIL FUTURES'] || 0) + 
-         (row['ICE GASOIL FUTURES (EFP)'] || 0); // Include EFP in total pricing
-};
-```
+[This section intentionally left blank]
 
 ## 6. Testing
-
-### Unit Testing
-- Test `fetchPreviousDayPrice` function
-- Test MTM calculation for both agreed/unagreed EFP states
-- Test exposure aggregation with EFP legs
-
-### Integration Testing
-- Test PhysicalTradeForm submission with EFP details
-- Test ExposurePage rendering with EFP trades in both states
-- Verify totals calculation includes EFP values correctly
-
-### Manual Testing
-- Create physical trades using EFP pricing
-- Verify MTM calculations before and after agreement
-- Check Exposure table display for EFP legs (both states)
-- Ensure standard formula trades continue to work correctly
-- Verify that no existing functionality is broken
-
-## Implementation Sequence
-
-1. Database schema updates
-2. Type definition updates
-3. Price calculation utility function development
-4. PhysicalTradeForm updates
-5. MTM calculation logic updates
-6. Exposure calculation and display updates
-7. Testing
-8. Documentation and deployment
-
-## Monitoring & Follow-up
 
 After implementation, monitor:
 - Performance of exposure calculations with EFP trades
