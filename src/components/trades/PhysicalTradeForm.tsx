@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -150,24 +151,25 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
   
+  // Update to properly convert initialData.legs to LegFormState type
   const [legs, setLegs] = useState<LegFormState[]>(
     initialData?.legs?.map(leg => ({
       buySell: leg.buySell,
-      product: leg.product,
+      product: leg.product as Product, // Ensure Product type
       sustainability: leg.sustainability || '',
-      incoTerm: leg.incoTerm,
-      unit: leg.unit,
-      paymentTerm: leg.paymentTerm,
-      creditStatus: leg.creditStatus,
+      incoTerm: leg.incoTerm || 'FOB',
+      unit: leg.unit || 'MT',
+      paymentTerm: leg.paymentTerm || '30 days',
+      creditStatus: leg.creditStatus || 'pending',
       quantity: leg.quantity,
-      tolerance: leg.tolerance,
+      tolerance: leg.tolerance || 0,
       loadingPeriodStart: leg.loadingPeriodStart,
       loadingPeriodEnd: leg.loadingPeriodEnd,
       pricingPeriodStart: leg.pricingPeriodStart,
       pricingPeriodEnd: leg.pricingPeriodEnd,
       formula: leg.formula || createEmptyFormula(),
       mtmFormula: leg.mtmFormula || createEmptyFormula(),
-      pricingType: leg.efpPremium !== undefined ? "efp" : "standard",
+      pricingType: leg.pricingType || "standard",
       efpPremium: leg.efpPremium || null,
       efpAgreedStatus: leg.efpAgreedStatus || false,
       efpFixedValue: leg.efpFixedValue || null,

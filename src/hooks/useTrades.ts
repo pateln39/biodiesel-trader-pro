@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +19,7 @@ import {
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 
-const fetchTrades = async (): Promise<Trade[]> => {
+const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
   try {
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')

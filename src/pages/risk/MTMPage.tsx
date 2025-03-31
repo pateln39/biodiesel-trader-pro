@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +18,7 @@ import {
   PricingPeriodType 
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade } from '@/types';
+import { PhysicalTrade } from '@/types/physical';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 import { toast } from 'sonner';
@@ -35,8 +36,9 @@ const MTMPage = () => {
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Update the type predicate to ensure compatibility
   const physicalTrades = trades.filter(
-    (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
+    (trade): trade is PhysicalTrade => trade.tradeType === 'physical' && 'physicalType' in trade
   );
 
   type MTMPosition = {
@@ -82,6 +84,7 @@ const MTMPage = () => {
         mtmFormula: leg.mtmFormula,
         calculatedPrice: 0,
         mtmCalculatedPrice: 0,
+        mtmValue: 0,
       };
     }) || []
   );
@@ -93,7 +96,7 @@ const MTMPage = () => {
       
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
-          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
+          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
           
           try {
             // Calculate the trade price using historical data
