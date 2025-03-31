@@ -1,3 +1,4 @@
+
 import { FormulaToken, ExposureResult, Instrument, PricingFormula, MonthlyDistribution } from '@/types';
 import { getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
 
@@ -10,6 +11,7 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
+    'ICE GASOIL FUTURES (EFP)': 0
   },
   pricing: {
     'Argus UCOME': 0,
@@ -19,6 +21,7 @@ export const createEmptyExposureResult = (): ExposureResult => ({
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
+    'ICE GASOIL FUTURES (EFP)': 0
   }
 });
 

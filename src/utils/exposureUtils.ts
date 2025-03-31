@@ -28,31 +28,35 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
   for (const trade of trades) {
     for (const leg of trade.legs || []) {
       // Skip adding EFP to Physical column
-      if (leg.efpPremium !== undefined) {
+      if (leg.pricingType === 'efp' && leg.efpPremium !== undefined) {
         const month = leg.efpDesignatedMonth || defaultMonth;
         
-        // Pricing side - depends on agreed status
+        // Create month buckets if they don't exist
+        if (!monthlyPhysical[month]) monthlyPhysical[month] = {};
         if (!monthlyPricing[month]) monthlyPricing[month] = {};
         
-        if (leg.efpAgreedStatus) {
-          // Agreed EFP - use standard ICE GASOIL FUTURES column
-          const pricingKey = 'ICE GASOIL FUTURES';
-          if (!monthlyPricing[month][pricingKey]) monthlyPricing[month][pricingKey] = 0;
-          const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-          const direction = leg.buySell === 'buy' ? 1 : -1;
-          // In exposure table: Buy shows as negative in pricing column, Sell as positive
-          monthlyPricing[month][pricingKey] += volume * (direction * -1);
-        } else {
+        // Add physical exposure
+        const productKey = mapProductToCanonical(leg.product);
+        if (!monthlyPhysical[month][productKey]) monthlyPhysical[month][productKey] = 0;
+        const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+        const direction = leg.buySell === 'buy' ? 1 : -1;
+        monthlyPhysical[month][productKey] += volume * direction;
+        
+        // Pricing side - depends on agreed status
+        if (!leg.efpAgreedStatus) {
           // Unagreed EFP - use dedicated EFP column
           const efpKey = 'ICE GASOIL FUTURES (EFP)';
           if (!monthlyPricing[month][efpKey]) monthlyPricing[month][efpKey] = 0;
-          const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-          const direction = leg.buySell === 'buy' ? 1 : -1;
           // In exposure table: Buy shows as negative in pricing column, Sell as positive
           monthlyPricing[month][efpKey] += volume * (direction * -1);
+        } else {
+          // Agreed EFP - use standard ICE GASOIL FUTURES column
+          const pricingKey = 'ICE GASOIL FUTURES';
+          if (!monthlyPricing[month][pricingKey]) monthlyPricing[month][pricingKey] = 0;
+          // In exposure table: Buy shows as negative in pricing column, Sell as positive
+          monthlyPricing[month][pricingKey] += volume * (direction * -1);
         }
         
-        // Do NOT add anything to monthlyPhysical for EFP legs
         continue;
       }
       
@@ -102,13 +106,23 @@ export const extractInstrumentsFromFormula = (formula: any): string[] => {
     return [];
   }
   
-  // Extract instrument references from tokens
-  formula.tokens.forEach((token: any) => {
-    if (token.type === 'instrument' && token.value) {
-      instruments.add(token.value);
-    }
-  });
+  // Check for direct exposure in the exposures object
+  if (formula.exposures && formula.exposures.pricing) {
+    Object.entries(formula.exposures.pricing).forEach(([instrument, exposure]) => {
+      if (exposure !== 0) {
+        instruments.add(instrument);
+      }
+    });
+  }
+  
+  // Also extract instrument references from tokens as before
+  if (formula.tokens.length > 0) {
+    formula.tokens.forEach((token: any) => {
+      if (token.type === 'instrument' && token.value) {
+        instruments.add(token.value);
+      }
+    });
+  }
   
   return Array.from(instruments);
 };
-

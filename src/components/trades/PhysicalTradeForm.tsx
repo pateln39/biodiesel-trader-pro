@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -20,6 +19,7 @@ import { toast } from 'sonner';
 import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation';
 import { Switch } from '@/components/ui/switch';
 import { getAvailableEfpMonths } from '@/utils/efpUtils';
+import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -220,9 +220,73 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     
     if (field === 'pricingType') {
       newLegs[index].pricingType = value;
+      
       if (value === 'efp') {
         newLegs[index].formula = createEmptyFormula();
+        
+        const legQuantity = newLegs[index].quantity || 0;
+        const exposureDirection = newLegs[index].buySell === 'buy' ? -1 : 1;
+        
+        const emptyResult = createEmptyExposureResult();
+        
+        if (!newLegs[index].efpAgreedStatus) {
+          emptyResult.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
+        }
+        
+        newLegs[index].formula = {
+          tokens: [],
+          exposures: emptyResult
+        };
       }
+    } else if (field === 'efpAgreedStatus') {
+      newLegs[index].efpAgreedStatus = value;
+      
+      if (newLegs[index].pricingType === 'efp') {
+        const legQuantity = newLegs[index].quantity || 0;
+        const exposureDirection = newLegs[index].buySell === 'buy' ? -1 : 1;
+        
+        if (!newLegs[index].formula) {
+          newLegs[index].formula = createEmptyFormula();
+        }
+        
+        const updatedExposures = {...newLegs[index].formula.exposures};
+        
+        updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
+        
+        if (!value) {
+          updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
+        }
+        
+        newLegs[index].formula = {
+          ...newLegs[index].formula,
+          exposures: updatedExposures
+        };
+      }
+    } else if (['quantity', 'buySell'].includes(field) && newLegs[index].pricingType === 'efp') {
+      (newLegs[index] as any)[field] = value;
+      
+      const legQuantity = field === 'quantity' ? (value || 0) : newLegs[index].quantity || 0;
+      const buySellValue = field === 'buySell' ? value : newLegs[index].buySell;
+      const exposureDirection = buySellValue === 'buy' ? -1 : 1;
+      
+      if (!newLegs[index].formula) {
+        newLegs[index].formula = createEmptyFormula();
+      }
+      
+      const updatedExposures = {...newLegs[index].formula.exposures};
+      
+      updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
+      
+      if (!newLegs[index].efpAgreedStatus) {
+        updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
+      }
+      
+      newLegs[index].formula = {
+        ...newLegs[index].formula,
+        exposures: updatedExposures
+      };
+      
+      return;
     } else {
       (newLegs[index] as any)[field] = value;
     }
@@ -230,7 +294,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && 
         newLegs[index].formula && 
         newLegs[index].pricingPeriodStart && 
-        newLegs[index].pricingPeriodEnd) {
+        newLegs[index].pricingPeriodEnd && 
+        newLegs[index].pricingType !== 'efp') {
       const leg = newLegs[index];
       const monthlyDistribution = calculateMonthlyPricingDistribution(
         leg.formula.tokens,
