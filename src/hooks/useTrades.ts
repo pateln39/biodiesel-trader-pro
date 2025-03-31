@@ -14,9 +14,43 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
+  PricingFormula,
 } from '@/types';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { validateAndParsePricingFormula, createInstrumentToken, createOperatorToken, createFixedValueToken } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
+
+// Create a formula for EFP trades
+const createEfpFormula = (
+  premium: number | undefined, 
+  isAgreed: boolean, 
+  fixedValue?: number
+): PricingFormula => {
+  const formula: PricingFormula = {
+    tokens: [],
+    exposures: {
+      physical: {},
+      pricing: {}
+    }
+  };
+
+  if (isAgreed && fixedValue !== undefined) {
+    // For agreed EFP: fixedValue + premium
+    formula.tokens = [
+      createFixedValueToken(fixedValue),
+      createOperatorToken('+'),
+      createFixedValueToken(premium || 0)
+    ];
+  } else {
+    // For unagreed EFP: ICE GASOIL FUTURES (EFP) + premium
+    formula.tokens = [
+      createInstrumentToken('ICE GASOIL FUTURES (EFP)'),
+      createOperatorToken('+'),
+      createFixedValueToken(premium || 0)
+    ];
+  }
+
+  return formula;
+};
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -66,33 +100,48 @@ const fetchTrades = async (): Promise<Trade[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
-          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          legs: legs.map(leg => ({
-            id: leg.id,
-            parentTradeId: leg.parent_trade_id,
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell as BuySell,
-            product: leg.product as Product,
-            sustainability: leg.sustainability || '',
-            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-            quantity: leg.quantity,
-            tolerance: leg.tolerance || 0,
-            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            unit: (leg.unit || 'MT') as Unit,
-            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-            // Add EFP fields
-            efpPremium: leg.efp_premium,
-            efpAgreedStatus: leg.efp_agreed_status,
-            efpFixedValue: leg.efp_fixed_value,
-            efpDesignatedMonth: leg.efp_designated_month
-          }))
+          formula: firstLeg.pricing_formula ? validateAndParsePricingFormula(firstLeg.pricing_formula) : undefined,
+          mtmFormula: firstLeg.mtm_formula ? validateAndParsePricingFormula(firstLeg.mtm_formula) : undefined,
+          legs: legs.map(leg => {
+            // Handle formula and MTM formula for EFP legs
+            let formula = leg.pricing_formula ? validateAndParsePricingFormula(leg.pricing_formula) : undefined;
+            let mtmFormula = leg.mtm_formula ? validateAndParsePricingFormula(leg.mtm_formula) : undefined;
+            
+            // If this is an EFP leg and no formula is set, create one
+            if (leg.efp_premium !== undefined && !formula) {
+              formula = createEfpFormula(
+                leg.efp_premium, 
+                leg.efp_agreed_status || false, 
+                leg.efp_fixed_value
+              );
+            }
+            
+            return {
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              sustainability: leg.sustainability || '',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+              formula,
+              mtmFormula,
+              // Add EFP fields
+              efpPremium: leg.efp_premium,
+              efpAgreedStatus: leg.efp_agreed_status,
+              efpFixedValue: leg.efp_fixed_value,
+              efpDesignatedMonth: leg.efp_designated_month
+            };
+          })
         };
         return physicalTrade;
       } 
