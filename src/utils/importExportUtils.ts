@@ -449,24 +449,47 @@ export async function processBulkTradeImport(file: File, importType: 'physical' 
       if (!sheetTemplate.parentIdField) {
         // This is a parent table, insert the records
         for (const row of sheetData) {
-          const { data, error } = await supabase
-            .from(sheetTemplate.tableName)
-            .insert(row)
-            .select('id');
+          // Fix for TypeScript error: use the table name directly as a type-safe string constant
+          // instead of using a dynamic string from sheetTemplate.tableName
+          let responseData;
+          
+          if (sheetTemplate.tableName === 'parent_trades') {
+            const { data, error } = await supabase
+              .from('parent_trades')
+              .insert(row)
+              .select('id');
+              
+            if (error) {
+              errors.push({
+                sheet: sheetTemplate.sheetName,
+                row: 0,
+                message: `Database error: ${error.message}`
+              });
+            } else {
+              responseData = data;
+            }
+          } else if (sheetTemplate.tableName === 'paper_trades') {
+            const { data, error } = await supabase
+              .from('paper_trades')
+              .insert(row)
+              .select('id');
+              
+            if (error) {
+              errors.push({
+                sheet: sheetTemplate.sheetName,
+                row: 0,
+                message: `Database error: ${error.message}`
+              });
+            } else {
+              responseData = data;
+            }
+          }
             
-          if (error) {
-            errors.push({
-              sheet: sheetTemplate.sheetName,
-              row: 0, // We don't know which row failed
-              message: `Database error: ${error.message}`
-            });
-          } else {
+          if (responseData && responseData[0] && responseData[0].id) {
             // Store the ID for reference by children
             const parentRef = row.trade_reference;
-            if (parentRef && data && data[0] && data[0].id) {
-              parentIdMap[parentRef] = data[0].id;
-              importedCount++;
-            }
+            parentIdMap[parentRef] = responseData[0].id;
+            importedCount++;
           }
         }
       } else {
@@ -509,6 +532,22 @@ export async function processBulkTradeImport(file: File, importType: 'physical' 
                 console.error('Error calculating exposures:', error);
               }
             }
+            
+            // Use type-safe table reference for trade_legs
+            const { error } = await supabase
+              .from('trade_legs')
+              .insert(row);
+              
+            if (error) {
+              errors.push({
+                sheet: sheetTemplate.sheetName,
+                row: 0,
+                message: `Database error: ${error.message}`
+              });
+            } else {
+              importedCount++;
+            }
+            
           } else {
             // Handle paper trade leg
             const relationshipType = row._relationship_type || 'FP';
@@ -576,21 +615,21 @@ export async function processBulkTradeImport(file: File, importType: 'physical' 
                 console.error('Error parsing period date:', e);
               }
             }
-          }
-          
-          // Insert the record
-          const { error } = await supabase
-            .from(sheetTemplate.tableName)
-            .insert(row);
             
-          if (error) {
-            errors.push({
-              sheet: sheetTemplate.sheetName,
-              row: 0, // We don't know which row failed
-              message: `Database error: ${error.message}`
-            });
-          } else {
-            importedCount++;
+            // Use type-safe table reference for paper_trade_legs
+            const { error } = await supabase
+              .from('paper_trade_legs')
+              .insert(row);
+              
+            if (error) {
+              errors.push({
+                sheet: sheetTemplate.sheetName,
+                row: 0, // We don't know which row failed
+                message: `Database error: ${error.message}`
+              });
+            } else {
+              importedCount++;
+            }
           }
         }
       }
