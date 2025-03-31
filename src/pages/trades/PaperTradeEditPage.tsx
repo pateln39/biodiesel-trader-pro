@@ -30,7 +30,7 @@ const PaperTradeEditPage = () => {
     return {
       ...trade,
       legs: trade.legs.map(leg => {
-        // Ensure that proper pricingType is set
+        // Ensure that proper pricingType is set based on the presence of efpPremium
         const pricingType = leg.efpPremium !== undefined ? "efp" : "standard";
         
         // Ensure that DIFF and SPREAD have proper rightSide quantities
