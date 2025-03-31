@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +14,6 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
-import { createInstrumentToken, createOperatorToken, createFixedValueToken } from '@/utils/formulaUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -23,29 +21,6 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
-  
-  // Helper function to create a formula for EFP trades
-  const createEfpFormula = (premium: number, isAgreed: boolean, fixedValue?: number) => {
-    if (isAgreed && fixedValue !== undefined) {
-      // For agreed EFP: fixedValue + premium
-      return {
-        tokens: [
-          createFixedValueToken(fixedValue),
-          createOperatorToken('+'),
-          createFixedValueToken(premium || 0)
-        ]
-      };
-    } else {
-      // For unagreed EFP: ICE GASOIL FUTURES (EFP) + premium
-      return {
-        tokens: [
-          createInstrumentToken('ICE GASOIL FUTURES (EFP)'),
-          createOperatorToken('+'),
-          createFixedValueToken(premium || 0)
-        ]
-      };
-    }
-  };
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -74,7 +49,7 @@ const TradeEntryPage = () => {
       // For physical trades, insert all legs
       const legs = tradeData.legs.map((leg: any) => {
         // Base leg data
-        const legData: any = {
+        const legData = {
           leg_reference: leg.legReference,
           parent_trade_id: parentTradeId,
           buy_sell: leg.buySell,
@@ -90,27 +65,18 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
+          pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
         };
 
-        // Handle EFP trades differently
-        if (leg.pricingType === 'efp') {
-          // Add EFP-specific fields
+        // Add EFP fields if they exist
+        if (leg.efpPremium !== undefined) {
           Object.assign(legData, {
             efp_premium: leg.efpPremium,
             efp_agreed_status: leg.efpAgreedStatus,
             efp_fixed_value: leg.efpFixedValue,
             efp_designated_month: leg.efpDesignatedMonth,
-            // Also create and store a formula representation of the EFP for consistency
-            pricing_formula: createEfpFormula(
-              leg.efpPremium, 
-              leg.efpAgreedStatus, 
-              leg.efpFixedValue
-            )
           });
-        } else {
-          // Standard trade - use the formula from the form
-          legData.pricing_formula = leg.formula;
         }
         
         return legData;

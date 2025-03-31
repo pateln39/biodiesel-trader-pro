@@ -1,4 +1,5 @@
 
+
 import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
@@ -21,8 +22,7 @@ const MOCK_PRICES: Record<string, number> = {
   'Argus UCOME': 1250,
   'Platts LSGO': 800,
   'Platts Diesel': 950,
-  'ICE GASOIL FUTURES': 780,
-  'ICE GASOIL FUTURES (EFP)': 780  // Added EFP-specific price
+  'ICE GASOIL FUTURES': 780
 };
 
 // Mock historical prices - in real application, these would come from API
@@ -36,16 +36,6 @@ const MOCK_HISTORICAL_PRICES: Record<string, { date: Date; price: number }[]> = 
     { date: new Date('2024-03-01'), price: 790 },
     { date: new Date('2024-03-15'), price: 800 },
     { date: new Date('2024-04-01'), price: 810 }
-  ],
-  'ICE GASOIL FUTURES': [
-    { date: new Date('2024-03-01'), price: 775 },
-    { date: new Date('2024-03-15'), price: 780 },
-    { date: new Date('2024-04-01'), price: 785 }
-  ],
-  'ICE GASOIL FUTURES (EFP)': [
-    { date: new Date('2024-03-01'), price: 775 },
-    { date: new Date('2024-03-15'), price: 780 },
-    { date: new Date('2024-04-01'), price: 785 }
   ]
 };
 
@@ -76,10 +66,10 @@ const calculateEfpMTMPrice = async (
   if (leg.efpAgreedStatus) {
     // For agreed EFP, use fixed value + premium
     if (leg.efpFixedValue !== undefined) {
-      details.evaluatedPrice = leg.efpFixedValue + (leg.efpPremium || 0);
+      details.evaluatedPrice = leg.efpFixedValue + leg.efpPremium;
       details.fixedComponents = [
         { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` },
-        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
+        { value: leg.efpPremium, displayValue: `Premium: ${leg.efpPremium}` }
       ];
     } else {
       // Missing fixed value
@@ -93,7 +83,7 @@ const calculateEfpMTMPrice = async (
     const gasoilPrice = await fetchPreviousDayPrice('ICE_GASOIL');
     
     if (gasoilPrice) {
-      details.instruments['ICE GASOIL FUTURES (EFP)'] = {
+      details.instruments['ICE GASOIL FUTURES'] = {
         price: gasoilPrice.price,
         date: gasoilPrice.date
       };
@@ -103,13 +93,8 @@ const calculateEfpMTMPrice = async (
         { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
       ];
     } else {
-      // No price available, use mock data
-      details.instruments['ICE GASOIL FUTURES (EFP)'] = {
-        price: MOCK_PRICES['ICE GASOIL FUTURES (EFP)'],
-        date: new Date()
-      };
-      
-      details.evaluatedPrice = MOCK_PRICES['ICE GASOIL FUTURES (EFP)'] + (leg.efpPremium || 0);
+      // No price available
+      details.evaluatedPrice = leg.efpPremium || 0;
       details.fixedComponents = [
         { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
       ];
@@ -168,7 +153,7 @@ const calculateStandardMTMPrice = async (
 
 // Calculate trade leg price for a specific period
 export const calculateTradeLegPrice = async (
-  formula: PricingFormula | PhysicalTradeLeg,
+  formula: PricingFormula,
   startDate: Date,
   endDate: Date
 ): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
@@ -181,101 +166,15 @@ export const calculateTradeLegPrice = async (
   } else if (startDate > now) {
     periodType = 'future';
   }
-
-  // Check if this is an EFP leg
-  if ('efpPremium' in formula && formula.efpPremium !== undefined) {
-    return calculateEfpTradeLegPrice(formula as PhysicalTradeLeg, startDate, endDate, periodType);
-  }
   
-  // Handle standard formula calculation
-  return calculateStandardTradeLegPrice(formula as PricingFormula, startDate, endDate, periodType);
-};
-
-// Calculate EFP trade leg price
-const calculateEfpTradeLegPrice = async (
-  leg: PhysicalTradeLeg,
-  startDate: Date,
-  endDate: Date,
-  periodType: PricingPeriodType
-): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
-  const priceDetails: PriceDetail = {
-    instruments: {},
-    evaluatedPrice: 0,
-    fixedComponents: []
-  };
+  // Extract instruments from the formula
+  const instruments = extractInstrumentsFromFormula(formula);
   
-  if (leg.efpAgreedStatus && leg.efpFixedValue !== undefined) {
-    // Agreed EFP with fixed value
-    const fixedPrice = leg.efpFixedValue;
-    const premium = leg.efpPremium || 0;
-    
-    priceDetails.evaluatedPrice = fixedPrice + premium;
-    priceDetails.fixedComponents = [
-      { value: fixedPrice, displayValue: `EFP Fixed: ${fixedPrice}` },
-      { value: premium, displayValue: `Premium: ${premium}` }
-    ];
-    
-    return { price: priceDetails.evaluatedPrice, periodType, priceDetails };
-  } else {
-    // Unagreed EFP or agreed without fixed value
-    // Get historical prices for the instrument in the period
-    const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
-    const prices = MOCK_HISTORICAL_PRICES[instrumentKey]?.filter(
-      p => p.date >= startDate && p.date <= endDate
-    ) || [];
-    
-    if (prices.length > 0) {
-      // Calculate average price for the period
-      const sum = prices.reduce((acc, p) => acc + p.price, 0);
-      const average = sum / prices.length;
-      
-      priceDetails.instruments[instrumentKey] = {
-        average,
-        prices
-      };
-      
-      const premium = leg.efpPremium || 0;
-      priceDetails.evaluatedPrice = average + premium;
-      priceDetails.fixedComponents = [
-        { value: premium, displayValue: `Premium: ${premium}` }
-      ];
-      
-      return { price: priceDetails.evaluatedPrice, periodType, priceDetails };
-    } else {
-      // No historical prices available, use mock current price
-      const currentPrice = MOCK_PRICES[instrumentKey] || 0;
-      const premium = leg.efpPremium || 0;
-      
-      priceDetails.instruments[instrumentKey] = {
-        average: currentPrice,
-        prices: [{ date: new Date(), price: currentPrice }]
-      };
-      
-      priceDetails.evaluatedPrice = currentPrice + premium;
-      priceDetails.fixedComponents = [
-        { value: premium, displayValue: `Premium: ${premium}` }
-      ];
-      
-      return { price: priceDetails.evaluatedPrice, periodType, priceDetails };
-    }
-  }
-};
-
-// Calculate standard formula trade leg price
-const calculateStandardTradeLegPrice = async (
-  formula: PricingFormula,
-  startDate: Date,
-  endDate: Date,
-  periodType: PricingPeriodType
-): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
   // Create price details object
   const priceDetails: PriceDetail = {
     instruments: {},
     evaluatedPrice: 0
   };
-  
-  // Extract instruments from the formula
-  const instruments = extractInstrumentsFromFormula(formula);
   
   // If there are no instruments, return default values
   if (instruments.length === 0) {
@@ -309,7 +208,6 @@ const calculateStandardTradeLegPrice = async (
   }
   
   // Calculate average price across all instruments
-  // In a real system, we'd properly evaluate the formula
   const price = instrumentCount > 0 ? totalPrice / instrumentCount : 0;
   priceDetails.evaluatedPrice = price;
   
@@ -359,3 +257,4 @@ export const applyPricingFormula = (
   
   return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
 };
+
