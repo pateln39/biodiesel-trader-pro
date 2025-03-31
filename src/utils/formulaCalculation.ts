@@ -96,8 +96,8 @@ export const canAddTokenType = (tokens: FormulaToken[], type: FormulaToken['type
   }
 };
 
-// Parse tokens to build an AST for proper evaluation
-interface Node {
+// Interface for AST nodes - export it for use in other files
+export interface Node {
   type: string;
   value?: any;
   left?: Node;
@@ -134,9 +134,8 @@ const tokenizeFormula = (tokens: FormulaToken[]): FormulaToken[] => {
   return result;
 };
 
-// Parse formula tokens to build AST
-// This is a simplified parser for demonstration - a real implementation would be more robust
-const parseFormula = (tokens: FormulaToken[]): Node => {
+// Parse formula tokens to build AST - export for use in priceCalculationUtils
+export const parseFormula = (tokens: FormulaToken[]): Node => {
   const processedTokens = tokenizeFormula(tokens);
   
   // Simple recursive descent parser

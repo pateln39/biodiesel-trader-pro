@@ -4,6 +4,7 @@ import { validateAndParsePricingFormula, formulaToString } from './formulaUtils'
 import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { parseFormula } from './formulaCalculation';
 
 // Define PricingPeriodType enum for export
 export type PricingPeriodType = 'historical' | 'current' | 'future';
@@ -198,8 +199,7 @@ const calculateStandardMTMPrice = async (
   }
   
   // Fetch current prices from database
-  let totalPrice = 0;
-  let instrumentCount = 0;
+  const instrumentPrices: Record<string, number> = {};
   
   for (const instrument of instruments) {
     const latestPrice = await fetchLatestPrice(instrument);
@@ -211,8 +211,7 @@ const calculateStandardMTMPrice = async (
         date: latestPrice.date
       };
       
-      totalPrice += latestPrice.price;
-      instrumentCount++;
+      instrumentPrices[instrument] = latestPrice.price;
     } else if (MOCK_PRICES[instrument]) {
       // Fallback to mock prices if database query fails
       console.warn(`Using mock price for ${instrument}`);
@@ -221,14 +220,12 @@ const calculateStandardMTMPrice = async (
         date: new Date()
       };
       
-      totalPrice += MOCK_PRICES[instrument];
-      instrumentCount++;
+      instrumentPrices[instrument] = MOCK_PRICES[instrument];
     }
   }
   
-  // Simple average for demonstration purposes
-  // In a real system, you'd apply the actual formula calculation
-  const price = instrumentCount > 0 ? totalPrice / instrumentCount : 0;
+  // Calculate price using formula evaluation
+  const price = applyPricingFormula(formula, instrumentPrices);
   details.evaluatedPrice = price;
   
   return { price, details };
@@ -264,8 +261,8 @@ export const calculateTradeLegPrice = async (
     return { price: 0, periodType, priceDetails };
   }
   
-  let totalPrice = 0;
-  let instrumentCount = 0;
+  // Create a record to store average prices per instrument
+  const instrumentAveragePrices: Record<string, number> = {};
   
   // For each instrument, fetch historical prices in the period from database
   for (const instrument of instruments) {
@@ -281,8 +278,7 @@ export const calculateTradeLegPrice = async (
         prices
       };
       
-      totalPrice += average;
-      instrumentCount++;
+      instrumentAveragePrices[instrument] = average;
     } else if (MOCK_HISTORICAL_PRICES[instrument]) {
       // Fallback to mock historical prices if database query fails
       console.warn(`Using mock historical prices for ${instrument}`);
@@ -299,14 +295,13 @@ export const calculateTradeLegPrice = async (
           prices: mockPrices
         };
         
-        totalPrice += average;
-        instrumentCount++;
+        instrumentAveragePrices[instrument] = average;
       }
     }
   }
   
-  // Calculate average price across all instruments
-  const price = instrumentCount > 0 ? totalPrice / instrumentCount : 0;
+  // Calculate price using formula evaluation with average prices
+  const price = applyPricingFormula(formula, instrumentAveragePrices);
   priceDetails.evaluatedPrice = price;
   
   return { price, periodType, priceDetails };
@@ -359,7 +354,50 @@ export const calculateMTMValue = (
   return (tradePrice - mtmPrice) * quantity * direction;
 };
 
-// Apply pricing formula to calculate final price
+// Node type for AST evaluation
+interface Node {
+  type: string;
+  value?: any;
+  left?: Node;
+  right?: Node;
+  operator?: string;
+}
+
+// New function to evaluate formula AST with actual instrument prices
+const evaluateFormulaAST = (node: Node, instrumentPrices: Record<string, number>): number => {
+  if (!node) {
+    return 0;
+  }
+
+  switch (node.type) {
+    case 'instrument':
+      return instrumentPrices[node.value] || 0;
+    
+    case 'value':
+      return Number(node.value) || 0;
+    
+    case 'binary':
+      const leftValue = evaluateFormulaAST(node.left!, instrumentPrices);
+      const rightValue = evaluateFormulaAST(node.right!, instrumentPrices);
+      
+      switch (node.operator) {
+        case '+': return leftValue + rightValue;
+        case '-': return leftValue - rightValue;
+        case '*': return leftValue * rightValue;
+        case '/': return rightValue === 0 ? 0 : leftValue / rightValue;
+        default: return 0;
+      }
+    
+    case 'unary':
+      const rightVal = evaluateFormulaAST(node.right!, instrumentPrices);
+      return node.operator === '-' ? -rightVal : rightVal;
+    
+    default:
+      return 0;
+  }
+};
+
+// Apply pricing formula to calculate final price using proper evaluation
 export const applyPricingFormula = (
   formula: PricingFormula,
   instrumentPrices: Record<string, number>
@@ -368,24 +406,27 @@ export const applyPricingFormula = (
     return 0;
   }
   
-  // Simple implementation for demonstration
-  const instruments = extractInstrumentsFromFormula(formula);
-  
-  if (instruments.length === 0) {
-    return 0;
-  }
-  
-  // Simple average calculation for demo purposes
-  // In a real system, you'd evaluate the formula with the actual prices
-  let totalPrice = 0;
-  let instrumentCount = 0;
-  
-  for (const instrument of instruments) {
-    if (instrumentPrices[instrument]) {
-      totalPrice += instrumentPrices[instrument];
-      instrumentCount++;
+  try {
+    // Parse formula into AST
+    const ast = parseFormula(formula.tokens);
+    
+    // Evaluate the AST with actual prices
+    return evaluateFormulaAST(ast, instrumentPrices);
+  } catch (error) {
+    console.error('Error evaluating pricing formula:', error);
+    
+    // Fallback to average calculation if evaluation fails
+    const instruments = extractInstrumentsFromFormula(formula);
+    let totalPrice = 0;
+    let instrumentCount = 0;
+    
+    for (const instrument of instruments) {
+      if (instrumentPrices[instrument]) {
+        totalPrice += instrumentPrices[instrument];
+        instrumentCount++;
+      }
     }
+    
+    return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
   }
-  
-  return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
 };

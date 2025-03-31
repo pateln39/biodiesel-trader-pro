@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -97,15 +96,18 @@ const MTMPage = () => {
           if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
           
           try {
+            // Calculate the trade price using historical data
             const priceResult = await calculateTradeLegPrice(
               leg.formula,
               leg.startDate,
               leg.endDate
             );
             
+            // Use mtmFormula if available, otherwise fall back to regular formula
             const mtmFormula = leg.mtmFormula || leg.formula;
             const mtmPriceResult = await calculateMTMPrice(mtmFormula);
             
+            // Calculate MTM value using the prices and trade direction
             const mtmValue = calculateMTMValue(
               priceResult.price,
               mtmPriceResult.price,
