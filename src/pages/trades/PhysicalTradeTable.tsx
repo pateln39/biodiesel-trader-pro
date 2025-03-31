@@ -89,6 +89,7 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
             <TableHead className="text-right">Quantity</TableHead>
             <TableHead>Product</TableHead>
             <TableHead>Counterparty</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Formula</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>

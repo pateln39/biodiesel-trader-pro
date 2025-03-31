@@ -21,6 +21,9 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
+  // Determine pricing type to display
+  const pricingType = leg.efpPremium !== undefined ? "EFP" : "Standard";
+  
   return (
     <TableRow className={legIndex > 0 ? "border-t-0" : undefined}>
       <TableCell>
@@ -44,6 +47,7 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
       <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
       <TableCell>{leg.product}</TableCell>
       <TableCell>{trade.counterparty}</TableCell>
+      <TableCell>{pricingType}</TableCell>
       <TableCell>
         <FormulaCellDisplay trade={leg} />
       </TableCell>
