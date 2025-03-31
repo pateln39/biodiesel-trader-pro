@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,7 +40,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
+      const legs = tradeLegs.filter((leg: any) => leg.parent_trade_id === parent.id);
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
@@ -69,7 +68,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
-          pricingType: firstLeg.pricing_type as PricingType || 'standard',
+          pricingType: (firstLeg.pricing_type || 'standard') as PricingType,
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -89,9 +88,7 @@ const fetchTrades = async (): Promise<Trade[]> => {
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-            // Cast the pricing_type to PricingType
-            pricingType: leg.pricing_type as PricingType || 'standard',
-            // Add EFP fields
+            pricingType: (leg.pricing_type || 'standard') as PricingType,
             efpPremium: leg.efp_premium,
             efpAgreedStatus: leg.efp_agreed_status,
             efpFixedValue: leg.efp_fixed_value,

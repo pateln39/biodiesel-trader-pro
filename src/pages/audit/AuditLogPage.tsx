@@ -47,11 +47,9 @@ const AuditLogPage = () => {
               <thead>
                 <tr className="bg-muted/50">
                   <th className="text-left p-3 font-medium">Timestamp</th>
-                  <th className="text-left p-3 font-medium">Entity Type</th>
-                  <th className="text-left p-3 font-medium">Entity ID</th>
-                  <th className="text-left p-3 font-medium">Field</th>
-                  <th className="text-left p-3 font-medium">Old Value</th>
-                  <th className="text-left p-3 font-medium">New Value</th>
+                  <th className="text-left p-3 font-medium">Table</th>
+                  <th className="text-left p-3 font-medium">Record ID</th>
+                  <th className="text-left p-3 font-medium">Operation</th>
                   <th className="text-left p-3 font-medium">User</th>
                 </tr>
               </thead>
@@ -59,17 +57,15 @@ const AuditLogPage = () => {
                 {mockAuditLogs.map((log) => (
                   <tr key={log.id} className="border-t hover:bg-muted/50">
                     <td className="p-3 whitespace-nowrap">{formatDateTime(log.timestamp)}</td>
-                    <td className="p-3 capitalize">{log.entityType}</td>
-                    <td className="p-3">{log.entityId}</td>
-                    <td className="p-3 capitalize">{log.field}</td>
-                    <td className="p-3">{log.oldValue || '-'}</td>
-                    <td className="p-3">{log.newValue}</td>
+                    <td className="p-3 capitalize">{log.tableName}</td>
+                    <td className="p-3">{log.recordId}</td>
+                    <td className="p-3 capitalize">{log.operation}</td>
                     <td className="p-3">{log.userId}</td>
                   </tr>
                 ))}
                 {mockAuditLogs.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={5} className="p-6 text-center text-muted-foreground">
                       No audit logs found.
                     </td>
                   </tr>

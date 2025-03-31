@@ -1,11 +1,15 @@
 
 import { BuySell, Product } from './trade';
 import { PricingFormula } from './pricing';
-import { ParentTrade, Trade } from './common';
 
 // Paper trade parent
-export interface PaperParentTrade extends ParentTrade {
+export interface PaperParentTrade {
+  id: string;
+  tradeReference: string;
   tradeType: "paper";
+  createdAt: Date;
+  updatedAt: Date;
+  counterparty: string;
   broker: string;
 }
 
@@ -43,10 +47,15 @@ export interface PaperTradeLeg {
 }
 
 // Complete paper trade with parent and legs
-export interface PaperTrade extends Trade {
+export interface PaperTrade {
   id: string;
   tradeReference: string;
   tradeType: "paper";
   broker: string;
+  counterparty: string;
+  createdAt: Date;
+  updatedAt: Date;
+  buySell: BuySell;
+  product: Product;
   legs: PaperTradeLeg[];
 }

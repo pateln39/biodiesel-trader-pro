@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,7 +55,7 @@ const TradeEditPage = () => {
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
-        // Map the database data to our application trade models
+        // Map trade data to the format expected by PhysicalTradeForm
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
@@ -102,10 +101,10 @@ const TradeEditPage = () => {
               formula: validateAndParsePricingFormula(leg.pricing_formula),
               mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
               pricingType: (leg.pricing_type as PricingType) || 'standard',
-              efpPremium: leg.efp_premium,
-              efpAgreedStatus: leg.efp_agreed_status,
-              efpFixedValue: leg.efp_fixed_value,
-              efpDesignatedMonth: leg.efp_designated_month
+              efpPremium: leg.efpPremium,
+              efpAgreedStatus: leg.efpAgreedStatus,
+              efpFixedValue: leg.efpFixedValue,
+              efpDesignatedMonth: leg.efpDesignatedMonth
             }))
           };
           setTradeData(physicalTrade);

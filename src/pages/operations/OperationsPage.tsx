@@ -6,9 +6,14 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockMovements, mockPhysicalTrades } from '@/data/mockData';
-import { formatDate, calculateOpenQuantity } from '@/utils/tradeUtils';
+import { formatDate } from '@/utils/dateUtils';
 
 const OperationsPage = () => {
+  const calculateOpenQuantity = (total: number, tolerance: number, scheduled: number) => {
+    const maxQuantity = total * (1 + tolerance / 100);
+    return maxQuantity - scheduled;
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -52,8 +57,8 @@ const OperationsPage = () => {
                     {mockPhysicalTrades.map((trade) => {
                       // Calculate scheduled quantity for this trade
                       const scheduledQuantity = mockMovements
-                        .filter(m => m.tradeId === trade.id && m.legId === undefined)
-                        .reduce((sum, m) => sum + m.scheduledQuantity, 0);
+                        .filter(m => m.tradeId === trade.id)
+                        .reduce((sum, m) => sum + (m.scheduledQuantity || 0), 0);
                       
                       // Calculate open quantity
                       const openQuantity = calculateOpenQuantity(
@@ -130,7 +135,7 @@ const OperationsPage = () => {
                             </Link>
                           </td>
                           <td className="p-3">{movement.vesselName || 'N/A'}</td>
-                          <td className="p-3 text-right">{movement.scheduledQuantity} {trade?.unit}</td>
+                          <td className="p-3 text-right">{movement.scheduledQuantity || movement.quantity} {trade?.unit}</td>
                           <td className="p-3">{movement.nominatedDate ? formatDate(movement.nominatedDate) : 'N/A'}</td>
                           <td className="p-3">{movement.loadport || 'N/A'}</td>
                           <td className="p-3 capitalize">{movement.status}</td>

@@ -34,6 +34,12 @@ export interface Movement {
   status: string;
   nominatedDate: Date;
   quantity: number;
+  // Add new fields needed by OperationsPage
+  legId?: string;
+  scheduledQuantity?: number;
+  vesselName?: string;
+  loadport?: string;
+  disport?: string;
 }
 
 export interface AuditLog {
@@ -43,6 +49,12 @@ export interface AuditLog {
   operation: string;
   timestamp: Date;
   userId: string;
+  // Add fields needed by AuditLogPage
+  entityType?: string;
+  entityId?: string;
+  field?: string;
+  oldValue?: string;
+  newValue?: string;
 }
 
 // Re-export needed types to make them available from @/types

@@ -3,6 +3,7 @@
 export * from './common';
 export * from './pricing';
 export * from './physical';
+export * from './paper';
 
 // Trade types
 export type TradeType = 'physical' | 'paper';
@@ -80,7 +81,7 @@ export type DbTradeLeg = {
   mtm_formula: any;
   created_at: string;
   updated_at: string;
-  pricing_type: PricingType;
+  pricing_type: string;
   efp_premium?: number;
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;

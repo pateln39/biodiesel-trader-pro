@@ -145,9 +145,11 @@ export const createPaperTrade = async (
       tradeReference: formData.tradeReference,
       tradeType: 'paper',
       broker: formData.broker || '',
-      counterparty: formData.counterparty,
-      created_at: new Date(paperTrade.created_at),
-      updated_at: new Date(paperTrade.updated_at),
+      counterparty: formData.counterparty || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      buySell: 'buy',
+      product: 'UCOME',
       legs: []
     } as PaperTrade;
   } catch (error: any) {
@@ -218,8 +220,10 @@ export const usePaperTrades = () => {
             broker: paperTrade.broker || '',
             createdAt: new Date(paperTrade.created_at),
             updatedAt: new Date(paperTrade.updated_at),
+            buySell: 'buy' as BuySell,
+            product: 'UCOME' as Product,
             legs: []
-          };
+          } as PaperTrade;
         }
         
         return {
@@ -230,6 +234,8 @@ export const usePaperTrades = () => {
           broker: paperTrade.broker || '',
           createdAt: new Date(paperTrade.created_at),
           updatedAt: new Date(paperTrade.updated_at),
+          buySell: 'buy' as BuySell,
+          product: 'UCOME' as Product,
           legs: (legs || []).map((leg) => {
             const instrument = leg.instrument || '';
             let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
@@ -402,7 +408,7 @@ export const usePaperTrades = () => {
           counterparty: tradeData.broker || 'Paper Trade',
           broker: tradeData.broker
         })
-        .select('id')
+        .select('id, trade_reference, counterparty, broker, created_at, updated_at')
         .single();
         
       if (paperTradeError) {
@@ -510,7 +516,14 @@ export const usePaperTrades = () => {
         }
       }
       
-      return { ...tradeData, id: paperTrade.id };
+      return {
+        ...tradeData, 
+        id: paperTrade.id,
+        createdAt: new Date(paperTrade.created_at),
+        updatedAt: new Date(paperTrade.updated_at),
+        buySell: 'buy' as BuySell,
+        product: 'UCOME' as Product,
+      } as PaperTrade;
     },
     onSuccess: () => {
       setTimeout(() => {
