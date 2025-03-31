@@ -27,7 +27,7 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
   
   for (const trade of trades) {
     for (const leg of trade.legs || []) {
-      // Skip adding EFP to Physical column
+      // Handle EFP pricing type
       if (leg.pricingType === 'efp' && leg.efpPremium !== undefined) {
         const month = leg.efpDesignatedMonth || defaultMonth;
         

@@ -1,4 +1,3 @@
-
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -8,7 +7,8 @@ export type Instrument =
   'Argus HVO' | 
   'Platts LSGO' | 
   'Platts Diesel' | 
-  'ICE GASOIL FUTURES';
+  'ICE GASOIL FUTURES' |
+  'ICE GASOIL FUTURES (EFP)';
 
 // Common base types for trades
 export interface ParentTrade {
