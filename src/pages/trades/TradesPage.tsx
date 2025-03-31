@@ -1,45 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Filter, AlertCircle } from 'lucide-react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Plus, Filter, AlertCircle, Upload, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Import our custom components
 import PhysicalTradeTable from './PhysicalTradeTable';
 import PaperTradeList from './PaperTradeList';
 
-// Import isolated hooks
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PhysicalTrade } from '@/types';
 
 const TradesPage = () => {
   const [searchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
+  const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
-  
-  // Load physical trades
+  const navigate = useNavigate();
+
   const { 
     trades, 
     loading: physicalLoading, 
     error: physicalError, 
     refetchTrades
   } = useTrades();
-  
-  // Load paper trades
+
   const { 
     paperTrades, 
     isLoading: paperLoading, 
     error: paperError, 
     refetchPaperTrades
   } = usePaperTrades();
-  
+
   const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
 
-  // Error handling across both trade types
   useEffect(() => {
     const combinedError = physicalError || paperError;
     if (combinedError) {
@@ -49,14 +44,13 @@ const TradesPage = () => {
     }
   }, [physicalError, paperError]);
 
-  // Update active tab based on URL parameter
   useEffect(() => {
-    if (tabParam === 'paper') {
+    if (searchParams.get('tab') === 'paper') {
       setActiveTab('paper');
-    } else if (tabParam === 'physical') {
+    } else if (searchParams.get('tab') === 'physical') {
       setActiveTab('physical');
     }
-  }, [tabParam]);
+  }, [searchParams]);
 
   const showErrorAlert = () => {
     if (!pageError) return null;
@@ -130,20 +124,28 @@ const TradesPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
-          <div className="flex items-center gap-2">
-            <Link to="/trades/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> New Trade
-              </Button>
-            </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
+            <p className="text-muted-foreground">
+              View and manage all trades
+            </p>
+          </div>
+          
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => navigate('/trades/import')}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Button>
+            <Button onClick={() => navigate('/trades/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Trade
+            </Button>
           </div>
         </div>
 
         {pageError && showErrorAlert()}
 
-        {/* Tabs for Physical and Paper Trades */}
         <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="physical">Physical Trades</TabsTrigger>
