@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +12,33 @@ import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Prod
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
+
+interface DbTradeLegWithEFP {
+  id: string;
+  parent_trade_id: string;
+  buy_sell: string;
+  product: string;
+  sustainability?: string;
+  inco_term?: string;
+  quantity: number;
+  tolerance?: number;
+  loading_period_start?: string;
+  loading_period_end?: string;
+  pricing_period_start?: string;
+  pricing_period_end?: string;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  pricing_formula?: any;
+  mtm_formula?: any;
+  efp_premium?: number;
+  efp_agreed_status?: boolean;
+  efp_fixed_value?: number;
+  efp_designated_month?: string;
+  updated_at?: string;
+  created_at?: string;
+  leg_reference: string;
+}
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -58,6 +84,9 @@ const TradeEditPage = () => {
 
         // Map the database data to our application trade models
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
+          // Cast to include EFP fields
+          const typedLegs = tradeLegs as DbTradeLegWithEFP[];
+          
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -66,22 +95,22 @@ const TradeEditPage = () => {
             updatedAt: new Date(parentTrade.updated_at),
             physicalType: (parentTrade.physical_type || 'spot') as 'spot' | 'term',
             counterparty: parentTrade.counterparty,
-            buySell: tradeLegs[0].buy_sell as BuySell,
-            product: tradeLegs[0].product as Product,
-            sustainability: tradeLegs[0].sustainability || '',
-            incoTerm: (tradeLegs[0].inco_term || 'FOB') as IncoTerm,
-            quantity: tradeLegs[0].quantity,
-            tolerance: tradeLegs[0].tolerance || 0,
-            loadingPeriodStart: tradeLegs[0].loading_period_start ? new Date(tradeLegs[0].loading_period_start) : new Date(),
-            loadingPeriodEnd: tradeLegs[0].loading_period_end ? new Date(tradeLegs[0].loading_period_end) : new Date(),
-            pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
-            pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
-            unit: (tradeLegs[0].unit || 'MT') as Unit,
-            paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
-            creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
-            formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
-            legs: tradeLegs.map(leg => ({
+            buySell: typedLegs[0].buy_sell as BuySell,
+            product: typedLegs[0].product as Product,
+            sustainability: typedLegs[0].sustainability || '',
+            incoTerm: (typedLegs[0].inco_term || 'FOB') as IncoTerm,
+            quantity: typedLegs[0].quantity,
+            tolerance: typedLegs[0].tolerance || 0,
+            loadingPeriodStart: typedLegs[0].loading_period_start ? new Date(typedLegs[0].loading_period_start) : new Date(),
+            loadingPeriodEnd: typedLegs[0].loading_period_end ? new Date(typedLegs[0].loading_period_end) : new Date(),
+            pricingPeriodStart: typedLegs[0].pricing_period_start ? new Date(typedLegs[0].pricing_period_start) : new Date(),
+            pricingPeriodEnd: typedLegs[0].pricing_period_end ? new Date(typedLegs[0].pricing_period_end) : new Date(),
+            unit: (typedLegs[0].unit || 'MT') as Unit,
+            paymentTerm: (typedLegs[0].payment_term || '30 days') as PaymentTerm,
+            creditStatus: (typedLegs[0].credit_status || 'pending') as CreditStatus,
+            formula: validateAndParsePricingFormula(typedLegs[0].pricing_formula),
+            mtmFormula: validateAndParsePricingFormula(typedLegs[0].mtm_formula),
+            legs: typedLegs.map(leg => ({
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
               legReference: leg.leg_reference,
