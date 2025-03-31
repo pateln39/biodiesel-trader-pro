@@ -44,9 +44,6 @@ export interface PaperTradeLeg {
     pricing?: Record<string, number>;
     paper?: Record<string, number>;
   };
-  // Added properties for EFP pricing support
-  efpPremium?: number;
-  pricingType?: 'standard' | 'efp';
 }
 
 // Complete paper trade with parent and legs
