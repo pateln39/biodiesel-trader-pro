@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,25 +47,40 @@ const TradeEntryPage = () => {
       const parentTradeId = parentTradeData.id;
       
       // For physical trades, insert all legs
-      const legs = tradeData.legs.map((leg: any) => ({
-        leg_reference: leg.legReference,
-        parent_trade_id: parentTradeId,
-        buy_sell: leg.buySell,
-        product: leg.product,
-        sustainability: leg.sustainability,
-        inco_term: leg.incoTerm,
-        quantity: leg.quantity,
-        tolerance: leg.tolerance,
-        loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
-        loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
-        pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
-        pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
-        unit: leg.unit,
-        payment_term: leg.paymentTerm,
-        credit_status: leg.creditStatus,
-        pricing_formula: leg.formula,
-        mtm_formula: leg.mtmFormula,
-      }));
+      const legs = tradeData.legs.map((leg: any) => {
+        // Base leg data
+        const legData = {
+          leg_reference: leg.legReference,
+          parent_trade_id: parentTradeId,
+          buy_sell: leg.buySell,
+          product: leg.product,
+          sustainability: leg.sustainability,
+          inco_term: leg.incoTerm,
+          quantity: leg.quantity,
+          tolerance: leg.tolerance,
+          loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
+          loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
+          pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
+          pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
+          unit: leg.unit,
+          payment_term: leg.paymentTerm,
+          credit_status: leg.creditStatus,
+          pricing_formula: leg.formula,
+          mtm_formula: leg.mtmFormula,
+        };
+
+        // Add EFP fields if they exist
+        if (leg.efpPremium !== undefined) {
+          Object.assign(legData, {
+            efp_premium: leg.efpPremium,
+            efp_agreed_status: leg.efpAgreedStatus,
+            efp_fixed_value: leg.efpFixedValue,
+            efp_designated_month: leg.efpDesignatedMonth,
+          });
+        }
+        
+        return legData;
+      });
       
       const { error: legsError } = await supabase
         .from('trade_legs')

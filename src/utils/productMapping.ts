@@ -20,9 +20,12 @@ export const mapProductToCanonical = (product: string): string => {
     case 'GASOIL_FP':
       return 'ICE GASOIL FUTURES';
     case 'diesel':
+    case 'platts diesel':
     case 'Platts diesel':
-    case 'Platts Diesel': // Add this case to ensure consistency
-      return 'Platts Diesel'; // Changed to capital D for consistency
+    case 'Platts Diesel': 
+      return 'Platts Diesel';
+    case 'ICE GASOIL FUTURES (EFP)': // Add EFP case
+      return 'ICE GASOIL FUTURES (EFP)';
     default:
       return product;
   }
@@ -145,8 +148,6 @@ export const parsePaperInstrument = (
 
 /**
  * Calculate the display price for a paper trade based on relationship type
- * For FP trades: returns the original price
- * For DIFF/SPREAD trades: returns the absolute difference between left and right side prices
  */
 export const calculateDisplayPrice = (
   relationshipType: 'FP' | 'DIFF' | 'SPREAD',
@@ -169,6 +170,7 @@ export const isPricingInstrument = (product: string): boolean => {
   // These are the only products that should appear in the exposure table
   const pricingInstruments = [
     'ICE GASOIL FUTURES',
+    'ICE GASOIL FUTURES (EFP)', // Add EFP as a pricing instrument
     'Platts LSGO',
     'Platts Diesel',
     'Argus UCOME',
@@ -186,6 +188,7 @@ export const isPricingInstrument = (product: string): boolean => {
 export const shouldUseSpecialBackground = (product: string): boolean => {
   const specialBackgroundProducts = [
     'ICE GASOIL FUTURES',
+    'ICE GASOIL FUTURES (EFP)', // Add EFP to special background products
     'Platts LSGO',
     'Platts Diesel',
   ];
