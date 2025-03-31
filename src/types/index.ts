@@ -45,8 +45,8 @@ export interface TradeLeg {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
-  formula?: PricingFormula;
-  mtmFormula?: PricingFormula;
+  formula?: import('./pricing').PricingFormula;
+  mtmFormula?: import('./pricing').PricingFormula;
 }
 
 // Database types
