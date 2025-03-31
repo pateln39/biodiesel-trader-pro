@@ -99,7 +99,12 @@ const TradeEditPage = () => {
               paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
               formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+              // Add EFP fields
+              efpPremium: leg.efp_premium,
+              efpAgreedStatus: leg.efp_agreed_status,
+              efpFixedValue: leg.efp_fixed_value,
+              efpDesignatedMonth: leg.efp_designated_month
             }))
           };
           setTradeData(physicalTrade);
@@ -161,6 +166,11 @@ const TradeEditPage = () => {
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
+          // Add EFP fields
+          efp_premium: leg.efpPremium,
+          efp_agreed_status: leg.efpAgreedStatus,
+          efp_fixed_value: leg.efpFixedValue,
+          efp_designated_month: leg.efpDesignatedMonth,
           updated_at: new Date().toISOString()
         };
 
