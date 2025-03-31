@@ -1,4 +1,3 @@
-
 import { PhysicalTrade } from '@/types';
 import { mapProductToCanonical } from './productMapping';
 
@@ -29,7 +28,10 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
     for (const leg of trade.legs || []) {
       // Handle EFP pricing type
       if (leg.pricingType === 'efp' && leg.efpPremium !== undefined) {
+        // Use the designated month for EFP trades instead of pricing period
         const month = leg.efpDesignatedMonth || defaultMonth;
+        
+        console.log(`Processing EFP leg: ${leg.legReference}, Designated Month: ${month}`);
         
         // Create month buckets if they don't exist
         if (!monthlyPhysical[month]) monthlyPhysical[month] = {};

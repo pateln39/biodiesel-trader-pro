@@ -1,56 +1,64 @@
 
-import { 
-  TradeType, 
-  BuySell, 
-  Product, 
-  PhysicalTradeType, 
-  IncoTerm, 
-  Unit, 
-  PaymentTerm, 
-  CreditStatus, 
-  PricingType, 
-  TradeLeg 
-} from './index';
 import { PricingFormula } from './pricing';
+import { ParentTrade } from './common';
 
-export interface PhysicalParentTrade {
+// Any new types related to physical trades here
+export type PhysicalTradeType = 'spot' | 'term';
+export type BuySell = 'buy' | 'sell';
+export type Product = 'UCOME' | 'RME' | 'FAME0' | 'UCOME-5' | 'RME DC' | 'HVO' | string;
+export type IncoTerm = 'FOB' | 'CIF' | 'DES' | 'DAP' | 'FCA';
+export type Unit = 'MT' | 'KG' | 'L';
+export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
+export type CreditStatus = 'pending' | 'approved' | 'rejected';
+export type PricingType = 'standard' | 'efp';
+
+export interface PhysicalTradeLeg {
   id: string;
-  tradeReference: string;
-  tradeType: 'physical';
-  physicalType: PhysicalTradeType;
-  counterparty: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PhysicalTradeLeg extends TradeLeg {
-  pricingType: PricingType;
-  efpPremium?: number;
-  efpAgreedStatus?: boolean;
-  efpFixedValue?: number;
-  efpDesignatedMonth?: string;
-}
-
-export interface PhysicalTrade extends PhysicalParentTrade {
+  parentTradeId: string;
+  legReference: string;
   buySell: BuySell;
   product: Product;
-  sustainability: string;
-  incoTerm: IncoTerm;
+  sustainability?: string;
+  incoTerm?: IncoTerm;
   quantity: number;
-  tolerance: number;
+  tolerance?: number;
   loadingPeriodStart: Date;
   loadingPeriodEnd: Date;
   pricingPeriodStart: Date;
   pricingPeriodEnd: Date;
-  unit: Unit;
-  paymentTerm: PaymentTerm;
-  creditStatus: CreditStatus;
+  unit?: Unit;
+  paymentTerm?: PaymentTerm;
+  creditStatus?: CreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  legs: PhysicalTradeLeg[];
   pricingType?: PricingType;
   efpPremium?: number;
   efpAgreedStatus?: boolean;
   efpFixedValue?: number;
   efpDesignatedMonth?: string;
+}
+
+export interface PhysicalTrade extends ParentTrade {
+  physicalType: PhysicalTradeType;
+  buySell: BuySell;
+  product: Product;
+  sustainability?: string;
+  incoTerm?: IncoTerm;
+  quantity: number;
+  tolerance?: number;
+  loadingPeriodStart: Date;
+  loadingPeriodEnd: Date;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  unit?: Unit;
+  paymentTerm?: PaymentTerm;
+  creditStatus?: CreditStatus;
+  formula?: PricingFormula;
+  mtmFormula?: PricingFormula;
+  pricingType?: PricingType;
+  efpPremium?: number;
+  efpAgreedStatus?: boolean;
+  efpFixedValue?: number;
+  efpDesignatedMonth?: string;
+  legs: PhysicalTradeLeg[];
 }

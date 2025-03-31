@@ -66,3 +66,15 @@ export function getAvailableEfpMonths(): string[] {
   
   return months;
 }
+
+/**
+ * Convert a date to EFP month format (MMM-YY)
+ * This helps standardize date-to-month conversions for EFP exposure calculations
+ */
+export function dateToEfpMonth(date: Date): string {
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = monthNames[date.getMonth()];
+  const year = (date.getFullYear() % 100).toString().padStart(2, '0');
+  return `${month}-${year}`;
+}
+
