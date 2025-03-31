@@ -29,6 +29,7 @@ export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
+  result?: number;
 }
 
 // Utility type to handle potentially incomplete data from the database
@@ -40,7 +41,7 @@ export type PartialExposureResult = {
 export type PartialPricingFormula = {
   tokens: FormulaToken[];
   exposures?: PartialExposureResult;
-  monthlyDistribution?: MonthlyDistribution; // Added this field to match PricingFormula
+  monthlyDistribution?: MonthlyDistribution;
 };
 
 // Define FixedComponent type for formula analysis
@@ -53,11 +54,11 @@ export interface FixedComponent {
 export interface PriceDetail {
   instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
-  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
+  fixedComponents?: FixedComponent[];
 }
 
 export interface MTMPriceDetail {
   instruments: Record<Instrument, { price: number; date: Date | null }>;
   evaluatedPrice: number;
-  fixedComponents?: FixedComponent[]; // Make this optional to maintain backward compatibility
+  fixedComponents?: FixedComponent[];
 }

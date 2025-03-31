@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface FormulaCellDisplayProps {
@@ -9,7 +9,7 @@ interface FormulaCellDisplayProps {
 
 const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ trade }) => {
   // For EFP trades, show a special formula representation
-  if (trade.pricingType === 'efp' && 'efpPremium' in trade && trade.efpPremium !== undefined) {
+  if ((trade as PhysicalTradeLeg).pricingType === 'efp' && 'efpPremium' in trade && trade.efpPremium !== undefined) {
     const baseText = trade.efpAgreedStatus 
       ? `${trade.efpFixedValue || 0} + ${trade.efpPremium}` 
       : `ICE GASOIL FUTURES (${trade.efpDesignatedMonth || ''}) + ${trade.efpPremium}`;

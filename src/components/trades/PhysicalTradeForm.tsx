@@ -1,10 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PricingFormula, PhysicalParentTrade, PhysicalTradeLeg, PhysicalTrade } from '@/types';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
+import { PricingFormula } from '@/types/pricing';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -43,7 +45,7 @@ interface LegFormState {
   pricingPeriodEnd: Date;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  pricingType: "standard" | "efp";
+  pricingType: PricingType;
   efpPremium: number | null;
   efpAgreedStatus: boolean;
   efpFixedValue: number | null;
@@ -292,10 +294,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     const areAllLegsValid = legValidations.every(isValid => isValid);
     
     if (isCounterpartyValid && areAllLegsValid) {
-      const parentTrade: PhysicalParentTrade = {
+      const parentTrade = {
         id: initialData?.id || crypto.randomUUID(),
         tradeReference,
-        tradeType: 'physical',
+        tradeType: 'physical' as const,
         physicalType,
         counterparty,
         createdAt: initialData?.createdAt || new Date(),
@@ -323,16 +325,14 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           unit: legForm.unit,
           paymentTerm: legForm.paymentTerm,
           creditStatus: legForm.creditStatus,
-          formula: legForm.pricingType === 'standard' ? legForm.formula : undefined,
-          mtmFormula: legForm.mtmFormula
+          formula: legForm.formula,
+          mtmFormula: legForm.mtmFormula,
+          pricingType: legForm.pricingType,
+          efpPremium: legForm.efpPremium !== null ? legForm.efpPremium : undefined,
+          efpAgreedStatus: legForm.efpAgreedStatus,
+          efpFixedValue: legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined,
+          efpDesignatedMonth: legForm.efpDesignatedMonth
         };
-        
-        if (legForm.pricingType === 'efp') {
-          legData.efpPremium = legForm.efpPremium !== null ? legForm.efpPremium : undefined;
-          legData.efpAgreedStatus = legForm.efpAgreedStatus;
-          legData.efpFixedValue = legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined;
-          legData.efpDesignatedMonth = legForm.efpDesignatedMonth;
-        }
         
         return legData;
       });

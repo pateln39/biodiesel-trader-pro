@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +9,7 @@ import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product } from '@/types';
+import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PricingType } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
@@ -80,6 +81,7 @@ const TradeEditPage = () => {
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
+            pricingType: tradeLegs[0].pricing_type || 'standard',
             legs: tradeLegs.map(leg => ({
               id: leg.id,
               parentTradeId: leg.parent_trade_id,
@@ -98,7 +100,12 @@ const TradeEditPage = () => {
               paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
               formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+              pricingType: leg.pricing_type || 'standard' as PricingType,
+              efpPremium: leg.efp_premium,
+              efpAgreedStatus: leg.efp_agreed_status,
+              efpFixedValue: leg.efp_fixed_value,
+              efpDesignatedMonth: leg.efp_designated_month
             }))
           };
           setTradeData(physicalTrade);

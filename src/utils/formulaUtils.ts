@@ -1,5 +1,6 @@
 
-import { FormulaToken, Instrument, PricingFormula, ExposureResult, PartialPricingFormula } from '@/types';
+import { FormulaToken, PricingFormula } from '@/types/pricing';
+import { Instrument, ExposureResult } from '@/types/common';
 import { createEmptyExposureResult, calculateExposures } from './formulaCalculation';
 
 // Generate a unique ID for formula tokens
@@ -95,8 +96,8 @@ export const validateAndParsePricingFormula = (rawFormula: any): PricingFormula 
     return createEmptyFormula();
   }
   
-  // Now we can safely cast to PartialPricingFormula
-  const partialFormula: PartialPricingFormula = {
+  // Now we can safely cast to partial formula
+  const partialFormula = {
     tokens: rawFormula.tokens,
     exposures: rawFormula.exposures,
     monthlyDistribution: rawFormula.monthlyDistribution // Preserve monthly distribution
@@ -107,7 +108,7 @@ export const validateAndParsePricingFormula = (rawFormula: any): PricingFormula 
 };
 
 // Ensure pricing formula has complete exposure structure
-export const ensureCompleteExposures = (formula: PartialPricingFormula | undefined): PricingFormula => {
+export const ensureCompleteExposures = (formula: any): PricingFormula => {
   if (!formula) {
     return createEmptyFormula();
   }

@@ -21,7 +21,7 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
-  // Use the dedicated pricing_type field instead of checking efpPremium
+  // Use the dedicated pricing_type field
   const pricingType = leg.pricingType === 'efp' ? "EFP" : "Standard";
   
   return (
