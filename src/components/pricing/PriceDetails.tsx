@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -79,7 +78,10 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         
         const formulaToUse = mtmFormula || formula;
         const mtmPriceResult = await calculateMTMPrice(formulaToUse);
-        setMtmPriceData(mtmPriceResult);
+        setMtmPriceData({
+          price: mtmPriceResult.price,
+          priceDetails: mtmPriceResult.details
+        });
           
         const mtmVal = calculateMTMValue(
           tradePriceResult.price,
