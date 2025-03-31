@@ -1,48 +1,81 @@
-import React from 'react';
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  useNavigate,
-} from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
 
-import HomePage from '@/pages/HomePage';
-import DashboardPage from '@/pages/DashboardPage';
-import TradesPage from '@/pages/trades/TradesPage';
-import TradeEntryPage from '@/pages/trades/TradeEntryPage';
-import TradeDetailPage from '@/pages/trades/TradeDetailPage';
-import TradeEditPage from '@/pages/trades/TradeEditPage';
-import NominationsPage from '@/pages/NominationsPage';
-import InvoicesPage from '@/pages/InvoicesPage';
-import PaymentsPage from '@/pages/PaymentsPage';
-import ExposurePage from '@/pages/ExposurePage';
-import PricesPage from '@/pages/risk/PricesPage';
-import NotFoundPage from '@/pages/NotFoundPage';
-import BulkImportPage from '@/pages/trades/BulkImportPage';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import TradesPage from "./pages/trades/TradesPage";
+import TradeEntryPage from "./pages/trades/TradeEntryPage";
+import TradeEditPage from "./pages/trades/TradeEditPage";
+import TradeDeletePage from "./pages/trades/TradeDeletePage";
+import PaperTradeEditPage from "./pages/trades/PaperTradeEditPage";
+import PaperTradeDeletePage from "./pages/trades/PaperTradeDeletePage";
+import OperationsPage from "./pages/operations/OperationsPage";
+import ExposurePage from "./pages/risk/ExposurePage";
+import AuditLogPage from "./pages/audit/AuditLogPage";
+import ProfilePage from "./pages/profile/ProfilePage";
+import PricingAdminPage from "./pages/pricing/PricingAdminPage";
+import MTMPage from "./pages/risk/MTMPage";
+import PNLPage from "./pages/risk/PNLPage";
+import PricesPage from "./pages/risk/PricesPage";
 
-function App() {
-  return (
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <HelmetProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/trades" element={<TradesPage />} />
-          <Route path="/trades/new" element={<TradeEntryPage />} />
-          <Route path="/trades/import" element={<BulkImportPage />} /> {/* New import route */}
-          <Route path="/trades/:id" element={<TradeDetailPage />} />
-          <Route path="/trades/:id/edit" element={<TradeEditPage />} />
-          <Route path="/nominations" element={<NominationsPage />} />
-          <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/payments" element={<PaymentsPage />} />
-          <Route path="/exposure" element={<ExposurePage />} />
-          <Route path="/prices" element={<PricesPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Router>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            
+            {/* Trade Routes */}
+            <Route path="/trades" element={<TradesPage />} />
+            <Route path="/trades/new" element={<TradeEntryPage />} />
+            
+            {/* Physical Trade Routes */}
+            <Route path="/trades/edit/:id" element={<TradeEditPage />} />
+            <Route path="/trades/:id" element={<TradeEditPage />} />
+            <Route path="/trades/delete/:id" element={<TradeDeletePage />} />
+            <Route path="/trades/delete/:id/leg/:legId" element={<TradeDeletePage />} />
+            
+            {/* Paper Trade Routes */}
+            <Route path="/trades/paper/edit/:id" element={<PaperTradeEditPage />} />
+            <Route path="/trades/paper/delete/:id" element={<PaperTradeDeletePage />} />
+            <Route path="/trades/paper/delete/:id/leg/:legId" element={<PaperTradeDeletePage />} />
+            
+            {/* Operations Routes */}
+            <Route path="/operations" element={<OperationsPage />} />
+            <Route path="/operations/:id" element={<NotFound />} />
+            
+            {/* Risk Routes */}
+            <Route path="/risk/mtm" element={<MTMPage />} />
+            <Route path="/risk/pnl" element={<PNLPage />} />
+            <Route path="/risk/exposure" element={<ExposurePage />} />
+            <Route path="/risk/prices" element={<PricesPage />} />
+            
+            {/* Pricing Routes - Admin Section */}
+            <Route path="/pricing/admin" element={<PricingAdminPage />} />
+            
+            {/* Audit Log Routes */}
+            <Route path="/audit" element={<AuditLogPage />} />
+            
+            {/* Profile and Settings */}
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<NotFound />} />
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
     </HelmetProvider>
-  );
-}
+  </QueryClientProvider>
+);
 
 export default App;
