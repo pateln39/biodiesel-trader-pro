@@ -30,17 +30,24 @@ const PaperTradeEditPage = () => {
     return {
       ...trade,
       legs: trade.legs.map(leg => {
+        // Ensure that proper pricingType is set
+        const pricingType = leg.efpPremium !== undefined ? "efp" : "standard";
+        
         // Ensure that DIFF and SPREAD have proper rightSide quantities
         if (leg.relationshipType !== 'FP' && leg.rightSide) {
           return {
             ...leg,
+            pricingType,
             rightSide: {
               ...leg.rightSide,
               quantity: -leg.quantity // Ensure rightSide quantity is negative of left side
             }
           };
         }
-        return leg;
+        return {
+          ...leg,
+          pricingType
+        };
       })
     };
   }, [trade]);
