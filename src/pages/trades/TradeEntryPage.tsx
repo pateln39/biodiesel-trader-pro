@@ -66,11 +66,6 @@ const TradeEntryPage = () => {
         credit_status: leg.creditStatus,
         pricing_formula: leg.formula,
         mtm_formula: leg.mtmFormula,
-        // Add EFP fields
-        efp_premium: leg.efpPremium,
-        efp_agreed_status: leg.efpAgreedStatus,
-        efp_fixed_value: leg.efpFixedValue,
-        efp_designated_month: leg.efpDesignatedMonth
       }));
       
       const { error: legsError } = await supabase

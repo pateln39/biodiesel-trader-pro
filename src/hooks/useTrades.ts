@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,13 +17,6 @@ import {
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
-
-interface DbTradeLegWithEFP extends DbTradeLeg {
-  efp_premium?: number;
-  efp_agreed_status?: boolean;
-  efp_fixed_value?: number; 
-  efp_designated_month?: string;
-}
 
 const fetchTrades = async (): Promise<Trade[]> => {
   try {
@@ -46,13 +40,11 @@ const fetchTrades = async (): Promise<Trade[]> => {
     }
 
     const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg) => leg.parent_trade_id === parent.id);
+      const legs = tradeLegs.filter((leg: DbTradeLeg) => leg.parent_trade_id === parent.id);
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
       if (parent.trade_type === 'physical' && firstLeg) {
-        const typedFirstLeg = firstLeg as DbTradeLegWithEFP;
-        
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
@@ -61,49 +53,41 @@ const fetchTrades = async (): Promise<Trade[]> => {
           updatedAt: new Date(parent.updated_at),
           physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
           counterparty: parent.counterparty,
-          buySell: typedFirstLeg.buy_sell as BuySell,
-          product: typedFirstLeg.product as Product,
-          sustainability: typedFirstLeg.sustainability || '',
-          incoTerm: (typedFirstLeg.inco_term || 'FOB') as IncoTerm,
-          quantity: typedFirstLeg.quantity,
-          tolerance: typedFirstLeg.tolerance || 0,
-          loadingPeriodStart: typedFirstLeg.loading_period_start ? new Date(typedFirstLeg.loading_period_start) : new Date(),
-          loadingPeriodEnd: typedFirstLeg.loading_period_end ? new Date(typedFirstLeg.loading_period_end) : new Date(),
-          pricingPeriodStart: typedFirstLeg.pricing_period_start ? new Date(typedFirstLeg.pricing_period_start) : new Date(),
-          pricingPeriodEnd: typedFirstLeg.pricing_period_end ? new Date(typedFirstLeg.pricing_period_end) : new Date(),
-          unit: (typedFirstLeg.unit || 'MT') as Unit,
-          paymentTerm: (typedFirstLeg.payment_term || '30 days') as PaymentTerm,
-          creditStatus: (typedFirstLeg.credit_status || 'pending') as CreditStatus,
-          formula: validateAndParsePricingFormula(typedFirstLeg.pricing_formula),
-          mtmFormula: validateAndParsePricingFormula(typedFirstLeg.mtm_formula),
-          legs: legs.map(legItem => {
-            const typedLeg = legItem as DbTradeLegWithEFP;
-            
-            return {
-              id: typedLeg.id,
-              parentTradeId: typedLeg.parent_trade_id,
-              legReference: typedLeg.leg_reference,
-              buySell: typedLeg.buy_sell as BuySell,
-              product: typedLeg.product as Product,
-              sustainability: typedLeg.sustainability || '',
-              incoTerm: (typedLeg.inco_term || 'FOB') as IncoTerm,
-              quantity: typedLeg.quantity,
-              tolerance: typedLeg.tolerance || 0,
-              loadingPeriodStart: typedLeg.loading_period_start ? new Date(typedLeg.loading_period_start) : new Date(),
-              loadingPeriodEnd: typedLeg.loading_period_end ? new Date(typedLeg.loading_period_end) : new Date(),
-              pricingPeriodStart: typedLeg.pricing_period_start ? new Date(typedLeg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: typedLeg.pricing_period_end ? new Date(typedLeg.pricing_period_end) : new Date(),
-              unit: (typedLeg.unit || 'MT') as Unit,
-              paymentTerm: (typedLeg.payment_term || '30 days') as PaymentTerm,
-              creditStatus: (typedLeg.credit_status || 'pending') as CreditStatus,
-              formula: validateAndParsePricingFormula(typedLeg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(typedLeg.mtm_formula),
-              efpPremium: typedLeg.efp_premium,
-              efpAgreedStatus: typedLeg.efp_agreed_status,
-              efpFixedValue: typedLeg.efp_fixed_value,
-              efpDesignatedMonth: typedLeg.efp_designated_month
-            };
-          })
+          buySell: firstLeg.buy_sell as BuySell,
+          product: firstLeg.product as Product,
+          sustainability: firstLeg.sustainability || '',
+          incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
+          quantity: firstLeg.quantity,
+          tolerance: firstLeg.tolerance || 0,
+          loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
+          loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
+          pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+          pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+          unit: (firstLeg.unit || 'MT') as Unit,
+          paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
+          creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
+          formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
+          mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
+          legs: legs.map(leg => ({
+            id: leg.id,
+            parentTradeId: leg.parent_trade_id,
+            legReference: leg.leg_reference,
+            buySell: leg.buy_sell as BuySell,
+            product: leg.product as Product,
+            sustainability: leg.sustainability || '',
+            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+            quantity: leg.quantity,
+            tolerance: leg.tolerance || 0,
+            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+            unit: (leg.unit || 'MT') as Unit,
+            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+            formula: validateAndParsePricingFormula(leg.pricing_formula),
+            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula)
+          }))
         };
         return physicalTrade;
       } 

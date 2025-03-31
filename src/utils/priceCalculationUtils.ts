@@ -1,5 +1,4 @@
-
-import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail, PhysicalTradeLeg } from '@/types';
+import { FormulaToken, Instrument, PricingFormula, FixedComponent, PriceDetail, MTMPriceDetail } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { formulaToDisplayString } from './formulaUtils';
 
@@ -166,46 +165,6 @@ export const fetchMostRecentPrice = async (
   }
 
   return null;
-};
-
-// New function to fetch previous day's price for a given instrument
-export const fetchPreviousDayPrice = async (
-  instrument: string
-): Promise<{ price: number; date: Date } | null> => {
-  // Get instrument ID first
-  const { data: instrumentData, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('instrument_code', instrument)
-    .single();
-
-  if (instrumentError || !instrumentData) {
-    console.error('Error fetching instrument:', instrumentError);
-    return null;
-  }
-
-  // Now get the most recent price
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set to start of day
-  
-  const { data, error } = await supabase
-    .from('historical_prices')
-    .select('price, price_date')
-    .eq('instrument_id', instrumentData.id)
-    .lt('price_date', today.toISOString().split('T')[0])
-    .order('price_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) {
-    console.error('Error fetching historical price:', error);
-    return null;
-  }
-
-  return {
-    price: data.price,
-    date: new Date(data.price_date)
-  };
 };
 
 // Calculate average price for a collection of price points
@@ -511,67 +470,15 @@ export const calculateTradeLegPrice = async (
 
 // Calculate MTM price using most recent prices
 export const calculateMTMPrice = async (
-  leg: PhysicalTradeLeg
+  formula: PricingFormula,
 ): Promise<{
   price: number;
-  details: MTMPriceDetail;
+  priceDetails: MTMPriceDetail;
 }> => {
-  // Check if this is an EFP leg
-  if (leg.efpPremium !== undefined) {
-    const details: MTMPriceDetail = {
-      instruments: {},
-      evaluatedPrice: 0,
-      fixedComponents: []
-    };
-    
-    // Handle EFP pricing
-    if (leg.efpAgreedStatus) {
-      // For agreed EFP, use fixed value + premium
-      if (leg.efpFixedValue !== undefined) {
-        details.evaluatedPrice = leg.efpFixedValue + leg.efpPremium;
-        details.fixedComponents = [
-          { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` },
-          { value: leg.efpPremium, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      } else {
-        // Missing fixed value
-        details.evaluatedPrice = leg.efpPremium || 0;
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      }
-    } else {
-      // For unagreed EFP, use previous day's price + premium
-      const gasoilPrice = await fetchPreviousDayPrice('ICE_GASOIL');
-      
-      if (gasoilPrice) {
-        details.instruments['ICE GASOIL FUTURES'] = {
-          price: gasoilPrice.price,
-          date: gasoilPrice.date
-        };
-        
-        details.evaluatedPrice = gasoilPrice.price + (leg.efpPremium || 0);
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      } else {
-        // No price available
-        details.evaluatedPrice = leg.efpPremium || 0;
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      }
-    }
-    
-    return { price: details.evaluatedPrice, details };
-  }
-  
-  // If not EFP or formula doesn't exist, use standard MTM formula evaluation
-  const formula = leg.mtmFormula || leg.formula;
   if (!formula || !formula.tokens || formula.tokens.length === 0) {
     return {
       price: 0,
-      details: {
+      priceDetails: {
         instruments: {},
         evaluatedPrice: 0
       }
@@ -650,7 +557,7 @@ export const calculateMTMPrice = async (
   
   return {
     price: finalPrice,
-    details: {
+    priceDetails: {
       instruments: filteredInstruments,
       evaluatedPrice: finalPrice,
       ...(fixedComponentsArray.length > 0 ? { fixedComponents: fixedComponentsArray } : {})
@@ -658,13 +565,77 @@ export const calculateMTMPrice = async (
   };
 };
 
-// Calculate MTM value
+// Calculate MTM value based on trade price and MTM price
 export const calculateMTMValue = (
   tradePrice: number,
   mtmPrice: number,
   quantity: number,
   buySell: 'buy' | 'sell'
 ): number => {
-  const buySellFactor = buySell === 'buy' ? 1 : -1;
-  return (mtmPrice - tradePrice) * quantity * buySellFactor;
+  // The new MTM calculation: (tradePrice - mtmPrice) * quantity * buySellFactor
+  const buySellFactor = buySell.toLowerCase() === 'buy' ? -1 : 1;
+  
+  return (tradePrice - mtmPrice) * quantity * buySellFactor;
+};
+
+// Update a trade leg's price in the database
+export const updateTradeLegPrice = async (
+  legId: string, 
+  price: number,
+  mtmPrice?: number
+): Promise<boolean> => {
+  const updates: any = { 
+    calculated_price: price,
+    last_calculation_date: new Date().toISOString()
+  };
+  
+  // If MTM price is provided, update that too
+  if (mtmPrice !== undefined) {
+    updates.mtm_calculated_price = mtmPrice;
+    updates.mtm_last_calculation_date = new Date().toISOString();
+  }
+  
+  const { error } = await supabase
+    .from('trade_legs')
+    .update(updates)
+    .eq('id', legId);
+  
+  if (error) {
+    console.error('Error updating trade leg price:', error);
+    return false;
+  }
+  
+  return true;
+};
+
+// Calculate exposure for a trade with the given formula and quantity
+export const calculateExposure = (
+  formula: PricingFormula,
+  quantity: number,
+  buySell: 'buy' | 'sell'
+): Record<Instrument, number> => {
+  const exposure: Record<Instrument, number> = {
+    'Argus UCOME': 0,
+    'Argus RME': 0,
+    'Argus FAME0': 0,
+    'Platts LSGO': 0,
+    'Platts diesel': 0,
+  };
+  
+  if (!formula || !formula.tokens) return exposure;
+  
+  // Direction multiplier: buy = -1 (we are exposed to price increases)
+  // sell = 1 (we are exposed to price decreases)
+  const directionMultiplier = buySell.toLowerCase() === 'buy' ? -1 : 1;
+  
+  // For each instrument in the formula, calculate exposure
+  formula.tokens.forEach(token => {
+    if (token.type === 'instrument') {
+      const instrument = token.value as Instrument;
+      // Simple exposure calculation: quantity * direction
+      exposure[instrument] = quantity * directionMultiplier;
+    }
+  });
+  
+  return exposure;
 };

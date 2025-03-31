@@ -673,10 +673,6 @@ export type Database = {
           calculated_price: number | null
           created_at: string
           credit_status: string | null
-          efp_agreed_status: boolean | null
-          efp_designated_month: string | null
-          efp_fixed_value: number | null
-          efp_premium: number | null
           exposures: Json | null
           id: string
           inco_term: string | null
@@ -708,10 +704,6 @@ export type Database = {
           calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
-          efp_agreed_status?: boolean | null
-          efp_designated_month?: string | null
-          efp_fixed_value?: number | null
-          efp_premium?: number | null
           exposures?: Json | null
           id?: string
           inco_term?: string | null
@@ -743,10 +735,6 @@ export type Database = {
           calculated_price?: number | null
           created_at?: string
           credit_status?: string | null
-          efp_agreed_status?: boolean | null
-          efp_designated_month?: string | null
-          efp_fixed_value?: number | null
-          efp_premium?: number | null
           exposures?: Json | null
           id?: string
           inco_term?: string | null

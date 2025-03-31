@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -17,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { validateDateRange, validateRequiredField, validateFields } from '@/utils/validationUtils';
 import { toast } from 'sonner';
 import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation';
-import { Switch } from '@/components/ui/switch';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -43,12 +41,6 @@ interface LegFormState {
   pricingPeriodEnd: Date;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  // Add new EFP fields
-  pricingType: "standard" | "efp";
-  efpPremium: number | null;
-  efpAgreedStatus: boolean;
-  efpFixedValue: number | null;
-  efpDesignatedMonth: string;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -66,37 +58,8 @@ const createDefaultLeg = (): LegFormState => ({
   pricingPeriodStart: new Date(),
   pricingPeriodEnd: new Date(),
   formula: createEmptyFormula(),
-  mtmFormula: createEmptyFormula(),
-  // Default values for EFP fields
-  pricingType: "standard",
-  efpPremium: null,
-  efpAgreedStatus: false,
-  efpFixedValue: null,
-  efpDesignatedMonth: ""
+  mtmFormula: createEmptyFormula()
 });
-
-// Helper function to get available months (current month + 11 months ahead)
-const getAvailableMonths = (): string[] => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const result: string[] = [];
-  
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  
-  // Generate 12 months starting from current month
-  for (let i = 0; i < 12; i++) {
-    const targetMonth = (currentMonth + i) % 12;
-    const targetYear = currentYear + Math.floor((currentMonth + i) / 12);
-    const yearSuffix = (targetYear % 100).toString().padStart(2, '0');
-    
-    result.push(`${months[targetMonth]}-${yearSuffix}`);
-  }
-  
-  return result;
-};
-
-const availableMonths = getAvailableMonths();
 
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({ 
   tradeReference, 
@@ -126,13 +89,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       pricingPeriodStart: leg.pricingPeriodStart,
       pricingPeriodEnd: leg.pricingPeriodEnd,
       formula: leg.formula || createEmptyFormula(),
-      mtmFormula: leg.mtmFormula || createEmptyFormula(),
-      // Initialize EFP fields from leg data if available
-      pricingType: leg.efpPremium !== undefined ? "efp" : "standard",
-      efpPremium: leg.efpPremium || null,
-      efpAgreedStatus: leg.efpAgreedStatus || false,
-      efpFixedValue: leg.efpFixedValue || null,
-      efpDesignatedMonth: leg.efpDesignatedMonth || availableMonths[0]
+      mtmFormula: leg.mtmFormula || createEmptyFormula()
     })) || [createDefaultLeg()]
   );
 
@@ -176,7 +133,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     }
   };
 
-  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | boolean | PricingFormula | undefined) => {
+  const updateLeg = (index: number, field: keyof LegFormState, value: string | Date | number | PricingFormula | undefined) => {
     const newLegs = [...legs];
     
     if (field === 'formula' || field === 'mtmFormula') {
@@ -243,8 +200,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           monthlyDistribution
         };
       }
-    } else if (field === 'efpPremium' || field === 'efpFixedValue') {
-      (newLegs[index] as any)[field] = value !== "" ? Number(value) : null;
     } else {
       (newLegs[index] as any)[field] = value;
     }
@@ -280,17 +235,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           `Leg ${legNumber} - Loading Period`
         )
       ];
-
-      // Add EFP specific validations
-      if (leg.pricingType === "efp") {
-        validations.push(validateRequiredField(leg.efpPremium, `Leg ${legNumber} - EFP Premium`));
-
-        if (leg.efpAgreedStatus) {
-          validations.push(validateRequiredField(leg.efpFixedValue, `Leg ${legNumber} - EFP Fixed Value`));
-        } else {
-          validations.push(validateRequiredField(leg.efpDesignatedMonth, `Leg ${legNumber} - EFP Designated Month`));
-        }
-      }
       
       return validateFields(validations);
     });
@@ -329,19 +273,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           unit: legForm.unit,
           paymentTerm: legForm.paymentTerm,
           creditStatus: legForm.creditStatus,
-          formula: legForm.pricingType === "standard" ? legForm.formula : undefined,
+          formula: legForm.formula,
           mtmFormula: legForm.mtmFormula
         };
-        
-        // Add EFP fields if using EFP pricing
-        if (legForm.pricingType === "efp") {
-          legData.efpPremium = legForm.efpPremium || 0;
-          legData.efpAgreedStatus = legForm.efpAgreedStatus;
-          if (legForm.efpAgreedStatus) {
-            legData.efpFixedValue = legForm.efpFixedValue || 0;
-          }
-          legData.efpDesignatedMonth = legForm.efpDesignatedMonth;
-        }
         
         return legData;
       });
@@ -362,71 +296,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
-  };
-
-  // Create EFP Form component
-  const EFPPricingForm = ({ 
-    values, 
-    onChange 
-  }: { 
-    values: LegFormState; 
-    onChange: (field: keyof LegFormState, value: any) => void;
-  }) => {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="efpPremium">EFP Premium</Label>
-            <Input
-              id="efpPremium"
-              type="number"
-              value={values.efpPremium || ""}
-              onChange={(e) => onChange("efpPremium", e.target.value)}
-              onFocus={handleNumberInputFocus}
-            />
-          </div>
-          
-          <div className="flex items-center space-x-2 pt-6">
-            <Switch
-              id="efpAgreedStatus"
-              checked={values.efpAgreedStatus}
-              onCheckedChange={(checked) => onChange("efpAgreedStatus", checked)}
-            />
-            <Label htmlFor="efpAgreedStatus">EFP Agreed/Fixed</Label>
-          </div>
-          
-          {values.efpAgreedStatus ? (
-            <div>
-              <Label htmlFor="efpFixedValue">Fixed Value</Label>
-              <Input
-                id="efpFixedValue"
-                type="number"
-                value={values.efpFixedValue || ""}
-                onChange={(e) => onChange("efpFixedValue", e.target.value)}
-                onFocus={handleNumberInputFocus}
-              />
-            </div>
-          ) : (
-            <div>
-              <Label htmlFor="efpDesignatedMonth">Designated Month</Label>
-              <Select
-                value={values.efpDesignatedMonth}
-                onValueChange={(value) => onChange("efpDesignatedMonth", value)}
-              >
-                <SelectTrigger id="efpDesignatedMonth">
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableMonths.map((month) => (
-                    <SelectItem key={month} value={month}>{month}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -691,40 +560,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </div>
               </div>
 
-              {/* Pricing Type Selection */}
-              <div className="mb-4">
-                <Label>Pricing Type</Label>
-                <Select
-                  value={leg.pricingType}
-                  onValueChange={(value) => updateLeg(legIndex, 'pricingType', value as "standard" | "efp")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select pricing type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="standard">Standard Formula</SelectItem>
-                    <SelectItem value="efp">ICE Gasoil EFP</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="border rounded-md p-4 bg-gray-50 mb-4">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
-                    <TabsTrigger 
-                      value="price" 
-                      disabled={leg.pricingType === "efp"}
-                      className={leg.pricingType === "efp" ? "opacity-50 cursor-not-allowed" : ""}
-                    >
-                      Price Formula
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="efp" 
-                      disabled={leg.pricingType !== "efp"}
-                      className={leg.pricingType !== "efp" ? "opacity-50 cursor-not-allowed" : ""}
-                    >
-                      EFP Pricing
-                    </TabsTrigger>
+                    <TabsTrigger value="price">Price Formula</TabsTrigger>
                     <TabsTrigger value="mtm">MTM Formula</TabsTrigger>
                   </TabsList>
                   
@@ -732,39 +571,15 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                     <div className="mb-2">
                       <Label className="font-medium">Price Formula</Label>
                     </div>
-                    {leg.pricingType === "standard" ? (
-                      <FormulaBuilder 
-                        value={leg.formula || createEmptyFormula()} 
-                        onChange={(formula) => handleFormulaChange(formula, legIndex)}
-                        tradeQuantity={leg.quantity || 0}
-                        buySell={leg.buySell}
-                        selectedProduct={leg.product}
-                        formulaType="price"
-                        otherFormula={leg.mtmFormula || createEmptyFormula()}
-                      />
-                    ) : (
-                      <div className="text-sm text-muted-foreground p-6 text-center">
-                        Formula pricing is disabled when using EFP pricing.
-                        Please use the EFP Pricing tab to enter pricing details.
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  <TabsContent value="efp">
-                    <div className="mb-2">
-                      <Label className="font-medium">EFP Pricing Details</Label>
-                    </div>
-                    {leg.pricingType === "efp" ? (
-                      <EFPPricingForm 
-                        values={leg}
-                        onChange={(field, value) => updateLeg(legIndex, field, value)}
-                      />
-                    ) : (
-                      <div className="text-sm text-muted-foreground p-6 text-center">
-                        Please select "ICE Gasoil EFP" as the pricing type to
-                        enable EFP pricing options.
-                      </div>
-                    )}
+                    <FormulaBuilder 
+                      value={leg.formula || createEmptyFormula()} 
+                      onChange={(formula) => handleFormulaChange(formula, legIndex)}
+                      tradeQuantity={leg.quantity || 0}
+                      buySell={leg.buySell}
+                      selectedProduct={leg.product}
+                      formulaType="price"
+                      otherFormula={leg.mtmFormula || createEmptyFormula()}
+                    />
                   </TabsContent>
                   
                   <TabsContent value="mtm">

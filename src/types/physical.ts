@@ -31,11 +31,6 @@ export interface PhysicalTradeLeg {
   creditStatus: CreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
-  // New EFP fields
-  efpPremium?: number;
-  efpAgreedStatus?: boolean;
-  efpFixedValue?: number;
-  efpDesignatedMonth?: string;
 }
 
 // For backward compatibility

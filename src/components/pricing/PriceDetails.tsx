@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -19,7 +20,7 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail, PhysicalTradeLeg } from '@/types';
+import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface PriceDetailsProps {
@@ -77,33 +78,8 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         setPriceData(tradePriceResult);
         
         const formulaToUse = mtmFormula || formula;
-        
-        // Create a mock trade leg with the necessary properties for MTM calculation
-        const mockTradeLeg: PhysicalTradeLeg = {
-          id: tradeLegId,
-          legReference: '',
-          parentTradeId: '',
-          buySell,
-          product: 'UCOME',
-          sustainability: '',
-          incoTerm: 'FOB',
-          quantity,
-          tolerance: 0,
-          loadingPeriodStart: new Date(),
-          loadingPeriodEnd: new Date(),
-          pricingPeriodStart: validStartDate,
-          pricingPeriodEnd: validEndDate,
-          unit: 'MT',
-          paymentTerm: '30 days',
-          creditStatus: 'pending',
-          formula: formulaToUse
-        };
-        
-        const mtmPriceResult = await calculateMTMPrice(mockTradeLeg);
-        setMtmPriceData({
-          price: mtmPriceResult.price,
-          priceDetails: mtmPriceResult.details
-        });
+        const mtmPriceResult = await calculateMTMPrice(formulaToUse);
+        setMtmPriceData(mtmPriceResult);
           
         const mtmVal = calculateMTMValue(
           tradePriceResult.price,
@@ -120,7 +96,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     };
 
     fetchPriceData();
-  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell, tradeLegId]);
+  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell]);
 
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails || !data.priceDetails.instruments) return [];

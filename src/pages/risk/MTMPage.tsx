@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -12,13 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Eye } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
 import { 
-  calculateTradeLegPrice,
-  calculateMTMPrice,
+  calculateTradeLegPrice, 
+  calculateMTMPrice, 
   calculateMTMValue, 
   PricingPeriodType 
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
+import { PhysicalTrade } from '@/types';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 
@@ -51,15 +50,10 @@ const MTMPage = () => {
     endDate: Date;
     formula: any;
     mtmFormula: any;
-    efpPremium?: number;
-    efpAgreedStatus?: boolean;
-    efpFixedValue?: number;
-    efpDesignatedMonth?: string;
     calculatedPrice: number;
     mtmCalculatedPrice: number;
     mtmValue: number;
     periodType?: PricingPeriodType;
-    isEfp: boolean;
   };
 
   const tradeLegs = physicalTrades.flatMap(trade => 
@@ -85,13 +79,8 @@ const MTMPage = () => {
         endDate: endDate,
         formula: leg.formula,
         mtmFormula: leg.mtmFormula,
-        efpPremium: leg.efpPremium,
-        efpAgreedStatus: leg.efpAgreedStatus,
-        efpFixedValue: leg.efpFixedValue,
-        efpDesignatedMonth: leg.efpDesignatedMonth,
         calculatedPrice: 0,
         mtmCalculatedPrice: 0,
-        isEfp: leg.efpPremium !== undefined
       };
     }) || []
   );
@@ -103,58 +92,17 @@ const MTMPage = () => {
       
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
+          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
+          
           try {
-            let priceResult;
+            const priceResult = await calculateTradeLegPrice(
+              leg.formula,
+              leg.startDate,
+              leg.endDate
+            );
             
-            if (leg.isEfp) {
-              // For EFP legs, calculate price based on EFP logic
-              priceResult = {
-                price: leg.efpAgreedStatus && leg.efpFixedValue !== undefined 
-                  ? leg.efpFixedValue + (leg.efpPremium || 0)
-                  : (leg.efpPremium || 0), // If not agreed, mtm will use actual price lookup
-                periodType: determinePricingPeriodType(leg.startDate, leg.endDate)
-              };
-            } else if (leg.formula) {
-              // For standard formula legs
-              const result = await calculateTradeLegPrice(
-                leg.formula,
-                leg.startDate,
-                leg.endDate
-              );
-              priceResult = {
-                price: result.price,
-                periodType: result.periodType
-              };
-            } else {
-              priceResult = { price: 0, periodType: 'historical' as PricingPeriodType };
-            }
-            
-            // Use the full leg object to allow EFP calculation
-            const mtmPriceResult = await calculateMTMPrice({
-              ...leg,
-              id: leg.legId,
-              parentTradeId: '',
-              legReference: leg.legReference,
-              buySell: leg.buySell as 'buy' | 'sell',
-              product: leg.product,
-              sustainability: '',
-              incoTerm: 'FOB',
-              tolerance: 0,
-              loadingPeriodStart: new Date(),
-              loadingPeriodEnd: new Date(),
-              pricingPeriodStart: leg.startDate,
-              pricingPeriodEnd: leg.endDate,
-              unit: 'MT',
-              paymentTerm: '30 days',
-              creditStatus: 'pending',
-              quantity: leg.quantity,
-              formula: leg.formula,
-              mtmFormula: leg.mtmFormula,
-              efpPremium: leg.efpPremium,
-              efpAgreedStatus: leg.efpAgreedStatus,
-              efpFixedValue: leg.efpFixedValue,
-              efpDesignatedMonth: leg.efpDesignatedMonth
-            });
+            const mtmFormula = leg.mtmFormula || leg.formula;
+            const mtmPriceResult = await calculateMTMPrice(mtmFormula);
             
             const mtmValue = calculateMTMValue(
               priceResult.price,
@@ -198,24 +146,6 @@ const MTMPage = () => {
       quantity: leg.quantity,
       buySell: leg.buySell as 'buy' | 'sell'
     });
-  };
-
-  // Helper function to determine pricing period type (can be removed if already defined elsewhere)
-  const determinePricingPeriodType = (
-    startDate: Date,
-    endDate: Date
-  ): PricingPeriodType => {
-    const currentDate = new Date();
-    
-    if (endDate < currentDate) {
-      return 'historical';
-    }
-    
-    if (startDate > currentDate) {
-      return 'forward';
-    }
-    
-    return 'current';
   };
 
   const totalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
@@ -309,11 +239,6 @@ const MTMPage = () => {
                           <>
                             {position.tradeRef}
                           </>
-                        )}
-                        {position.isEfp && (
-                          <Badge variant="outline" className="ml-2">
-                            EFP
-                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>{position.product}</TableCell>
