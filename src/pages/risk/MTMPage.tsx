@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +21,7 @@ import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade } from '@/types';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
+import { toast } from 'sonner';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
@@ -120,6 +122,7 @@ const MTMPage = () => {
             } as MTMPosition;
           } catch (error) {
             console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
+            toast.error(`Error calculating MTM for leg ${leg.legReference}`);
             return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
           }
         })
