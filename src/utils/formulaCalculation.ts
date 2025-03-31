@@ -1,4 +1,3 @@
-
 import { FormulaToken, ExposureResult, Instrument, PricingFormula, MonthlyDistribution } from '@/types';
 import { getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
 
@@ -416,6 +415,7 @@ export const calculatePhysicalExposure = (
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
+    'ICE GASOIL FUTURES (EFP)': 0
   };
   
   if (!tokens.length || tradeQuantity === 0) {
@@ -459,6 +459,7 @@ export const calculatePricingExposure = (
     'Platts LSGO': 0,
     'Platts Diesel': 0,
     'ICE GASOIL FUTURES': 0,
+    'ICE GASOIL FUTURES (EFP)': 0
   };
   
   if (!tokens.length || tradeQuantity === 0) {

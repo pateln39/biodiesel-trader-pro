@@ -164,6 +164,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
+          'ICE GASOIL FUTURES (EFP)': 0
         },
         pricing: {
           'Argus UCOME': 0,
@@ -173,6 +174,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
           'Platts Diesel': 0,
           'Argus HVO': 0,
           'ICE GASOIL FUTURES': 0,
+          'ICE GASOIL FUTURES (EFP)': 0
         }
       }
     });
