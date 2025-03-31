@@ -10,17 +10,25 @@ interface FormulaCellDisplayProps {
 const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ trade }) => {
   // For EFP trades, show a special formula representation
   if ((trade as PhysicalTradeLeg).pricingType === 'efp' && 'efpPremium' in trade && trade.efpPremium !== undefined) {
-    const baseText = trade.efpAgreedStatus 
-      ? `${trade.efpFixedValue || 0} + ${trade.efpPremium}` 
-      : `ICE GASOIL FUTURES (${trade.efpDesignatedMonth || ''}) + ${trade.efpPremium}`;
+    let displayText = '';
+    
+    if (trade.efpAgreedStatus) {
+      // For agreed EFP trades, show the calculated total value
+      const fixedValue = trade.efpFixedValue || 0;
+      const premium = trade.efpPremium || 0;
+      displayText = `${fixedValue + premium}`;
+    } else {
+      // For unagreed EFP trades, show "ICE GASOIL FUTURES (EFP) + premium"
+      displayText = `ICE GASOIL FUTURES (EFP) + ${trade.efpPremium}`;
+    }
     
     return (
       <div className="max-w-[300px] overflow-hidden">
         <span 
           className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-          title={baseText}
+          title={displayText}
         >
-          {baseText}
+          {displayText}
         </span>
       </div>
     );
