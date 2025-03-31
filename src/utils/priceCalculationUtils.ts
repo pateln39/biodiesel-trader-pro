@@ -1,7 +1,9 @@
 
+
 import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
+import { extractInstrumentsFromFormula } from './exposureUtils';
 
 // Define PricingPeriodType enum for export
 export type PricingPeriodType = 'historical' | 'current' | 'future';
@@ -13,90 +15,143 @@ export interface PriceDetail {
   fixedComponents?: { value: number; displayValue: string }[];
 }
 
-// Update calculateMTMPrice to handle EFP legs
+// Mock price data - in real application, this would come from API
+const MOCK_PRICES: Record<string, number> = {
+  'Argus FAME0': 850,
+  'Argus RME': 900,
+  'Argus UCOME': 1250,
+  'Platts LSGO': 800,
+  'Platts Diesel': 950,
+  'ICE GASOIL FUTURES': 780
+};
+
+// Mock historical prices - in real application, these would come from API
+const MOCK_HISTORICAL_PRICES: Record<string, { date: Date; price: number }[]> = {
+  'Argus FAME0': [
+    { date: new Date('2024-03-01'), price: 840 },
+    { date: new Date('2024-03-15'), price: 850 },
+    { date: new Date('2024-04-01'), price: 855 }
+  ],
+  'Platts LSGO': [
+    { date: new Date('2024-03-01'), price: 790 },
+    { date: new Date('2024-03-15'), price: 800 },
+    { date: new Date('2024-04-01'), price: 810 }
+  ]
+};
+
+// Update calculateMTMPrice to handle both standard formulas and EFP legs
 export const calculateMTMPrice = async (
   formula: PricingFormula | PhysicalTradeLeg
 ): Promise<{ price: number; details: MTMPriceDetail }> => {
   // Check if this is a leg with EFP properties
   if ('efpPremium' in formula && formula.efpPremium !== undefined) {
-    const leg = formula as PhysicalTradeLeg;
-    const details: MTMPriceDetail = {
-      instruments: {},
-      evaluatedPrice: 0,
-      fixedComponents: []
-    };
-    
-    // Handle EFP pricing
-    if (leg.efpAgreedStatus) {
-      // For agreed EFP, use fixed value + premium
-      if (leg.efpFixedValue !== undefined) {
-        details.evaluatedPrice = leg.efpFixedValue + leg.efpPremium;
-        details.fixedComponents = [
-          { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` },
-          { value: leg.efpPremium, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      } else {
-        // Missing fixed value
-        details.evaluatedPrice = leg.efpPremium || 0;
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      }
-    } else {
-      // For unagreed EFP, use previous day's price + premium
-      const gasoilPrice = await fetchPreviousDayPrice('ICE_GASOIL');
-      
-      if (gasoilPrice) {
-        details.instruments['ICE GASOIL FUTURES'] = {
-          price: gasoilPrice.price,
-          date: gasoilPrice.date
-        };
-        
-        details.evaluatedPrice = gasoilPrice.price + (leg.efpPremium || 0);
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      } else {
-        // No price available
-        details.evaluatedPrice = leg.efpPremium || 0;
-        details.fixedComponents = [
-          { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
-        ];
-      }
-    }
-    
-    return { price: details.evaluatedPrice, details };
+    return calculateEfpMTMPrice(formula as PhysicalTradeLeg);
   }
   
-  // Original formula evaluation logic for non-EFP legs or formula objects
-  let price = 0;
-  const formulaObj = 'tokens' in formula ? formula : { tokens: [] };
-  
-  // Simple placeholder implementation - in real app, this would parse and evaluate the formula
+  // Handle standard formula calculation
+  return calculateStandardMTMPrice(formula as PricingFormula);
+};
+
+// Handle EFP-specific MTM price calculation
+const calculateEfpMTMPrice = async (
+  leg: PhysicalTradeLeg
+): Promise<{ price: number; details: MTMPriceDetail }> => {
   const details: MTMPriceDetail = {
     instruments: {},
-    evaluatedPrice: price
+    evaluatedPrice: 0,
+    fixedComponents: []
+  };
+  
+  // Handle EFP pricing
+  if (leg.efpAgreedStatus) {
+    // For agreed EFP, use fixed value + premium
+    if (leg.efpFixedValue !== undefined) {
+      details.evaluatedPrice = leg.efpFixedValue + leg.efpPremium;
+      details.fixedComponents = [
+        { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` },
+        { value: leg.efpPremium, displayValue: `Premium: ${leg.efpPremium}` }
+      ];
+    } else {
+      // Missing fixed value
+      details.evaluatedPrice = leg.efpPremium || 0;
+      details.fixedComponents = [
+        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
+      ];
+    }
+  } else {
+    // For unagreed EFP, use previous day's price + premium
+    const gasoilPrice = await fetchPreviousDayPrice('ICE_GASOIL');
+    
+    if (gasoilPrice) {
+      details.instruments['ICE GASOIL FUTURES'] = {
+        price: gasoilPrice.price,
+        date: gasoilPrice.date
+      };
+      
+      details.evaluatedPrice = gasoilPrice.price + (leg.efpPremium || 0);
+      details.fixedComponents = [
+        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
+      ];
+    } else {
+      // No price available
+      details.evaluatedPrice = leg.efpPremium || 0;
+      details.fixedComponents = [
+        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium}` }
+      ];
+    }
+  }
+  
+  return { price: details.evaluatedPrice, details };
+};
+
+// Handle standard formula MTM price calculation
+const calculateStandardMTMPrice = async (
+  formula: PricingFormula
+): Promise<{ price: number; details: MTMPriceDetail }> => {
+  const details: MTMPriceDetail = {
+    instruments: {},
+    evaluatedPrice: 0
   };
   
   // For empty or invalid formula, return zero
-  if (!formulaObj.tokens || formulaObj.tokens.length === 0) {
+  if (!formula.tokens || formula.tokens.length === 0) {
     return { price: 0, details };
   }
   
-  // For demonstration, just use a fixed price
-  price = 850;
-  details.evaluatedPrice = price;
+  // Extract instruments from formula
+  const instruments = extractInstrumentsFromFormula(formula);
   
-  // Add some dummy instrument data
-  details.instruments['Argus FAME0'] = {
-    price: 850,
-    date: new Date()
-  };
+  if (instruments.length === 0) {
+    return { price: 0, details };
+  }
+  
+  // In a real implementation, we would fetch current market prices
+  // For now, use our mock prices
+  let totalPrice = 0;
+  let instrumentCount = 0;
+  
+  for (const instrument of instruments) {
+    if (MOCK_PRICES[instrument]) {
+      // Add instrument with current price to the details
+      details.instruments[instrument] = {
+        price: MOCK_PRICES[instrument],
+        date: new Date() // Current date for MTM
+      };
+      
+      totalPrice += MOCK_PRICES[instrument];
+      instrumentCount++;
+    }
+  }
+  
+  // Simple average for demonstration purposes
+  // In a real system, you'd apply the actual formula calculation
+  const price = instrumentCount > 0 ? totalPrice / instrumentCount : 0;
+  details.evaluatedPrice = price;
   
   return { price, details };
 };
 
-// Add the missing calculateTradeLegPrice function
+// Calculate trade leg price for a specific period
 export const calculateTradeLegPrice = async (
   formula: PricingFormula,
   startDate: Date,
@@ -112,26 +167,54 @@ export const calculateTradeLegPrice = async (
     periodType = 'future';
   }
   
-  // Process formula to get a price
-  const price = 850; // Fixed price for demonstration
+  // Extract instruments from the formula
+  const instruments = extractInstrumentsFromFormula(formula);
   
-  // Create price details
+  // Create price details object
   const priceDetails: PriceDetail = {
-    instruments: {
-      'Argus FAME0': {
-        average: 850,
-        prices: [
-          { date: new Date(), price: 850 }
-        ]
-      }
-    },
-    evaluatedPrice: price
+    instruments: {},
+    evaluatedPrice: 0
   };
+  
+  // If there are no instruments, return default values
+  if (instruments.length === 0) {
+    return { price: 0, periodType, priceDetails };
+  }
+  
+  let totalPrice = 0;
+  let instrumentCount = 0;
+  
+  // For each instrument, get historical prices in the period
+  for (const instrument of instruments) {
+    if (MOCK_HISTORICAL_PRICES[instrument]) {
+      const prices = MOCK_HISTORICAL_PRICES[instrument].filter(
+        p => p.date >= startDate && p.date <= endDate
+      );
+      
+      if (prices.length > 0) {
+        // Calculate average price for the period
+        const sum = prices.reduce((acc, p) => acc + p.price, 0);
+        const average = sum / prices.length;
+        
+        priceDetails.instruments[instrument] = {
+          average,
+          prices
+        };
+        
+        totalPrice += average;
+        instrumentCount++;
+      }
+    }
+  }
+  
+  // Calculate average price across all instruments
+  const price = instrumentCount > 0 ? totalPrice / instrumentCount : 0;
+  priceDetails.evaluatedPrice = price;
   
   return { price, periodType, priceDetails };
 };
 
-// Add the calculateMTMValue function
+// Calculate MTM value based on trade price and MTM price
 export const calculateMTMValue = (
   tradePrice: number,
   mtmPrice: number,
@@ -144,7 +227,7 @@ export const calculateMTMValue = (
   return (tradePrice - mtmPrice) * quantity * direction;
 };
 
-// Add the applyPricingFormula function
+// Apply pricing formula to calculate final price
 export const applyPricingFormula = (
   formula: PricingFormula,
   instrumentPrices: Record<string, number>
@@ -154,13 +237,24 @@ export const applyPricingFormula = (
   }
   
   // Simple implementation for demonstration
-  let price = 0;
+  const instruments = extractInstrumentsFromFormula(formula);
   
-  // Assuming a simple average of all instrument prices for demonstration
-  const prices = Object.values(instrumentPrices);
-  if (prices.length > 0) {
-    price = prices.reduce((sum, p) => sum + p, 0) / prices.length;
+  if (instruments.length === 0) {
+    return 0;
   }
   
-  return price;
+  // Simple average calculation for demo purposes
+  // In a real system, you'd evaluate the formula with the actual prices
+  let totalPrice = 0;
+  let instrumentCount = 0;
+  
+  for (const instrument of instruments) {
+    if (instrumentPrices[instrument]) {
+      totalPrice += instrumentPrices[instrument];
+      instrumentCount++;
+    }
+  }
+  
+  return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
 };
+

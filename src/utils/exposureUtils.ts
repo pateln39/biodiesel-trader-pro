@@ -1,3 +1,4 @@
+
 import { PhysicalTrade } from '@/types';
 import { mapProductToCanonical } from './productMapping';
 
@@ -110,3 +111,4 @@ export const extractInstrumentsFromFormula = (formula: any): string[] => {
   
   return Array.from(instruments);
 };
+
