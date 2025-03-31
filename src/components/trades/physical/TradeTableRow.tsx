@@ -21,8 +21,8 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
-  // Determine pricing type to display
-  const pricingType = leg.efpPremium !== undefined ? "EFP" : "Standard";
+  // Use the dedicated pricing_type field instead of checking efpPremium
+  const pricingType = leg.pricingType === 'efp' ? "EFP" : "Standard";
   
   return (
     <TableRow className={legIndex > 0 ? "border-t-0" : undefined}>

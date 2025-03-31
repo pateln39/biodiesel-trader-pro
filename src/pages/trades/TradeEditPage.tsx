@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,10 +160,19 @@ const TradeEditPage = () => {
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
+          pricing_type: leg.pricingType,
           updated_at: new Date().toISOString()
         };
 
-        // Update the existing leg
+        if (leg.pricingType === 'efp') {
+          Object.assign(legData, {
+            efp_premium: leg.efpPremium,
+            efp_agreed_status: leg.efpAgreedStatus,
+            efp_fixed_value: leg.efpFixedValue,
+            efp_designated_month: leg.efpDesignatedMonth,
+          });
+        }
+
         const { error: legUpdateError } = await supabase
           .from('trade_legs')
           .update(legData)
@@ -182,7 +190,6 @@ const TradeEditPage = () => {
         description: `Trade ${updatedTradeData.tradeReference} has been updated successfully`
       });
 
-      // Navigate back to trades page with state to indicate successful update
       navigate('/trades', { state: { updated: true, tradeReference: updatedTradeData.tradeReference } });
     } catch (error: any) {
       console.error('Error updating trade:', error);

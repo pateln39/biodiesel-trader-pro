@@ -87,6 +87,8 @@ const fetchTrades = async (): Promise<Trade[]> => {
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+            // Use the database pricing_type field if available, otherwise determine from EFP fields
+            pricingType: leg.pricing_type || (leg.efp_premium !== undefined ? 'efp' : 'standard'),
             // Add EFP fields
             efpPremium: leg.efp_premium,
             efpAgreedStatus: leg.efp_agreed_status,

@@ -694,6 +694,7 @@ export type Database = {
           pricing_formula: Json | null
           pricing_period_end: string | null
           pricing_period_start: string | null
+          pricing_type: string | null
           product: string
           quantity: number
           sustainability: string | null
@@ -729,6 +730,7 @@ export type Database = {
           pricing_formula?: Json | null
           pricing_period_end?: string | null
           pricing_period_start?: string | null
+          pricing_type?: string | null
           product: string
           quantity: number
           sustainability?: string | null
@@ -764,6 +766,7 @@ export type Database = {
           pricing_formula?: Json | null
           pricing_period_end?: string | null
           pricing_period_start?: string | null
+          pricing_type?: string | null
           product?: string
           quantity?: number
           sustainability?: string | null
