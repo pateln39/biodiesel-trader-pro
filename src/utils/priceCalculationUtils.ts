@@ -1,4 +1,3 @@
-
 import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula, Instrument } from '@/types';
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
@@ -23,7 +22,8 @@ const MOCK_PRICES: Record<string, number> = {
   'Argus UCOME': 1250,
   'Platts LSGO': 800,
   'Platts Diesel': 950,
-  'ICE GASOIL FUTURES': 780
+  'ICE GASOIL FUTURES': 780,
+  'ICE GASOIL FUTURES (EFP)': 780
 };
 
 // Fetch the latest price for an instrument from the database
@@ -233,6 +233,105 @@ const calculateStandardMTMPrice = async (
 
 // Calculate trade leg price for a specific period
 export const calculateTradeLegPrice = async (
+  formulaOrLeg: PricingFormula | PhysicalTradeLeg,
+  startDate: Date,
+  endDate: Date
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
+  // Check if this is an EFP trade leg
+  if ('efpPremium' in formulaOrLeg && formulaOrLeg.efpPremium !== undefined) {
+    return calculateEfpTradeLegPrice(formulaOrLeg as PhysicalTradeLeg, startDate, endDate);
+  }
+  
+  // For standard trades, continue with the existing implementation
+  return calculateStandardTradeLegPrice(formulaOrLeg as PricingFormula, startDate, endDate);
+};
+
+// New function to handle EFP trade leg price calculation
+const calculateEfpTradeLegPrice = async (
+  leg: PhysicalTradeLeg,
+  startDate: Date,
+  endDate: Date
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
+  // Determine period type based on dates
+  const now = new Date();
+  let periodType: PricingPeriodType = 'current';
+  
+  if (endDate < now) {
+    periodType = 'historical';
+  } else if (startDate > now) {
+    periodType = 'future';
+  }
+  
+  // Create price details object
+  const priceDetails: PriceDetail = {
+    instruments: {},
+    evaluatedPrice: 0,
+    fixedComponents: []
+  };
+  
+  let price = 0;
+  const instrumentName = 'ICE GASOIL FUTURES (EFP)';
+  
+  // Handle agreed EFP trades - use fixed value + premium
+  if (leg.efpAgreedStatus && leg.efpFixedValue !== undefined) {
+    price = leg.efpFixedValue + (leg.efpPremium || 0);
+    priceDetails.evaluatedPrice = price;
+    priceDetails.fixedComponents = [
+      { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` },
+      { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium || 0}` }
+    ];
+  } 
+  // Handle unagreed EFP trades - use historical prices within the period + premium
+  else {
+    // Get historical prices for ICE GASOIL FUTURES within the pricing period
+    const prices = await fetchHistoricalPrices(instrumentName, startDate, endDate);
+    
+    if (prices.length > 0) {
+      // Calculate average price for the period
+      const sum = prices.reduce((acc, p) => acc + p.price, 0);
+      const average = sum / prices.length;
+      
+      priceDetails.instruments[instrumentName] = {
+        average,
+        prices
+      };
+      
+      // Add premium to the average price
+      price = average + (leg.efpPremium || 0);
+      priceDetails.evaluatedPrice = price;
+      priceDetails.fixedComponents = [
+        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium || 0}` }
+      ];
+    } else {
+      // If no historical prices found, try to get the latest price
+      const latestPrice = await fetchLatestPrice(instrumentName);
+      if (latestPrice) {
+        price = latestPrice.price + (leg.efpPremium || 0);
+        priceDetails.instruments[instrumentName] = {
+          average: latestPrice.price,
+          prices: [{ date: latestPrice.date || new Date(), price: latestPrice.price }]
+        };
+      } else if (MOCK_PRICES[instrumentName]) {
+        // Fallback to mock prices
+        price = MOCK_PRICES[instrumentName] + (leg.efpPremium || 0);
+        priceDetails.instruments[instrumentName] = {
+          average: MOCK_PRICES[instrumentName],
+          prices: [{ date: new Date(), price: MOCK_PRICES[instrumentName] }]
+        };
+      }
+      
+      priceDetails.evaluatedPrice = price;
+      priceDetails.fixedComponents = [
+        { value: leg.efpPremium || 0, displayValue: `Premium: ${leg.efpPremium || 0}` }
+      ];
+    }
+  }
+  
+  return { price, periodType, priceDetails };
+};
+
+// Keep the original function but rename it
+const calculateStandardTradeLegPrice = async (
   formula: PricingFormula,
   startDate: Date,
   endDate: Date
@@ -335,6 +434,11 @@ const MOCK_HISTORICAL_PRICES: Record<string, { date: Date; price: number }[]> = 
     { date: new Date('2024-04-01'), price: 960 }
   ],
   'ICE GASOIL FUTURES': [
+    { date: new Date('2024-03-01'), price: 770 },
+    { date: new Date('2024-03-15'), price: 780 },
+    { date: new Date('2024-04-01'), price: 790 }
+  ],
+  'ICE GASOIL FUTURES (EFP)': [
     { date: new Date('2024-03-01'), price: 770 },
     { date: new Date('2024-03-15'), price: 780 },
     { date: new Date('2024-04-01'), price: 790 }
