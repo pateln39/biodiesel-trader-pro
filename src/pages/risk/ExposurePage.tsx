@@ -412,7 +412,7 @@ const ExposurePage = () => {
                       exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
                     }
                   });
-                }
+                }\
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
                   Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
@@ -858,3 +858,4 @@ const ExposurePage = () => {
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
               <Download className="mr-2 h-3 w-3" /> Export
+            </Button
