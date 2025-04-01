@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
-import { parseExcelDate, formatDateForStorage } from '@/utils/dateParsingUtils';
+import { parseExcelDate, formatDateForStorage, parseForwardMonth } from '@/utils/dateParsingUtils';
 
 // Define validation error types
 type ValidationError = {
@@ -149,37 +148,22 @@ const PriceUploader = () => {
     data.forEach((row, index) => {
       const rowNum = index + 2; // +2 because of 0-indexing and header row
       
-      // Validate forward month with enhanced date parsing
+      // Validate forward month with new forward month parsing
       if (!row['Forward Month']) {
         errors.push({ row: rowNum, column: 'Forward Month', message: 'Missing forward month' });
       } else {
-        // For forward month, we need a yyyy-MM format
-        const monthValue = row['Forward Month'];
-        let monthStr: string | null = null;
+        // Parse the forward month using the dedicated function
+        const forwardMonthResult = parseForwardMonth(row['Forward Month']);
         
-        // If it's already a properly formatted string
-        if (typeof monthValue === 'string' && /^\d{4}-\d{2}$/.test(monthValue)) {
-          monthStr = monthValue;
-        } 
-        // If it's a full date, extract year and month
-        else {
-          const parsedDateResult = parseExcelDate(monthValue);
-          
-          if (parsedDateResult.success && parsedDateResult.date) {
-            const date = parsedDateResult.date;
-            monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          } else {
-            errors.push({ 
-              row: rowNum, 
-              column: 'Forward Month', 
-              message: 'Invalid month format. Use YYYY-MM or a recognizable date' 
-            });
-          }
-        }
-        
-        if (monthStr) {
+        if (!forwardMonthResult.success) {
+          errors.push({ 
+            row: rowNum, 
+            column: 'Forward Month', 
+            message: forwardMonthResult.error || 'Invalid month format. Use MMM-YY format like May-25 for May 2025' 
+          });
+        } else {
           // Store the parsed month back in the row for later processing
-          row.ParsedMonth = monthStr;
+          row.ParsedMonth = forwardMonthResult.monthStr;
           
           // Check for duplicate months per instrument
           Object.keys(row).forEach(key => {
@@ -192,14 +176,14 @@ const PriceUploader = () => {
             }
             
             const monthsForInstrument = processedMonths.get(key)!;
-            if (monthsForInstrument.has(monthStr!)) {
+            if (monthsForInstrument.has(forwardMonthResult.monthStr!)) {
               errors.push({ 
                 row: rowNum, 
                 column: key, 
-                message: `Duplicate month ${monthStr} for instrument ${key}` 
+                message: `Duplicate month ${forwardMonthResult.monthStr} for instrument ${key}` 
               });
             } else {
-              monthsForInstrument.add(monthStr!);
+              monthsForInstrument.add(forwardMonthResult.monthStr!);
             }
           });
         }
@@ -307,10 +291,9 @@ const PriceUploader = () => {
       let monthStr = row.ParsedMonth;
       
       if (!monthStr && row['Forward Month']) {
-        const parsedDate = parseExcelDate(row['Forward Month']);
-        if (parsedDate.success && parsedDate.date) {
-          const date = parsedDate.date;
-          monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const forwardMonthResult = parseForwardMonth(row['Forward Month']);
+        if (forwardMonthResult.success) {
+          monthStr = forwardMonthResult.monthStr;
         }
       }
       
@@ -471,7 +454,7 @@ const PriceUploader = () => {
     const templateData = [
       priceType === 'historical' 
         ? { Date: new Date() }
-        : { 'Forward Month': format(new Date(), 'yyyy-MM') }
+        : { 'Forward Month': priceType === 'forward' ? 'May-25' : format(new Date(), 'yyyy-MM') }
     ];
     
     // Add instrument columns

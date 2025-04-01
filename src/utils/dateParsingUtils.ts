@@ -1,3 +1,4 @@
+
 import { parse, isValid, format } from 'date-fns';
 
 /**
@@ -6,6 +7,16 @@ import { parse, isValid, format } from 'date-fns';
 export interface DateParsingResult {
   success: boolean;
   date: Date | null;
+  error?: string;
+}
+
+/**
+ * Result of parsing a forward month value
+ */
+export interface ForwardMonthParsingResult {
+  success: boolean;
+  monthStr: string | null; // Format: YYYY-MM
+  date: Date | null; // First day of the month
   error?: string;
 }
 
@@ -173,4 +184,108 @@ export function formatDateForStorage(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parse a forward month string in the format MMM-YY (e.g., "May-25")
+ * Returns the date as YYYY-MM-01 and a month string as YYYY-MM
+ * 
+ * @param value The forward month string to parse (e.g., "May-25", "Jun-2026", "2025-06")
+ * @returns Object containing the parsed month string (YYYY-MM) and Date object (first day of month)
+ */
+export function parseForwardMonth(value: any): ForwardMonthParsingResult {
+  // Handle empty values
+  if (!value || value === '' || value === null || value === undefined) {
+    return {
+      success: false,
+      monthStr: null,
+      date: null,
+      error: 'Empty forward month value'
+    };
+  }
+
+  // If already a proper YYYY-MM string
+  if (typeof value === 'string' && /^\d{4}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}-01T00:00:00`);
+    if (!isNaN(date.getTime())) {
+      return {
+        success: true,
+        monthStr: value,
+        date: date
+      };
+    }
+  }
+
+  // Handle MMM-YY format (May-25, Jun-26, etc.)
+  if (typeof value === 'string') {
+    // Try to match "MMM-YY" or "MMM-YYYY" format
+    const forwardMonthRegex = /^([a-zA-Z]{3,9})-(\d{2}|\d{4})$/;
+    const match = value.match(forwardMonthRegex);
+    
+    if (match) {
+      const [_, monthStr, yearStr] = match;
+      
+      // Convert month name to month number (0-11)
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      
+      const monthIndex = monthNames.findIndex(
+        m => monthStr.toLowerCase().startsWith(m.toLowerCase())
+      );
+      
+      if (monthIndex !== -1) {
+        // Handle 2-digit or 4-digit year
+        let year: number;
+        if (yearStr.length === 2) {
+          // Assume 20XX for two-digit years
+          year = 2000 + parseInt(yearStr);
+        } else {
+          year = parseInt(yearStr);
+        }
+        
+        // Create date object for first day of month
+        const date = new Date(year, monthIndex, 1);
+        
+        if (!isNaN(date.getTime())) {
+          // Format as YYYY-MM
+          const formattedMonth = String(date.getMonth() + 1).padStart(2, '0');
+          const formattedYear = date.getFullYear();
+          const monthStr = `${formattedYear}-${formattedMonth}`;
+          
+          return {
+            success: true,
+            monthStr: monthStr,
+            date: date
+          };
+        }
+      }
+    }
+    
+    // Try standard date parsing as fallback (full date that we'll extract month/year from)
+    const parsedDateResult = parseExcelDate(value);
+    if (parsedDateResult.success && parsedDateResult.date) {
+      const date = parsedDateResult.date;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const monthStr = `${year}-${month}`;
+      
+      // Create a new Date for the first of the month to standardize
+      const firstOfMonth = new Date(year, date.getMonth(), 1);
+      
+      return {
+        success: true,
+        monthStr: monthStr,
+        date: firstOfMonth
+      };
+    }
+  }
+
+  return {
+    success: false,
+    monthStr: null,
+    date: null,
+    error: 'Invalid forward month format. Expected formats include: MMM-YY (e.g., "May-25"), YYYY-MM, or a full date.'
+  };
 }
