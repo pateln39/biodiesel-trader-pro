@@ -788,10 +788,12 @@ const ExposurePage = () => {
   }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
 
   const getValueColorClass = (value: number): string => {
-    return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
+    if (value === 0) return 'text-muted-foreground';
+    return value > 0 ? 'text-brand-lime font-medium' : 'text-red-600 font-medium';
   };
 
   const formatValue = (value: number): string => {
+    if (value === 0) return '—'; // Em dash for zero values
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
 
@@ -800,15 +802,24 @@ const ExposurePage = () => {
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
       case 'Physical':
-        return 'bg-orange-800';
+        return 'bg-brand-navy';
       case 'Pricing':
-        return 'bg-green-800';
+        return 'bg-brand-blue';
       case 'Paper':
-        return 'bg-blue-800';
+        return 'bg-brand-dark-blue';
       case 'Exposure':
-        return 'bg-green-600';
+        return 'bg-brand-lime';
       default:
         return '';
+    }
+  };
+
+  const getCategoryTextClass = (category: string): string => {
+    switch (category) {
+      case 'Exposure':
+        return 'text-brand-navy';
+      default:
+        return 'text-white';
     }
   };
 
@@ -847,6 +858,20 @@ const ExposurePage = () => {
 
   const isLoadingData = isLoading || instrumentsLoading;
 
+  const getCustomProductBackground = (product: string): string => {
+    if (product.includes('UCOME')) return 'bg-brand-lime bg-opacity-20';
+    if (product.includes('FAME')) return 'bg-brand-blue bg-opacity-20';
+    if (product.includes('RME')) return 'bg-brand-navy bg-opacity-20';
+    if (product.includes('HVO')) return 'bg-brand-blue bg-opacity-10';
+    if (product.includes('GASOIL')) return 'bg-brand-navy bg-opacity-30';
+    if (product.includes('EFP')) return 'bg-brand-blue bg-opacity-30';
+    return '';
+  };
+
+  const getTotalRowClass = (isTotal: boolean = false): string => {
+    return isTotal ? 'bg-brand-navy text-white' : '';
+  };
+
   return (
     <Layout>
       <Helmet>
@@ -857,13 +882,13 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="bg-brand-navy text-white hover:bg-brand-blue border-none">
               <Download className="mr-2 h-3 w-3" /> Export
             </Button>
           </div>
         </div>
 
-        <Card className="mb-4">
+        <Card className="mb-4 border-brand-blue/20 bg-brand-navy bg-opacity-10">
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
@@ -875,6 +900,7 @@ const ExposurePage = () => {
                         id={`category-${category}`} 
                         checked={visibleCategories.includes(category)} 
                         onCheckedChange={() => toggleCategory(category)}
+                        className="border-brand-blue data-[state=checked]:bg-brand-blue data-[state=checked]:text-white"
                       />
                       <label 
                         htmlFor={`category-${category}`}
@@ -911,16 +937,16 @@ const ExposurePage = () => {
             </CardContent>
           </Card>
         ) : (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden border-brand-blue/20 bg-brand-navy bg-opacity-5">
             <CardContent className="p-0 overflow-auto">
               <div className="w-full overflow-auto">
                 <div style={{ width: "max-content", minWidth: "100%" }}>
                   <Table className="border-collapse">
                     <TableHeader>
-                      <TableRow className="bg-muted/50 border-b-[1px] border-black">
+                      <TableRow className="border-b-[1px] border-brand-blue/30">
                         <TableHead 
                           rowSpan={2} 
-                          className="border-r-[1px] border-b-[1px] border-black text-left p-1 font-bold text-black text-xs bg-white sticky left-0 z-10"
+                          className="border-r-[1px] border-b-[1px] border-brand-blue/30 text-left p-1 font-bold text-black text-xs bg-brand-light-blue sticky left-0 z-10"
                         >
                           Month
                         </TableHead>
@@ -940,9 +966,13 @@ const ExposurePage = () => {
                             <TableHead 
                               key={category} 
                               colSpan={colSpan} 
-                              className={`text-center p-1 font-bold text-black text-xs border-b-[1px] ${
-                                catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
-                              } border-black`}
+                              className={`text-center p-1 font-bold text-xs border-b-[1px] ${
+                                getCategoryColorClass(category)
+                              } ${
+                                getCategoryTextClass(category)
+                              } ${
+                                catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
+                              }`}
                             >
                               {category}
                             </TableHead>
@@ -950,7 +980,7 @@ const ExposurePage = () => {
                         })}
                       </TableRow>
                       
-                      <TableRow className="bg-muted/30 border-b-[1px] border-black">
+                      <TableRow className="bg-brand-navy bg-opacity-10 border-b-[1px] border-brand-blue/30">
                         {orderedVisibleCategories.flatMap((category, catIndex) => {
                           const categoryProducts = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
@@ -965,9 +995,9 @@ const ExposurePage = () => {
                               headers.push(
                                 <TableHead 
                                   key={`${category}-${product}`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
-                                    getExposureProductBackgroundClass(product)
-                                  } text-white font-bold`}
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-brand-blue/30 ${
+                                    getCustomProductBackground(product)
+                                  } font-bold text-brand-navy`}
                                 >
                                   {formatExposureTableProduct(product)}
                                 </TableHead>
@@ -977,9 +1007,9 @@ const ExposurePage = () => {
                                 headers.push(
                                   <TableHead 
                                     key={`${category}-biodiesel-total`} 
-                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
-                                      getCategoryColorClass(category)
-                                    } text-white font-bold`}
+                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-brand-blue/30 ${
+                                      'bg-brand-lime bg-opacity-30'
+                                    } text-brand-navy font-bold`}
                                   >
                                     Total Biodiesel
                                   </TableHead>
@@ -991,9 +1021,9 @@ const ExposurePage = () => {
                               headers.push(
                                 <TableHead 
                                   key={`${category}-pricing-instrument-total`} 
-                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
-                                    getExposureProductBackgroundClass('', false, true)
-                                  } text-white font-bold`}
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-brand-blue/30 ${
+                                    'bg-brand-blue bg-opacity-30'
+                                  } text-brand-navy font-bold`}
                                 >
                                   Total Pricing Instrument
                                 </TableHead>
@@ -1005,10 +1035,10 @@ const ExposurePage = () => {
                                 <TableHead 
                                   key={`${category}-total-row`} 
                                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                    getExposureProductBackgroundClass('', true)
+                                    'bg-brand-navy bg-opacity-20'
                                   } ${
-                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
-                                  } text-white font-bold`}
+                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
+                                  } text-brand-navy font-bold`}
                                 >
                                   Total Row
                                 </TableHead>
@@ -1021,14 +1051,14 @@ const ExposurePage = () => {
                               <TableHead 
                                 key={`${category}-${product}`} 
                                 className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
-                                  getCategoryColorClass(category)
+                                  getCustomProductBackground(product)
                                 } ${
                                   index === categoryProducts.length - 1 && 
                                   catIndex < orderedVisibleCategories.length - 1
-                                    ? 'border-r-[1px] border-black' : ''
+                                    ? 'border-r-[1px] border-brand-blue/30' : ''
                                 } ${
                                   index > 0 ? 'border-l-[0px]' : ''
-                                } text-white font-bold`}
+                                } text-brand-navy font-bold`}
                               >
                                 {formatExposureTableProduct(product)}
                               </TableHead>
@@ -1039,9 +1069,9 @@ const ExposurePage = () => {
                     </TableHeader>
                     
                     <TableBody>
-                      {exposureData.map((monthData) => (
-                        <TableRow key={monthData.month} className="bg-white hover:bg-gray-50">
-                          <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 bg-white z-10">
+                      {exposureData.map((monthData, idx) => (
+                        <TableRow key={monthData.month} className={`hover:bg-brand-navy hover:bg-opacity-10 ${idx % 2 === 0 ? 'bg-brand-light-blue bg-opacity-20' : 'bg-white'}`}>
+                          <TableCell className="font-medium border-r-[1px] border-brand-blue/30 text-xs sticky left-0 bg-inherit z-10">
                             {monthData.month}
                           </TableCell>
                           
@@ -1059,7 +1089,7 @@ const ExposurePage = () => {
                                   <TableCell 
                                     key={`${monthData.month}-physical-${product}`} 
                                     className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
                                     }`}
                                   >
                                     {formatValue(productData.physical)}
@@ -1073,7 +1103,7 @@ const ExposurePage = () => {
                                   <TableCell 
                                     key={`${monthData.month}-pricing-${product}`} 
                                     className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
                                     }`}
                                   >
                                     {formatValue(productData.pricing)}
@@ -1087,7 +1117,7 @@ const ExposurePage = () => {
                                   <TableCell 
                                     key={`${monthData.month}-paper-${product}`} 
                                     className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${
-                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
                                     }`}
                                   >
                                     {formatValue(productData.paper)}
@@ -1102,7 +1132,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-net-${product}`} 
-                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-brand-blue/30 ${getValueColorClass(productData.netExposure)}`}
                                   >
                                     {formatValue(productData.netExposure)}
                                   </TableCell>
@@ -1117,7 +1147,7 @@ const ExposurePage = () => {
                                   cells.push(
                                     <TableCell 
                                       key={`${monthData.month}-biodiesel-total`} 
-                                      className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                                      className={`text-right text-xs p-1 font-medium border-r-[1px] border-brand-blue/30 ${getValueColorClass(biodieselTotal)} bg-brand-lime bg-opacity-10`}
                                     >
                                       {formatValue(biodieselTotal)}
                                     </TableCell>
@@ -1134,7 +1164,7 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-pricing-instrument-total`} 
-                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-brand-blue/30 ${getValueColorClass(pricingInstrumentTotal)} bg-brand-blue bg-opacity-10`}
                                   >
                                     {formatValue(pricingInstrumentTotal)}
                                   </TableCell>
@@ -1157,8 +1187,8 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`${monthData.month}-total-row`} 
-                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${
-                                      catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-brand-navy bg-opacity-10 ${
+                                      catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/30' : ''
                                     }`}
                                   >
                                     {formatValue(totalRow)}
@@ -1172,8 +1202,8 @@ const ExposurePage = () => {
                         </TableRow>
                       ))}
                       
-                      <TableRow className="bg-gray-700 text-white font-bold border-t-[1px] border-black">
-                        <TableCell className="border-r-[1px] border-black text-xs p-1 sticky left-0 bg-gray-700 z-10 text-white">
+                      <TableRow className="bg-brand-navy text-white font-bold border-t-[1px] border-brand-blue">
+                        <TableCell className="border-r-[1px] border-brand-blue/50 text-xs p-1 sticky left-0 bg-brand-navy z-10 text-white">
                           Total
                         </TableCell>
                         
@@ -1190,10 +1220,10 @@ const ExposurePage = () => {
                                 <TableCell 
                                   key={`total-physical-${product}`} 
                                   className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.physical > 0 ? 'text-brand-lime' : 
                                     grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/50' : ''
                                   }`}
                                 >
                                   {formatValue(grandTotals.productTotals[product]?.physical || 0)}
@@ -1206,10 +1236,10 @@ const ExposurePage = () => {
                                 <TableCell 
                                   key={`total-pricing-${product}`} 
                                   className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.pricing > 0 ? 'text-brand-lime' : 
                                     grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/50' : ''
                                   }`}
                                 >
                                   {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
@@ -1222,10 +1252,10 @@ const ExposurePage = () => {
                                 <TableCell 
                                   key={`total-paper-${product}`} 
                                   className={`text-right text-xs p-1 ${
-                                    grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.paper > 0 ? 'text-brand-lime' : 
                                     grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold ${
-                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/50' : ''
                                   }`}
                                 >
                                   {formatValue(grandTotals.productTotals[product]?.paper || 0)}
@@ -1239,8 +1269,8 @@ const ExposurePage = () => {
                               cells.push(
                                 <TableCell 
                                   key={`total-net-${product}`} 
-                                  className={`text-right text-xs p-1 border-r-[1px] border-black ${
-                                    grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
+                                  className={`text-right text-xs p-1 border-r-[1px] border-brand-blue/50 ${
+                                    grandTotals.productTotals[product]?.netExposure > 0 ? 'text-brand-lime' : 
                                     grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
                                   } font-bold`}
                                 >
@@ -1252,10 +1282,10 @@ const ExposurePage = () => {
                                 cells.push(
                                   <TableCell 
                                     key={`total-biodiesel-total`} 
-                                    className={`text-right text-xs p-1 border-r-[1px] border-black ${
-                                      groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
+                                    className={`text-right text-xs p-1 border-r-[1px] border-brand-blue/50 ${
+                                      groupGrandTotals.biodieselTotal > 0 ? 'text-brand-lime' : 
                                       groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
-                                    } font-bold bg-green-900`}
+                                    } font-bold bg-brand-lime bg-opacity-20`}
                                   >
                                     {formatValue(groupGrandTotals.biodieselTotal)}
                                   </TableCell>
@@ -1267,10 +1297,10 @@ const ExposurePage = () => {
                               cells.push(
                                 <TableCell 
                                   key={`total-pricing-instrument-total`} 
-                                  className={`text-right text-xs p-1 border-r-[1px] border-black ${
-                                    groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : 
+                                  className={`text-right text-xs p-1 border-r-[1px] border-brand-blue/50 ${
+                                    groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-brand-lime' : 
                                     groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold bg-blue-900`}
+                                  } font-bold bg-brand-blue bg-opacity-20`}
                                 >
                                   {formatValue(groupGrandTotals.pricingInstrumentTotal)}
                                 </TableCell>
@@ -1282,10 +1312,10 @@ const ExposurePage = () => {
                                 <TableCell 
                                   key={`total-total-row`} 
                                   className={`text-right text-xs p-1 ${
-                                    groupGrandTotals.totalRow > 0 ? 'text-green-300' : 
+                                    groupGrandTotals.totalRow > 0 ? 'text-brand-lime' : 
                                     groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'
-                                  } font-bold bg-gray-800 ${
-                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  } font-bold bg-opacity-50 ${
+                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-brand-blue/50' : ''
                                   }`}
                                 >
                                   {formatValue(groupGrandTotals.totalRow)}

@@ -48,7 +48,21 @@ export default {
 		'text-lg',
 		'text-xl',
 		'text-2xl',
-		'text-3xl'
+		'text-3xl',
+		'bg-opacity-10',
+		'bg-opacity-20',
+		'bg-opacity-30',
+		'hover:bg-opacity-20',
+		'hover:bg-opacity-30',
+		'hover:bg-brand-navy',
+		'hover:bg-brand-blue',
+		'hover:bg-brand-lime',
+		'hover:bg-opacity-10',
+		'even:bg-brand-navy',
+		'even:bg-opacity-5',
+		'odd:bg-brand-navy',
+		'odd:bg-opacity-10',
+		'border-brand-blue/20',
 	],
 	prefix: "",
 	theme: {
@@ -107,7 +121,10 @@ export default {
 				brand: {
 					navy: '#091C3E',
 					blue: '#1D59A9',
-					lime: '#B4D335'
+					lime: '#B4D335',
+					'dark-blue': '#0C182A',
+					'light-blue': '#E6F0FF',
+					grey: '#F4F5F7'
 				}
 			},
 			borderRadius: {

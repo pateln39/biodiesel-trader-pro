@@ -43,6 +43,14 @@
     --sidebar-accent-foreground: 218 72% 14%;
     --sidebar-border: 218 50% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Brand colors */
+    --brand-navy: 217 74% 14%;
+    --brand-blue: 210 71% 39%;
+    --brand-lime: 79 65% 52%;
+    --brand-dark-blue: 222 47% 11%;
+    --brand-light-blue: 210 100% 97%;
+    --brand-grey: 220 14% 96%;
   }
 
   .light {
