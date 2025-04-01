@@ -80,7 +80,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <div className="flex flex-1">
         <aside 
           className={cn(
-            "fixed inset-y-0 left-0 pt-16 z-10 bg-card shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime",
+            "fixed inset-y-0 left-0 pt-16 z-10 bg-card shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
         >
