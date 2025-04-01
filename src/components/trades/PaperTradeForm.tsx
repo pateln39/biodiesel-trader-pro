@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -15,6 +14,7 @@ import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { getNextMonths } from '@/utils/dateUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -294,43 +294,45 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Trade Table</h3>
-        <PaperTradeTable
-          legs={tradeLegs}
-          onLegsChange={handleLegsChange}
-        />
+        <div className="border rounded-md p-4 bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+          <PaperTradeTable
+            legs={tradeLegs}
+            onLegsChange={handleLegsChange}
+          />
+        </div>
       </div>
       
       <Separator />
       
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Exposure Table</h3>
-        <div className="overflow-x-auto border rounded">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UCOME</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FAME0</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">RME</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LSGO</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">HVO</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GASOIL</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+        <div className="border rounded-md p-4 bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime overflow-x-auto">
+          <Table className="min-w-full divide-y divide-gray-200">
+            <TableHeader className="bg-transparent">
+              <TableRow>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Month</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">UCOME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">FAME0</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">RME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">LSGO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">HVO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">GASOIL</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-transparent divide-y divide-gray-200">
               {exposureData.map((row, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.month}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus UCOME'] || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus FAME0'] || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus RME'] || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Platts LSGO'] || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['Argus HVO'] || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-bold">{row['ICE GASOIL FUTURES'] || 0}</td>
-                </tr>
+                <TableRow key={index}>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{row.month}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus UCOME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus FAME0'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus RME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Platts LSGO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus HVO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['ICE GASOIL FUTURES'] || 0}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
