@@ -357,27 +357,27 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       
       <div className="overflow-x-auto border rounded">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={1}>PRODUCT TYPE</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={4}>LEFT SIDE</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={4}>RIGHT SIDE</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" colSpan={2}>MTM</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"></th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={1}>PRODUCT TYPE</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={4}>LEFT SIDE</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={4}>RIGHT SIDE</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={2}>MTM</th>
             </tr>
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Formula</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"></th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Product</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Product</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Qty</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Period</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Price</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Product</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Qty</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Period</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Price</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Formula</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Period</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
