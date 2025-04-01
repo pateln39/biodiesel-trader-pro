@@ -718,6 +718,26 @@ const ExposurePage = () => {
     }
   };
 
+  const getExposureProductBackgroundClass = (
+    product: string, 
+    isTotal: boolean = false,
+    isPricingInstrumentTotal: boolean = false
+  ): string => {
+    if (isTotal) {
+      return 'bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime';
+    }
+    
+    if (isPricingInstrumentTotal) {
+      return 'bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime';
+    }
+    
+    if (shouldUseSpecialBackground(product)) {
+      return 'bg-purple-300';
+    }
+    
+    return 'bg-green-600';
+  };
+
   const toggleCategory = (category: string) => {
     setVisibleCategories(prev => {
       if (prev.includes(category)) {
