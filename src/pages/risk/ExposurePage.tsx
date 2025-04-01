@@ -412,7 +412,7 @@ const ExposurePage = () => {
                       exposuresByMonth[month][canonicalProduct].pricing += paperExposure;
                     }
                   });
-                }\
+                }
                 
                 if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
                   Object.entries(mtmExposures.pricing).forEach(([prodName, value]) => {
