@@ -26,6 +26,15 @@ export default {
 		'bg-white',
 		'bg-[#1A1F2C]',
 		'bg-gray-500',
+		'bg-brand-navy',
+		'bg-brand-blue',
+		'bg-brand-lime',
+		'text-brand-navy',
+		'text-brand-blue',
+		'text-brand-lime',
+		'border-brand-navy',
+		'border-brand-blue',
+		'border-brand-lime',
 		'border-r-[1px]',
 		'border-l-[1px]',
 		'border-[1px]',
@@ -94,6 +103,11 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				brand: {
+					navy: '#091C3E',
+					blue: '#1D59A9',
+					lime: '#B4D335'
 				}
 			},
 			borderRadius: {

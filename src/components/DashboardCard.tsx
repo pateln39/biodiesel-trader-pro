@@ -11,6 +11,7 @@ interface DashboardCardProps {
   count?: number;
   linkTo: string;
   linkText: string;
+  className?: string;
 }
 
 const DashboardCard = ({
@@ -20,12 +21,13 @@ const DashboardCard = ({
   count,
   linkTo,
   linkText,
+  className,
 }: DashboardCardProps) => {
   return (
-    <Card className="h-full">
+    <Card className={`h-full text-white ${className || 'bg-brand-navy border-brand-blue/30'}`}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-lg font-medium">{title}</CardTitle>
-        <Icon className="h-5 w-5 text-muted-foreground" />
+        <Icon className="h-5 w-5 text-brand-lime" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
@@ -36,7 +38,7 @@ const DashboardCard = ({
       <CardFooter>
         <Link 
           to={linkTo}
-          className="text-primary hover:underline text-sm flex items-center"
+          className="text-brand-lime hover:underline text-sm flex items-center"
         >
           {linkText}
         </Link>

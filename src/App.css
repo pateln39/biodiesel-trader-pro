@@ -1,3 +1,4 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -12,10 +13,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em #B4D335aa);
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em #1D59A9aa);
 }
 
 @keyframes logo-spin {
@@ -39,4 +40,12 @@
 
 .read-the-docs {
   color: #888;
+}
+
+.brand-gradient-bg {
+  background: linear-gradient(180deg, #091C3E 0%, #0F2B5B 100%);
+}
+
+.brand-card {
+  @apply bg-brand-navy border border-brand-blue/30 rounded-md;
 }
