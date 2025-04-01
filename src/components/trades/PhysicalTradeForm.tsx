@@ -20,6 +20,7 @@ import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation'
 import { Switch } from '@/components/ui/switch';
 import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
+
 interface PhysicalTradeFormProps {
   tradeReference: string;
   onSubmit: (trade: any) => void;
@@ -27,6 +28,7 @@ interface PhysicalTradeFormProps {
   isEditMode?: boolean;
   initialData?: PhysicalTrade;
 }
+
 interface LegFormState {
   buySell: BuySell;
   product: Product;
@@ -49,6 +51,7 @@ interface LegFormState {
   efpFixedValue: number | null;
   efpDesignatedMonth: string;
 }
+
 const createDefaultLeg = (): LegFormState => ({
   buySell: 'buy',
   product: 'UCOME',
@@ -71,6 +74,7 @@ const createDefaultLeg = (): LegFormState => ({
   efpFixedValue: null,
   efpDesignatedMonth: getAvailableEfpMonths()[0]
 });
+
 const EFPPricingForm = ({
   values,
   onChange
@@ -108,6 +112,7 @@ const EFPPricingForm = ({
       </div>
     </div>;
 };
+
 const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   tradeReference,
   onSubmit,
@@ -120,14 +125,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     sustainabilityOptions,
     creditStatusOptions
   } = useReferenceData();
+
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
 
-  // Update to properly convert initialData.legs to LegFormState type
   const [legs, setLegs] = useState<LegFormState[]>(initialData?.legs?.map(leg => ({
     buySell: leg.buySell,
     product: leg.product as Product,
-    // Ensure Product type
     sustainability: leg.sustainability || '',
     incoTerm: leg.incoTerm || 'FOB',
     unit: leg.unit || 'MT',
@@ -147,6 +151,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     efpFixedValue: leg.efpFixedValue || null,
     efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0]
   })) || [createDefaultLeg()]);
+
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
@@ -159,14 +164,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     }
     setLegs(newLegs);
   };
+
   const handleMtmFormulaChange = (formula: PricingFormula, legIndex: number) => {
     const newLegs = [...legs];
     newLegs[legIndex].mtmFormula = formula;
     setLegs(newLegs);
   };
+
   const addLeg = () => {
     setLegs([...legs, createDefaultLeg()]);
   };
+
   const removeLeg = (index: number) => {
     if (legs.length > 1) {
       const newLegs = [...legs];
@@ -174,6 +182,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       setLegs(newLegs);
     }
   };
+
   const updateLeg = (index: number, field: keyof LegFormState, value: any) => {
     const newLegs = [...legs];
     if (field === 'pricingType') {
@@ -244,6 +253,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     }
     setLegs(newLegs);
   };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
@@ -312,9 +322,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       });
     }
   };
+
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
   };
+
   return <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -518,7 +530,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </Select>
               </div>
 
-              <div className="border rounded-md p-4 mb-4 bg-zinc-900">
+              <div className="border rounded-md p-4 mb-4 bg-gradient-to-r from-brand-navy via-brand-navy to-brand-lime">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="price" disabled={leg.pricingType === 'efp'} className={leg.pricingType === 'efp' ? 'opacity-50' : ''}>
@@ -570,4 +582,5 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       </div>
     </form>;
 };
+
 export default PhysicalTradeForm;
