@@ -28,7 +28,7 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
     <TableRow className={legIndex > 0 ? "border-t-0" : undefined}>
       <TableCell>
         <div className="flex items-center space-x-2">
-          <Link to={`/trades/${trade.id}`} className="text-primary hover:underline">
+          <Link to={`/trades/${trade.id}`} className="text-white hover:underline">
             {trade.physicalType === 'term' ? 
               `${trade.tradeReference}-${leg.legReference.split('-').pop()}` : 
               trade.tradeReference
