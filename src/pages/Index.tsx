@@ -154,8 +154,8 @@ const Index = () => {
                         if (active && payload && payload.length) {
                           return (
                             <div className="bg-brand-navy p-3 border border-brand-blue/30 rounded shadow">
-                              <p className="text-brand-lime">{`Volume: ${payload[1].value} mt`}</p>
-                              <p className="text-white">{`Count: ${payload[0].value}`}</p>
+                              <p className="text-brand-lime">{`Volume: ${payload[1]?.value || 0} mt`}</p>
+                              <p className="text-white">{`Count: ${payload[0]?.value || 0}`}</p>
                             </div>
                           );
                         }
@@ -240,8 +240,8 @@ const Index = () => {
                         if (active && payload && payload.length) {
                           return (
                             <div className="bg-brand-navy p-3 border border-brand-blue/30 rounded shadow">
-                              <p className="text-brand-lime">{`USD/MT: ${payload[1].value}`}</p>
-                              <p className="text-white">{`Total USD: ${payload[0].value.toLocaleString()}`}</p>
+                              <p className="text-brand-lime">{`USD/MT: ${payload[1]?.value || 0}`}</p>
+                              <p className="text-white">{`Total USD: ${(payload[0]?.value || 0).toLocaleString()}`}</p>
                             </div>
                           );
                         }
@@ -312,12 +312,17 @@ const Index = () => {
                     <Tooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
+                          const month = payload[0]?.payload?.month || '';
+                          const physicalARA = payload[0]?.value || 0;
+                          const refinery = payload[1]?.value || 0;
+                          const dynamicHedging = payload[2]?.value || 0;
+                          
                           return (
                             <div className="bg-brand-navy p-3 border border-brand-blue/30 rounded shadow">
-                              <p className="text-white">{`Month: ${payload[0].payload.month}`}</p>
-                              <p className="text-brand-blue">{`Physical ARA: ${payload[0].value.toLocaleString()}`}</p>
-                              <p className="text-brand-lime">{`Refinery: ${payload[1].value.toLocaleString()}`}</p>
-                              <p className="text-white">{`Dynamic Hedging: ${payload[2].value.toLocaleString()}`}</p>
+                              <p className="text-white">{`Month: ${month}`}</p>
+                              <p className="text-brand-blue">{`Physical ARA: ${physicalARA.toLocaleString()}`}</p>
+                              <p className="text-brand-lime">{`Refinery: ${refinery.toLocaleString()}`}</p>
+                              <p className="text-white">{`Dynamic Hedging: ${dynamicHedging.toLocaleString()}`}</p>
                             </div>
                           );
                         }
