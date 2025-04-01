@@ -18,12 +18,7 @@ const TableErrorState: React.FC<TableErrorStateProps> = ({ error, onRetry }) => 
           {error instanceof Error ? error.message : 'Unknown error occurred'}
         </p>
       </div>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={onRetry}
-        className="bg-brand-navy text-white hover:bg-brand-blue"
-      >
+      <Button variant="outline" size="sm" onClick={onRetry}>
         Try Again
       </Button>
     </div>
