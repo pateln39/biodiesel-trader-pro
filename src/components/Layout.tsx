@@ -83,7 +83,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
         >
-          <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-lime/45 via-brand-navy/55 to-brand-navy/80">
+          <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy/55 via-brand-lime/45 to-brand-lime/30">
             {menuItems.map((item, index) => (
               item.submenu ? (
                 <div key={index} className="space-y-1">
