@@ -203,92 +203,96 @@ const ExposurePage = () => {
             pricingExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
           
-          if (!physicalExposureMonth || !periods.includes(physicalExposureMonth)) {
-            return;
-          }
-          
-          const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
-          const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-          const quantity = (leg.quantity || 0) * quantityMultiplier;
-          
-          allProductsFound.add(canonicalProduct);
-          
-          if (!exposuresByMonth[physicalExposureMonth][canonicalProduct]) {
-            exposuresByMonth[physicalExposureMonth][canonicalProduct] = {
-              physical: 0,
-              pricing: 0,
-              paper: 0,
-              netExposure: 0
-            };
-          }
-          
-          const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-          
-          if (mtmFormula.tokens.length > 0) {
-            if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-              Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-                const canonicalBaseProduct = mapProductToCanonical(baseProduct);
-                allProductsFound.add(canonicalBaseProduct);
-                
-                if (!exposuresByMonth[physicalExposureMonth][canonicalBaseProduct]) {
-                  exposuresByMonth[physicalExposureMonth][canonicalBaseProduct] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
-                }
-                
-                const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
-                exposuresByMonth[physicalExposureMonth][canonicalBaseProduct].physical += actualExposure;
-              });
+          // Process physical exposure only if it's in the current/future periods
+          if (physicalExposureMonth && periods.includes(physicalExposureMonth)) {
+            const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
+            const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+            const quantity = (leg.quantity || 0) * quantityMultiplier;
+            
+            allProductsFound.add(canonicalProduct);
+            
+            if (!exposuresByMonth[physicalExposureMonth][canonicalProduct]) {
+              exposuresByMonth[physicalExposureMonth][canonicalProduct] = {
+                physical: 0,
+                pricing: 0,
+                paper: 0,
+                netExposure: 0
+              };
+            }
+            
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            
+            if (mtmFormula.tokens.length > 0) {
+              if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+                Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+                  const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+                  allProductsFound.add(canonicalBaseProduct);
+                  
+                  if (!exposuresByMonth[physicalExposureMonth][canonicalBaseProduct]) {
+                    exposuresByMonth[physicalExposureMonth][canonicalBaseProduct] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
+                  }
+                  
+                  const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+                  exposuresByMonth[physicalExposureMonth][canonicalBaseProduct].physical += actualExposure;
+                });
+              } else {
+                exposuresByMonth[physicalExposureMonth][canonicalProduct].physical += quantity;
+              }
             } else {
               exposuresByMonth[physicalExposureMonth][canonicalProduct].physical += quantity;
             }
-          } else {
-            exposuresByMonth[physicalExposureMonth][canonicalProduct].physical += quantity;
           }
           
-          if (pricingExposureMonth && periods.includes(pricingExposureMonth)) {
-            const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
-            
-            if (pricingFormula.monthlyDistribution) {
-              Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
-                const canonicalInstrument = mapProductToCanonical(instrument);
-                allProductsFound.add(canonicalInstrument);
-                
-                Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-                  if (periods.includes(monthCode) && value !== 0) {
-                    if (!exposuresByMonth[monthCode][canonicalInstrument]) {
-                      exposuresByMonth[monthCode][canonicalInstrument] = {
-                        physical: 0,
-                        pricing: 0,
-                        paper: 0,
-                        netExposure: 0
-                      };
-                    }
-                    
-                    exposuresByMonth[monthCode][canonicalInstrument].pricing += value;
+          // Process pricing exposures separately - always process monthlyDistribution regardless of period
+          const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+          
+          // First check for monthly distribution which can span multiple periods
+          if (pricingFormula.monthlyDistribution) {
+            Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
+              const canonicalInstrument = mapProductToCanonical(instrument);
+              allProductsFound.add(canonicalInstrument);
+              
+              Object.entries(monthlyValues).forEach(([monthCode, value]) => {
+                // Only include exposure for months in our periods list
+                if (periods.includes(monthCode) && value !== 0) {
+                  if (!exposuresByMonth[monthCode][canonicalInstrument]) {
+                    exposuresByMonth[monthCode][canonicalInstrument] = {
+                      physical: 0,
+                      pricing: 0,
+                      paper: 0,
+                      netExposure: 0
+                    };
                   }
-                });
-              });
-            } else if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
-              Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
-                const canonicalInstrument = mapProductToCanonical(instrument);
-                allProductsFound.add(canonicalInstrument);
-                
-                if (!exposuresByMonth[pricingExposureMonth][canonicalInstrument]) {
-                  exposuresByMonth[pricingExposureMonth][canonicalInstrument] = {
-                    physical: 0,
-                    pricing: 0,
-                    paper: 0,
-                    netExposure: 0
-                  };
+                  
+                  exposuresByMonth[monthCode][canonicalInstrument].pricing += value;
                 }
-                
-                exposuresByMonth[pricingExposureMonth][canonicalInstrument].pricing += Number(value) || 0;
               });
-            }
+            });
+          } 
+          // For standard pricing exposures, use the pricing month if it's valid
+          else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && 
+                  pricingFormula.exposures && pricingFormula.exposures.pricing) {
+            
+            Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
+              const canonicalInstrument = mapProductToCanonical(instrument);
+              allProductsFound.add(canonicalInstrument);
+              
+              if (!exposuresByMonth[pricingExposureMonth][canonicalInstrument]) {
+                exposuresByMonth[pricingExposureMonth][canonicalInstrument] = {
+                  physical: 0,
+                  pricing: 0,
+                  paper: 0,
+                  netExposure: 0
+                };
+              }
+              
+              exposuresByMonth[pricingExposureMonth][canonicalInstrument].pricing += Number(value) || 0;
+            });
           }
         });
       }
@@ -685,6 +689,13 @@ const ExposurePage = () => {
       }
     }
     
+    // Calculate net exposure for all products in all months
+    periods.forEach(month => {
+      Object.entries(exposuresByMonth[month]).forEach(([product, exposure]) => {
+        exposure.netExposure = calculateNetExposure(exposure.physical, exposure.pricing);
+      });
+    });
+    
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
       const monthData = exposuresByMonth[month];
       const productsData: Record<string, ExposureData> = {};
@@ -692,11 +703,6 @@ const ExposurePage = () => {
       
       Object.entries(monthData).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product)) {
-          exposure.netExposure = calculateNetExposure(
-            exposure.physical,
-            exposure.pricing
-          );
-          
           productsData[product] = exposure;
           
           totals.physical += exposure.physical;

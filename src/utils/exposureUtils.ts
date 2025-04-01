@@ -1,5 +1,7 @@
+
 import { PhysicalTrade } from '@/types';
 import { mapProductToCanonical } from './productMapping';
+import { parseForwardMonth } from './dateParsingUtils';
 
 // Type definitions for exposure calculations
 export interface MonthlyProductVolume {
@@ -66,9 +68,7 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
           year: '2-digit' 
         }) || defaultMonth;
         
-        if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
-        
-        // Handle monthly distribution if it exists
+        // Handle monthly distribution if it exists - IMPORTANT: Process regardless of physical month
         if (leg.formula && leg.formula.monthlyDistribution) {
           const { monthlyDistribution } = leg.formula;
           
@@ -76,6 +76,7 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
             const canonicalInstrument = mapProductToCanonical(instrument);
             
             Object.entries(monthlyValues).forEach(([monthCode, value]) => {
+              // Process each monthly distribution value regardless of the physical month's validity
               if (!monthlyPricing[monthCode]) {
                 monthlyPricing[monthCode] = {};
               }
@@ -90,6 +91,8 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         } 
         // Otherwise use the formula exposures
         else if (leg.formula && leg.formula.exposures && leg.formula.exposures.pricing) {
+          if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
+          
           const instruments = extractInstrumentsFromFormula(leg.formula);
           
           instruments.forEach(instrument => {
