@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -128,4 +129,32 @@
 
 .exposure-category-filter {
   @apply bg-[#002A46] text-white;
+}
+
+.exposure-table-container {
+  @apply overflow-x-auto max-w-full;
+}
+
+.exposure-table-wrapper {
+  @apply min-w-full border-collapse;
+}
+
+.exposure-category-column {
+  @apply border-r border-gray-700;
+}
+
+.exposure-month-cell {
+  @apply font-medium sticky left-0 z-10 bg-[#002A46] text-white;
+}
+
+.exposure-category-header {
+  @apply text-center font-semibold border-b border-gray-700;
+}
+
+.exposure-total-column {
+  @apply font-bold;
+}
+
+.exposure-filters-container {
+  @apply flex flex-wrap gap-3 p-4;
 }
