@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, Package, Clock, AlertTriangle, BarChart3, DollarSign } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -7,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart } from 'recharts';
 
-// Mock data for the charts based on the image
 const physicalPositionData = [
   { month: 'Jan', UCOME: 150, FAME: 330, RME1: 330, RME2: 240 },
   { month: 'Feb', UCOME: 180, FAME: 320, RME1: 240, RME2: 250 },
@@ -112,22 +110,22 @@ const Index = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-brand-blue/30">
-                      <th className="text-left p-2">Month</th>
-                      <th className="text-right p-2">UCOME</th>
-                      <th className="text-right p-2">FAME</th>
-                      <th className="text-right p-2">RME</th>
-                      <th className="text-right p-2">RME</th>
+                    <tr className="border-b border-brand-blue/30 bg-brand-blue/20">
+                      <th className="text-left p-2 text-brand-lime font-semibold">Month</th>
+                      <th className="text-right p-2 text-brand-lime font-semibold">UCOME</th>
+                      <th className="text-right p-2 text-brand-lime font-semibold">FAME</th>
+                      <th className="text-right p-2 text-brand-lime font-semibold">RME</th>
+                      <th className="text-right p-2 text-brand-lime font-semibold">RME</th>
                     </tr>
                   </thead>
                   <tbody>
                     {physicalPositionData.map((row) => (
-                      <tr key={row.month} className="border-b border-brand-blue/30">
-                        <td className="text-left p-2">{row.month}</td>
-                        <td className="text-right p-2">{row.UCOME}</td>
-                        <td className="text-right p-2">{row.FAME}</td>
-                        <td className="text-right p-2">{row.RME1}</td>
-                        <td className="text-right p-2">{row.RME2}</td>
+                      <tr key={row.month} className="border-b border-brand-blue/30 hover:bg-brand-blue/10 transition-colors">
+                        <td className="text-left p-2 font-medium">{row.month}</td>
+                        <td className="text-right p-2 font-bold text-white">{row.UCOME}</td>
+                        <td className="text-right p-2 font-bold text-white">{row.FAME}</td>
+                        <td className="text-right p-2 font-bold text-white">{row.RME1}</td>
+                        <td className="text-right p-2 font-bold text-white">{row.RME2}</td>
                       </tr>
                     ))}
                   </tbody>
