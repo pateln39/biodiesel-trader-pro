@@ -26,68 +26,80 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
   
   for (const trade of trades) {
     for (const leg of trade.legs || []) {
-      // Handle EFP pricing type
-      if (leg.pricingType === 'efp' && leg.efpPremium !== undefined) {
-        // Use the designated month for EFP trades instead of pricing period
-        const month = leg.efpDesignatedMonth || defaultMonth;
-        
-        console.log(`Processing EFP leg: ${leg.legReference}, Designated Month: ${month}`);
-        
-        // Create month buckets if they don't exist
-        if (!monthlyPhysical[month]) monthlyPhysical[month] = {};
-        if (!monthlyPricing[month]) monthlyPricing[month] = {};
-        
-        // Add physical exposure
-        const productKey = mapProductToCanonical(leg.product);
-        if (!monthlyPhysical[month][productKey]) monthlyPhysical[month][productKey] = 0;
-        const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-        const direction = leg.buySell === 'buy' ? 1 : -1;
-        monthlyPhysical[month][productKey] += volume * direction;
-        
-        // Pricing side - depends on agreed status
-        if (!leg.efpAgreedStatus) {
-          // Unagreed EFP - use dedicated EFP column
-          const efpKey = 'ICE GASOIL FUTURES (EFP)';
-          if (!monthlyPricing[month][efpKey]) monthlyPricing[month][efpKey] = 0;
-          // In exposure table: Buy shows as negative in pricing column, Sell as positive
-          monthlyPricing[month][efpKey] += volume * (direction * -1);
-        } else {
-          // Agreed EFP - use standard ICE GASOIL FUTURES column
-          const pricingKey = 'ICE GASOIL FUTURES';
-          if (!monthlyPricing[month][pricingKey]) monthlyPricing[month][pricingKey] = 0;
-          // In exposure table: Buy shows as negative in pricing column, Sell as positive
-          monthlyPricing[month][pricingKey] += volume * (direction * -1);
-        }
-        
-        continue;
-      }
-      
-      const month = leg.pricingPeriodStart?.toLocaleDateString('default', { 
+      // Handle physical exposure first (this is the same for all trade types)
+      const physicalMonth = leg.loadingPeriodStart?.toLocaleDateString('default', { 
         month: 'short', 
         year: '2-digit' 
       }) || defaultMonth;
       
       // Physical side
-      if (!monthlyPhysical[month]) monthlyPhysical[month] = {};
+      if (!monthlyPhysical[physicalMonth]) monthlyPhysical[physicalMonth] = {};
       const productKey = mapProductToCanonical(leg.product);
-      if (!monthlyPhysical[month][productKey]) monthlyPhysical[month][productKey] = 0;
+      if (!monthlyPhysical[physicalMonth][productKey]) monthlyPhysical[physicalMonth][productKey] = 0;
       const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
       const direction = leg.buySell === 'buy' ? 1 : -1;
-      monthlyPhysical[month][productKey] += volume * direction;
+      monthlyPhysical[physicalMonth][productKey] += volume * direction;
       
-      // Pricing side
-      if (!monthlyPricing[month]) monthlyPricing[month] = {};
-      
-      if (leg.formula) {
-        const instruments = extractInstrumentsFromFormula(leg.formula);
+      // Now handle pricing exposure - with special case for EFP trades
+      if (leg.pricingType === 'efp') {
+        // For EFP trades, use the designated month instead of the pricing period
+        const pricingMonth = leg.efpDesignatedMonth || defaultMonth;
         
-        instruments.forEach(instrument => {
-          if (!monthlyPricing[month][instrument]) {
-            monthlyPricing[month][instrument] = 0;
-          }
-          // In exposure table: Buy shows as negative in pricing column, Sell as positive
-          monthlyPricing[month][instrument] += volume * (direction * -1);
-        });
+        if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
+        
+        // Select the appropriate instrument based on agreed status
+        const instrumentKey = leg.efpAgreedStatus 
+          ? 'ICE GASOIL FUTURES'
+          : 'ICE GASOIL FUTURES (EFP)';
+          
+        if (!monthlyPricing[pricingMonth][instrumentKey]) {
+          monthlyPricing[pricingMonth][instrumentKey] = 0;
+        }
+        
+        // In exposure table: Buy shows as negative in pricing column, Sell as positive
+        monthlyPricing[pricingMonth][instrumentKey] += volume * (direction * -1);
+      } 
+      else {
+        // Standard trades - use the pricing period and formula
+        const pricingMonth = leg.pricingPeriodStart?.toLocaleDateString('default', { 
+          month: 'short', 
+          year: '2-digit' 
+        }) || defaultMonth;
+        
+        if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
+        
+        // Handle monthly distribution if it exists
+        if (leg.formula && leg.formula.monthlyDistribution) {
+          const { monthlyDistribution } = leg.formula;
+          
+          Object.entries(monthlyDistribution).forEach(([instrument, monthlyValues]) => {
+            const canonicalInstrument = mapProductToCanonical(instrument);
+            
+            Object.entries(monthlyValues).forEach(([monthCode, value]) => {
+              if (!monthlyPricing[monthCode]) {
+                monthlyPricing[monthCode] = {};
+              }
+              
+              if (!monthlyPricing[monthCode][canonicalInstrument]) {
+                monthlyPricing[monthCode][canonicalInstrument] = 0;
+              }
+              
+              monthlyPricing[monthCode][canonicalInstrument] += value;
+            });
+          });
+        } 
+        // Otherwise use the formula exposures
+        else if (leg.formula && leg.formula.exposures && leg.formula.exposures.pricing) {
+          const instruments = extractInstrumentsFromFormula(leg.formula);
+          
+          instruments.forEach(instrument => {
+            if (!monthlyPricing[pricingMonth][instrument]) {
+              monthlyPricing[pricingMonth][instrument] = 0;
+            }
+            // In exposure table: Buy shows as negative in pricing column, Sell as positive
+            monthlyPricing[pricingMonth][instrument] += volume * (direction * -1);
+          });
+        }
       }
     }
   }
