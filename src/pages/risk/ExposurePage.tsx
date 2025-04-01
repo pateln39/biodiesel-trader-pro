@@ -787,7 +787,7 @@ const ExposurePage = () => {
   }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
 
   const getValueColorClass = (value: number): string => {
-    return value > 0 ? 'text-green-300' : value < 0 ? 'text-red-300' : 'text-gray-300';
+    return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
   };
 
   const formatValue = (value: number): string => {
@@ -799,13 +799,13 @@ const ExposurePage = () => {
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
       case 'Physical':
-        return 'bg-[#1A1F2C]';
+        return 'bg-orange-800';
       case 'Pricing':
-        return 'bg-[#1A1F2C]';
+        return 'bg-green-800';
       case 'Paper':
-        return 'bg-[#1A1F2C]';
+        return 'bg-blue-800';
       case 'Exposure':
-        return 'bg-[#1A1F2C]';
+        return 'bg-green-600';
       default:
         return '';
     }
@@ -857,235 +857,450 @@ const ExposurePage = () => {
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <Download className="mr-2 h-4 w-4" />
-              Export
+              <Download className="mr-2 h-3 w-3" /> Export
             </Button>
           </div>
         </div>
-        
-        <div className="flex space-x-2">
-          {exposureCategories.map((category) => (
-            <Checkbox
-              key={category}
-              checked={visibleCategories.includes(category)}
-              onChange={() => toggleCategory(category)}
-            >
-              {category}
-            </Checkbox>
-          ))}
-        </div>
-        
-        <Card>
-          <CardContent className="p-0">
-            {isLoadingData ? (
-              <TableLoadingState />
-            ) : error ? (
-              <TableErrorState error={error} />
-            ) : (
-              <div className="overflow-x-auto">
-                <Table className="w-full border-collapse">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 dark:bg-muted/20">
-                      <TableHead className="w-[180px] font-semibold">Month/Product</TableHead>
-                      {filteredProducts.map((product) => (
-                        <TableHead key={product} className="font-semibold text-center">
-                          {formatExposureTableProduct(product)}
-                        </TableHead>
-                      ))}
-                      {shouldShowBiodieselTotal && (
-                        <TableHead className="font-semibold text-center bg-muted/30 dark:bg-muted/40">
-                          Biodiesel Total
-                        </TableHead>
-                      )}
-                      {shouldShowPricingInstrumentTotal && (
-                        <TableHead className="font-semibold text-center bg-muted/30 dark:bg-muted/40">
-                          Pricing Instruments Total
-                        </TableHead>
-                      )}
-                      {shouldShowTotalRow && (
-                        <TableHead className="font-semibold text-center bg-primary/20 dark:bg-primary/30">
-                          Grand Total
-                        </TableHead>
-                      )}
-                    </TableRow>
-                  </TableHeader>
-                  
-                  <TableBody>
-                    {exposureData.map((monthData) => (
-                      <React.Fragment key={monthData.month}>
-                        <TableRow className="bg-[#1A1F2C]">
-                          <TableCell 
-                            colSpan={filteredProducts.length + 1 + 
-                              (shouldShowBiodieselTotal ? 1 : 0) + 
-                              (shouldShowPricingInstrumentTotal ? 1 : 0) + 
-                              (shouldShowTotalRow ? 1 : 0)
-                            }
-                            className="font-bold text-white py-2"
-                          >
-                            {monthData.month}
-                          </TableCell>
-                        </TableRow>
-                        
-                        {orderedVisibleCategories.map((category) => {
-                          const categoryIndex = exposureCategories.indexOf(category);
-                          const mappedCategory = category === 'Exposure' ? 'netExposure' : 
-                                               category.toLowerCase() as keyof ExposureData;
-                          
-                          return (
-                            <TableRow 
-                              key={`${monthData.month}-${category}`}
-                              className={getCategoryColorClass(category)}
-                            >
-                              <TableCell className="text-white font-medium">
-                                {category}
-                              </TableCell>
-                              
-                              {filteredProducts.map((product) => {
-                                const shouldShow = shouldShowProductInCategory(product, category);
-                                if (!shouldShow) {
-                                  return (
-                                    <TableCell 
-                                      key={`${monthData.month}-${category}-${product}`}
-                                      className="text-center text-gray-400"
-                                    >
-                                      -
-                                    </TableCell>
-                                  );
-                                }
-                                
-                                const data = monthData.products[product];
-                                if (!data) {
-                                  return (
-                                    <TableCell 
-                                      key={`${monthData.month}-${category}-${product}`}
-                                      className="text-center text-gray-400"
-                                    >
-                                      0
-                                    </TableCell>
-                                  );
-                                }
-                                
-                                const value = data[mappedCategory];
-                                
-                                return (
-                                  <TableCell 
-                                    key={`${monthData.month}-${category}-${product}`}
-                                    className={`text-center ${getValueColorClass(value)}`}
-                                  >
-                                    {formatValue(value)}
-                                  </TableCell>
-                                );
-                              })}
-                              
-                              {shouldShowBiodieselTotal && (
-                                <TableCell 
-                                  className={`text-center bg-muted/30 dark:bg-muted/40 font-medium ${
-                                    getValueColorClass(calculateProductGroupTotal(
-                                      monthData.products, 
-                                      BIODIESEL_PRODUCTS, 
-                                      mappedCategory
-                                    ))
-                                  }`}
-                                >
-                                  {formatValue(calculateProductGroupTotal(
-                                    monthData.products, 
-                                    BIODIESEL_PRODUCTS, 
-                                    mappedCategory
-                                  ))}
-                                </TableCell>
-                              )}
-                              
-                              {shouldShowPricingInstrumentTotal && (
-                                <TableCell 
-                                  className={`text-center bg-muted/30 dark:bg-muted/40 font-medium ${
-                                    getValueColorClass(calculateProductGroupTotal(
-                                      monthData.products, 
-                                      PRICING_INSTRUMENT_PRODUCTS, 
-                                      mappedCategory
-                                    ))
-                                  }`}
-                                >
-                                  {formatValue(calculateProductGroupTotal(
-                                    monthData.products, 
-                                    PRICING_INSTRUMENT_PRODUCTS, 
-                                    mappedCategory
-                                  ))}
-                                </TableCell>
-                              )}
-                              
-                              {shouldShowTotalRow && (
-                                <TableCell 
-                                  className={`text-center bg-primary/20 dark:bg-primary/30 font-medium ${
-                                    getValueColorClass(category === 'Exposure' ? 
-                                      monthData.totals.netExposure : 
-                                      monthData.totals[mappedCategory])
-                                  }`}
-                                >
-                                  {formatValue(category === 'Exposure' ? 
-                                    monthData.totals.netExposure : 
-                                    monthData.totals[mappedCategory])}
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
-                    
-                    <TableRow className="bg-[#1A1F2C]">
-                      <TableCell className="font-bold text-white">
-                        Grand Totals
-                      </TableCell>
-                      
-                      {filteredProducts.map((product) => {
-                        const productTotal = grandTotals.productTotals[product]?.netExposure || 0;
-                        
-                        return (
-                          <TableCell 
-                            key={`grand-total-${product}`}
-                            className={`text-center font-semibold ${getValueColorClass(productTotal)}`}
-                          >
-                            {formatValue(productTotal)}
-                          </TableCell>
-                        );
-                      })}
-                      
-                      {shouldShowBiodieselTotal && (
-                        <TableCell 
-                          className={`text-center bg-muted/30 dark:bg-muted/40 font-semibold ${
-                            getValueColorClass(groupGrandTotals.biodieselTotal)
-                          }`}
-                        >
-                          {formatValue(groupGrandTotals.biodieselTotal)}
-                        </TableCell>
-                      )}
-                      
-                      {shouldShowPricingInstrumentTotal && (
-                        <TableCell 
-                          className={`text-center bg-muted/30 dark:bg-muted/40 font-semibold ${
-                            getValueColorClass(groupGrandTotals.pricingInstrumentTotal)
-                          }`}
-                        >
-                          {formatValue(groupGrandTotals.pricingInstrumentTotal)}
-                        </TableCell>
-                      )}
-                      
-                      {shouldShowTotalRow && (
-                        <TableCell 
-                          className={`text-center bg-primary/20 dark:bg-primary/30 font-semibold ${
-                            getValueColorClass(groupGrandTotals.totalRow)
-                          }`}
-                        >
-                          {formatValue(groupGrandTotals.totalRow)}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  </TableBody>
-                </Table>
+
+        <Card className="mb-4">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Category Filters</label>
+                <div className="flex flex-wrap gap-2">
+                  {exposureCategories.map(category => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category}`} 
+                        checked={visibleCategories.includes(category)} 
+                        onCheckedChange={() => toggleCategory(category)}
+                      />
+                      <label 
+                        htmlFor={`category-${category}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {category}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
+
+        {isLoadingData ? (
+          <Card>
+            <CardContent className="pt-4">
+              <TableLoadingState />
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card>
+            <CardContent className="pt-4">
+              <TableErrorState error={error as Error} onRetry={refetch} />
+            </CardContent>
+          </Card>
+        ) : exposureData.length === 0 || filteredProducts.length === 0 ? (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex justify-center items-center h-40">
+                <p className="text-muted-foreground">No exposure data found.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
+            <CardContent className="p-0 overflow-auto">
+              <div className="w-full overflow-auto">
+                <div style={{ width: "max-content", minWidth: "100%" }}>
+                  <Table className="border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-muted/50 border-b-[1px] border-black">
+                        <TableHead 
+                          rowSpan={2} 
+                          className="border-r-[1px] border-b-[1px] border-black text-left p-1 font-bold text-white text-xs bg-brand-navy sticky left-0 z-10"
+                        >
+                          Month
+                        </TableHead>
+                        {orderedVisibleCategories.map((category, catIndex) => {
+                          let colSpan = filteredProducts.filter(product => 
+                            shouldShowProductInCategory(product, category)
+                          ).length;
+                          
+                          if (category === 'Exposure') {
+                            if (shouldShowPricingInstrumentTotal) colSpan += 1;
+                            if (shouldShowTotalRow) colSpan += 1;
+                          }
+                          
+                          return (
+                            <TableHead 
+                              key={category} 
+                              colSpan={colSpan} 
+                              className={`text-center p-1 font-bold text-white text-xs border-b-[1px] ${
+                                catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
+                              } border-black`}
+                            >
+                              {category}
+                            </TableHead>
+                          );
+                        })}
+                      </TableRow>
+                      
+                      <TableRow className="bg-muted/30 border-b-[1px] border-black">
+                        {orderedVisibleCategories.flatMap((category, catIndex) => {
+                          const categoryProducts = filteredProducts.filter(product => 
+                            shouldShowProductInCategory(product, category)
+                          );
+                          
+                          if (category === 'Exposure') {
+                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                            
+                            const headers = [];
+                            
+                            categoryProducts.forEach((product, index) => {
+                              headers.push(
+                                <TableHead 
+                                  key={`${category}-${product}`} 
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
+                                    getExposureProductBackgroundClass(product)
+                                  } text-white font-bold`}
+                                >
+                                  {formatExposureTableProduct(product)}
+                                </TableHead>
+                              );
+                              
+                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                headers.push(
+                                  <TableHead 
+                                    key={`${category}-biodiesel-total`} 
+                                    className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
+                                      getCategoryColorClass(category)
+                                    } text-white font-bold`}
+                                  >
+                                    Total Biodiesel
+                                  </TableHead>
+                                );
+                              }
+                            });
+                            
+                            if (shouldShowPricingInstrumentTotal) {
+                              headers.push(
+                                <TableHead 
+                                  key={`${category}-pricing-instrument-total`} 
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${
+                                    getExposureProductBackgroundClass('', false, true)
+                                  } text-white font-bold`}
+                                >
+                                  Total Pricing Instrument
+                                </TableHead>
+                              );
+                            }
+                            
+                            if (shouldShowTotalRow) {
+                              headers.push(
+                                <TableHead 
+                                  key={`${category}-total-row`} 
+                                  className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                    getExposureProductBackgroundClass('', true)
+                                  } ${
+                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  } text-white font-bold`}
+                                >
+                                  Total Row
+                                </TableHead>
+                              );
+                            }
+                            
+                            return headers;
+                          } else {
+                            return categoryProducts.map((product, index) => (
+                              <TableHead 
+                                key={`${category}-${product}`} 
+                                className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${
+                                  getCategoryColorClass(category)
+                                } ${
+                                  index === categoryProducts.length - 1 && 
+                                  catIndex < orderedVisibleCategories.length - 1
+                                    ? 'border-r-[1px] border-black' : ''
+                                } ${
+                                  index > 0 ? 'border-l-[0px]' : ''
+                                } text-white font-bold`}
+                              >
+                                {formatExposureTableProduct(product)}
+                              </TableHead>
+                            ));
+                          }
+                        })}
+                      </TableRow>
+                    </TableHeader>
+                    
+                    <TableBody>
+                      {exposureData.map((monthData) => (
+                        <TableRow key={monthData.month} className="bg-white hover:bg-gray-50">
+                          <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 bg-white z-10">
+                            {monthData.month}
+                          </TableCell>
+                          
+                          {orderedVisibleCategories.map((category, catIndex) => {
+                            const categoryProducts = filteredProducts.filter(product => 
+                              shouldShowProductInCategory(product, category)
+                            );
+                            
+                            const cells = [];
+                            
+                            if (category === 'Physical') {
+                              categoryProducts.forEach((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-physical-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.physical)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Pricing') {
+                              categoryProducts.forEach((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-pricing-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.pricing)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Paper') {
+                              categoryProducts.forEach((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-paper-${product}`} 
+                                    className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${
+                                      index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    }`}
+                                  >
+                                    {formatValue(productData.paper)}
+                                  </TableCell>
+                                );
+                              });
+                            } else if (category === 'Exposure') {
+                              const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                              
+                              categoryProducts.forEach((product, index) => {
+                                const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-net-${product}`} 
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}
+                                  >
+                                    {formatValue(productData.netExposure)}
+                                  </TableCell>
+                                );
+                                
+                                if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                  const biodieselTotal = calculateProductGroupTotal(
+                                    monthData.products,
+                                    BIODIESEL_PRODUCTS
+                                  );
+                                  
+                                  cells.push(
+                                    <TableCell 
+                                      key={`${monthData.month}-biodiesel-total`} 
+                                      className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                                    >
+                                      {formatValue(biodieselTotal)}
+                                    </TableCell>
+                                  );
+                                }
+                              });
+                              
+                              if (shouldShowPricingInstrumentTotal) {
+                                const pricingInstrumentTotal = calculateProductGroupTotal(
+                                  monthData.products,
+                                  PRICING_INSTRUMENT_PRODUCTS
+                                );
+                                
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-pricing-instrument-total`} 
+                                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
+                                  >
+                                    {formatValue(pricingInstrumentTotal)}
+                                  </TableCell>
+                                );
+                              }
+                              
+                              if (shouldShowTotalRow) {
+                                const biodieselTotal = calculateProductGroupTotal(
+                                  monthData.products,
+                                  BIODIESEL_PRODUCTS
+                                );
+                                
+                                const pricingInstrumentTotal = calculateProductGroupTotal(
+                                  monthData.products,
+                                  PRICING_INSTRUMENT_PRODUCTS
+                                );
+                                
+                                const totalRow = biodieselTotal + pricingInstrumentTotal;
+                                
+                                cells.push(
+                                  <TableCell 
+                                    key={`${monthData.month}-total-row`} 
+                                    className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${
+                                      catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                    }`}
+                                  >
+                                    {formatValue(totalRow)}
+                                  </TableCell>
+                                );
+                              }
+                            }
+                            
+                            return cells;
+                          })}
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="bg-gray-700 text-white font-bold border-t-[1px] border-black">
+                        <TableCell className="border-r-[1px] border-black text-xs p-1 sticky left-0 bg-gray-700 z-10 text-white">
+                          Total
+                        </TableCell>
+                        
+                        {orderedVisibleCategories.map((category, catIndex) => {
+                          const categoryProducts = filteredProducts.filter(product => 
+                            shouldShowProductInCategory(product, category)
+                          );
+                          
+                          const cells = [];
+                          
+                          if (category === 'Physical') {
+                            categoryProducts.forEach((product, index) => {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-physical-${product}`} 
+                                  className={`text-right text-xs p-1 ${
+                                    grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold ${
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  }`}
+                                >
+                                  {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                                </TableCell>
+                              );
+                            });
+                          } else if (category === 'Pricing') {
+                            categoryProducts.forEach((product, index) => {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-pricing-${product}`} 
+                                  className={`text-right text-xs p-1 ${
+                                    grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold ${
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  }`}
+                                >
+                                  {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                                </TableCell>
+                              );
+                            });
+                          } else if (category === 'Paper') {
+                            categoryProducts.forEach((product, index) => {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-paper-${product}`} 
+                                  className={`text-right text-xs p-1 ${
+                                    grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold ${
+                                    index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  }`}
+                                >
+                                  {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                                </TableCell>
+                              );
+                            });
+                          } else if (category === 'Exposure') {
+                            const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+                            
+                            categoryProducts.forEach((product, index) => {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-net-${product}`} 
+                                  className={`text-right text-xs p-1 border-r-[1px] border-black ${
+                                    grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : 
+                                    grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold`}
+                                >
+                                  {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                                </TableCell>
+                              );
+                              
+                              if (index === ucomeIndex && shouldShowBiodieselTotal) {
+                                cells.push(
+                                  <TableCell 
+                                    key={`total-biodiesel-total`} 
+                                    className={`text-right text-xs p-1 border-r-[1px] border-black ${
+                                      groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : 
+                                      groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'
+                                    } font-bold bg-green-900`}
+                                  >
+                                    {formatValue(groupGrandTotals.biodieselTotal)}
+                                  </TableCell>
+                                );
+                              }
+                            });
+                            
+                            if (shouldShowPricingInstrumentTotal) {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-pricing-instrument-total`} 
+                                  className={`text-right text-xs p-1 border-r-[1px] border-black ${
+                                    groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : 
+                                    groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold bg-blue-900`}
+                                >
+                                  {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                                </TableCell>
+                              );
+                            }
+                            
+                            if (shouldShowTotalRow) {
+                              cells.push(
+                                <TableCell 
+                                  key={`total-total-row`} 
+                                  className={`text-right text-xs p-1 ${
+                                    groupGrandTotals.totalRow > 0 ? 'text-green-300' : 
+                                    groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'
+                                  } font-bold bg-gray-800 ${
+                                    catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''
+                                  }`}
+                                >
+                                  {formatValue(groupGrandTotals.totalRow)}
+                                </TableCell>
+                              );
+                            }
+                          }
+                          
+                          return cells;
+                        })}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
