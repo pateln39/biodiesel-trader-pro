@@ -19,8 +19,9 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail } from '@/types';
+import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail, PhysicalTradeLeg } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PriceDetailsProps {
   isOpen: boolean;
@@ -58,10 +59,38 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   } | null>(null);
   
   const [mtmValue, setMtmValue] = useState<number>(0);
+  const [isEfpTrade, setIsEfpTrade] = useState<boolean>(false);
+  const [efpData, setEfpData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchTradeData = async () => {
+      if (!isOpen || !tradeLegId) return;
+
+      try {
+        // Fetch the trade leg to determine if it's an EFP trade
+        const { data, error } = await supabase
+          .from('trade_legs')
+          .select('pricing_type, efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month')
+          .eq('id', tradeLegId)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching trade leg:', error);
+        } else if (data && data.pricing_type === 'efp') {
+          setIsEfpTrade(true);
+          setEfpData(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchTradeData:', error);
+      }
+    };
+
+    fetchTradeData();
+  }, [isOpen, tradeLegId]);
 
   useEffect(() => {
     const fetchPriceData = async () => {
-      if (!isOpen || !formula) return;
+      if (!isOpen) return;
       setLoading(true);
 
       try {
@@ -69,15 +98,69 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
         const validStartDate = startDate < endDate ? startDate : endDate;
         const validEndDate = endDate > startDate ? endDate : startDate;
 
-        const tradePriceResult = await calculateTradeLegPrice(
-          formula,
-          validStartDate,
-          validEndDate
-        );
+        let tradePriceResult;
+
+        if (isEfpTrade && efpData) {
+          // Create a leg object with EFP properties
+          const efpLeg: PhysicalTradeLeg = {
+            id: tradeLegId,
+            legReference: '',
+            parentTradeId: '',
+            buySell: buySell,
+            product: 'GASOIL', // Placeholder
+            quantity: quantity,
+            pricingPeriodStart: validStartDate,
+            pricingPeriodEnd: validEndDate,
+            pricingType: 'efp',
+            efpPremium: efpData.efp_premium,
+            efpAgreedStatus: efpData.efp_agreed_status,
+            efpFixedValue: efpData.efp_fixed_value,
+            efpDesignatedMonth: efpData.efp_designated_month,
+            formula: formula
+          };
+
+          tradePriceResult = await calculateTradeLegPrice(
+            efpLeg,
+            validStartDate,
+            validEndDate
+          );
+        } else if (formula) {
+          tradePriceResult = await calculateTradeLegPrice(
+            formula,
+            validStartDate,
+            validEndDate
+          );
+        } else {
+          throw new Error('No formula available for price calculation');
+        }
+
         setPriceData(tradePriceResult);
         
-        const formulaToUse = mtmFormula || formula;
-        const mtmPriceResult = await calculateMTMPrice(formulaToUse);
+        let mtmPriceResult;
+        
+        if (isEfpTrade && efpData) {
+          // Create a leg object with EFP properties for MTM
+          const efpLeg: PhysicalTradeLeg = {
+            id: tradeLegId,
+            legReference: '',
+            parentTradeId: '',
+            buySell: buySell,
+            product: 'GASOIL', // Placeholder
+            quantity: quantity,
+            pricingType: 'efp',
+            efpPremium: efpData.efp_premium,
+            efpAgreedStatus: efpData.efp_agreed_status,
+            efpFixedValue: efpData.efp_fixed_value,
+            efpDesignatedMonth: efpData.efp_designated_month,
+            formula: formula
+          };
+          
+          mtmPriceResult = await calculateMTMPrice(efpLeg);
+        } else {
+          const formulaToUse = mtmFormula || formula;
+          mtmPriceResult = await calculateMTMPrice(formulaToUse);
+        }
+        
         setMtmPriceData({
           price: mtmPriceResult.price,
           priceDetails: mtmPriceResult.details
@@ -98,7 +181,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     };
 
     fetchPriceData();
-  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell]);
+  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell, isEfpTrade, efpData, tradeLegId]);
 
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails || !data.priceDetails.instruments) return [];
@@ -206,6 +289,11 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                           <div className="text-2xl font-bold">
                             ${priceData.price.toFixed(2)}
                           </div>
+                          {isEfpTrade && (
+                            <Badge variant="outline" className="mt-1">
+                              EFP {efpData?.efp_agreed_status ? 'Agreed' : 'Unagreed'}
+                            </Badge>
+                          )}
                         </CardContent>
                       </Card>
 
@@ -254,66 +342,123 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                         Pricing Table
                       </h3>
 
-                      {tradeInstruments.length > 0 ? (
+                      {isEfpTrade ? (
+                        // Special display for EFP trades
                         <Card>
                           <CardHeader className="pb-2 bg-muted/50">
                             <CardTitle className="text-sm font-medium">
-                              <span>Consolidated Price Data</span>
+                              <span>EFP Price Components</span>
                             </CardTitle>
                           </CardHeader>
-                          <div className="max-h-[400px] overflow-auto">
+                          <CardContent>
                             <Table>
-                              <TableHeader className="sticky top-0 bg-background z-10">
+                              <TableHeader>
                                 <TableRow>
-                                  <TableHead className="w-[120px]">Date</TableHead>
-                                  {tradeInstruments.map((instrument) => (
-                                    <TableHead key={instrument} className="text-right">
-                                      {instrument}
-                                    </TableHead>
-                                  ))}
-                                  <TableHead className="text-right w-[300px]">
-                                    {formula ? formulaToDisplayString(formula.tokens) : 'Formula N/A'}
-                                  </TableHead>
+                                  <TableHead>Component</TableHead>
+                                  <TableHead className="text-right">Value</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {getPricesByDate().map((dateEntry) => (
-                                  <TableRow key={dateEntry.date.toISOString()}>
-                                    <TableCell className="font-medium">
-                                      {format(dateEntry.date, 'MMM d, yyyy')}
-                                    </TableCell>
-                                    {tradeInstruments.map((instrument) => (
-                                      <TableCell key={instrument} className="text-right">
-                                        ${(dateEntry.prices[instrument] || 0).toFixed(2)}
+                                {efpData?.efp_agreed_status ? (
+                                  <>
+                                    <TableRow>
+                                      <TableCell className="font-medium">Fixed Value</TableCell>
+                                      <TableCell className="text-right">${efpData?.efp_fixed_value?.toFixed(2) || '0.00'}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell className="font-medium">Premium</TableCell>
+                                      <TableCell className="text-right">${efpData?.efp_premium?.toFixed(2) || '0.00'}</TableCell>
+                                    </TableRow>
+                                  </>
+                                ) : (
+                                  <>
+                                    <TableRow>
+                                      <TableCell className="font-medium">ICE GASOIL FUTURES</TableCell>
+                                      <TableCell className="text-right">
+                                        ${(priceData.price - (efpData?.efp_premium || 0)).toFixed(2)}
                                       </TableCell>
-                                    ))}
-                                    <TableCell className="text-right">
-                                      ${dateEntry.formulaPrice.toFixed(2)}
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell className="font-medium">Premium</TableCell>
+                                      <TableCell className="text-right">${efpData?.efp_premium?.toFixed(2) || '0.00'}</TableCell>
+                                    </TableRow>
+                                    <TableRow>
+                                      <TableCell className="font-medium">Designated Month</TableCell>
+                                      <TableCell className="text-right">{efpData?.efp_designated_month || 'N/A'}</TableCell>
+                                    </TableRow>
+                                  </>
+                                )}
                                 <TableRow className="bg-muted/20 font-bold border-t-2">
-                                  <TableCell className="font-bold">Average</TableCell>
-                                  {tradeInstruments.map((instrument) => {
-                                    const averages = getAveragePrices();
-                                    return (
-                                      <TableCell key={`avg-${instrument}`} className="text-right">
-                                        ${(averages[instrument] || 0).toFixed(2)}
-                                      </TableCell>
-                                    );
-                                  })}
-                                  <TableCell className="text-right text-primary">
-                                    ${priceData.price.toFixed(2)}
-                                  </TableCell>
+                                  <TableCell className="font-bold">Total Price</TableCell>
+                                  <TableCell className="text-right text-primary">${priceData.price.toFixed(2)}</TableCell>
                                 </TableRow>
                               </TableBody>
                             </Table>
-                          </div>
+                          </CardContent>
                         </Card>
                       ) : (
-                        <div className="text-muted-foreground">
-                          No price details available for this trade leg
-                        </div>
+                        // Standard formula pricing display
+                        tradeInstruments.length > 0 ? (
+                          <Card>
+                            <CardHeader className="pb-2 bg-muted/50">
+                              <CardTitle className="text-sm font-medium">
+                                <span>Consolidated Price Data</span>
+                              </CardTitle>
+                            </CardHeader>
+                            <div className="max-h-[400px] overflow-auto">
+                              <Table>
+                                <TableHeader className="sticky top-0 bg-background z-10">
+                                  <TableRow>
+                                    <TableHead className="w-[120px]">Date</TableHead>
+                                    {tradeInstruments.map((instrument) => (
+                                      <TableHead key={instrument} className="text-right">
+                                        {instrument}
+                                      </TableHead>
+                                    ))}
+                                    <TableHead className="text-right w-[300px]">
+                                      {formula ? formulaToDisplayString(formula.tokens) : 'Formula N/A'}
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {getPricesByDate().map((dateEntry) => (
+                                    <TableRow key={dateEntry.date.toISOString()}>
+                                      <TableCell className="font-medium">
+                                        {format(dateEntry.date, 'MMM d, yyyy')}
+                                      </TableCell>
+                                      {tradeInstruments.map((instrument) => (
+                                        <TableCell key={instrument} className="text-right">
+                                          ${(dateEntry.prices[instrument] || 0).toFixed(2)}
+                                        </TableCell>
+                                      ))}
+                                      <TableCell className="text-right">
+                                        ${dateEntry.formulaPrice.toFixed(2)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                  <TableRow className="bg-muted/20 font-bold border-t-2">
+                                    <TableCell className="font-bold">Average</TableCell>
+                                    {tradeInstruments.map((instrument) => {
+                                      const averages = getAveragePrices();
+                                      return (
+                                        <TableCell key={`avg-${instrument}`} className="text-right">
+                                          ${(averages[instrument] || 0).toFixed(2)}
+                                        </TableCell>
+                                      );
+                                    })}
+                                    <TableCell className="text-right text-primary">
+                                      ${priceData.price.toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </Card>
+                        ) : (
+                          <div className="text-muted-foreground">
+                            No price details available for this trade leg
+                          </div>
+                        )
                       )}
                     </div>
                   </>

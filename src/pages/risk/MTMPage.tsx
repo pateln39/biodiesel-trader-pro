@@ -18,7 +18,7 @@ import {
   PricingPeriodType 
 } from '@/utils/priceCalculationUtils';
 import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade } from '@/types/physical';
+import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 import { toast } from 'sonner';
@@ -53,6 +53,11 @@ const MTMPage = () => {
     endDate: Date;
     formula: any;
     mtmFormula: any;
+    pricingType: string;
+    efpPremium?: number;
+    efpAgreedStatus?: boolean;
+    efpFixedValue?: number;
+    efpDesignatedMonth?: string;
     calculatedPrice: number;
     mtmCalculatedPrice: number;
     mtmValue: number;
@@ -82,6 +87,11 @@ const MTMPage = () => {
         endDate: endDate,
         formula: leg.formula,
         mtmFormula: leg.mtmFormula,
+        pricingType: leg.pricingType || 'standard',
+        efpPremium: leg.efpPremium,
+        efpAgreedStatus: leg.efpAgreedStatus,
+        efpFixedValue: leg.efpFixedValue,
+        efpDesignatedMonth: leg.efpDesignatedMonth,
         calculatedPrice: 0,
         mtmCalculatedPrice: 0,
         mtmValue: 0,
@@ -96,19 +106,73 @@ const MTMPage = () => {
       
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
-          if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
-          
           try {
-            // Calculate the trade price using historical data
-            const priceResult = await calculateTradeLegPrice(
-              leg.formula,
-              leg.startDate,
-              leg.endDate
-            );
+            let priceResult;
+            
+            if (leg.pricingType === 'efp') {
+              // For EFP trades, we need to pass the full leg data
+              const efpLeg: PhysicalTradeLeg = {
+                id: leg.legId,
+                legReference: leg.legReference,
+                parentTradeId: '',
+                buySell: leg.buySell as 'buy' | 'sell',
+                product: leg.product,
+                quantity: leg.quantity,
+                pricingPeriodStart: leg.startDate,
+                pricingPeriodEnd: leg.endDate,
+                pricingType: 'efp',
+                efpPremium: leg.efpPremium,
+                efpAgreedStatus: leg.efpAgreedStatus,
+                efpFixedValue: leg.efpFixedValue,
+                efpDesignatedMonth: leg.efpDesignatedMonth,
+                formula: leg.formula,
+              };
+              
+              priceResult = await calculateTradeLegPrice(
+                efpLeg,
+                leg.startDate,
+                leg.endDate
+              );
+            } else {
+              // Standard formula calculation
+              if (!leg.formula) return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
+              
+              // Calculate the trade price using historical data
+              priceResult = await calculateTradeLegPrice(
+                leg.formula,
+                leg.startDate,
+                leg.endDate
+              );
+            }
             
             // Use mtmFormula if available, otherwise fall back to regular formula
             const mtmFormula = leg.mtmFormula || leg.formula;
-            const mtmPriceResult = await calculateMTMPrice(mtmFormula);
+            
+            let mtmPriceResult;
+            if (leg.pricingType === 'efp') {
+              // For EFP trades, we need to pass the full leg data for MTM as well
+              const efpLeg: PhysicalTradeLeg = {
+                id: leg.legId,
+                legReference: leg.legReference,
+                parentTradeId: '',
+                buySell: leg.buySell as 'buy' | 'sell',
+                product: leg.product,
+                quantity: leg.quantity,
+                pricingPeriodStart: leg.startDate,
+                pricingPeriodEnd: leg.endDate,
+                pricingType: 'efp',
+                efpPremium: leg.efpPremium,
+                efpAgreedStatus: leg.efpAgreedStatus,
+                efpFixedValue: leg.efpFixedValue,
+                efpDesignatedMonth: leg.efpDesignatedMonth,
+                formula: leg.formula,
+              };
+              
+              mtmPriceResult = await calculateMTMPrice(efpLeg);
+            } else {
+              // Standard MTM calculation
+              mtmPriceResult = await calculateMTMPrice(mtmFormula);
+            }
             
             // Calculate MTM value using the prices and trade direction
             const mtmValue = calculateMTMValue(
@@ -249,7 +313,12 @@ const MTMPage = () => {
                           </>
                         )}
                       </TableCell>
-                      <TableCell>{position.product}</TableCell>
+                      <TableCell>
+                        {position.product}
+                        {position.pricingType === 'efp' && 
+                          <Badge variant="outline" className="ml-2">EFP</Badge>
+                        }
+                      </TableCell>
                       <TableCell>
                         <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
                           {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
