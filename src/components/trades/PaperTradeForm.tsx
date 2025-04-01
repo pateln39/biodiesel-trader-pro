@@ -29,7 +29,6 @@ interface BrokerOption {
   name: string;
 }
 
-// List of all products that should always be shown in the exposure table
 const ALL_PRODUCTS = [
   'Argus UCOME', 
   'Argus FAME0', 
@@ -75,7 +74,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const availableMonths = useMemo(() => getNextMonths(13), []);
   
   const [exposureData, setExposureData] = useState<any[]>(() => {
-    // Always initialize with ALL_PRODUCTS for all months
     return availableMonths.map(month => {
       const entry: any = { month };
       ALL_PRODUCTS.forEach(product => {
@@ -128,7 +126,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   }, []);
   
   useEffect(() => {
-    // Always calculate exposures, even if there are no trade legs
     calculateExposures(tradeLegs);
   }, [tradeLegs]);
   
@@ -168,7 +165,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   };
   
   const calculateExposures = (legs: any[]) => {
-    // Reset all exposures to 0 for all months and all products
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
       ALL_PRODUCTS.forEach(product => {
@@ -177,7 +173,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return entry;
     });
     
-    // Only accumulate exposures if there are trade legs
     if (legs.length > 0) {
       legs.forEach(leg => {
         if (!leg.period || !leg.product) return;
