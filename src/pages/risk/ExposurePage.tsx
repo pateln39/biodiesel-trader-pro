@@ -854,4 +854,400 @@ const ExposurePage = () => {
     if (product.includes('RME')) return 'exposure-product-rme';
     if (product.includes('HVO')) return 'exposure-product-hvo';
     if (product.includes('GASOIL')) return 'exposure-product-gasoil';
-    if
+    if (product.includes('EFP')) return 'exposure-product-efp';
+    return '';
+  };
+
+  return (
+    <Layout>
+      <Helmet>
+        <title>Exposure | TraderPro</title>
+      </Helmet>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Exposure</h1>
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+        </div>
+
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            {isLoadingData ? (
+              <TableLoadingState />
+            ) : error ? (
+              <TableErrorState 
+                title="Error loading exposure data" 
+                message="Please try refreshing the page."
+                onRetry={() => refetch()}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {exposureCategories.map((category) => (
+                    <label key={category} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={visibleCategories.includes(category)}
+                        onCheckedChange={() => toggleCategory(category)}
+                      />
+                      <span>{category}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="overflow-x-auto">
+                  <Table className="w-full border-collapse">
+                    <TableHeader>
+                      <TableRow className="bg-table-header-bg text-table-header-text">
+                        <TableHead className="exposure-table-head sticky left-0 z-10 bg-table-header-bg">
+                          Month
+                        </TableHead>
+                        
+                        {filteredProducts.map(product => (
+                          shouldUseSpecialBackground(product) ? (
+                            <React.Fragment key={product}>
+                              {orderedVisibleCategories.map(category => (
+                                shouldShowProductInCategory(product, category) && (
+                                  <TableHead 
+                                    key={`${product}-${category}`} 
+                                    className={`exposure-table-head ${getExposureProductBackgroundClass(product)}`}
+                                  >
+                                    {formatExposureTableProduct(product)} {category}
+                                  </TableHead>
+                                )
+                              ))}
+                            </React.Fragment>
+                          ) : (
+                            <React.Fragment key={product}>
+                              {orderedVisibleCategories.map(category => (
+                                shouldShowProductInCategory(product, category) && (
+                                  <TableHead 
+                                    key={`${product}-${category}`} 
+                                    className="exposure-table-head"
+                                  >
+                                    {formatExposureTableProduct(product)} {category}
+                                  </TableHead>
+                                )
+                              ))}
+                            </React.Fragment>
+                          )
+                        ))}
+                        
+                        <TableHead 
+                          className="exposure-table-head exposure-total-biodiesel" 
+                          colSpan={orderedVisibleCategories.length}
+                        >
+                          Biodiesel
+                        </TableHead>
+                        
+                        <TableHead 
+                          className="exposure-table-head exposure-total-pricing" 
+                          colSpan={orderedVisibleCategories.length}
+                        >
+                          Pricing
+                        </TableHead>
+                        
+                        <TableHead 
+                          className="exposure-table-head exposure-total-row" 
+                          colSpan={orderedVisibleCategories.length}
+                        >
+                          Total
+                        </TableHead>
+                      </TableRow>
+                      
+                      {/* Category Headers */}
+                      <TableRow>
+                        <TableHead className="exposure-table-head sticky left-0 z-10 bg-table-header-bg">
+                          {/* Empty cell for month column */}
+                        </TableHead>
+                        
+                        {/* Product Categories */}
+                        {filteredProducts.map(product => (
+                          <React.Fragment key={product}>
+                            {orderedVisibleCategories.map(category => (
+                              shouldShowProductInCategory(product, category) && (
+                                <TableHead 
+                                  key={`${product}-${category}-header`}
+                                  className={`exposure-table-header-category ${getCategoryColorClass(category)}`}
+                                >
+                                  {category}
+                                </TableHead>
+                              )
+                            ))}
+                          </React.Fragment>
+                        ))}
+                        
+                        {/* Biodiesel Summary Categories */}
+                        {shouldShowBiodieselTotal && (
+                          <>
+                            {orderedVisibleCategories.map(category => (
+                              <TableHead 
+                                key={`biodiesel-${category}`}
+                                className={`exposure-table-header-category ${getCategoryColorClass(category)}`}
+                              >
+                                {category}
+                              </TableHead>
+                            ))}
+                          </>
+                        )}
+                        
+                        {/* Pricing Instruments Summary Categories */}
+                        {shouldShowPricingInstrumentTotal && (
+                          <>
+                            {orderedVisibleCategories.map(category => (
+                              <TableHead 
+                                key={`pricing-${category}`}
+                                className={`exposure-table-header-category ${getCategoryColorClass(category)}`}
+                              >
+                                {category}
+                              </TableHead>
+                            ))}
+                          </>
+                        )}
+                        
+                        {/* Total Row Categories */}
+                        {shouldShowTotalRow && (
+                          <>
+                            {orderedVisibleCategories.map(category => (
+                              <TableHead 
+                                key={`total-${category}`}
+                                className={`exposure-table-header-category ${getCategoryColorClass(category)}`}
+                              >
+                                {category}
+                              </TableHead>
+                            ))}
+                          </>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    
+                    <TableBody>
+                      {exposureData.map((monthData, rowIndex) => (
+                        <TableRow 
+                          key={monthData.month} 
+                          className={rowIndex % 2 === 0 ? 'exposure-row-even' : 'exposure-row-odd'}
+                        >
+                          <TableCell className="exposure-month-cell">
+                            {monthData.month}
+                          </TableCell>
+                          
+                          {/* Product Values */}
+                          {filteredProducts.map(product => {
+                            const productExposure = monthData.products[product] || {
+                              physical: 0,
+                              pricing: 0,
+                              paper: 0,
+                              netExposure: 0
+                            };
+                            
+                            return (
+                              <React.Fragment key={`${monthData.month}-${product}`}>
+                                {orderedVisibleCategories.map(category => {
+                                  if (!shouldShowProductInCategory(product, category)) return null;
+                                  
+                                  const categoryValue = productExposure[category.toLowerCase() as keyof ExposureData];
+                                  const valueColorClass = getValueColorClass(categoryValue);
+                                  
+                                  return (
+                                    <TableCell 
+                                      key={`${monthData.month}-${product}-${category}`}
+                                      className={`exposure-table-cell ${valueColorClass}`}
+                                    >
+                                      {formatValue(categoryValue)}
+                                    </TableCell>
+                                  );
+                                })}
+                              </React.Fragment>
+                            );
+                          })}
+                          
+                          {/* Biodiesel Subtotal */}
+                          {shouldShowBiodieselTotal && (
+                            <>
+                              {orderedVisibleCategories.map(category => {
+                                const categoryKey = category.toLowerCase() as keyof ExposureData;
+                                const totalValue = calculateProductGroupTotal(
+                                  monthData.products, 
+                                  BIODIESEL_PRODUCTS,
+                                  categoryKey
+                                );
+                                const valueColorClass = getValueColorClass(totalValue);
+                                
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-biodiesel-${category}`}
+                                    className={`exposure-table-cell exposure-total-biodiesel ${valueColorClass}`}
+                                  >
+                                    {formatValue(totalValue)}
+                                  </TableCell>
+                                );
+                              })}
+                            </>
+                          )}
+                          
+                          {/* Pricing Instruments Subtotal */}
+                          {shouldShowPricingInstrumentTotal && (
+                            <>
+                              {orderedVisibleCategories.map(category => {
+                                const categoryKey = category.toLowerCase() as keyof ExposureData;
+                                const totalValue = calculateProductGroupTotal(
+                                  monthData.products, 
+                                  PRICING_INSTRUMENT_PRODUCTS,
+                                  categoryKey
+                                );
+                                const valueColorClass = getValueColorClass(totalValue);
+                                
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-pricing-${category}`}
+                                    className={`exposure-table-cell exposure-total-pricing ${valueColorClass}`}
+                                  >
+                                    {formatValue(totalValue)}
+                                  </TableCell>
+                                );
+                              })}
+                            </>
+                          )}
+                          
+                          {/* Month Total */}
+                          {shouldShowTotalRow && (
+                            <>
+                              {orderedVisibleCategories.map(category => {
+                                const categoryKey = category.toLowerCase() as keyof ExposureData;
+                                const totalValue = monthData.totals[categoryKey];
+                                const valueColorClass = getValueColorClass(totalValue);
+                                
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-total-${category}`}
+                                    className={`exposure-table-cell exposure-total-row ${valueColorClass}`}
+                                  >
+                                    {formatValue(totalValue)}
+                                  </TableCell>
+                                );
+                              })}
+                            </>
+                          )}
+                        </TableRow>
+                      ))}
+                      
+                      {/* Grand Total Row */}
+                      <TableRow className="exposure-row-total">
+                        <TableCell className="exposure-month-cell">
+                          Grand Total
+                        </TableCell>
+                        
+                        {/* Product Grand Totals */}
+                        {filteredProducts.map(product => {
+                          const productTotalExposure = grandTotals.productTotals[product] || {
+                            physical: 0,
+                            pricing: 0,
+                            paper: 0,
+                            netExposure: 0
+                          };
+                          
+                          return (
+                            <React.Fragment key={`grand-total-${product}`}>
+                              {orderedVisibleCategories.map(category => {
+                                if (!shouldShowProductInCategory(product, category)) return null;
+                                
+                                const categoryValue = productTotalExposure[category.toLowerCase() as keyof ExposureData];
+                                const valueColorClass = getValueColorClass(categoryValue);
+                                
+                                return (
+                                  <TableCell 
+                                    key={`grand-total-${product}-${category}`}
+                                    className={`exposure-table-cell ${valueColorClass}`}
+                                  >
+                                    {formatValue(categoryValue)}
+                                  </TableCell>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
+                        
+                        {/* Biodiesel Grand Total */}
+                        {shouldShowBiodieselTotal && (
+                          <>
+                            {orderedVisibleCategories.map(category => {
+                              const categoryKey = category.toLowerCase() as keyof ExposureData;
+                              const totalValue = BIODIESEL_PRODUCTS.reduce((total, product) => {
+                                if (grandTotals.productTotals[product]) {
+                                  return total + (grandTotals.productTotals[product][categoryKey] || 0);
+                                }
+                                return total;
+                              }, 0);
+                              const valueColorClass = getValueColorClass(totalValue);
+                              
+                              return (
+                                <TableCell 
+                                  key={`grand-biodiesel-${category}`}
+                                  className={`exposure-table-cell exposure-total-biodiesel ${valueColorClass}`}
+                                >
+                                  {formatValue(totalValue)}
+                                </TableCell>
+                              );
+                            })}
+                          </>
+                        )}
+                        
+                        {/* Pricing Instruments Grand Total */}
+                        {shouldShowPricingInstrumentTotal && (
+                          <>
+                            {orderedVisibleCategories.map(category => {
+                              const categoryKey = category.toLowerCase() as keyof ExposureData;
+                              const totalValue = PRICING_INSTRUMENT_PRODUCTS.reduce((total, product) => {
+                                if (grandTotals.productTotals[product]) {
+                                  return total + (grandTotals.productTotals[product][categoryKey] || 0);
+                                }
+                                return total;
+                              }, 0);
+                              const valueColorClass = getValueColorClass(totalValue);
+                              
+                              return (
+                                <TableCell 
+                                  key={`grand-pricing-${category}`}
+                                  className={`exposure-table-cell exposure-total-pricing ${valueColorClass}`}
+                                >
+                                  {formatValue(totalValue)}
+                                </TableCell>
+                              );
+                            })}
+                          </>
+                        )}
+                        
+                        {/* Final Grand Total */}
+                        {shouldShowTotalRow && (
+                          <>
+                            {orderedVisibleCategories.map(category => {
+                              const categoryKey = category.toLowerCase() as keyof ExposureData;
+                              const totalValue = grandTotals.totals[categoryKey];
+                              const valueColorClass = getValueColorClass(totalValue);
+                              
+                              return (
+                                <TableCell 
+                                  key={`grand-total-${category}`}
+                                  className={`exposure-table-cell exposure-total-row ${valueColorClass}`}
+                                >
+                                  {formatValue(totalValue)}
+                                </TableCell>
+                              );
+                            })}
+                          </>
+                        )}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
