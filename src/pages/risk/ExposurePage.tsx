@@ -345,7 +345,7 @@ const ExposurePage = () => {
               
               if (exposuresData.physical && typeof exposuresData.physical === 'object') {
                 Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-                  const canonicalProduct = mapProductToCanonical(prodName);
+                  const canonicalProduct = mapProductToCanonical(prodName);\
                   allProductsFound.add(canonicalProduct);
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
