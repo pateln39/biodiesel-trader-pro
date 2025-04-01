@@ -1,3 +1,4 @@
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -211,18 +212,43 @@ export const getExposureProductBackgroundClass = (
   isPricingInstrumentTotal: boolean = false
 ): string => {
   if (isTotal) {
-    return 'bg-gray-500'; // Total Row background - keep gray
+    return 'bg-exposure-totalRow'; // Total Row background
   }
   
   if (isPricingInstrumentTotal) {
-    return 'bg-purple-300'; // Changed to light purple for pricing instrument total
+    return 'bg-exposure-instrumentTotal'; // Light purple for pricing instrument total
   }
   
-  // Light purple background for specific pricing instruments
+  // Special background for specific pricing instruments
   if (shouldUseSpecialBackground(product)) {
-    return 'bg-purple-300'; // Changed to light purple (#D6BCFA equivalent in Tailwind)
+    return 'bg-exposure-instrumentTotal'; // Light purple background
   }
   
   // Default background for biodiesel products
-  return 'bg-green-600';
+  return 'bg-exposure-product';
+};
+
+/**
+ * Returns the background color class for a category header
+ */
+export const getExposureCategoryBackgroundClass = (category: string): string => {
+  switch (category) {
+    case 'Physical':
+      return 'bg-exposure-physical';
+    case 'Pricing':
+      return 'bg-exposure-pricing';
+    case 'Paper':
+      return 'bg-exposure-paper';
+    case 'Exposure':
+      return 'bg-exposure-categoryHeader';
+    default:
+      return 'bg-exposure-categoryHeader';
+  }
+};
+
+/**
+ * Returns the background class for alternating rows
+ */
+export const getExposureRowBackgroundClass = (index: number): string => {
+  return index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
 };
