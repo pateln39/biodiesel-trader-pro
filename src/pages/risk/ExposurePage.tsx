@@ -859,8 +859,8 @@ const ExposurePage = () => {
                     </TableHeader>
                     
                     <TableBody>
-                      {exposureData.map(monthData => <TableRow key={monthData.month} className="bg-white hover:bg-gray-50">
-                          <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 z-10 bg-zinc-500">
+                      {exposureData.map(monthData => <TableRow key={monthData.month} className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+                          <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 z-10 bg-brand-navy text-white">
                             {monthData.month}
                           </TableCell>
                           
@@ -875,9 +875,14 @@ const ExposurePage = () => {
                             paper: 0,
                             netExposure: 0
                           };
-                          cells.push(<TableCell key={`${monthData.month}-physical-${product}`} className={`text-right text-xs p-1 ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                    {formatValue(productData.physical)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-physical-${product}`} 
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(productData.physical)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Pricing') {
                         categoryProducts.forEach((product, index) => {
@@ -887,9 +892,14 @@ const ExposurePage = () => {
                             paper: 0,
                             netExposure: 0
                           };
-                          cells.push(<TableCell key={`${monthData.month}-pricing-${product}`} className={`text-right text-xs p-1 ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                    {formatValue(productData.pricing)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-pricing-${product}`} 
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(productData.pricing)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Paper') {
                         categoryProducts.forEach((product, index) => {
@@ -899,9 +909,14 @@ const ExposurePage = () => {
                             paper: 0,
                             netExposure: 0
                           };
-                          cells.push(<TableCell key={`${monthData.month}-paper-${product}`} className={`text-right text-xs p-1 ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                    {formatValue(productData.paper)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-paper-${product}`} 
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(productData.paper)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Exposure') {
                         const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
@@ -912,29 +927,49 @@ const ExposurePage = () => {
                             paper: 0,
                             netExposure: 0
                           };
-                          cells.push(<TableCell key={`${monthData.month}-net-${product}`} className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}>
-                                    {formatValue(productData.netExposure)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-net-${product}`} 
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}
+                            >
+                              {formatValue(productData.netExposure)}
+                            </TableCell>
+                          );
                           if (index === ucomeIndex && shouldShowBiodieselTotal) {
                             const biodieselTotal = calculateProductGroupTotal(monthData.products, BIODIESEL_PRODUCTS);
-                            cells.push(<TableCell key={`${monthData.month}-biodiesel-total`} className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}>
-                                      {formatValue(biodieselTotal)}
-                                    </TableCell>);
+                            cells.push(
+                              <TableCell 
+                                key={`${monthData.month}-biodiesel-total`} 
+                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                              >
+                                {formatValue(biodieselTotal)}
+                              </TableCell>
+                            );
                           }
                         });
                         if (shouldShowPricingInstrumentTotal) {
                           const pricingInstrumentTotal = calculateProductGroupTotal(monthData.products, PRICING_INSTRUMENT_PRODUCTS);
-                          cells.push(<TableCell key={`${monthData.month}-pricing-instrument-total`} className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}>
-                                    {formatValue(pricingInstrumentTotal)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-pricing-instrument-total`} 
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
+                            >
+                              {formatValue(pricingInstrumentTotal)}
+                            </TableCell>
+                          );
                         }
                         if (shouldShowTotalRow) {
                           const biodieselTotal = calculateProductGroupTotal(monthData.products, BIODIESEL_PRODUCTS);
                           const pricingInstrumentTotal = calculateProductGroupTotal(monthData.products, PRICING_INSTRUMENT_PRODUCTS);
                           const totalRow = biodieselTotal + pricingInstrumentTotal;
-                          cells.push(<TableCell key={`${monthData.month}-total-row`} className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                    {formatValue(totalRow)}
-                                  </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`${monthData.month}-total-row`} 
+                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(totalRow)}
+                            </TableCell>
+                          );
                         }
                       }
                       return cells;
@@ -951,43 +986,78 @@ const ExposurePage = () => {
                       const cells = [];
                       if (category === 'Physical') {
                         categoryProducts.forEach((product, index) => {
-                          cells.push(<TableCell key={`total-physical-${product}`} className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                  {formatValue(grandTotals.productTotals[product]?.physical || 0)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-physical-${product}`} 
+                              className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Pricing') {
                         categoryProducts.forEach((product, index) => {
-                          cells.push(<TableCell key={`total-pricing-${product}`} className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                  {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-pricing-${product}`} 
+                              className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Paper') {
                         categoryProducts.forEach((product, index) => {
-                          cells.push(<TableCell key={`total-paper-${product}`} className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                  {formatValue(grandTotals.productTotals[product]?.paper || 0)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-paper-${product}`} 
+                              className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                            </TableCell>
+                          );
                         });
                       } else if (category === 'Exposure') {
                         const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
                         categoryProducts.forEach((product, index) => {
-                          cells.push(<TableCell key={`total-net-${product}`} className={`text-right text-xs p-1 border-r-[1px] border-black ${grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'} font-bold`}>
-                                  {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-net-${product}`} 
+                              className={`text-right text-xs p-1 border-r-[1px] border-black ${grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'} font-bold`}
+                            >
+                              {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                            </TableCell>
+                          );
                           if (index === ucomeIndex && shouldShowBiodieselTotal) {
-                            cells.push(<TableCell key={`total-biodiesel-total`} className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-green-900`}>
-                                    {formatValue(groupGrandTotals.biodieselTotal)}
-                                  </TableCell>);
+                            cells.push(
+                              <TableCell 
+                                key={`total-biodiesel-total`} 
+                                className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-green-900`}
+                              >
+                                {formatValue(groupGrandTotals.biodieselTotal)}
+                              </TableCell>
+                            );
                           }
                         });
                         if (shouldShowPricingInstrumentTotal) {
-                          cells.push(<TableCell key={`total-pricing-instrument-total`} className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-blue-900`}>
-                                  {formatValue(groupGrandTotals.pricingInstrumentTotal)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-pricing-instrument-total`} 
+                              className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-blue-900`}
+                            >
+                              {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                            </TableCell>
+                          );
                         }
                         if (shouldShowTotalRow) {
-                          cells.push(<TableCell key={`total-total-row`} className={`text-right text-xs p-1 ${groupGrandTotals.totalRow > 0 ? 'text-green-300' : groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-gray-800 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}>
-                                  {formatValue(groupGrandTotals.totalRow)}
-                                </TableCell>);
+                          cells.push(
+                            <TableCell 
+                              key={`total-total-row`} 
+                              className={`text-right text-xs p-1 ${groupGrandTotals.totalRow > 0 ? 'text-green-300' : groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-gray-800 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                            >
+                              {formatValue(groupGrandTotals.totalRow)}
+                            </TableCell>
+                          );
                         }
                       }
                       return cells;
