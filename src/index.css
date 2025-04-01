@@ -46,11 +46,22 @@
     
     /* Brand colors */
     --brand-navy: 217 74% 14%;
+    --brand-dark-navy: 220 70% 8%;
     --brand-blue: 210 71% 39%;
     --brand-lime: 79 65% 52%;
     --brand-dark-blue: 222 47% 11%;
     --brand-light-blue: 210 100% 97%;
     --brand-grey: 220 14% 96%;
+    
+    /* Table specific colors */
+    --table-header-bg: 220 70% 8%;
+    --table-header-text: 0 0% 100%;
+    --table-row-even: 218 70% 15%;
+    --table-row-odd: 218 70% 18%;
+    --table-row-hover: 210 71% 22%;
+    --table-border: 210 71% 39%;
+    --table-positive: 79 65% 52%;
+    --table-negative: 0 84% 60%;
   }
 
   .light {
@@ -81,6 +92,16 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Table specific colors - light mode */
+    --table-header-bg: 210 71% 39%;
+    --table-header-text: 0 0% 100%;
+    --table-row-even: 210 50% 98%;
+    --table-row-odd: 210 50% 95%;
+    --table-row-hover: 210 50% 92%;
+    --table-border: 210 71% 39%;
+    --table-positive: 79 65% 52%;
+    --table-negative: 0 84% 60%;
   }
 }
 
@@ -91,5 +112,99 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .exposure-table-cell {
+    @apply p-2 align-middle text-right text-xs whitespace-nowrap;
+  }
+  
+  .exposure-table-head {
+    @apply p-2 text-xs font-bold whitespace-nowrap text-left;
+  }
+
+  .exposure-table-header-category {
+    @apply text-center p-1 font-bold text-xs border-b-[1px];
+  }
+  
+  .exposure-value-positive {
+    @apply text-success font-medium;
+  }
+  
+  .exposure-value-negative {
+    @apply text-danger font-medium;
+  }
+  
+  .exposure-value-zero {
+    @apply text-neutral;
+  }
+  
+  .exposure-row-even {
+    @apply bg-brand-navy/10;
+  }
+  
+  .exposure-row-odd {
+    @apply bg-brand-navy/5;
+  }
+  
+  .exposure-row-total {
+    @apply bg-brand-dark-navy text-white font-bold;
+  }
+  
+  .exposure-header-physical {
+    @apply bg-brand-navy text-white;
+  }
+  
+  .exposure-header-pricing {
+    @apply bg-brand-blue text-white;
+  }
+  
+  .exposure-header-paper {
+    @apply bg-brand-dark-blue text-white;
+  }
+  
+  .exposure-header-exposure {
+    @apply bg-brand-lime text-brand-navy;
+  }
+  
+  .exposure-product-ucome {
+    @apply bg-brand-lime/20 text-brand-navy;
+  }
+  
+  .exposure-product-fame {
+    @apply bg-brand-blue/20 text-brand-navy;
+  }
+  
+  .exposure-product-rme {
+    @apply bg-brand-navy/20 text-brand-navy;
+  }
+  
+  .exposure-product-hvo {
+    @apply bg-brand-blue/10 text-brand-navy;
+  }
+  
+  .exposure-product-gasoil {
+    @apply bg-brand-navy/30 text-brand-navy;
+  }
+  
+  .exposure-product-efp {
+    @apply bg-brand-blue/30 text-brand-navy;
+  }
+  
+  .exposure-total-biodiesel {
+    @apply bg-brand-lime/30 text-brand-navy font-bold;
+  }
+  
+  .exposure-total-pricing {
+    @apply bg-brand-blue/30 text-brand-navy font-bold;
+  }
+  
+  .exposure-total-row {
+    @apply bg-brand-navy/20 text-brand-navy font-bold;
+  }
+  
+  .exposure-month-cell {
+    @apply font-medium text-xs sticky left-0 bg-inherit z-10;
   }
 }
