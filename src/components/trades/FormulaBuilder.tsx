@@ -180,6 +180,24 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     });
   };
 
+  const getTokenColorClasses = (token: FormulaToken): { background: string; text: string } => {
+    switch (token.type) {
+      case 'instrument':
+        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
+      case 'percentage':
+        return { background: 'bg-[#1A1F2C]', text: 'text-green-300' };
+      case 'fixedValue':
+        return { background: 'bg-[#1A1F2C]', text: 'text-blue-300' };
+      case 'operator':
+        return { background: 'bg-[#1A1F2C]', text: 'text-yellow-300' };
+      case 'openBracket':
+      case 'closeBracket':
+        return { background: 'bg-[#1A1F2C]', text: 'text-gray-300' };
+      default:
+        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
+    }
+  };
+
   const getTokenDisplay = (token: FormulaToken): string => {
     if (token.type === 'percentage') {
       return `${token.value}%`;
@@ -217,31 +235,24 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         <CardContent className="p-4">
           <div className="flex items-center gap-2 flex-wrap min-h-[2.5rem]">
             {value.tokens.length > 0 ? (
-              value.tokens.map((token) => (
-                <Badge 
-                  key={token.id} 
-                  variant="outline" 
-                  className={`text-sm py-1 px-3 flex items-center gap-2 ${
-                    token.type === 'openBracket' || token.type === 'closeBracket' 
-                      ? 'bg-gray-100' 
-                      : token.type === 'operator' 
-                        ? 'bg-blue-50' 
-                        : token.type === 'percentage' 
-                          ? 'bg-green-50' 
-                          : token.type === 'instrument' 
-                            ? 'bg-purple-50' 
-                            : 'bg-orange-50'
-                  }`}
-                >
-                  {getTokenDisplay(token)}
-                  <button 
-                    onClick={() => handleRemoveToken(token.id)}
-                    className="hover:text-destructive"
+              value.tokens.map((token) => {
+                const { background, text } = getTokenColorClasses(token);
+                return (
+                  <Badge 
+                    key={token.id} 
+                    variant="outline" 
+                    className={`text-sm py-1 px-3 flex items-center gap-2 ${background} ${text}`}
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))
+                    {getTokenDisplay(token)}
+                    <button 
+                      onClick={() => handleRemoveToken(token.id)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })
             ) : (
               <div className="text-muted-foreground">No formula defined</div>
             )}
