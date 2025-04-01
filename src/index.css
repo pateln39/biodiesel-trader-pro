@@ -43,11 +43,6 @@
     --sidebar-accent-foreground: 218 72% 14%;
     --sidebar-border: 218 50% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-
-    --table-header-bg: 217 67% 15%;
-    --table-green-header: 144 45% 30%;
-    --table-month-column-bg: 217 74% 14%;
-    --table-total-row-bg: 217 67% 20%;
   }
 
   .light {
@@ -89,72 +84,4 @@
   body {
     @apply bg-background text-foreground;
   }
-}
-
-.exposure-table th {
-  font-weight: 600;
-}
-
-.exposure-table-header {
-  @apply bg-[#002A46] text-white;
-}
-
-.exposure-table-category {
-  @apply bg-[#1B6C4F] text-white;
-}
-
-.exposure-table-month-column {
-  @apply bg-[#002A46] text-white font-medium;
-}
-
-.exposure-table-total-row {
-  @apply bg-[#1E334E] text-white font-bold;
-}
-
-.exposure-table-cell-positive {
-  @apply text-green-500;
-}
-
-.exposure-table-cell-negative {
-  @apply text-red-500;
-}
-
-.exposure-table-row-hover:hover {
-  @apply bg-gray-50;
-}
-
-.exposure-card {
-  @apply bg-[#002A46] text-white;
-}
-
-.exposure-category-filter {
-  @apply bg-[#002A46] text-white;
-}
-
-.exposure-table-container {
-  @apply overflow-x-auto max-w-full;
-}
-
-.exposure-table-wrapper {
-  @apply min-w-full border-collapse;
-}
-
-.exposure-category-column {
-  @apply border-r border-gray-700;
-}
-
-.exposure-month-cell {
-  @apply font-medium sticky left-0 z-10 bg-[#002A46] text-white;
-}
-
-.exposure-category-header {
-  @apply text-center font-semibold border-b border-gray-700;
-}
-
-.exposure-total-column {
-  @apply font-bold;
-}
-
-.exposure-filters-container {
-  @apply flex flex-wrap gap-3 p-4;
 }
