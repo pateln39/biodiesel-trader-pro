@@ -219,7 +219,7 @@ const ExposurePage = () => {
               };
             }
             
-            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);\
             
             if (mtmFormula.tokens.length > 0) {
               if (mtmFormula.exposures && mtmFormula.exposures.physical) {
@@ -345,7 +345,8 @@ const ExposurePage = () => {
               
               if (exposuresData.physical && typeof exposuresData.physical === 'object') {
                 Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
-                  const canonicalProduct = mapProductToCanonical(prodName);\
+                  // Fix: Remove backslash character
+                  const canonicalProduct = mapProductToCanonical(prodName);
                   allProductsFound.add(canonicalProduct);
                   
                   if (!exposuresByMonth[month][canonicalProduct]) {
@@ -859,4 +860,3 @@ const ExposurePage = () => {
   return (
     <Layout>
       <Helmet>
-        <title>Exposure Reporting</title
