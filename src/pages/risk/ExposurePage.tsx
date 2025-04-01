@@ -855,3 +855,290 @@ const ExposurePage = () => {
               <div>
                 <label className="text-sm font-medium mb-2 block">Category Filters</label>
                 <div className="flex flex-wrap gap-2">
+                  {exposureCategories.map((category) => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category}`}
+                        checked={visibleCategories.includes(category)}
+                        onCheckedChange={() => toggleCategory(category)}
+                      />
+                      <label 
+                        htmlFor={`category-${category}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {category}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {isLoadingData ? (
+          <TableLoadingState />
+        ) : error ? (
+          <TableErrorState error={error as Error} onRetry={refetch} />
+        ) : (
+          <div className="overflow-x-auto mb-20">
+            <div className="inline-block min-w-full align-middle">
+              <Table className="exposure-table text-xs border-spacing-0">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead 
+                      className="text-xs text-white bg-exposure-monthHeader font-bold text-center sticky left-0 z-10"
+                      style={{ minWidth: '150px' }}
+                    >
+                      Product
+                    </TableHead>
+                    
+                    {exposureData.map((monthData) => (
+                      <TableHead 
+                        key={monthData.month} 
+                        className="text-xs text-white bg-exposure-monthHeader font-bold text-center"
+                      >
+                        {monthData.month}
+                      </TableHead>
+                    ))}
+                    
+                    <TableHead className="text-xs text-white bg-exposure-monthHeader font-bold text-center">
+                      Total
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                
+                <TableBody>
+                  {orderedVisibleCategories.map((category) => (
+                    <React.Fragment key={category}>
+                      {/* Category Header Row */}
+                      <TableRow>
+                        <TableCell 
+                          className={`text-xs text-white font-bold ${getExposureCategoryBackgroundClass(category)} sticky left-0 z-10`}
+                        >
+                          {category}
+                        </TableCell>
+                        
+                        {exposureData.map((monthData, idx) => (
+                          <TableCell 
+                            key={`${category}-${monthData.month}-header`} 
+                            className={`text-xs text-white font-bold ${getExposureCategoryBackgroundClass(category)}`}
+                          ></TableCell>
+                        ))}
+                        
+                        <TableCell 
+                          className={`text-xs text-white font-bold ${getExposureCategoryBackgroundClass(category)}`}
+                        ></TableCell>
+                      </TableRow>
+                      
+                      {/* Category Data Rows */}
+                      {filteredProducts.filter(product => shouldShowProductInCategory(product, category)).map((product, productIdx) => (
+                        <TableRow 
+                          key={`${category}-${product}`}
+                          className={getExposureRowBackgroundClass(productIdx)}
+                        >
+                          <TableCell 
+                            className={`text-xs font-medium sticky left-0 z-10 ${getExposureProductBackgroundClass(product, false, false)}`}
+                          >
+                            {formatExposureTableProduct(product)}
+                          </TableCell>
+                          
+                          {exposureData.map((monthData) => {
+                            const productExposure = monthData.products[product] || { 
+                              physical: 0, 
+                              pricing: 0, 
+                              paper: 0,
+                              netExposure: 0
+                            };
+                            
+                            const value = category === 'Physical' 
+                              ? productExposure.physical 
+                              : category === 'Pricing' 
+                                ? productExposure.pricing 
+                                : category === 'Paper' 
+                                  ? productExposure.paper 
+                                  : productExposure.netExposure;
+                            
+                            return (
+                              <TableCell 
+                                key={`${category}-${product}-${monthData.month}`} 
+                                className={`text-xs text-right ${getValueColorClass(value)}`}
+                              >
+                                {value !== 0 ? formatValue(value) : ''}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          {/* Product Total Column */}
+                          <TableCell 
+                            className={`text-xs text-right font-medium ${
+                              getValueColorClass(
+                                category === 'Physical' 
+                                  ? (grandTotals.productTotals[product]?.physical || 0) 
+                                  : category === 'Pricing' 
+                                    ? (grandTotals.productTotals[product]?.pricing || 0) 
+                                    : category === 'Paper' 
+                                      ? (grandTotals.productTotals[product]?.paper || 0) 
+                                      : (grandTotals.productTotals[product]?.netExposure || 0)
+                              )
+                            }`}
+                          >
+                            {formatValue(
+                              category === 'Physical' 
+                                ? (grandTotals.productTotals[product]?.physical || 0) 
+                                : category === 'Pricing' 
+                                  ? (grandTotals.productTotals[product]?.pricing || 0) 
+                                  : category === 'Paper' 
+                                    ? (grandTotals.productTotals[product]?.paper || 0) 
+                                    : (grandTotals.productTotals[product]?.netExposure || 0)
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Category Biodiesel Total Row */}
+                      {category === 'Exposure' && shouldShowBiodieselTotal && (
+                        <TableRow className="bg-muted">
+                          <TableCell 
+                            className="text-xs font-bold sticky left-0 z-10 bg-exposure-product"
+                          >
+                            Total Biodiesel
+                          </TableCell>
+                          
+                          {exposureData.map((monthData, idx) => {
+                            const total = calculateProductGroupTotal(
+                              monthData.products, 
+                              BIODIESEL_PRODUCTS,
+                              category === 'Physical' 
+                                ? 'physical' 
+                                : category === 'Pricing' 
+                                  ? 'pricing' 
+                                  : category === 'Paper' 
+                                    ? 'paper' 
+                                    : 'netExposure'
+                            );
+                            
+                            return (
+                              <TableCell 
+                                key={`biodiesel-total-${monthData.month}`} 
+                                className={`text-xs text-right font-bold ${getValueColorClass(total)}`}
+                              >
+                                {formatValue(total)}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          <TableCell 
+                            className={`text-xs text-right font-bold ${getValueColorClass(groupGrandTotals.biodieselTotal)}`}
+                          >
+                            {formatValue(groupGrandTotals.biodieselTotal)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      
+                      {/* Category Pricing Instrument Total Row */}
+                      {category === 'Exposure' && shouldShowPricingInstrumentTotal && (
+                        <TableRow className="bg-muted">
+                          <TableCell 
+                            className="text-xs font-bold sticky left-0 z-10 bg-exposure-instrumentTotal"
+                          >
+                            Total Pricing Instrument
+                          </TableCell>
+                          
+                          {exposureData.map((monthData) => {
+                            const total = calculateProductGroupTotal(
+                              monthData.products, 
+                              PRICING_INSTRUMENT_PRODUCTS,
+                              category === 'Physical' 
+                                ? 'physical' 
+                                : category === 'Pricing' 
+                                  ? 'pricing' 
+                                  : category === 'Paper' 
+                                    ? 'paper' 
+                                    : 'netExposure'
+                            );
+                            
+                            return (
+                              <TableCell 
+                                key={`instrument-total-${monthData.month}`} 
+                                className={`text-xs text-right font-bold ${getValueColorClass(total)}`}
+                              >
+                                {formatValue(total)}
+                              </TableCell>
+                            );
+                          })}
+                          
+                          <TableCell 
+                            className={`text-xs text-right font-bold ${getValueColorClass(groupGrandTotals.pricingInstrumentTotal)}`}
+                          >
+                            {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  
+                  {/* Total Row */}
+                  {shouldShowTotalRow && (
+                    <TableRow>
+                      <TableCell 
+                        className="text-xs text-white font-bold bg-exposure-totalRow sticky left-0 z-10"
+                      >
+                        Total
+                      </TableCell>
+                      
+                      {exposureData.map((monthData) => {
+                        const totalValue = monthData.totals.netExposure;
+                        
+                        return (
+                          <TableCell 
+                            key={`total-${monthData.month}`} 
+                            className="text-xs text-right font-bold text-white bg-exposure-totalRow"
+                          >
+                            {formatValue(totalValue)}
+                          </TableCell>
+                        );
+                      })}
+                      
+                      <TableCell 
+                        className="text-xs text-right font-bold text-white bg-exposure-totalRow"
+                      >
+                        {formatValue(groupGrandTotals.totalRow)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  
+                  {/* Month Footer Row - with darker styling */}
+                  <TableRow>
+                    <TableCell 
+                      className="text-xs text-white font-bold bg-exposure-footerRow sticky left-0 z-10"
+                    >
+                      Period
+                    </TableCell>
+                    
+                    {exposureData.map((monthData) => (
+                      <TableCell 
+                        key={`footer-${monthData.month}`} 
+                        className="text-xs text-center font-bold text-white bg-exposure-footerRow"
+                      >
+                        {monthData.month}
+                      </TableCell>
+                    ))}
+                    
+                    <TableCell 
+                      className="text-xs text-center font-bold text-white bg-exposure-footerRow"
+                    >
+                      Total
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
