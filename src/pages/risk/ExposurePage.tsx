@@ -791,7 +791,8 @@ const ExposurePage = () => {
     return value > 0 ? 'exposure-value-positive' : 'exposure-value-negative';
   };
 
-  const formatValue = (value: number): string => {
+  const formatValue = (value: number | undefined | null): string => {
+    if (value === undefined || value === null) return '—'; // Handle undefined/null values
     if (value === 0) return '—'; // Em dash for zero values
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
