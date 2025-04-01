@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -920,16 +919,14 @@ const ExposurePage = () => {
                       <TableRow className="bg-muted/50 border-b-[1px] border-black">
                         <TableHead 
                           rowSpan={2} 
-                          className="border-r-[1px] border-b-[1px] border-black text-left p-1 font-bold text-black text-xs bg-white sticky left-0 z-10"
+                          className="border-r-[1px] border-b-[1px] border-black text-left p-1 font-bold text-white text-xs bg-brand-navy sticky left-0 z-10"
                         >
                           Month
                         </TableHead>
                         {orderedVisibleCategories.map((category, catIndex) => {
-                          const categoryProducts = filteredProducts.filter(product => 
+                          let colSpan = filteredProducts.filter(product => 
                             shouldShowProductInCategory(product, category)
-                          );
-                          
-                          let colSpan = categoryProducts.length;
+                          ).length;
                           
                           if (category === 'Exposure') {
                             if (shouldShowPricingInstrumentTotal) colSpan += 1;
@@ -940,7 +937,7 @@ const ExposurePage = () => {
                             <TableHead 
                               key={category} 
                               colSpan={colSpan} 
-                              className={`text-center p-1 font-bold text-black text-xs border-b-[1px] ${
+                              className={`text-center p-1 font-bold text-white text-xs border-b-[1px] ${
                                 catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px]' : ''
                               } border-black`}
                             >
