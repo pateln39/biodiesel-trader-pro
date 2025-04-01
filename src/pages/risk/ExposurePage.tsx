@@ -219,7 +219,7 @@ const ExposurePage = () => {
               };
             }
             
-            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);\
             
             if (mtmFormula.tokens.length > 0) {
               if (mtmFormula.exposures && mtmFormula.exposures.physical) {
@@ -859,3 +859,4 @@ const ExposurePage = () => {
   return (
     <Layout>
       <Helmet>
+        <title
