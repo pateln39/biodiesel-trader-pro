@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -126,7 +127,9 @@ const ExposurePage = () => {
           mtm_formula,
           trading_period,
           pricing_period_start,
-          loading_period_start
+          loading_period_start,
+          pricing_type,
+          efp_designated_month
         `)
         .order('trading_period', { ascending: true });
         
@@ -190,9 +193,13 @@ const ExposurePage = () => {
             physicalExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
           
-          let pricingExposureMonth = leg.trading_period || '';
-          
-          if (!pricingExposureMonth && leg.pricing_period_start) {
+          // For pricing exposure month, check if it's an EFP trade first
+          let pricingExposureMonth = '';
+          if (leg.pricing_type === 'efp' && leg.efp_designated_month) {
+            pricingExposureMonth = leg.efp_designated_month;
+          } else if (leg.trading_period) {
+            pricingExposureMonth = leg.trading_period;
+          } else if (leg.pricing_period_start) {
             pricingExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
           
