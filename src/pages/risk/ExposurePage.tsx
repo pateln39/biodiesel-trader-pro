@@ -14,6 +14,7 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
 import { mapProductToCanonical, parsePaperInstrument, formatExposureTableProduct, isPricingInstrument, shouldUseSpecialBackground, getExposureProductBackgroundClass } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
+
 interface ExposureData {
   physical: number;
   pricing: number;
@@ -34,7 +35,9 @@ interface PricingInstrument {
   instrument_code: string;
   is_active: boolean;
 }
+
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
+
 const usePricingInstruments = () => {
   return useQuery({
     queryKey: ['pricing-instruments'],
@@ -48,6 +51,7 @@ const usePricingInstruments = () => {
     }
   });
 };
+
 const calculateProductGroupTotal = (monthProducts: ProductExposure, productGroup: string[], category: keyof ExposureData = 'netExposure'): number => {
   return productGroup.reduce((total, product) => {
     if (monthProducts[product]) {
@@ -56,6 +60,17 @@ const calculateProductGroupTotal = (monthProducts: ProductExposure, productGroup
     return total;
   }, 0);
 };
+
+const getValueColorClass = (value: number): string => {
+  if (value > 0) return 'text-green-400';
+  if (value < 0) return 'text-red-400';
+  return 'text-gray-500';
+};
+
+const formatValue = (value: number): string => {
+  return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
+};
+
 const ExposurePage = () => {
   const [periods] = React.useState<string[]>(getNextMonths(13));
   const [visibleCategories, setVisibleCategories] = useState<string[]>(CATEGORY_ORDER);
@@ -64,17 +79,21 @@ const ExposurePage = () => {
     data: pricingInstruments = [],
     isLoading: instrumentsLoading
   } = usePricingInstruments();
+
   const ALLOWED_PRODUCTS = useMemo(() => {
     const instrumentProducts = pricingInstruments.map((inst: PricingInstrument) => mapProductToCanonical(inst.display_name));
     const biodieselProducts = ['Argus UCOME', 'Argus FAME0', 'Argus RME', 'Argus HVO'];
     return Array.from(new Set([...instrumentProducts, ...biodieselProducts]));
   }, [pricingInstruments]);
+
   const BIODIESEL_PRODUCTS = useMemo(() => {
     return ALLOWED_PRODUCTS.filter(p => p.includes('Argus'));
   }, [ALLOWED_PRODUCTS]);
+
   const PRICING_INSTRUMENT_PRODUCTS = useMemo(() => {
     return ALLOWED_PRODUCTS.filter(p => !p.includes('Argus'));
   }, [ALLOWED_PRODUCTS]);
+
   const {
     data: tradeData,
     isLoading,
@@ -103,6 +122,7 @@ const ExposurePage = () => {
         ascending: true
       });
       if (physicalError) throw physicalError;
+
       const {
         data: paperTradeLegs,
         error: paperError
@@ -122,12 +142,14 @@ const ExposurePage = () => {
         ascending: true
       });
       if (paperError) throw paperError;
+
       return {
         physicalTradeLegs: physicalTradeLegs || [],
         paperTradeLegs: paperTradeLegs || []
       };
     }
   });
+
   const exposureData = useMemo(() => {
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     const allProductsFound = new Set<string>();
@@ -142,11 +164,13 @@ const ExposurePage = () => {
         };
       });
     });
+
     if (tradeData) {
       const {
         physicalTradeLegs,
         paperTradeLegs
       } = tradeData;
+
       if (physicalTradeLegs && physicalTradeLegs.length > 0) {
         physicalTradeLegs.forEach(leg => {
           let physicalExposureMonth = '';
@@ -158,7 +182,6 @@ const ExposurePage = () => {
             physicalExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
 
-          // For pricing exposure month, check if it's an EFP trade first
           let pricingExposureMonth = '';
           if (leg.pricing_type === 'efp' && leg.efp_designated_month) {
             pricingExposureMonth = leg.efp_designated_month;
@@ -168,7 +191,6 @@ const ExposurePage = () => {
             pricingExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
 
-          // Process physical exposure only if it's in the current/future periods
           if (physicalExposureMonth && periods.includes(physicalExposureMonth)) {
             const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
             const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
@@ -207,16 +229,13 @@ const ExposurePage = () => {
             }
           }
 
-          // Process pricing exposures separately - always process monthlyDistribution regardless of period
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
 
-          // First check for monthly distribution which can span multiple periods
           if (pricingFormula.monthlyDistribution) {
             Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProductsFound.add(canonicalInstrument);
               Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-                // Only include exposure for months in our periods list
                 if (periods.includes(monthCode) && value !== 0) {
                   if (!exposuresByMonth[monthCode][canonicalInstrument]) {
                     exposuresByMonth[monthCode][canonicalInstrument] = {
@@ -230,9 +249,7 @@ const ExposurePage = () => {
                 }
               });
             });
-          }
-          // For standard pricing exposures, use the pricing month if it's valid
-          else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          } else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && pricingFormula.exposures && pricingFormula.exposures.pricing) {
             Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProductsFound.add(canonicalInstrument);
@@ -249,6 +266,7 @@ const ExposurePage = () => {
           }
         });
       }
+
       if (paperTradeLegs && paperTradeLegs.length > 0) {
         paperTradeLegs.forEach(leg => {
           const month = leg.period || leg.trading_period || '';
@@ -576,12 +594,12 @@ const ExposurePage = () => {
       }
     }
 
-    // Calculate net exposure for all products in all months
     periods.forEach(month => {
       Object.entries(exposuresByMonth[month]).forEach(([product, exposure]) => {
         exposure.netExposure = calculateNetExposure(exposure.physical, exposure.pricing);
       });
     });
+
     const monthlyExposures: MonthlyExposure[] = periods.map(month => {
       const monthData = exposuresByMonth[month];
       const productsData: Record<string, ExposureData> = {};
@@ -591,6 +609,7 @@ const ExposurePage = () => {
         paper: 0,
         netExposure: 0
       };
+
       Object.entries(monthData).forEach(([product, exposure]) => {
         if (ALLOWED_PRODUCTS.includes(product)) {
           productsData[product] = exposure;
@@ -599,6 +618,7 @@ const ExposurePage = () => {
           totals.paper += exposure.paper;
         }
       });
+
       totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
       return {
         month,
@@ -606,16 +626,20 @@ const ExposurePage = () => {
         totals
       };
     });
+
     return monthlyExposures;
   }, [tradeData, periods, ALLOWED_PRODUCTS]);
+
   const allProducts = useMemo(() => {
     return [...ALLOWED_PRODUCTS].sort();
   }, [ALLOWED_PRODUCTS]);
+
   useEffect(() => {
     if (allProducts.length > 0) {
       setSelectedProducts([...allProducts]);
     }
   }, [allProducts]);
+
   const grandTotals = useMemo(() => {
     const totals: ExposureData = {
       physical: 0,
@@ -632,11 +656,13 @@ const ExposurePage = () => {
         netExposure: 0
       };
     });
+
     exposureData.forEach(monthData => {
       totals.physical += monthData.totals.physical;
       totals.pricing += monthData.totals.pricing;
       totals.paper += monthData.totals.paper;
       totals.netExposure = calculateNetExposure(totals.physical, totals.pricing);
+
       Object.entries(monthData.products).forEach(([product, exposure]) => {
         if (productTotals[product]) {
           productTotals[product].physical += exposure.physical;
@@ -646,11 +672,13 @@ const ExposurePage = () => {
         }
       });
     });
+
     return {
       totals,
       productTotals
     };
   }, [exposureData, allProducts]);
+
   const groupGrandTotals = useMemo(() => {
     const biodieselTotal = BIODIESEL_PRODUCTS.reduce((total, product) => {
       if (grandTotals.productTotals[product]) {
@@ -658,25 +686,23 @@ const ExposurePage = () => {
       }
       return total;
     }, 0);
+
     const pricingInstrumentTotal = PRICING_INSTRUMENT_PRODUCTS.reduce((total, product) => {
       if (grandTotals.productTotals[product]) {
         return total + grandTotals.productTotals[product].netExposure;
       }
       return total;
     }, 0);
+
     return {
       biodieselTotal,
       pricingInstrumentTotal,
       totalRow: biodieselTotal + pricingInstrumentTotal
     };
   }, [grandTotals, BIODIESEL_PRODUCTS, PRICING_INSTRUMENT_PRODUCTS]);
-  const getValueColorClass = (value: number): string => {
-    return value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-muted-foreground';
-  };
-  const formatValue = (value: number): string => {
-    return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
-  };
+
   const exposureCategories = CATEGORY_ORDER;
+
   const getCategoryColorClass = (category: string): string => {
     switch (category) {
       case 'Physical':
@@ -691,6 +717,7 @@ const ExposurePage = () => {
         return '';
     }
   };
+
   const toggleCategory = (category: string) => {
     setVisibleCategories(prev => {
       if (prev.includes(category)) {
@@ -701,22 +728,28 @@ const ExposurePage = () => {
       }
     });
   };
+
   const filteredProducts = useMemo(() => {
     return allProducts;
   }, [allProducts]);
+
   const orderedVisibleCategories = useMemo(() => {
     return CATEGORY_ORDER.filter(category => visibleCategories.includes(category));
   }, [visibleCategories]);
+
   const shouldShowProductInCategory = (product: string, category: string): boolean => {
     if ((category === 'Physical' || category === 'Paper') && (product === 'ICE GASOIL FUTURES' || product === 'EFP' || product === 'ICE GASOIL FUTURES (EFP)')) {
       return false;
     }
     return true;
   };
+
   const shouldShowBiodieselTotal = true;
   const shouldShowPricingInstrumentTotal = true;
   const shouldShowTotalRow = true;
+
   const isLoadingData = isLoading || instrumentsLoading;
+
   return <Layout>
       <Helmet>
         <title>Exposure Reporting</title>
@@ -969,4 +1002,5 @@ const ExposurePage = () => {
       </div>
     </Layout>;
 };
+
 export default ExposurePage;
