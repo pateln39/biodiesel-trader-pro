@@ -857,4 +857,238 @@ const ExposurePage = () => {
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <Download className="mr-2
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </div>
+        
+        <div className="flex space-x-2">
+          {exposureCategories.map((category) => (
+            <Checkbox
+              key={category}
+              checked={visibleCategories.includes(category)}
+              onChange={() => toggleCategory(category)}
+            >
+              {category}
+            </Checkbox>
+          ))}
+        </div>
+        
+        <Card>
+          <CardContent className="p-0">
+            {isLoadingData ? (
+              <TableLoadingState />
+            ) : error ? (
+              <TableErrorState error={error} />
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="w-full border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 dark:bg-muted/20">
+                      <TableHead className="w-[180px] font-semibold">Month/Product</TableHead>
+                      {filteredProducts.map((product) => (
+                        <TableHead key={product} className="font-semibold text-center">
+                          {formatExposureTableProduct(product)}
+                        </TableHead>
+                      ))}
+                      {shouldShowBiodieselTotal && (
+                        <TableHead className="font-semibold text-center bg-muted/30 dark:bg-muted/40">
+                          Biodiesel Total
+                        </TableHead>
+                      )}
+                      {shouldShowPricingInstrumentTotal && (
+                        <TableHead className="font-semibold text-center bg-muted/30 dark:bg-muted/40">
+                          Pricing Instruments Total
+                        </TableHead>
+                      )}
+                      {shouldShowTotalRow && (
+                        <TableHead className="font-semibold text-center bg-primary/20 dark:bg-primary/30">
+                          Grand Total
+                        </TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  
+                  <TableBody>
+                    {exposureData.map((monthData) => (
+                      <React.Fragment key={monthData.month}>
+                        <TableRow className="bg-[#1A1F2C]">
+                          <TableCell 
+                            colSpan={filteredProducts.length + 1 + 
+                              (shouldShowBiodieselTotal ? 1 : 0) + 
+                              (shouldShowPricingInstrumentTotal ? 1 : 0) + 
+                              (shouldShowTotalRow ? 1 : 0)
+                            }
+                            className="font-bold text-white py-2"
+                          >
+                            {monthData.month}
+                          </TableCell>
+                        </TableRow>
+                        
+                        {orderedVisibleCategories.map((category) => {
+                          const categoryIndex = exposureCategories.indexOf(category);
+                          const mappedCategory = category === 'Exposure' ? 'netExposure' : 
+                                               category.toLowerCase() as keyof ExposureData;
+                          
+                          return (
+                            <TableRow 
+                              key={`${monthData.month}-${category}`}
+                              className={getCategoryColorClass(category)}
+                            >
+                              <TableCell className="text-white font-medium">
+                                {category}
+                              </TableCell>
+                              
+                              {filteredProducts.map((product) => {
+                                const shouldShow = shouldShowProductInCategory(product, category);
+                                if (!shouldShow) {
+                                  return (
+                                    <TableCell 
+                                      key={`${monthData.month}-${category}-${product}`}
+                                      className="text-center text-gray-400"
+                                    >
+                                      -
+                                    </TableCell>
+                                  );
+                                }
+                                
+                                const data = monthData.products[product];
+                                if (!data) {
+                                  return (
+                                    <TableCell 
+                                      key={`${monthData.month}-${category}-${product}`}
+                                      className="text-center text-gray-400"
+                                    >
+                                      0
+                                    </TableCell>
+                                  );
+                                }
+                                
+                                const value = data[mappedCategory];
+                                
+                                return (
+                                  <TableCell 
+                                    key={`${monthData.month}-${category}-${product}`}
+                                    className={`text-center ${getValueColorClass(value)}`}
+                                  >
+                                    {formatValue(value)}
+                                  </TableCell>
+                                );
+                              })}
+                              
+                              {shouldShowBiodieselTotal && (
+                                <TableCell 
+                                  className={`text-center bg-muted/30 dark:bg-muted/40 font-medium ${
+                                    getValueColorClass(calculateProductGroupTotal(
+                                      monthData.products, 
+                                      BIODIESEL_PRODUCTS, 
+                                      mappedCategory
+                                    ))
+                                  }`}
+                                >
+                                  {formatValue(calculateProductGroupTotal(
+                                    monthData.products, 
+                                    BIODIESEL_PRODUCTS, 
+                                    mappedCategory
+                                  ))}
+                                </TableCell>
+                              )}
+                              
+                              {shouldShowPricingInstrumentTotal && (
+                                <TableCell 
+                                  className={`text-center bg-muted/30 dark:bg-muted/40 font-medium ${
+                                    getValueColorClass(calculateProductGroupTotal(
+                                      monthData.products, 
+                                      PRICING_INSTRUMENT_PRODUCTS, 
+                                      mappedCategory
+                                    ))
+                                  }`}
+                                >
+                                  {formatValue(calculateProductGroupTotal(
+                                    monthData.products, 
+                                    PRICING_INSTRUMENT_PRODUCTS, 
+                                    mappedCategory
+                                  ))}
+                                </TableCell>
+                              )}
+                              
+                              {shouldShowTotalRow && (
+                                <TableCell 
+                                  className={`text-center bg-primary/20 dark:bg-primary/30 font-medium ${
+                                    getValueColorClass(category === 'Exposure' ? 
+                                      monthData.totals.netExposure : 
+                                      monthData.totals[mappedCategory])
+                                  }`}
+                                >
+                                  {formatValue(category === 'Exposure' ? 
+                                    monthData.totals.netExposure : 
+                                    monthData.totals[mappedCategory])}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                      </React.Fragment>
+                    ))}
+                    
+                    <TableRow className="bg-[#1A1F2C]">
+                      <TableCell className="font-bold text-white">
+                        Grand Totals
+                      </TableCell>
+                      
+                      {filteredProducts.map((product) => {
+                        const productTotal = grandTotals.productTotals[product]?.netExposure || 0;
+                        
+                        return (
+                          <TableCell 
+                            key={`grand-total-${product}`}
+                            className={`text-center font-semibold ${getValueColorClass(productTotal)}`}
+                          >
+                            {formatValue(productTotal)}
+                          </TableCell>
+                        );
+                      })}
+                      
+                      {shouldShowBiodieselTotal && (
+                        <TableCell 
+                          className={`text-center bg-muted/30 dark:bg-muted/40 font-semibold ${
+                            getValueColorClass(groupGrandTotals.biodieselTotal)
+                          }`}
+                        >
+                          {formatValue(groupGrandTotals.biodieselTotal)}
+                        </TableCell>
+                      )}
+                      
+                      {shouldShowPricingInstrumentTotal && (
+                        <TableCell 
+                          className={`text-center bg-muted/30 dark:bg-muted/40 font-semibold ${
+                            getValueColorClass(groupGrandTotals.pricingInstrumentTotal)
+                          }`}
+                        >
+                          {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                        </TableCell>
+                      )}
+                      
+                      {shouldShowTotalRow && (
+                        <TableCell 
+                          className={`text-center bg-primary/20 dark:bg-primary/30 font-semibold ${
+                            getValueColorClass(groupGrandTotals.totalRow)
+                          }`}
+                        >
+                          {formatValue(groupGrandTotals.totalRow)}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
