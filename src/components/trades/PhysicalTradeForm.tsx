@@ -530,7 +530,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </Select>
               </div>
 
-              <div className="border rounded-md p-4 mb-4 bg-gradient-to-r from-brand-navy via-brand-navy via-[65%] to-brand-lime to-[35%]">
+              <div className="border rounded-md p-4 mb-4 bg-gradient-to-r from-brand-navy via-brand-navy to-brand-lime">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="price" disabled={leg.pricingType === 'efp'} className={leg.pricingType === 'efp' ? 'opacity-50' : ''}>
