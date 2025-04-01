@@ -940,7 +940,7 @@ const ExposurePage = () => {
                             cells.push(
                               <TableCell 
                                 key={`${monthData.month}-biodiesel-total`} 
-                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-green-50`}
+                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
                               >
                                 {formatValue(biodieselTotal)}
                               </TableCell>
@@ -952,7 +952,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-pricing-instrument-total`} 
-                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-blue-50`}
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
                             >
                               {formatValue(pricingInstrumentTotal)}
                             </TableCell>
@@ -965,7 +965,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-total-row`} 
-                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gray-100 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(totalRow)}
                             </TableCell>
