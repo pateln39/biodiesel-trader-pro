@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -859,3 +860,393 @@ const ExposurePage = () => {
 
   return (
     <Layout>
+      <Helmet>
+        <title>Exposure | Biodiesel CTRM</title>
+      </Helmet>
+      
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Exposure Analysis</h1>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" className="flex items-center space-x-1">
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => refetch()}
+              disabled={isLoadingData}
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+        
+        <Card className="bg-card shadow-md">
+          <CardContent className="p-6">
+            <div className="mb-4 space-y-2">
+              <h2 className="text-lg font-semibold">Exposure Table</h2>
+              <p className="text-sm text-muted-foreground">
+                Showing exposures for the next {periods.length} months
+              </p>
+              
+              <div className="flex flex-wrap gap-2 mb-4">
+                {CATEGORY_ORDER.map(category => (
+                  <div key={category} className="flex items-center space-x-1">
+                    <Checkbox 
+                      id={`filter-${category}`}
+                      checked={visibleCategories.includes(category)}
+                      onCheckedChange={() => toggleCategory(category)}
+                      className="data-[state=checked]:bg-brand-blue data-[state=checked]:text-white"
+                    />
+                    <label 
+                      htmlFor={`filter-${category}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {category}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {isLoadingData ? (
+              <TableLoadingState />
+            ) : error ? (
+              <TableErrorState 
+                error={error as Error} 
+                onRetry={() => refetch()} 
+              />
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-border">
+                <Table className="w-full bg-brand-navy/5 border-collapse">
+                  <TableHeader>
+                    <TableRow className={getHeaderClass(true)}>
+                      <TableHead className="text-white font-bold border-r border-gray-600 sticky left-0 bg-brand-navy z-20" rowSpan={2}>
+                        Product
+                      </TableHead>
+                      {periods.map((month) => (
+                        <TableHead key={month} className="text-center border-b border-gray-600 font-bold" colSpan={visibleCategories.length}>
+                          {month}
+                        </TableHead>
+                      ))}
+                      <TableHead className="text-center border-l border-gray-600" colSpan={visibleCategories.length}>
+                        Total
+                      </TableHead>
+                    </TableRow>
+                    <TableRow className={getHeaderClass()}>
+                      {periods.map((month) => (
+                        orderedVisibleCategories.map((category) => (
+                          <TableHead 
+                            key={`${month}-${category}`} 
+                            className={`${getCategoryColorClass(category)} text-center font-medium p-2 border-r border-gray-600 text-xs uppercase`}
+                          >
+                            {category}
+                          </TableHead>
+                        ))
+                      ))}
+                      {orderedVisibleCategories.map((category) => (
+                        <TableHead 
+                          key={`total-${category}`} 
+                          className={`${getCategoryColorClass(category)} text-center font-medium p-2 border-r border-gray-600 text-xs uppercase`}
+                        >
+                          {category}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* BIODIESEL PRODUCTS SECTION */}
+                    {BIODIESEL_PRODUCTS.filter(product => selectedProducts.includes(product)).map((product) => (
+                      <TableRow 
+                        key={product} 
+                        className={`${getRowHoverClass()} ${shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''}`}
+                      >
+                        <TableCell 
+                          className="font-medium sticky left-0 bg-brand-navy/10 z-10 border-r border-gray-300"
+                        >
+                          {formatExposureTableProduct(product)}
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          orderedVisibleCategories.map((category) => {
+                            const value = category === 'Physical' 
+                              ? monthData.products[product]?.physical || 0 
+                              : category === 'Pricing' 
+                                ? monthData.products[product]?.pricing || 0
+                                : category === 'Paper'
+                                  ? monthData.products[product]?.paper || 0
+                                  : monthData.products[product]?.netExposure || 0;
+                            
+                            return shouldShowProductInCategory(product, category) ? (
+                              <TableCell 
+                                key={`${monthData.month}-${product}-${category}`}
+                                className={`text-right p-2 ${getValueColorClass(value)} border-r border-gray-300`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            ) : (
+                              <TableCell 
+                                key={`${monthData.month}-${product}-${category}`}
+                                className="text-center text-gray-400 p-2 border-r border-gray-300"
+                              >
+                                —
+                              </TableCell>
+                            );
+                          })
+                        ))}
+                        
+                        {/* Product Totals */}
+                        {orderedVisibleCategories.map((category) => {
+                          const value = category === 'Physical' 
+                            ? grandTotals.productTotals[product]?.physical || 0 
+                            : category === 'Pricing' 
+                              ? grandTotals.productTotals[product]?.pricing || 0
+                              : category === 'Paper'
+                                ? grandTotals.productTotals[product]?.paper || 0
+                                : grandTotals.productTotals[product]?.netExposure || 0;
+                          
+                          return shouldShowProductInCategory(product, category) ? (
+                            <TableCell 
+                              key={`total-${product}-${category}`}
+                              className={`text-right p-2 ${getValueColorClass(value)} font-medium border-r border-gray-300`}
+                            >
+                              {formatValue(value)}
+                            </TableCell>
+                          ) : (
+                            <TableCell 
+                              key={`total-${product}-${category}`}
+                              className="text-center text-gray-400 p-2 border-r border-gray-300"
+                            >
+                              —
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                    
+                    {/* BIODIESEL SUBTOTAL */}
+                    {shouldShowBiodieselTotal && (
+                      <TableRow className="bg-brand-navy/20 font-medium">
+                        <TableCell 
+                          className="font-bold sticky left-0 bg-brand-navy/20 z-10 border-t border-b border-gray-500"
+                        >
+                          Biodiesel Total
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          orderedVisibleCategories.map((category) => {
+                            const value = calculateProductGroupTotal(
+                              monthData.products, 
+                              BIODIESEL_PRODUCTS, 
+                              category.toLowerCase() as keyof ExposureData
+                            );
+                            
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-biodiesel-total-${category}`}
+                                className={`text-right p-2 ${getValueColorClass(value)} border-t border-b border-gray-500`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            );
+                          })
+                        ))}
+                        
+                        {/* Biodiesel Group Totals */}
+                        {orderedVisibleCategories.map((category) => (
+                          <TableCell 
+                            key={`total-biodiesel-${category}`}
+                            className={`text-right p-2 font-bold ${
+                              category === 'Exposure' 
+                                ? getValueColorClass(groupGrandTotals.biodieselTotal) 
+                                : ''
+                            } border-t border-b border-gray-500`}
+                          >
+                            {category === 'Exposure' 
+                              ? formatValue(groupGrandTotals.biodieselTotal)
+                              : '—'}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )}
+                    
+                    {/* PRICING INSTRUMENTS SECTION */}
+                    {PRICING_INSTRUMENT_PRODUCTS.filter(product => selectedProducts.includes(product)).map((product) => (
+                      <TableRow 
+                        key={product} 
+                        className={`${getRowHoverClass()} ${shouldUseSpecialBackground(product) ? getExposureProductBackgroundClass(product) : ''}`}
+                      >
+                        <TableCell 
+                          className="font-medium sticky left-0 bg-brand-navy/10 z-10 border-r border-gray-300"
+                        >
+                          {formatExposureTableProduct(product)}
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          orderedVisibleCategories.map((category) => {
+                            const value = category === 'Physical' 
+                              ? monthData.products[product]?.physical || 0 
+                              : category === 'Pricing' 
+                                ? monthData.products[product]?.pricing || 0
+                                : category === 'Paper'
+                                  ? monthData.products[product]?.paper || 0
+                                  : monthData.products[product]?.netExposure || 0;
+                            
+                            return shouldShowProductInCategory(product, category) ? (
+                              <TableCell 
+                                key={`${monthData.month}-${product}-${category}`}
+                                className={`text-right p-2 ${getValueColorClass(value)} border-r border-gray-300`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            ) : (
+                              <TableCell 
+                                key={`${monthData.month}-${product}-${category}`}
+                                className="text-center text-gray-400 p-2 border-r border-gray-300"
+                              >
+                                —
+                              </TableCell>
+                            );
+                          })
+                        ))}
+                        
+                        {/* Product Totals */}
+                        {orderedVisibleCategories.map((category) => {
+                          const value = category === 'Physical' 
+                            ? grandTotals.productTotals[product]?.physical || 0 
+                            : category === 'Pricing' 
+                              ? grandTotals.productTotals[product]?.pricing || 0
+                              : category === 'Paper'
+                                ? grandTotals.productTotals[product]?.paper || 0
+                                : grandTotals.productTotals[product]?.netExposure || 0;
+                          
+                          return shouldShowProductInCategory(product, category) ? (
+                            <TableCell 
+                              key={`total-${product}-${category}`}
+                              className={`text-right p-2 ${getValueColorClass(value)} font-medium border-r border-gray-300`}
+                            >
+                              {formatValue(value)}
+                            </TableCell>
+                          ) : (
+                            <TableCell 
+                              key={`total-${product}-${category}`}
+                              className="text-center text-gray-400 p-2 border-r border-gray-300"
+                            >
+                              —
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                    
+                    {/* PRICING INSTRUMENTS SUBTOTAL */}
+                    {shouldShowPricingInstrumentTotal && (
+                      <TableRow className="bg-brand-navy/20 font-medium">
+                        <TableCell 
+                          className="font-bold sticky left-0 bg-brand-navy/20 z-10 border-t border-b border-gray-500"
+                        >
+                          Paper Instruments Total
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          orderedVisibleCategories.map((category) => {
+                            const value = calculateProductGroupTotal(
+                              monthData.products, 
+                              PRICING_INSTRUMENT_PRODUCTS, 
+                              category.toLowerCase() as keyof ExposureData
+                            );
+                            
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-instruments-total-${category}`}
+                                className={`text-right p-2 ${getValueColorClass(value)} border-t border-b border-gray-500`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            );
+                          })
+                        ))}
+                        
+                        {/* Instruments Group Totals */}
+                        {orderedVisibleCategories.map((category) => (
+                          <TableCell 
+                            key={`total-instruments-${category}`}
+                            className={`text-right p-2 font-bold ${
+                              category === 'Exposure' 
+                                ? getValueColorClass(groupGrandTotals.pricingInstrumentTotal) 
+                                : ''
+                            } border-t border-b border-gray-500`}
+                          >
+                            {category === 'Exposure' 
+                              ? formatValue(groupGrandTotals.pricingInstrumentTotal)
+                              : '—'}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )}
+                    
+                    {/* GRAND TOTAL ROW */}
+                    {shouldShowTotalRow && (
+                      <TableRow className="bg-brand-navy/30 font-bold">
+                        <TableCell 
+                          className="font-bold sticky left-0 bg-brand-navy/30 z-10 border-t-2 border-b-2 border-gray-600"
+                        >
+                          TOTAL
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          orderedVisibleCategories.map((category) => {
+                            const value = category === 'Physical' 
+                              ? monthData.totals.physical 
+                              : category === 'Pricing' 
+                                ? monthData.totals.pricing
+                                : category === 'Paper'
+                                  ? monthData.totals.paper
+                                  : monthData.totals.netExposure;
+                            
+                            return (
+                              <TableCell 
+                                key={`${monthData.month}-total-${category}`}
+                                className={`text-right p-2 font-bold ${getValueColorClass(value)} border-t-2 border-b-2 border-gray-600`}
+                              >
+                                {formatValue(value)}
+                              </TableCell>
+                            );
+                          })
+                        ))}
+                        
+                        {/* Final Grand Totals */}
+                        {orderedVisibleCategories.map((category) => {
+                          const value = category === 'Physical' 
+                            ? grandTotals.totals.physical 
+                            : category === 'Pricing' 
+                              ? grandTotals.totals.pricing
+                              : category === 'Paper'
+                                ? grandTotals.totals.paper
+                                : groupGrandTotals.totalRow;
+                          
+                          return (
+                            <TableCell 
+                              key={`grand-total-${category}`}
+                              className={`text-right p-2 font-bold ${getValueColorClass(value)} border-t-2 border-b-2 border-gray-600`}
+                            >
+                              {formatValue(value)}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
