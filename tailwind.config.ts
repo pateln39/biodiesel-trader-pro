@@ -33,6 +33,8 @@ export default {
 		'from-brand-navy',
 		'via-brand-navy',
 		'to-brand-lime',
+		'via-[65%]',
+		'to-[35%]',
 		'text-brand-navy',
 		'text-brand-blue',
 		'text-brand-lime',
