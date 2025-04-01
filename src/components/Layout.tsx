@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
@@ -84,7 +83,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
         >
-          <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy via-brand-navy to-[#122d42]">
+          <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-lime/60 via-brand-lime/30 to-brand-navy/80">
             {menuItems.map((item, index) => (
               item.submenu ? (
                 <div key={index} className="space-y-1">
