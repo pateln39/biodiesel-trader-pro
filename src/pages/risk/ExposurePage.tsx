@@ -192,7 +192,6 @@ const ExposurePage = () => {
             physicalExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
           
-          // For pricing exposure month, check if it's an EFP trade first
           let pricingExposureMonth = '';
           if (leg.pricing_type === 'efp' && leg.efp_designated_month) {
             pricingExposureMonth = leg.efp_designated_month;
@@ -202,7 +201,6 @@ const ExposurePage = () => {
             pricingExposureMonth = formatMonthCode(new Date(leg.pricing_period_start));
           }
           
-          // Process physical exposure only if it's in the current/future periods
           if (physicalExposureMonth && periods.includes(physicalExposureMonth)) {
             const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
             const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
@@ -219,7 +217,7 @@ const ExposurePage = () => {
               };
             }
             
-            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);\
+            const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
             
             if (mtmFormula.tokens.length > 0) {
               if (mtmFormula.exposures && mtmFormula.exposures.physical) {
@@ -247,17 +245,14 @@ const ExposurePage = () => {
             }
           }
           
-          // Process pricing exposures separately - always process monthlyDistribution regardless of period
           const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
           
-          // First check for monthly distribution which can span multiple periods
           if (pricingFormula.monthlyDistribution) {
             Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
               allProductsFound.add(canonicalInstrument);
               
               Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-                // Only include exposure for months in our periods list
                 if (periods.includes(monthCode) && value !== 0) {
                   if (!exposuresByMonth[monthCode][canonicalInstrument]) {
                     exposuresByMonth[monthCode][canonicalInstrument] = {
@@ -272,10 +267,8 @@ const ExposurePage = () => {
                 }
               });
             });
-          } 
-          // For standard pricing exposures, use the pricing month if it's valid
-          else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && 
-                  pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          } else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && 
+                    pricingFormula.exposures && pricingFormula.exposures.pricing) {
             
             Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
               const canonicalInstrument = mapProductToCanonical(instrument);
@@ -688,7 +681,6 @@ const ExposurePage = () => {
       }
     }
     
-    // Calculate net exposure for all products in all months
     periods.forEach(month => {
       Object.entries(exposuresByMonth[month]).forEach(([product, exposure]) => {
         exposure.netExposure = calculateNetExposure(exposure.physical, exposure.pricing);
@@ -795,7 +787,7 @@ const ExposurePage = () => {
 
   const formatValue = (value: number | undefined | null): string => {
     if (value === undefined || value === null) {
-      return '—'; // Em dash for null/undefined values
+      return '—';
     }
     return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
   };
@@ -859,4 +851,176 @@ const ExposurePage = () => {
   return (
     <Layout>
       <Helmet>
-        <title
+        <title>Exposure | BioDiesel CTRM</title>
+      </Helmet>
+      
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl font-bold tracking-tight">Exposure</h1>
+          
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 gap-1">
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </Button>
+          </div>
+        </div>
+
+        {isLoadingData ? (
+          <TableLoadingState />
+        ) : error ? (
+          <TableErrorState error={error as Error} onRetry={refetch} />
+        ) : exposureData.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center text-muted-foreground">
+              No exposure data available.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="exposure-table-container">
+            <Table className="exposure-table-wrapper exposure-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 z-20 bg-[#002A46] text-white">
+                    Products / Months
+                  </TableHead>
+                  {exposureCategories.map(category => (
+                    <TableHead 
+                      key={category} 
+                      className={`${getHeaderBackgroundClass(category)} text-white text-center`}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <span>{category}</span>
+                        <Checkbox
+                          checked={visibleCategories.includes(category)}
+                          onCheckedChange={() => toggleCategory(category)}
+                          className="h-4 w-4 border-white"
+                        />
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map(product => (
+                  <TableRow 
+                    key={product}
+                    className="exposure-table-row-hover"
+                  >
+                    <TableCell className="font-medium sticky left-0 z-10 bg-background">
+                      {formatExposureTableProduct(product)}
+                    </TableCell>
+                    
+                    {orderedVisibleCategories.map(category => {
+                      if (!shouldShowProductInCategory(product, category)) {
+                        return (
+                          <TableCell 
+                            key={`${product}-${category}`} 
+                            className="text-center text-muted-foreground"
+                          >
+                            —
+                          </TableCell>
+                        );
+                      }
+                      
+                      const value = (() => {
+                        switch (category) {
+                          case 'Physical':
+                            return grandTotals.productTotals[product]?.physical;
+                          case 'Pricing':
+                            return grandTotals.productTotals[product]?.pricing;
+                          case 'Paper':
+                            return grandTotals.productTotals[product]?.paper;
+                          case 'Exposure':
+                            return grandTotals.productTotals[product]?.netExposure;
+                          default:
+                            return null;
+                        }
+                      })();
+                      
+                      return (
+                        <TableCell 
+                          key={`${product}-${category}`}
+                          className={`text-center ${getValueColorClass(value || 0)}`}
+                        >
+                          {formatValue(value)}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+                
+                {shouldShowBiodieselTotal && (
+                  <TableRow className="exposure-table-total-row">
+                    <TableCell className="font-bold sticky left-0 z-10 exposure-table-total-row">
+                      Biodiesel Total
+                    </TableCell>
+                    {orderedVisibleCategories.map(category => (
+                      <TableCell 
+                        key={`biodiesel-total-${category}`}
+                        className="text-center"
+                      >
+                        {category === 'Exposure' ? formatValue(groupGrandTotals.biodieselTotal) : '—'}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )}
+                
+                {shouldShowPricingInstrumentTotal && (
+                  <TableRow className="exposure-table-total-row">
+                    <TableCell className="font-bold sticky left-0 z-10 exposure-table-total-row">
+                      Pricing Instruments Total
+                    </TableCell>
+                    {orderedVisibleCategories.map(category => (
+                      <TableCell 
+                        key={`pricing-instrument-total-${category}`}
+                        className="text-center"
+                      >
+                        {category === 'Exposure' ? formatValue(groupGrandTotals.pricingInstrumentTotal) : '—'}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )}
+                
+                {shouldShowTotalRow && (
+                  <TableRow className="exposure-table-total-row">
+                    <TableCell className="font-bold sticky left-0 z-10 exposure-table-total-row">
+                      Grand Total
+                    </TableCell>
+                    {orderedVisibleCategories.map(category => {
+                      const value = (() => {
+                        switch (category) {
+                          case 'Physical':
+                            return grandTotals.totals.physical;
+                          case 'Pricing':
+                            return grandTotals.totals.pricing;
+                          case 'Paper':
+                            return grandTotals.totals.paper;
+                          case 'Exposure':
+                            return grandTotals.totals.netExposure;
+                          default:
+                            return null;
+                        }
+                      })();
+                      
+                      return (
+                        <TableCell 
+                          key={`grand-total-${category}`}
+                          className={`text-center ${getValueColorClass(value || 0)}`}
+                        >
+                          {formatValue(value)}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
