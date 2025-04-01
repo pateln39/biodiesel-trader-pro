@@ -183,18 +183,18 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const getTokenColorClasses = (token: FormulaToken): { background: string; text: string } => {
     switch (token.type) {
       case 'instrument':
-        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
       case 'percentage':
-        return { background: 'bg-[#1A1F2C]', text: 'text-green-300' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
       case 'fixedValue':
-        return { background: 'bg-[#1A1F2C]', text: 'text-blue-300' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
       case 'operator':
-        return { background: 'bg-[#1A1F2C]', text: 'text-yellow-300' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
       case 'openBracket':
       case 'closeBracket':
-        return { background: 'bg-[#1A1F2C]', text: 'text-gray-300' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
       default:
-        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
+        return { background: 'bg-brand-lime/20', text: 'text-brand-navy' };
     }
   };
 
