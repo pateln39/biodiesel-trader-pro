@@ -42,7 +42,7 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
       
       // Now handle pricing exposure - with special case for EFP trades
       if (leg.pricingType === 'efp') {
-        // For EFP trades, use the designated month instead of the pricing period
+        // For EFP trades, always use the designated month instead of the pricing period
         const pricingMonth = leg.efpDesignatedMonth || defaultMonth;
         
         if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
