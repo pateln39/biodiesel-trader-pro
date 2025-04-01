@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -68,7 +67,8 @@ const getValueColorClass = (value: number): string => {
   return 'text-gray-500';
 };
 
-const formatValue = (value: number): string => {
+const formatValue = (value: number): string | React.ReactElement => {
+  if (value === 0) return <span className="text-brand-lime text-xs">-</span>;
   return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
 };
 
@@ -881,7 +881,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-physical-${product}`} 
                               className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(productData.physical)}
+                              {typeof formatValue(productData.physical) === 'string' 
+                                ? formatValue(productData.physical) 
+                                : formatValue(productData.physical)}
                             </TableCell>
                           );
                         });
@@ -898,7 +900,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-pricing-${product}`} 
                               className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(productData.pricing)}
+                              {typeof formatValue(productData.pricing) === 'string' 
+                                ? formatValue(productData.pricing) 
+                                : formatValue(productData.pricing)}
                             </TableCell>
                           );
                         });
@@ -915,7 +919,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-paper-${product}`} 
                               className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(productData.paper)}
+                              {typeof formatValue(productData.paper) === 'string' 
+                                ? formatValue(productData.paper) 
+                                : formatValue(productData.paper)}
                             </TableCell>
                           );
                         });
@@ -933,7 +939,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-net-${product}`} 
                               className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} bg-brand-navy`}
                             >
-                              {formatValue(productData.netExposure)}
+                              {typeof formatValue(productData.netExposure) === 'string' 
+                                ? formatValue(productData.netExposure) 
+                                : formatValue(productData.netExposure)}
                             </TableCell>
                           );
                           if (index === ucomeIndex && shouldShowBiodieselTotal) {
@@ -943,7 +951,9 @@ const ExposurePage = () => {
                                 key={`${monthData.month}-biodiesel-total`} 
                                 className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-brand-navy`}
                               >
-                                {formatValue(biodieselTotal)}
+                                {typeof formatValue(biodieselTotal) === 'string' 
+                                  ? formatValue(biodieselTotal) 
+                                  : formatValue(biodieselTotal)}
                               </TableCell>
                             );
                           }
@@ -955,7 +965,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-pricing-instrument-total`} 
                               className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-brand-navy`}
                             >
-                              {formatValue(pricingInstrumentTotal)}
+                              {typeof formatValue(pricingInstrumentTotal) === 'string' 
+                                ? formatValue(pricingInstrumentTotal) 
+                                : formatValue(pricingInstrumentTotal)}
                             </TableCell>
                           );
                         }
@@ -968,7 +980,9 @@ const ExposurePage = () => {
                               key={`${monthData.month}-total-row`} 
                               className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-brand-navy ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(totalRow)}
+                              {typeof formatValue(totalRow) === 'string' 
+                                ? formatValue(totalRow) 
+                                : formatValue(totalRow)}
                             </TableCell>
                           );
                         }
@@ -992,7 +1006,9 @@ const ExposurePage = () => {
                               key={`total-physical-${product}`} 
                               className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.physical > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.physical < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(grandTotals.productTotals[product]?.physical || 0)}
+                              {typeof formatValue(grandTotals.productTotals[product]?.physical || 0) === 'string' 
+                                ? formatValue(grandTotals.productTotals[product]?.physical || 0) 
+                                : formatValue(grandTotals.productTotals[product]?.physical || 0)}
                             </TableCell>
                           );
                         });
@@ -1003,7 +1019,9 @@ const ExposurePage = () => {
                               key={`total-pricing-${product}`} 
                               className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.pricing > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.pricing < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(grandTotals.productTotals[product]?.pricing || 0)}
+                              {typeof formatValue(grandTotals.productTotals[product]?.pricing || 0) === 'string' 
+                                ? formatValue(grandTotals.productTotals[product]?.pricing || 0) 
+                                : formatValue(grandTotals.productTotals[product]?.pricing || 0)}
                             </TableCell>
                           );
                         });
@@ -1014,7 +1032,9 @@ const ExposurePage = () => {
                               key={`total-paper-${product}`} 
                               className={`text-right text-xs p-1 ${grandTotals.productTotals[product]?.paper > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.paper < 0 ? 'text-red-300' : 'text-gray-300'} font-bold ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(grandTotals.productTotals[product]?.paper || 0)}
+                              {typeof formatValue(grandTotals.productTotals[product]?.paper || 0) === 'string' 
+                                ? formatValue(grandTotals.productTotals[product]?.paper || 0) 
+                                : formatValue(grandTotals.productTotals[product]?.paper || 0)}
                             </TableCell>
                           );
                         });
@@ -1026,7 +1046,9 @@ const ExposurePage = () => {
                               key={`total-net-${product}`} 
                               className={`text-right text-xs p-1 border-r-[1px] border-black ${grandTotals.productTotals[product]?.netExposure > 0 ? 'text-green-300' : grandTotals.productTotals[product]?.netExposure < 0 ? 'text-red-300' : 'text-gray-300'} font-bold`}
                             >
-                              {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                              {typeof formatValue(grandTotals.productTotals[product]?.netExposure || 0) === 'string' 
+                                ? formatValue(grandTotals.productTotals[product]?.netExposure || 0) 
+                                : formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
                             </TableCell>
                           );
                           if (index === ucomeIndex && shouldShowBiodieselTotal) {
@@ -1035,7 +1057,9 @@ const ExposurePage = () => {
                                 key={`total-biodiesel-total`} 
                                 className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.biodieselTotal > 0 ? 'text-green-300' : groupGrandTotals.biodieselTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-green-900`}
                               >
-                                {formatValue(groupGrandTotals.biodieselTotal)}
+                                {typeof formatValue(groupGrandTotals.biodieselTotal) === 'string' 
+                                  ? formatValue(groupGrandTotals.biodieselTotal) 
+                                  : formatValue(groupGrandTotals.biodieselTotal)}
                               </TableCell>
                             );
                           }
@@ -1046,7 +1070,9 @@ const ExposurePage = () => {
                               key={`total-pricing-instrument-total`} 
                               className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-blue-900`}
                             >
-                              {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                              {typeof formatValue(groupGrandTotals.pricingInstrumentTotal) === 'string' 
+                                ? formatValue(groupGrandTotals.pricingInstrumentTotal) 
+                                : formatValue(groupGrandTotals.pricingInstrumentTotal)}
                             </TableCell>
                           );
                         }
@@ -1056,7 +1082,9 @@ const ExposurePage = () => {
                               key={`total-total-row`} 
                               className={`text-right text-xs p-1 ${groupGrandTotals.totalRow > 0 ? 'text-green-300' : groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-gray-800 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
-                              {formatValue(groupGrandTotals.totalRow)}
+                              {typeof formatValue(groupGrandTotals.totalRow) === 'string' 
+                                ? formatValue(groupGrandTotals.totalRow) 
+                                : formatValue(groupGrandTotals.totalRow)}
                             </TableCell>
                           );
                         }
