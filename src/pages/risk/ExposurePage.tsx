@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -859,7 +860,7 @@ const ExposurePage = () => {
                     </TableHeader>
                     
                     <TableBody>
-                      {exposureData.map(monthData => <TableRow key={monthData.month} className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+                      {exposureData.map(monthData => <TableRow key={monthData.month} className="bg-brand-navy">
                           <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 z-10 bg-brand-navy text-white">
                             {monthData.month}
                           </TableCell>
@@ -878,7 +879,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-physical-${product}`} 
-                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(productData.physical)}
                             </TableCell>
@@ -895,7 +896,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-pricing-${product}`} 
-                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(productData.pricing)}
                             </TableCell>
@@ -912,7 +913,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-paper-${product}`} 
-                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy/30 ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(productData.paper)}
                             </TableCell>
@@ -930,7 +931,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-net-${product}`} 
-                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)}`}
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} bg-brand-navy`}
                             >
                               {formatValue(productData.netExposure)}
                             </TableCell>
@@ -940,7 +941,7 @@ const ExposurePage = () => {
                             cells.push(
                               <TableCell 
                                 key={`${monthData.month}-biodiesel-total`} 
-                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
+                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-brand-navy`}
                               >
                                 {formatValue(biodieselTotal)}
                               </TableCell>
@@ -952,7 +953,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-pricing-instrument-total`} 
-                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-brand-navy`}
                             >
                               {formatValue(pricingInstrumentTotal)}
                             </TableCell>
@@ -965,7 +966,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-total-row`} 
-                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-brand-navy ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(totalRow)}
                             </TableCell>
