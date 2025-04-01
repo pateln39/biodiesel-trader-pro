@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -414,12 +413,13 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </Select>
                   </td>
                   
+                  {/* Update read-only inputs to match the row background */}
                   <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
                       value={leg.product || ''} 
                       readOnly
-                      className="w-full bg-gray-50"
+                      className="w-full bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                     />
                   </td>
                   
@@ -465,7 +465,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           type="text" 
                           value={leg.rightSide.product || ''} 
                           readOnly
-                          className="w-full bg-gray-50"
+                          className="w-full bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                         />
                       </td>
                       <td className="px-4 py-3 text-white">
@@ -473,7 +473,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           type="number" 
                           value={leg.rightSide.quantity || ''} 
                           readOnly
-                          className="w-24 bg-gray-50"
+                          className="w-24 bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                         />
                       </td>
                       <td className="px-4 py-3 text-white">
@@ -481,7 +481,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           type="text" 
                           value={leg.rightSide.period || ''} 
                           readOnly
-                          className="w-32 bg-gray-50"
+                          className="w-32 bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                         />
                       </td>
                       <td className="px-4 py-3 text-white">
@@ -505,7 +505,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       type="text" 
                       value={getMTMFormulaDisplay(leg)} 
                       readOnly
-                      className="w-32 bg-gray-50"
+                      className="w-32 bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                     />
                   </td>
                   <td className="px-4 py-3 text-white">
@@ -513,7 +513,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       type="text" 
                       value={leg.period || ''} 
                       readOnly
-                      className="w-32 bg-gray-50"
+                      className="w-32 bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                     />
                   </td>
                 </tr>
