@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -383,8 +384,8 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           <tbody className="bg-white divide-y divide-gray-200">
             {legs.length > 0 ? (
               legs.map((leg, index) => (
-                <tr key={leg.id || index}>
-                  <td className="px-2 py-3">
+                <tr key={leg.id || index} className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+                  <td className="px-2 py-3 text-white">
                     <Button 
                       type="button" 
                       variant="ghost" 
@@ -395,7 +396,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </Button>
                   </td>
                   
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Select 
                       value={getRelationshipDisplayText(leg)}
                       onValueChange={(value) => handleProductSelect(index, value)}
@@ -413,7 +414,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </Select>
                   </td>
                   
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
                       value={leg.product || ''} 
@@ -422,7 +423,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     />
                   </td>
                   
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Input 
                       type="number" 
                       value={leg.quantity || ''} 
@@ -430,7 +431,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       className="w-24"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Select 
                       value={leg.period || ''} 
                       onValueChange={(value) => updateLeftSide(index, 'period', value)}
@@ -447,7 +448,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Input 
                       type="number" 
                       value={leg.price !== undefined ? leg.price : ''}
@@ -459,7 +460,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                   
                   {leg.rightSide ? (
                     <>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-white">
                         <Input 
                           type="text" 
                           value={leg.rightSide.product || ''} 
@@ -467,7 +468,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           className="w-full bg-gray-50"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-white">
                         <Input 
                           type="number" 
                           value={leg.rightSide.quantity || ''} 
@@ -475,7 +476,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           className="w-24 bg-gray-50"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-white">
                         <Input 
                           type="text" 
                           value={leg.rightSide.period || ''} 
@@ -483,7 +484,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                           className="w-32 bg-gray-50"
                         />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-white">
                         <Input 
                           type="number"
                           min="0"
@@ -494,12 +495,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       </td>
                     </>
                   ) : (
-                    <td colSpan={4} className="px-4 py-3 text-center text-sm text-gray-500">
+                    <td colSpan={4} className="px-4 py-3 text-center text-white">
                       {leg.relationshipType === 'FP' ? 'No right side for Fixed Price' : 'Select a product first'}
                     </td>
                   )}
                   
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
                       value={getMTMFormulaDisplay(leg)} 
@@ -507,7 +508,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       className="w-32 bg-gray-50"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
                       value={leg.period || ''} 
@@ -519,7 +520,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={12} className="px-6 py-4 text-center text-white bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
                   No trade legs yet. Click "Add Row" to start building your trade.
                 </td>
               </tr>
