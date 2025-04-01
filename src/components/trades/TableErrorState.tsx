@@ -6,16 +6,25 @@ import { Button } from '@/components/ui/button';
 interface TableErrorStateProps {
   error: Error | null;
   onRetry: () => void;
+  title?: string;
+  message?: string;
 }
 
-const TableErrorState: React.FC<TableErrorStateProps> = ({ error, onRetry }) => {
+const TableErrorState: React.FC<TableErrorStateProps> = ({ 
+  error, 
+  onRetry, 
+  title = "Failed to load trades",
+  message
+}) => {
+  const errorMessage = message || (error instanceof Error ? error.message : 'Unknown error occurred');
+  
   return (
     <div className="p-8 flex flex-col items-center text-center space-y-4">
       <AlertCircle className="h-10 w-10 text-destructive" />
       <div>
-        <h3 className="font-medium">Failed to load trades</h3>
+        <h3 className="font-medium">{title}</h3>
         <p className="text-muted-foreground text-sm">
-          {error instanceof Error ? error.message : 'Unknown error occurred'}
+          {errorMessage}
         </p>
       </div>
       <Button variant="outline" size="sm" onClick={onRetry}>

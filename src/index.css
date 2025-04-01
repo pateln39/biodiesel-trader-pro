@@ -43,6 +43,19 @@
     --sidebar-accent-foreground: 218 72% 14%;
     --sidebar-border: 218 50% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Exposure table specific colors */
+    --table-header-bg: 217 74% 14%;
+    --table-header-text: 0 0% 98%;
+    --table-row-bg: 0 0% 100%;
+    --table-row-alt-bg: 210 40% 98%;
+    --table-border: 217 74% 14%;
+    --physical-header-bg: 146 42% 35%;
+    --pricing-header-bg: 146 42% 35%;
+    --paper-header-bg: 146 42% 35%;
+    --exposure-header-bg: 146 42% 35%;
+    --total-row-bg: 217 74% 20%;
+    --total-row-text: 0 0% 98%;
   }
 
   .light {
@@ -73,6 +86,19 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Exposure table specific colors for light mode */
+    --table-header-bg: 217 74% 14%;
+    --table-header-text: 0 0% 98%;
+    --table-row-bg: 0 0% 100%;
+    --table-row-alt-bg: 210 40% 98%;
+    --table-border: 217 74% 14%;
+    --physical-header-bg: 146 42% 35%;
+    --pricing-header-bg: 146 42% 35%;
+    --paper-header-bg: 146 42% 35%;
+    --exposure-header-bg: 146 42% 35%;
+    --total-row-bg: 217 74% 20%;
+    --total-row-text: 0 0% 98%;
   }
 }
 
