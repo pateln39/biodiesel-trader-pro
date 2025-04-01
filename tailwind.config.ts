@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -47,17 +48,7 @@ export default {
 		'text-lg',
 		'text-xl',
 		'text-2xl',
-		'text-3xl',
-		'bg-[#002A46]',
-		'bg-[#1B6C4F]',
-		'bg-[#662F20]',
-		'bg-[#1F3A61]',
-		'bg-[#3D7D3D]',
-		'bg-[#4A4A4A]',
-		'bg-[#1E334E]',
-		'bg-[#C9A0DC]',
-		'bg-[#DAF0DA]',
-		'bg-[#E8E8E8]',
+		'text-3xl'
 	],
 	prefix: "",
 	theme: {
@@ -117,19 +108,6 @@ export default {
 					navy: '#091C3E',
 					blue: '#1D59A9',
 					lime: '#B4D335'
-				},
-				exposure: {
-					monthHeader: '#002A46',
-					categoryHeader: '#1B6C4F',
-					physical: '#662F20',
-					pricing: '#1B6C4F',
-					paper: '#1F3A61',
-					product: '#3D7D3D',
-					totalRow: '#4A4A4A',
-					footerRow: '#1E334E',
-					instrumentTotal: '#C9A0DC',
-					rowEven: '#DAF0DA',
-					rowOdd: '#E8E8E8',
 				}
 			},
 			borderRadius: {

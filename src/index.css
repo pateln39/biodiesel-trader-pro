@@ -43,19 +43,6 @@
     --sidebar-accent-foreground: 218 72% 14%;
     --sidebar-border: 218 50% 20%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Exposure Table Colors */
-    --exposure-month-header: 205 100% 14%;
-    --exposure-category-header: 160 59% 26%;
-    --exposure-physical: 12 50% 26%;
-    --exposure-pricing: 160 59% 26%;
-    --exposure-paper: 220 50% 25%;
-    --exposure-product: 120 35% 36%;
-    --exposure-total-row: 0 0% 29%;
-    --exposure-footer-row: 215 48% 22%;
-    --exposure-instrument-total: 275 50% 75%;
-    --exposure-row-even: 120 50% 95%;
-    --exposure-row-odd: 0 0% 91%;
   }
 
   .light {
@@ -86,19 +73,6 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Exposure Table Colors - Light Mode */
-    --exposure-month-header: 205 100% 14%;
-    --exposure-category-header: 160 59% 26%;
-    --exposure-physical: 12 50% 26%;
-    --exposure-pricing: 160 59% 26%;
-    --exposure-paper: 220 50% 25%;
-    --exposure-product: 120 35% 36%;
-    --exposure-total-row: 0 0% 29%;
-    --exposure-footer-row: 215 48% 22%;
-    --exposure-instrument-total: 275 50% 75%;
-    --exposure-row-even: 120 50% 95%;
-    --exposure-row-odd: 0 0% 91%;
   }
 }
 
@@ -109,16 +83,5 @@
 
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer components {
-  .exposure-table {
-    @apply border-separate border-spacing-0;
-  }
-  
-  .exposure-table th,
-  .exposure-table td {
-    @apply border-solid border-black;
   }
 }
