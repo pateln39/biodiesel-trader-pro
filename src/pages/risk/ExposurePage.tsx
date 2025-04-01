@@ -869,12 +869,6 @@ const ExposurePage = () => {
                       const cells = [];
                       if (category === 'Physical') {
                         categoryProducts.forEach((product, index) => {
-                          const productData = monthData.products[product] || {
-                            physical: 0,
-                            pricing: 0,
-                            paper: 0,
-                            netExposure: 0
-                          };
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-physical-${product}`} 
@@ -886,12 +880,6 @@ const ExposurePage = () => {
                         });
                       } else if (category === 'Pricing') {
                         categoryProducts.forEach((product, index) => {
-                          const productData = monthData.products[product] || {
-                            physical: 0,
-                            pricing: 0,
-                            paper: 0,
-                            netExposure: 0
-                          };
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-pricing-${product}`} 
@@ -903,12 +891,6 @@ const ExposurePage = () => {
                         });
                       } else if (category === 'Paper') {
                         categoryProducts.forEach((product, index) => {
-                          const productData = monthData.products[product] || {
-                            physical: 0,
-                            pricing: 0,
-                            paper: 0,
-                            netExposure: 0
-                          };
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-paper-${product}`} 
@@ -921,12 +903,6 @@ const ExposurePage = () => {
                       } else if (category === 'Exposure') {
                         const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
                         categoryProducts.forEach((product, index) => {
-                          const productData = monthData.products[product] || {
-                            physical: 0,
-                            pricing: 0,
-                            paper: 0,
-                            netExposure: 0
-                          };
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-net-${product}`} 
@@ -940,7 +916,7 @@ const ExposurePage = () => {
                             cells.push(
                               <TableCell 
                                 key={`${monthData.month}-biodiesel-total`} 
-                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
+                                className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-brand-navy`}
                               >
                                 {formatValue(biodieselTotal)}
                               </TableCell>
@@ -952,7 +928,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-pricing-instrument-total`} 
-                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime`}
+                              className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-brand-navy`}
                             >
                               {formatValue(pricingInstrumentTotal)}
                             </TableCell>
@@ -965,7 +941,7 @@ const ExposurePage = () => {
                           cells.push(
                             <TableCell 
                               key={`${monthData.month}-total-row`} 
-                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                              className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-brand-navy ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                             >
                               {formatValue(totalRow)}
                             </TableCell>
