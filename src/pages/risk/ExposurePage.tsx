@@ -856,4 +856,203 @@ const ExposurePage = () => {
       
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting
+          <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
+          
+          <Button variant="outline" className="flex items-center space-x-2">
+            <Download className="h-4 w-4 mr-1" />
+            <span>Export</span>
+          </Button>
+        </div>
+
+        <Card className="bg-brand-navy shadow-lg border-0">
+          <CardContent className="p-0">
+            {isLoadingData ? (
+              <TableLoadingState />
+            ) : error ? (
+              <TableErrorState error={error} onRetry={refetch} />
+            ) : (
+              <div className="overflow-auto max-h-[calc(100vh-220px)]">
+                <Table className="border-collapse w-full">
+                  <TableHeader className="bg-brand-navy/90 sticky top-0 z-10">
+                    <TableRow className="border-0">
+                      <TableCell 
+                        className="sticky left-0 z-20 bg-brand-navy/90 font-bold text-white p-2 border-r border-white/10"
+                        style={{ minWidth: '180px' }}
+                      >
+                        Product
+                      </TableCell>
+                      
+                      {periods.map((period, idx) => (
+                        <TableCell 
+                          key={period}
+                          className="text-white font-bold text-center p-2 border-r border-white/10"
+                          style={{ minWidth: '120px' }}
+                        >
+                          {period}
+                        </TableCell>
+                      ))}
+                      
+                      <TableCell 
+                        className="text-white text-center font-bold p-2 border-r border-white/10"
+                        style={{ minWidth: '120px' }}
+                      >
+                        Total
+                      </TableCell>
+                    </TableRow>
+                  </TableHeader>
+                  
+                  <TableBody>
+                    {/* Category Headers and Data Rows */}
+                    {filteredProducts.map((product, productIdx) => (
+                      <React.Fragment key={`product-${product}`}>
+                        <TableRow 
+                          className={`${
+                            shouldUseSpecialBackground(product) 
+                              ? getExposureProductBackgroundClass(product)
+                              : productIdx % 2 === 0 
+                                ? 'bg-brand-navy/70' 
+                                : 'bg-brand-navy'
+                          } hover:bg-brand-navy/90 transition-colors`}
+                        >
+                          <TableCell 
+                            className="sticky left-0 z-10 font-semibold border-r border-white/10 p-2"
+                            style={{
+                              backgroundColor: shouldUseSpecialBackground(product)
+                                ? `var(${getExposureProductBackgroundClass(product).replace('bg-', '--')})`
+                                : productIdx % 2 === 0
+                                  ? 'var(--brand-navy-70)'
+                                  : 'var(--brand-navy)'
+                            }}
+                          >
+                            <div className="text-white">
+                              {formatExposureTableProduct(product)}
+                            </div>
+                          </TableCell>
+                          
+                          {exposureData.map((monthData) => (
+                            <TableCell 
+                              key={`${product}-${monthData.month}`}
+                              className="text-center border-r border-white/10 p-1"
+                            >
+                              <div className={`${getValueColorClass(monthData.products[product]?.netExposure || 0)}`}>
+                                {formatValue(monthData.products[product]?.netExposure || 0)}
+                              </div>
+                            </TableCell>
+                          ))}
+                          
+                          <TableCell className="text-center border-r border-white/10 p-1">
+                            <div className={`${getValueColorClass(grandTotals.productTotals[product]?.netExposure || 0)}`}>
+                              {formatValue(grandTotals.productTotals[product]?.netExposure || 0)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </React.Fragment>
+                    ))}
+                    
+                    {/* Biodiesel Total Row */}
+                    {shouldShowBiodieselTotal && (
+                      <TableRow className="bg-brand-lime/20 hover:bg-brand-lime/30 transition-colors border-t border-white/20">
+                        <TableCell 
+                          className="sticky left-0 z-10 font-bold text-brand-lime border-r border-white/10 p-2 bg-brand-lime/20"
+                        >
+                          Biodiesel Total
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          <TableCell 
+                            key={`biodiesel-total-${monthData.month}`}
+                            className="text-center border-r border-white/10 p-1"
+                          >
+                            <div className={`${getValueColorClass(calculateProductGroupTotal(
+                              monthData.products,
+                              BIODIESEL_PRODUCTS
+                            ))}`}>
+                              {formatValue(calculateProductGroupTotal(
+                                monthData.products,
+                                BIODIESEL_PRODUCTS
+                              ))}
+                            </div>
+                          </TableCell>
+                        ))}
+                        
+                        <TableCell className="text-center border-r border-white/10 p-1">
+                          <div className={`${getValueColorClass(groupGrandTotals.biodieselTotal)}`}>
+                            {formatValue(groupGrandTotals.biodieselTotal)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    
+                    {/* Pricing Instrument Total Row */}
+                    {shouldShowPricingInstrumentTotal && (
+                      <TableRow className="bg-brand-blue/20 hover:bg-brand-blue/30 transition-colors">
+                        <TableCell 
+                          className="sticky left-0 z-10 font-bold text-brand-blue border-r border-white/10 p-2 bg-brand-blue/20"
+                        >
+                          Pricing Instrument Total
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          <TableCell 
+                            key={`pricing-total-${monthData.month}`}
+                            className="text-center border-r border-white/10 p-1"
+                          >
+                            <div className={`${getValueColorClass(calculateProductGroupTotal(
+                              monthData.products,
+                              PRICING_INSTRUMENT_PRODUCTS
+                            ))}`}>
+                              {formatValue(calculateProductGroupTotal(
+                                monthData.products,
+                                PRICING_INSTRUMENT_PRODUCTS
+                              ))}
+                            </div>
+                          </TableCell>
+                        ))}
+                        
+                        <TableCell className="text-center border-r border-white/10 p-1">
+                          <div className={`${getValueColorClass(groupGrandTotals.pricingInstrumentTotal)}`}>
+                            {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    
+                    {/* Grand Total Row */}
+                    {shouldShowTotalRow && (
+                      <TableRow className="bg-white/10 hover:bg-white/20 transition-colors border-t-2 border-white/20">
+                        <TableCell 
+                          className="sticky left-0 z-10 font-bold text-white border-r border-white/10 p-2 bg-white/10"
+                        >
+                          Total
+                        </TableCell>
+                        
+                        {exposureData.map((monthData) => (
+                          <TableCell 
+                            key={`total-${monthData.month}`}
+                            className="text-center border-r border-white/10 p-1"
+                          >
+                            <div className={`${getValueColorClass(monthData.totals.netExposure)}`}>
+                              {formatValue(monthData.totals.netExposure)}
+                            </div>
+                          </TableCell>
+                        ))}
+                        
+                        <TableCell className="text-center border-r border-white/10 p-1">
+                          <div className={`${getValueColorClass(groupGrandTotals.totalRow)}`}>
+                            {formatValue(groupGrandTotals.totalRow)}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
