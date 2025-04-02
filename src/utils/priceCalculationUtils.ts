@@ -177,7 +177,7 @@ export const calculateMTMPrice = async (
   formula: PricingFormula | PhysicalTradeLeg,
   startDate?: Date,
   endDate?: Date
-): Promise<{ price: number; details: MTMPriceDetail }> {
+) => {
   // Check if this is a leg with future pricing period that needs forward price calculation
   if ('pricingPeriodStart' in formula && 
       'pricingPeriodEnd' in formula && 
@@ -381,7 +381,7 @@ export const calculateTradeLegPrice = async (
   formulaOrLeg: PricingFormula | PhysicalTradeLeg,
   startDate: Date,
   endDate: Date
-): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
+) => {
   // Check if this is a future pricing period with mtmFutureMonth specified
   if ('mtmFutureMonth' in formulaOrLeg && 
       formulaOrLeg.mtmFutureMonth && 
@@ -573,7 +573,7 @@ const calculateEfpTradeLegPrice = async (
           prices: [{ date: latestPrice.date || new Date(), price: latestPrice.price }]
         };
       } else if (MOCK_PRICES[instrumentName]) {
-        // Fallback to mock prices
+        // Fallback to mock price
         price = MOCK_PRICES[instrumentName] + (leg.efpPremium || 0);
         priceDetails.instruments[instrumentName] = {
           average: MOCK_PRICES[instrumentName],
