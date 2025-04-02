@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { format } from 'date-fns';
@@ -18,7 +17,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import PaperMTMTable from '@/components/risk/PaperMTMTable';
 import PriceDetails from '@/components/pricing/PriceDetails';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
-import { calculateTradeLegPrice, calculateMTMPrice, calculateMTMValue, PricingPeriodType, isDateRangeInFuture } from '@/utils/priceCalculationUtils';
+import { calculateTradeLegPrice, calculateMTMPrice, calculateMTMValue, PricingPeriodType } from '@/utils/priceCalculationUtils';
+import { isDateRangeInFuture } from '@/utils/mtmUtils';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
