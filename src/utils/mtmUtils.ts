@@ -106,3 +106,28 @@ export function isValidMonthCode(str: string): boolean {
   const monthCodePattern = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}$/;
   return monthCodePattern.test(str);
 }
+
+/**
+ * Format a date as a month code string
+ * @param date Date to format
+ * @returns Month code in format "MMM-YY" (e.g., "Apr-25")
+ */
+export function formatAsMonthCode(date: Date): string {
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear().toString().substring(2);
+  return `${month}-${year}`;
+}
+
+/**
+ * Get the next month code after the given month code
+ * @param monthCode Current month code in format "MMM-YY"
+ * @returns Next month code in format "MMM-YY"
+ */
+export function getNextMonthCode(monthCode: string): string | null {
+  const date = monthCodeToDate(monthCode);
+  if (!date) return null;
+  
+  date.setMonth(date.getMonth() + 1);
+  return formatAsMonthCode(date);
+}
