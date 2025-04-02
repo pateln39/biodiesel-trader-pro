@@ -1,30 +1,20 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Eye } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
-import { 
-  calculateTradeLegPrice, 
-  calculateMTMPrice, 
-  calculateMTMValue, 
-  PricingPeriodType 
-} from '@/utils/priceCalculationUtils';
-import PriceDetails from '@/components/pricing/PriceDetails';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
-import { PaperTrade } from '@/types/paper';
-import { formatMTMDisplay } from '@/utils/tradeUtils';
+import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
-import { isDateRangeInFuture } from '@/utils/mtmUtils';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import PaperMTMTable from '@/components/risk/PaperMTMTable';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
+  const { paperTrades, isLoading: paperLoading, refetchPaperTrades } = usePaperTrades();
   const [selectedLeg, setSelectedLeg] = useState<{
     legId: string;
     formula: any;
@@ -40,6 +30,7 @@ const MTMPage = () => {
     mtmFutureMonth?: string;
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('physical');
 
   const physicalTrades = trades.filter(
     (trade): trade is PhysicalTrade => trade.tradeType === 'physical' && 'physicalType' in trade
@@ -114,12 +105,10 @@ const MTMPage = () => {
             console.log(`Processing leg ${leg.legReference} with dates ${leg.startDate} to ${leg.endDate}`);
             console.log(`mtmFutureMonth: ${leg.mtmFutureMonth}, pricingType: ${leg.pricingType}`);
             
-            // Handle future pricing periods with mtmFutureMonth
             if (isDateRangeInFuture(leg.startDate, leg.endDate)) {
               console.log(`Future period detected for leg ${leg.legReference}`);
               
               if (leg.pricingType === 'efp') {
-                // Create a proper PhysicalTradeLeg for EFP calculation
                 const efpLeg: PhysicalTradeLeg = {
                   id: leg.legId,
                   parentTradeId: '',
@@ -143,7 +132,7 @@ const MTMPage = () => {
                   efpLeg,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth
                 );
                 console.log(`Trade price result for ${leg.legReference}:`, priceResult);
                 
@@ -152,7 +141,7 @@ const MTMPage = () => {
                   leg.mtmFormula || efpLeg,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Ensure we pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth
                 );
                 console.log(`MTM price result for ${leg.legReference}:`, mtmPriceResult);
                 
@@ -179,11 +168,10 @@ const MTMPage = () => {
                   leg.formula,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth
                 );
                 console.log(`Trade price result for ${leg.legReference}:`, priceResult);
                 
-                // Use mtmFormula if available, otherwise use regular formula
                 const mtmFormulaToUse = leg.mtmFormula || leg.formula;
                 
                 console.log(`Calculating MTM price for formula future leg ${leg.legReference}`);
@@ -191,7 +179,7 @@ const MTMPage = () => {
                   mtmFormulaToUse,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth
                 );
                 console.log(`MTM price result for ${leg.legReference}:`, mtmPriceResult);
                 
@@ -213,7 +201,6 @@ const MTMPage = () => {
               }
             }
             
-            // Handle EFP trades
             if (leg.pricingType === 'efp') {
               const efpLeg: PhysicalTradeLeg = {
                 id: leg.legId,
@@ -261,7 +248,6 @@ const MTMPage = () => {
                 periodType: priceResult.periodType || 'current'
               };
             } 
-            // Handle standard trades
             else if (leg.formula) {
               const priceResult = await calculateTradeLegPrice(
                 leg.formula,
@@ -291,7 +277,6 @@ const MTMPage = () => {
                 periodType: priceResult.periodType || 'current'
               };
             } else {
-              // Fallback for legs without formula
               return { 
                 ...leg, 
                 calculatedPrice: 0, 
@@ -314,7 +299,6 @@ const MTMPage = () => {
         })
       );
       
-      // Filter out any undefined values that might have slipped through
       return positions.filter(Boolean);
     },
     enabled: !tradesLoading && tradeLegs.length > 0
@@ -322,8 +306,13 @@ const MTMPage = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refetchTrades();
+    if (activeTab === 'physical') {
+      await refetchTrades();
+    } else {
+      await refetchPaperTrades();
+    }
     setRefreshing(false);
+    toast.success('MTM data refreshed');
   };
 
   const handleViewPrices = (leg: MTMPosition) => {
@@ -343,21 +332,7 @@ const MTMPage = () => {
     });
   };
 
-  const totalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
-
-  const renderPaperFormula = (trade: PaperTrade) => {
-    if (!trade.legs || trade.legs.length === 0) {
-      return <span className="text-muted-foreground italic">No formula</span>;
-    }
-    
-    const firstLeg = trade.legs[0];
-    
-    return <span>{formatMTMDisplay(
-      firstLeg.product,
-      firstLeg.relationshipType,
-      firstLeg.rightSide?.product
-    )}</span>;
-  };
+  const totalPhysicalMtm = mtmPositions?.reduce((sum, pos) => sum + (pos.mtmValue || 0), 0) || 0;
 
   return (
     <Layout>
@@ -376,7 +351,7 @@ const MTMPage = () => {
           <Button 
             variant="outline" 
             onClick={handleRefresh}
-            disabled={refreshing || tradesLoading}
+            disabled={refreshing || tradesLoading || paperLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -387,110 +362,120 @@ const MTMPage = () => {
         
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>MTM Positions</CardTitle>
-                <CardDescription>
-                  Current Mark-to-Market position values by instrument and trade
-                </CardDescription>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium">Total MTM Position</div>
-                <div className={`text-2xl font-bold ${totalMtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${totalMtm.toFixed(2)}
-                </div>
-              </div>
-            </div>
+            <CardTitle>MTM Positions</CardTitle>
+            <CardDescription>
+              Current Mark-to-Market position values by instrument and trade
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {tradesLoading || calculationLoading ? (
-              <div className="flex items-center justify-center p-12 text-muted-foreground">
-                <p>Loading MTM positions...</p>
-              </div>
-            ) : mtmPositions && mtmPositions.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Trade Ref</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>B/S</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead className="text-right">Trade Price</TableHead>
-                    <TableHead className="text-right">MTM Price</TableHead>
-                    <TableHead className="text-right">MTM Value</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mtmPositions.map((position) => (
-                    <TableRow key={position.legId}>
-                      <TableCell>
-                        {position.physicalType === 'term' ? (
-                          <>
-                            {position.tradeRef}-{position.legReference.split('-').pop()}
-                          </>
-                        ) : (
-                          <>
-                            {position.tradeRef}
-                          </>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {position.product}
-                        {position.pricingType === 'efp' && (
-                          <Badge variant="outline" className="ml-2">EFP</Badge>
-                        )}
-                        {isDateRangeInFuture(position.startDate, position.endDate) && position.mtmFutureMonth && (
-                          <Badge variant="secondary" className="ml-2">Future: {position.mtmFutureMonth}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
-                          {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {position.quantity.toLocaleString()} MT
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${position.calculatedPrice.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ${position.mtmCalculatedPrice.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          ${position.mtmValue.toFixed(2)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          position.periodType === 'historical' ? 'default' : 
-                          position.periodType === 'current' ? 'secondary' : 
-                          'outline'
-                        }>
-                          {position.periodType || 'Unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewPrices(position)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="flex items-center justify-center p-12 text-muted-foreground">
-                <p>No MTM positions available. Add trades with pricing formulas to see data here.</p>
-              </div>
-            )}
+            <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="physical">Physical Trades</TabsTrigger>
+                <TabsTrigger value="paper">Paper Trades</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="physical">
+                <div className="text-right mb-4">
+                  <div className="text-sm font-medium">Total Physical MTM Position</div>
+                  <div className={`text-2xl font-bold ${totalPhysicalMtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${totalPhysicalMtm.toFixed(2)}
+                  </div>
+                </div>
+
+                {tradesLoading || calculationLoading ? (
+                  <div className="flex items-center justify-center p-12 text-muted-foreground">
+                    <p>Loading MTM positions...</p>
+                  </div>
+                ) : mtmPositions && mtmPositions.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Trade Ref</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>B/S</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead className="text-right">Trade Price</TableHead>
+                        <TableHead className="text-right">MTM Price</TableHead>
+                        <TableHead className="text-right">MTM Value</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mtmPositions.map((position) => (
+                        <TableRow key={position.legId}>
+                          <TableCell>
+                            {position.physicalType === 'term' ? (
+                              <>
+                                {position.tradeRef}-{position.legReference.split('-').pop()}
+                              </>
+                            ) : (
+                              <>
+                                {position.tradeRef}
+                              </>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {position.product}
+                            {position.pricingType === 'efp' && (
+                              <Badge variant="outline" className="ml-2">EFP</Badge>
+                            )}
+                            {isDateRangeInFuture(position.startDate, position.endDate) && position.mtmFutureMonth && (
+                              <Badge variant="secondary" className="ml-2">Future: {position.mtmFutureMonth}</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
+                              {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {position.quantity.toLocaleString()} MT
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${position.calculatedPrice.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${position.mtmCalculatedPrice.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                              ${position.mtmValue.toFixed(2)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              position.periodType === 'historical' ? 'default' : 
+                              position.periodType === 'current' ? 'secondary' : 
+                              'outline'
+                            }>
+                              {position.periodType || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewPrices(position)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="flex items-center justify-center p-12 text-muted-foreground">
+                    <p>No MTM positions available. Add trades with pricing formulas to see data here.</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="paper">
+                <PaperMTMTable />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
