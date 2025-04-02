@@ -1,7 +1,9 @@
+
 import { PaperTrade, PaperTradeLeg } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { parseForwardMonth } from './dateParsingUtils';
 import { mapProductToCanonical } from './productMapping';
+import { toast } from 'sonner';
 
 /**
  * Calculate the trade price for a paper trade leg
@@ -75,6 +77,36 @@ export const getPeriodType = (
 };
 
 /**
+ * Get instrument ID from its code, with better error handling
+ */
+export const getInstrumentId = async (instrumentCode: string): Promise<string | null> => {
+  console.log(`Fetching instrument ID for ${instrumentCode}`);
+  
+  try {
+    const { data: instruments, error } = await supabase
+      .from('pricing_instruments')
+      .select('id')
+      .eq('instrument_code', instrumentCode);
+      
+    if (error) {
+      console.error(`Error fetching instrument ID for ${instrumentCode}:`, error);
+      return null;
+    }
+    
+    if (!instruments || instruments.length === 0) {
+      console.warn(`No instrument found with code ${instrumentCode}`);
+      return null;
+    }
+    
+    console.log(`Found instrument ID for ${instrumentCode}: ${instruments[0].id}`);
+    return instruments[0].id;
+  } catch (e) {
+    console.error(`Exception fetching instrument ID for ${instrumentCode}:`, e);
+    return null;
+  }
+};
+
+/**
  * Fetch the monthly average price from historical data for an instrument
  */
 export const fetchMonthlyAveragePrice = async (
@@ -86,40 +118,41 @@ export const fetchMonthlyAveragePrice = async (
   
   const { startDate, endDate } = dates;
   
-  // First get the instrument ID
-  const { data: instruments, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('instrument_code', instrumentCode)
-    .single();
-    
-  if (instrumentError || !instruments) {
-    console.error(`Error fetching instrument ID for ${instrumentCode}:`, instrumentError);
+  // Get the instrument ID
+  const instrumentId = await getInstrumentId(instrumentCode);
+  if (!instrumentId) {
+    console.warn(`Could not find instrument ID for ${instrumentCode}`);
     return null;
   }
   
-  const instrumentId = instruments.id;
-  
-  // Now fetch all prices in the date range
-  const { data: prices, error: pricesError } = await supabase
-    .from('historical_prices')
-    .select('price')
-    .eq('instrument_id', instrumentId)
-    .gte('price_date', startDate.toISOString().split('T')[0])
-    .lte('price_date', endDate.toISOString().split('T')[0]);
+  try {
+    // Now fetch all prices in the date range
+    const { data: prices, error: pricesError } = await supabase
+      .from('historical_prices')
+      .select('price')
+      .eq('instrument_id', instrumentId)
+      .gte('price_date', startDate.toISOString().split('T')[0])
+      .lte('price_date', endDate.toISOString().split('T')[0]);
+      
+    if (pricesError) {
+      console.error(`Error fetching prices for ${instrumentCode}:`, pricesError);
+      return null;
+    }
     
-  if (pricesError) {
-    console.error(`Error fetching prices for ${instrumentCode}:`, pricesError);
+    // Calculate average price
+    if (prices && prices.length > 0) {
+      const sum = prices.reduce((acc, curr) => acc + Number(curr.price), 0);
+      const average = sum / prices.length;
+      console.log(`Calculated average price for ${instrumentCode} (${period}): ${average} from ${prices.length} data points`);
+      return average;
+    } else {
+      console.warn(`No historical prices found for ${instrumentCode} in period ${period}`);
+      return null;
+    }
+  } catch (e) {
+    console.error(`Exception in fetchMonthlyAveragePrice for ${instrumentCode}:`, e);
     return null;
   }
-  
-  // Calculate average price
-  if (prices && prices.length > 0) {
-    const sum = prices.reduce((acc, curr) => acc + Number(curr.price), 0);
-    return sum / prices.length;
-  }
-  
-  return null;
 };
 
 /**
@@ -133,51 +166,54 @@ export const fetchSpecificForwardPrice = async (
   const forwardMonth = parseForwardMonth(period);
   if (!forwardMonth || !forwardMonth.date) return null;
   
-  // First get the instrument ID
-  const { data: instruments, error: instrumentError } = await supabase
-    .from('pricing_instruments')
-    .select('id')
-    .eq('instrument_code', instrumentCode)
-    .single();
-    
-  if (instrumentError || !instruments) {
-    console.error(`Error fetching instrument ID for ${instrumentCode}:`, instrumentError);
+  // Get the instrument ID
+  const instrumentId = await getInstrumentId(instrumentCode);
+  if (!instrumentId) {
+    console.warn(`Could not find instrument ID for ${instrumentCode}`);
     return null;
   }
   
-  const instrumentId = instruments.id;
-  
-  // Format the date for DB query
-  const forwardMonthStr = `${forwardMonth.date.getFullYear()}-${String(forwardMonth.date.getMonth() + 1).padStart(2, '0')}-01`;
-  
-  // Now fetch the specific forward price
-  const { data: forwardPrice, error: priceError } = await supabase
-    .from('forward_prices')
-    .select('price')
-    .eq('instrument_id', instrumentId)
-    .eq('forward_month', forwardMonthStr)
-    .single();
+  try {
+    // Format the date for DB query
+    const forwardMonthStr = `${forwardMonth.date.getFullYear()}-${String(forwardMonth.date.getMonth() + 1).padStart(2, '0')}-01`;
     
-  if (priceError) {
-    console.error(`Error fetching forward price for ${instrumentCode} ${period}:`, priceError);
-    
-    // If no exact match, try to get the closest forward month
-    const { data: latestPrice } = await supabase
+    // Now fetch the specific forward price
+    const { data: forwardPrices, error: priceError } = await supabase
       .from('forward_prices')
       .select('price')
       .eq('instrument_id', instrumentId)
-      .order('forward_month', { ascending: false })
-      .limit(1)
-      .single();
+      .eq('forward_month', forwardMonthStr);
       
-    if (latestPrice) {
-      return Number(latestPrice.price);
+    if (priceError) {
+      console.error(`Error fetching forward price for ${instrumentCode} ${period}:`, priceError);
+      return null;
     }
     
+    if (!forwardPrices || forwardPrices.length === 0) {
+      console.warn(`No forward price found for ${instrumentCode} ${period}`);
+      
+      // If no exact match, try to get the closest forward month
+      const { data: latestPrices } = await supabase
+        .from('forward_prices')
+        .select('price')
+        .eq('instrument_id', instrumentId)
+        .order('forward_month', { ascending: false })
+        .limit(1);
+        
+      if (latestPrices && latestPrices.length > 0) {
+        console.log(`Using latest price for ${instrumentCode}: ${Number(latestPrices[0].price)}`);
+        return Number(latestPrices[0].price);
+      }
+      
+      return null;
+    }
+    
+    console.log(`Found forward price for ${instrumentCode} (${period}): ${Number(forwardPrices[0].price)}`);
+    return Number(forwardPrices[0].price);
+  } catch (e) {
+    console.error(`Exception in fetchSpecificForwardPrice for ${instrumentCode}:`, e);
     return null;
   }
-  
-  return Number(forwardPrice.price);
 };
 
 /**
@@ -207,47 +243,59 @@ export const calculatePaperMTMPrice = async (
   } else if (leg.relationshipType === 'SPREAD' && leg.rightSide) {
     rightProduct = mapProductToCanonical(leg.rightSide.product);
   }
+
+  console.log(`Calculating MTM price for leg with products: ${leftProduct}${rightProduct ? ' and ' + rightProduct : ''}`);
   
-  // For past periods, use historical data
-  if (periodType === 'past') {
-    // For FP trades
-    if (leg.relationshipType === 'FP') {
-      return await fetchMonthlyAveragePrice(leftProduct, leg.period);
+  try {
+    // For past periods, use historical data
+    if (periodType === 'past') {
+      console.log(`Using historical data for ${leg.period} (past period)`);
+      // For FP trades
+      if (leg.relationshipType === 'FP') {
+        return await fetchMonthlyAveragePrice(leftProduct, leg.period);
+      } 
+      
+      // For DIFF and SPREAD trades
+      const leftPrice = await fetchMonthlyAveragePrice(leftProduct, leg.period);
+      if (leftPrice === null) return null;
+      
+      if (rightProduct) {
+        const rightPrice = await fetchMonthlyAveragePrice(rightProduct, leg.period);
+        if (rightPrice === null) return null;
+        
+        return leftPrice - rightPrice;
+      }
+      
+      return leftPrice;
     } 
     
-    // For DIFF and SPREAD trades
-    const leftPrice = await fetchMonthlyAveragePrice(leftProduct, leg.period);
-    if (leftPrice === null) return null;
-    
-    if (rightProduct) {
-      const rightPrice = await fetchMonthlyAveragePrice(rightProduct, leg.period);
-      if (rightPrice === null) return null;
+    // For current and future periods, use forward data
+    else {
+      console.log(`Using forward data for ${leg.period} (${periodType} period)`);
+      // For FP trades
+      if (leg.relationshipType === 'FP') {
+        return await fetchSpecificForwardPrice(leftProduct, leg.period);
+      }
       
-      return leftPrice - rightPrice;
-    }
-    
-    return leftPrice;
-  } 
-  
-  // For current and future periods, use forward data
-  else {
-    // For FP trades
-    if (leg.relationshipType === 'FP') {
-      return await fetchSpecificForwardPrice(leftProduct, leg.period);
-    }
-    
-    // For DIFF and SPREAD trades
-    const leftPrice = await fetchSpecificForwardPrice(leftProduct, leg.period);
-    if (leftPrice === null) return null;
-    
-    if (rightProduct) {
-      const rightPrice = await fetchSpecificForwardPrice(rightProduct, leg.period);
-      if (rightPrice === null) return null;
+      // For DIFF and SPREAD trades
+      const leftPrice = await fetchSpecificForwardPrice(leftProduct, leg.period);
+      if (leftPrice === null) return null;
       
-      return leftPrice - rightPrice;
+      if (rightProduct) {
+        const rightPrice = await fetchSpecificForwardPrice(rightProduct, leg.period);
+        if (rightPrice === null) return null;
+        
+        return leftPrice - rightPrice;
+      }
+      
+      return leftPrice;
     }
-    
-    return leftPrice;
+  } catch (error) {
+    console.error(`Error in calculatePaperMTMPrice for ${leg.legReference}:`, error);
+    toast.error(`Failed to calculate MTM price for ${leg.legReference}`, {
+      description: "Please check logs for details"
+    });
+    return null;
   }
 };
 

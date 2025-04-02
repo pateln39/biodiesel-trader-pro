@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Eye, AlertTriangle } from 'lucide-react';
 import { PaperTrade } from '@/types/paper';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ const PaperMTMTable: React.FC = () => {
     relationshipType: string;
     price: number;
   } | null>(null);
+  const [errorLegs, setErrorLegs] = useState<string[]>([]);
 
   const { data: mtmPositions, isLoading: calculationLoading } = useQuery({
     queryKey: ['paperMtmPositions', paperTrades],
@@ -34,18 +35,29 @@ const PaperMTMTable: React.FC = () => {
       
       const positions: PaperMTMPosition[] = [];
       const today = new Date();
+      const errors: string[] = [];
+      
+      console.log(`Processing ${paperTrades.length} paper trades with ${paperTrades.reduce((acc, t) => acc + t.legs.length, 0)} total legs`);
       
       for (const trade of paperTrades) {
         for (const leg of trade.legs) {
           try {
             // Skip legs without period
-            if (!leg.period) continue;
+            if (!leg.period) {
+              console.warn(`Skipping leg ${leg.legReference} without period`);
+              continue;
+            }
             
             const dates = getMonthDates(leg.period);
-            if (!dates) continue;
+            if (!dates) {
+              console.warn(`Invalid period format for leg ${leg.legReference}: ${leg.period}`);
+              continue;
+            }
             
             const { startDate, endDate } = dates;
             const periodType = getPeriodType(startDate, endDate, today);
+            
+            console.log(`Processing leg ${leg.legReference} with product ${leg.product}, period ${leg.period}`);
             
             // Calculate trade price (fixed price or difference)
             const tradePrice = calculatePaperTradePrice(leg);
@@ -55,6 +67,7 @@ const PaperMTMTable: React.FC = () => {
             
             if (mtmPrice === null) {
               console.warn(`Could not calculate MTM price for leg ${leg.legReference}`);
+              errors.push(leg.legReference);
               continue;
             }
             
@@ -84,8 +97,21 @@ const PaperMTMTable: React.FC = () => {
           } catch (error) {
             console.error(`Error calculating MTM for paper leg ${leg.id}:`, error);
             toast.error(`Error calculating MTM for paper leg ${leg.legReference}`);
+            errors.push(leg.legReference);
           }
         }
+      }
+      
+      setErrorLegs(errors);
+      
+      if (positions.length === 0 && paperTrades.length > 0) {
+        toast.error('Could not calculate MTM for any paper trades', {
+          description: 'Please check the console logs for details'
+        });
+      } else if (errors.length > 0) {
+        toast.warning(`MTM calculation failed for ${errors.length} legs`, {
+          description: 'Some trades were skipped due to errors'
+        });
       }
       
       return positions;
@@ -124,6 +150,27 @@ const PaperMTMTable: React.FC = () => {
           ${totalMtm.toFixed(2)}
         </div>
       </div>
+      
+      {errorLegs.length > 0 && (
+        <div className="rounded-md bg-amber-50 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-amber-800">
+                MTM calculation failed for {errorLegs.length} leg(s)
+              </h3>
+              <div className="mt-2 text-sm text-amber-700">
+                <p>
+                  Some trades could not be processed. This might be due to missing price data or configuration issues.
+                  Check the browser console for detailed logs.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {mtmPositions && mtmPositions.length > 0 ? (
         <Table>
@@ -196,8 +243,13 @@ const PaperMTMTable: React.FC = () => {
           </TableBody>
         </Table>
       ) : (
-        <div className="flex items-center justify-center p-12 text-muted-foreground">
-          <p>No paper MTM positions available. Add paper trades to see data here.</p>
+        <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+          <p className="mb-2">No paper MTM positions available.</p>
+          {paperTrades.length > 0 ? (
+            <p>There was an issue calculating MTM values. Check console logs for details.</p>
+          ) : (
+            <p>Add paper trades to see data here.</p>
+          )}
         </div>
       )}
 

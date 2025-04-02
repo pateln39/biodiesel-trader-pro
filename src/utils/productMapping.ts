@@ -1,8 +1,14 @@
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
 export const mapProductToCanonical = (product: string): string => {
-  switch (product) {
+  if (!product) return '';
+  
+  // First, create a normalized version of the product for comparison
+  const normalized = product.trim().toUpperCase();
+  
+  switch (normalized) {
     case 'UCOME':
       return 'Argus UCOME';
     case 'FAME0':
@@ -10,22 +16,28 @@ export const mapProductToCanonical = (product: string): string => {
     case 'RME':
       return 'Argus RME';
     case 'LSGO':
-    case 'Platts LSGO':
+    case 'PLATTS LSGO':
       return 'Platts LSGO';
     case 'HVO':
     case 'HVO_FP':
       return 'Argus HVO';
     case 'GASOIL':
     case 'GASOIL_FP':
+    case 'ICE GASOIL FUTURES':
       return 'ICE GASOIL FUTURES';
-    case 'diesel':
-    case 'platts diesel':
-    case 'Platts diesel':
-    case 'Platts Diesel': 
+    case 'DIESEL':
+    case 'PLATTS DIESEL':
       return 'Platts Diesel';
     case 'ICE GASOIL FUTURES (EFP)':
+    case 'EFP':
       return 'EFP';
     default:
+      // If the product is already in canonical form, don't modify it
+      if (normalized.startsWith('ARGUS ') || 
+          normalized.startsWith('PLATTS ') || 
+          normalized.startsWith('ICE ')) {
+        return product;
+      }
       return product;
   }
 };
