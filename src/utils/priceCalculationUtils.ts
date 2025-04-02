@@ -447,15 +447,18 @@ const calculateStandardMTMPrice = async (
 export const calculateTradeLegPrice = async (
   formulaOrLeg: PricingFormula | PhysicalTradeLeg,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  mtmFutureMonth?: string
 ): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
-  console.log('calculateTradeLegPrice called with params:', { formulaOrLeg, startDate, endDate });
+  console.log('calculateTradeLegPrice called with params:', { formulaOrLeg, startDate, endDate, mtmFutureMonth });
   
   // Check if this is a future pricing period with mtmFutureMonth specified
-  if ('mtmFutureMonth' in formulaOrLeg && 
-      formulaOrLeg.mtmFutureMonth && 
-      isDateRangeInFuture(startDate, endDate)) {
-    console.log(`Using future trade leg calculation with month: ${formulaOrLeg.mtmFutureMonth}`);
+  const effectiveMtmFutureMonth = mtmFutureMonth || 
+    ('mtmFutureMonth' in formulaOrLeg && formulaOrLeg.mtmFutureMonth ? 
+      formulaOrLeg.mtmFutureMonth : undefined);
+
+  if (effectiveMtmFutureMonth && isDateRangeInFuture(startDate, endDate)) {
+    console.log(`Using future trade leg calculation with month: ${effectiveMtmFutureMonth}`);
     return calculateFutureTradeLegPrice(formulaOrLeg as PhysicalTradeLeg, startDate, endDate);
   }
   
