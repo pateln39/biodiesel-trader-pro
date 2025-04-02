@@ -15,6 +15,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { mapProductToCanonical, parsePaperInstrument, formatExposureTableProduct, isPricingInstrument, shouldUseSpecialBackground, getExposureProductBackgroundClass } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
 
+const formatDateForAPI = (date: Date): string => {
+  return format(date, 'yyyy-MM-dd');
+};
+
 interface ExposureData {
   physical: number;
   pricing: number;

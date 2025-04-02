@@ -42,3 +42,39 @@ export type TradeType = 'physical' | 'paper';
 export interface MonthlyDistribution {
   [month: string]: number;
 }
+
+// Movement interface
+export interface Movement {
+  id: string;
+  tradeLegId: string;
+  movementReference: string;
+  nominatedDate?: Date;
+  nominationValidDate?: Date;
+  blDate?: Date;
+  blQuantity?: number;
+  actualized: boolean;
+  actualizedQuantity?: number;
+  status: string;
+  vesselName?: string;
+  loadport?: string;
+  disport?: string;
+  inspector?: string;
+  comments?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Audit log interface
+export interface AuditLog {
+  id: string;
+  recordId: string;
+  tableName: string;
+  operation: string;
+  oldData?: any;
+  newData?: any;
+  timestamp: Date;
+  userId?: string;
+}
+
+// Export BuySell and Product types from trade.ts to avoid circular dependencies
+export type { BuySell, Product } from './trade';

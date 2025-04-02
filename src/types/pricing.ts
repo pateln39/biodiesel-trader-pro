@@ -31,3 +31,6 @@ export interface PricingFormula {
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
 }
+
+// Export the Instrument type from common.ts for components that import it directly from pricing.ts
+export type { Instrument } from './common';

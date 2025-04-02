@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -203,8 +202,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           emptyResult.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
         }
         newLegs[index].formula = {
-          tokens: [],
-          exposures: emptyResult
+          ...formula,
+          monthlyDistribution
         };
       }
     } else if (field === 'efpAgreedStatus') {
@@ -307,7 +306,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       ];
       
       if (isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd) && !leg.mtmFutureMonth) {
-        validations.push({ isValid: false, message: `Leg ${legNumber} - MTM Future Month is required for future pricing periods` });
+        validations.push(false);
       }
       
       if (leg.pricingType === 'efp') {
@@ -318,10 +317,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           validations.push(validateRequiredField(leg.efpDesignatedMonth, `Leg ${legNumber} - EFP Designated Month`));
         }
       }
-      return validateFields(validations);
+      
+      return validations.every(Boolean);
     });
     
-    const areAllLegsValid = legValidations.every(result => result.isValid);
+    const areAllLegsValid = legValidations.every(isValid => isValid);
     
     if (isCounterpartyValid && areAllLegsValid) {
       const parentTrade = {

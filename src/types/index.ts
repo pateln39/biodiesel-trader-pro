@@ -3,9 +3,10 @@
 export * from './common';
 export * from './physical';
 export * from './paper';
+export * from './pricing';  // Add this export to include pricing types
 
 // Import specific types from pricing to resolve circular dependencies
-import { PricingFormula } from './pricing';
+import type { PricingFormula, MTMPriceDetail, PriceDetail } from './pricing';
 
 // Types that are used across the application
 export type ActionType = 'create' | 'update' | 'delete';
@@ -57,14 +58,14 @@ export interface DbTradeLeg {
 export interface Trade {
   id: string;
   tradeReference: string;
-  tradeType: TradeType;
+  tradeType: string; // Use string instead of TradeType
   counterparty: string;
   createdAt: Date;
   updatedAt: Date;
-  buySell: BuySell;
-  product: Product;
+  buySell: string; // Use string instead of BuySell
+  product: string; // Use string instead of Product
   legs: any[];
 }
 
-// Re-export PricingFormula type
-export { PricingFormula };
+// Re-export type as specified by TypeScript when isolatedModules is enabled
+export type { PricingFormula, MTMPriceDetail, PriceDetail };
