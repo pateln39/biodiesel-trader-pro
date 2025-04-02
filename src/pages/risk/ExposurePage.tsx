@@ -34,7 +34,6 @@ interface PricingInstrument {
   display_name: string;
   instrument_code: string;
   is_active: boolean;
-}
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
@@ -750,7 +749,8 @@ const ExposurePage = () => {
 
   const isLoadingData = isLoading || instrumentsLoading;
 
-  return <Layout>
+  return (
+    <Layout>
       <Helmet>
         <title>Exposure Reporting</title>
       </Helmet>
@@ -771,24 +771,47 @@ const ExposurePage = () => {
               <div>
                 <label className="text-sm font-medium mb-2 block">Category Filters</label>
                 <div className="flex flex-wrap gap-2">
-                  {exposureCategories.map(category => <div key={category} className="flex items-center space-x-2">
-                      <Checkbox id={`category-${category}`} checked={visibleCategories.includes(category)} onCheckedChange={() => toggleCategory(category)} />
-                      <label htmlFor={`category-${category}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  {exposureCategories.map(category => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category}`} 
+                        checked={visibleCategories.includes(category)} 
+                        onCheckedChange={() => toggleCategory(category)} 
+                      />
+                      <label 
+                        htmlFor={`category-${category}`} 
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
                         {category}
                       </label>
-                    </div>)}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {isLoadingData ? <Card>
+        {isLoadingData ? (
+          <Card>
             <CardContent className="pt-4">
               <TableLoadingState />
             </CardContent>
-          </Card> : error ? <Card>
+          </Card>
+        ) : error ? (
+          <Card>
             <CardContent className="pt-4">
               <TableErrorState error={error as Error} onRetry={refetch} />
             </CardContent>
-          </Card> : exposureData.length === 0
+          </Card>
+        ) : exposureData.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">No exposure data available</div>
+        ) : (
+          <div>Exposure data rendering would continue...</div>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
