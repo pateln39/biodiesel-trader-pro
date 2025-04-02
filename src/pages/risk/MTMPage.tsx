@@ -21,6 +21,7 @@ import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 import { toast } from 'sonner';
+import { isDateRangeInFuture } from '@/utils/dateUtils';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();

@@ -1,62 +1,44 @@
-// Common type definitions used across the application
-export type OperatorType = '+' | '-' | '*' | '/';
+
+// Common types used across the application
+
+// Instrument types
 export type Instrument = 
   'Argus UCOME' | 
   'Argus RME' | 
   'Argus FAME0' | 
-  'Argus HVO' | 
   'Platts LSGO' | 
-  'Platts Diesel' | 
+  'Platts Diesel' |
+  'Argus HVO' |
   'ICE GASOIL FUTURES' |
   'ICE GASOIL FUTURES (EFP)';
 
-// Common base types for trades
+// Fixed component for pricing components
+export interface FixedComponent {
+  type: string;
+  value: number;
+  displayValue: string;
+}
+
+// Structure for exposure tracking
+export interface ExposureResult {
+  physical: Record<Instrument, number>;
+  pricing: Record<Instrument, number>;
+}
+
+// Common parent trade interface
 export interface ParentTrade {
   id: string;
   tradeReference: string;
-  tradeType: 'physical' | 'paper';
+  tradeType: TradeType;
+  counterparty: string;
   createdAt: Date;
   updatedAt: Date;
-  counterparty: string;
 }
 
-export interface Trade extends ParentTrade {
-  buySell: 'buy' | 'sell';
-  product: string;
-  legs: any[];
-}
+// Trade types
+export type TradeType = 'physical' | 'paper';
 
-// Movement and audit log types for data/mockData.ts
-export interface Movement {
-  id: string;
-  tradeId: string;
-  movementReference: string;
-  status: string;
-  nominatedDate: Date;
-  quantity: number;
-  // Add new fields needed by OperationsPage
-  legId?: string;
-  scheduledQuantity?: number;
-  vesselName?: string;
-  loadport?: string;
-  disport?: string;
+// Monthly distribution interface for pricing
+export interface MonthlyDistribution {
+  [month: string]: number;
 }
-
-export interface AuditLog {
-  id: string;
-  recordId: string;
-  tableName: string;
-  operation: string;
-  timestamp: Date;
-  userId: string;
-  // Add fields needed by AuditLogPage
-  entityType?: string;
-  entityId?: string;
-  field?: string;
-  oldValue?: string;
-  newValue?: string;
-}
-
-// Re-export needed types to make them available from @/types
-export * from './pricing';
-export * from './physical';

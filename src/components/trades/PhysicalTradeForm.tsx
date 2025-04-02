@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -320,7 +321,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       return validateFields(validations);
     });
     
-    const areAllLegsValid = legValidations.every(isValid => isValid);
+    const areAllLegsValid = legValidations.every(result => result.isValid);
+    
     if (isCounterpartyValid && areAllLegsValid) {
       const parentTrade = {
         id: initialData?.id || crypto.randomUUID(),
