@@ -687,7 +687,6 @@ export type Database = {
           loading_period_start: string | null
           mtm_calculated_price: number | null
           mtm_formula: Json | null
-          mtm_future_month: string | null
           mtm_last_calculation_date: string | null
           parent_trade_id: string
           payment_term: string | null
@@ -724,7 +723,6 @@ export type Database = {
           loading_period_start?: string | null
           mtm_calculated_price?: number | null
           mtm_formula?: Json | null
-          mtm_future_month?: string | null
           mtm_last_calculation_date?: string | null
           parent_trade_id: string
           payment_term?: string | null
@@ -761,7 +759,6 @@ export type Database = {
           loading_period_start?: string | null
           mtm_calculated_price?: number | null
           mtm_formula?: Json | null
-          mtm_future_month?: string | null
           mtm_last_calculation_date?: string | null
           parent_trade_id?: string
           payment_term?: string | null

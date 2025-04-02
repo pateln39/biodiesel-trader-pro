@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,7 +168,6 @@ const TradeEditPage = () => {
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
-          mtm_future_month: leg.mtmFutureMonth || null,
           updated_at: new Date().toISOString()
         };
 

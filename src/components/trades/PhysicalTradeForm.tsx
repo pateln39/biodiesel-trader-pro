@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
 import { PricingFormula } from '@/types/pricing';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { generateLegReference } from '@/utils/tradeUtils';
@@ -20,8 +20,6 @@ import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation'
 import { Switch } from '@/components/ui/switch';
 import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
-import { isDateRangeInFuture, getMonthsInDateRange } from '@/utils/dateUtils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -52,7 +50,6 @@ interface LegFormState {
   efpAgreedStatus: boolean;
   efpFixedValue: number | null;
   efpDesignatedMonth: string;
-  mtmFutureMonth: string;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -75,8 +72,7 @@ const createDefaultLeg = (): LegFormState => ({
   efpPremium: null,
   efpAgreedStatus: false,
   efpFixedValue: null,
-  efpDesignatedMonth: getAvailableEfpMonths()[0],
-  mtmFutureMonth: ''
+  efpDesignatedMonth: getAvailableEfpMonths()[0]
 });
 
 const EFPPricingForm = ({
@@ -153,8 +149,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     efpPremium: leg.efpPremium || null,
     efpAgreedStatus: leg.efpAgreedStatus || false,
     efpFixedValue: leg.efpFixedValue || null,
-    efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0],
-    mtmFutureMonth: leg.mtmFutureMonth || ''
+    efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0]
   })) || [createDefaultLeg()]);
 
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
@@ -190,7 +185,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const updateLeg = (index: number, field: keyof LegFormState, value: any) => {
     const newLegs = [...legs];
-    
     if (field === 'pricingType') {
       newLegs[index].pricingType = value;
       if (value === 'efp') {
@@ -202,8 +196,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           emptyResult.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
         }
         newLegs[index].formula = {
-          ...formula,
-          monthlyDistribution
+          tokens: [],
+          exposures: emptyResult
         };
       }
     } else if (field === 'efpAgreedStatus') {
@@ -249,36 +243,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     } else {
       (newLegs[index] as any)[field] = value;
     }
-    
-    if (['pricingPeriodStart', 'pricingPeriodEnd'].includes(field)) {
-      (newLegs[index] as any)[field] = value;
-      
-      const startDate = field === 'pricingPeriodStart' ? value : newLegs[index].pricingPeriodStart;
-      const endDate = field === 'pricingPeriodEnd' ? value : newLegs[index].pricingPeriodEnd;
-      
-      if (startDate && endDate && isDateRangeInFuture(startDate, endDate)) {
-        const availableMonths = getMonthsInDateRange(startDate, endDate);
-        if (availableMonths.length > 0 && !newLegs[index].mtmFutureMonth) {
-          newLegs[index].mtmFutureMonth = availableMonths[0];
-        }
-      } else {
-        newLegs[index].mtmFutureMonth = '';
-      }
-    }
-    
-    if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && 
-        newLegs[index].formula && 
-        newLegs[index].pricingPeriodStart && 
-        newLegs[index].pricingPeriodEnd && 
-        newLegs[index].pricingType !== 'efp') {
+    if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && newLegs[index].formula && newLegs[index].pricingPeriodStart && newLegs[index].pricingPeriodEnd && newLegs[index].pricingType !== 'efp') {
       const leg = newLegs[index];
-      const monthlyDistribution = calculateMonthlyPricingDistribution(
-        leg.formula.tokens, 
-        leg.quantity || 0, 
-        leg.buySell, 
-        leg.pricingPeriodStart, 
-        leg.pricingPeriodEnd
-      );
+      const monthlyDistribution = calculateMonthlyPricingDistribution(leg.formula.tokens, leg.quantity || 0, leg.buySell, leg.pricingPeriodStart, leg.pricingPeriodEnd);
       leg.formula = {
         ...leg.formula,
         monthlyDistribution
@@ -292,23 +259,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     const legValidations = legs.map((leg, index) => {
       const legNumber = index + 1;
-      const validations = [
-        validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`),
-        validateRequiredField(leg.product, `Leg ${legNumber} - Product`),
-        validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`),
-        validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`),
-        validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`),
-        validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`),
-        validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`),
-        validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`),
-        validateDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd, `Leg ${legNumber} - Pricing Period`),
-        validateDateRange(leg.loadingPeriodStart, leg.loadingPeriodEnd, `Leg ${legNumber} - Loading Period`)
-      ];
-      
-      if (isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd) && !leg.mtmFutureMonth) {
-        validations.push(false);
-      }
-      
+      const validations = [validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`), validateRequiredField(leg.product, `Leg ${legNumber} - Product`), validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`), validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`), validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`), validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`), validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`), validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`), validateDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd, `Leg ${legNumber} - Pricing Period`), validateDateRange(leg.loadingPeriodStart, leg.loadingPeriodEnd, `Leg ${legNumber} - Loading Period`)];
       if (leg.pricingType === 'efp') {
         validations.push(validateRequiredField(leg.efpPremium, `Leg ${legNumber} - EFP Premium`));
         if (leg.efpAgreedStatus) {
@@ -317,12 +268,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           validations.push(validateRequiredField(leg.efpDesignatedMonth, `Leg ${legNumber} - EFP Designated Month`));
         }
       }
-      
-      return validations.every(Boolean);
+      return validateFields(validations);
     });
-    
     const areAllLegsValid = legValidations.every(isValid => isValid);
-    
     if (isCounterpartyValid && areAllLegsValid) {
       const parentTrade = {
         id: initialData?.id || crypto.randomUUID(),
@@ -333,7 +281,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         createdAt: initialData?.createdAt || new Date(),
         updatedAt: new Date()
       };
-      
       const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
         const legReference = initialData?.legs?.[index]?.legReference || generateLegReference(tradeReference, index);
         const legData: PhysicalTradeLeg = {
@@ -359,12 +306,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           efpPremium: legForm.efpPremium !== null ? legForm.efpPremium : undefined,
           efpAgreedStatus: legForm.efpAgreedStatus,
           efpFixedValue: legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined,
-          efpDesignatedMonth: legForm.efpDesignatedMonth,
-          mtmFutureMonth: legForm.mtmFutureMonth || undefined
+          efpDesignatedMonth: legForm.efpDesignatedMonth
         };
         return legData;
       });
-      
       const tradeData: any = {
         ...parentTrade,
         legs: tradeLegs,
@@ -380,46 +325,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
-  };
-
-  const renderMtmFutureMonthSelect = (legIndex: number, leg: LegFormState) => {
-    if (!isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd)) {
-      return null;
-    }
-    
-    const availableMonths = getMonthsInDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd);
-    
-    return (
-      <div className="space-y-2 mt-4">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-amber-500" />
-          <Label htmlFor={`leg-${legIndex}-mtm-future-month`} className="font-medium">
-            MTM Future Month
-          </Label>
-        </div>
-        
-        <Alert className="bg-amber-50 border-amber-200 mb-2">
-          <AlertDescription className="text-amber-700 text-sm">
-            This trade's pricing period is entirely in the future. Please select which month's forward prices 
-            should be used for MTM calculations.
-          </AlertDescription>
-        </Alert>
-        
-        <Select 
-          value={leg.mtmFutureMonth} 
-          onValueChange={value => updateLeg(legIndex, 'mtmFutureMonth', value)}
-        >
-          <SelectTrigger id={`leg-${legIndex}-mtm-future-month`} className="w-[200px]">
-            <SelectValue placeholder="Select month" />
-          </SelectTrigger>
-          <SelectContent>
-            {availableMonths.map(month => (
-              <SelectItem key={month} value={month}>{month}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    );
   };
 
   return <form onSubmit={handleSubmit} className="space-y-6">
@@ -599,8 +504,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                   <Label>Pricing Period End</Label>
                   <DatePicker date={leg.pricingPeriodEnd} setDate={date => updateLeg(legIndex, 'pricingPeriodEnd', date)} />
                 </div>
-                
-                {renderMtmFutureMonthSelect(legIndex, leg)}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">

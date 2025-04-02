@@ -1,71 +1,89 @@
 
-// Re-export types from other files for easier importing
+// Re-export all types from their respective files
 export * from './common';
+export * from './pricing';
 export * from './physical';
 export * from './paper';
-export * from './pricing';  // Add this export to include pricing types
 
-// Import specific types from pricing to resolve circular dependencies
-import type { PricingFormula, MTMPriceDetail, PriceDetail } from './pricing';
+// Trade types
+export type TradeType = 'physical' | 'paper';
+export type BuySell = 'buy' | 'sell';
+export type Product = 'UCOME' | 'FAME0' | 'RME' | 'UCOME-5' | 'RME DC' | 'HVO';
+export type IncoTerm = 'CIF' | 'FOB' | 'DES' | 'DAP' | 'FCA';
+export type Unit = 'MT' | 'KG' | 'L';
+export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
+export type CreditStatus = 'approved' | 'pending' | 'rejected';
+export type PhysicalTradeType = 'spot' | 'term';
+export type PricingType = 'standard' | 'efp';
 
-// Types that are used across the application
-export type ActionType = 'create' | 'update' | 'delete';
-
-// Status types for pipelines
-export type Status = 'draft' | 'pending' | 'approved' | 'rejected' | 'canceled' | 'completed';
-
-// Database types (mapped from Supabase)
-export interface DbParentTrade {
+export interface Trade {
   id: string;
-  created_at: string;
-  updated_at: string;
-  trade_type: string;
-  physical_type?: string;
-  trade_reference: string;
+  tradeReference: string;
+  tradeType: TradeType;
+  createdAt: Date;
+  updatedAt: Date;
   counterparty: string;
+  buySell: BuySell;
+  product: Product;
+  legs: TradeLeg[];
 }
 
-export interface DbTradeLeg {
+export interface TradeLeg {
+  id: string;
+  parentTradeId: string;
+  legReference: string;
+  buySell: BuySell;
+  product: Product;
+  sustainability: string;
+  incoTerm: IncoTerm;
+  quantity: number;
+  tolerance: number;
+  loadingPeriodStart: Date;
+  loadingPeriodEnd: Date;
+  pricingPeriodStart: Date;
+  pricingPeriodEnd: Date;
+  unit: Unit;
+  paymentTerm: PaymentTerm;
+  creditStatus: CreditStatus;
+  formula?: import('./pricing').PricingFormula;
+  mtmFormula?: import('./pricing').PricingFormula;
+}
+
+// Database types
+export type DbParentTrade = {
+  id: string;
+  trade_reference: string;
+  trade_type: string;
+  physical_type: string;
+  counterparty: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DbTradeLeg = {
   id: string;
   parent_trade_id: string;
   leg_reference: string;
-  quantity: number;
-  tolerance?: number;
-  loading_period_start?: string;
-  loading_period_end?: string;
-  pricing_period_start?: string;
-  pricing_period_end?: string;
-  pricing_formula?: any;
-  mtm_formula?: any;
-  created_at: string;
-  updated_at: string;
   buy_sell: string;
   product: string;
-  sustainability?: string;
-  inco_term?: string;
-  unit?: string;
-  payment_term?: string;
-  credit_status?: string;
-  pricing_type?: string;
+  sustainability: string;
+  inco_term: string;
+  quantity: number;
+  tolerance: number;
+  loading_period_start: string;
+  loading_period_end: string;
+  pricing_period_start: string;
+  pricing_period_end: string;
+  unit: string;
+  payment_term: string;
+  credit_status: string;
+  pricing_formula: any;
+  mtm_formula: any;
+  created_at: string;
+  updated_at: string;
+  pricing_type: string;
   efp_premium?: number;
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;
   efp_designated_month?: string;
-  mtm_future_month?: string;
-}
-
-// Basic Trade interface
-export interface Trade {
-  id: string;
-  tradeReference: string;
-  tradeType: string; // Use string instead of TradeType
-  counterparty: string;
-  createdAt: Date;
-  updatedAt: Date;
-  buySell: string; // Use string instead of BuySell
-  product: string; // Use string instead of Product
-  legs: any[];
-}
-
-// Re-export type as specified by TypeScript when isolatedModules is enabled
-export type { PricingFormula, MTMPriceDetail, PriceDetail };
+};

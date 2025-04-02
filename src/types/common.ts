@@ -1,80 +1,62 @@
-
-// Common types used across the application
-
-// Instrument types
+// Common type definitions used across the application
+export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
   'Argus UCOME' | 
   'Argus RME' | 
   'Argus FAME0' | 
+  'Argus HVO' | 
   'Platts LSGO' | 
-  'Platts Diesel' |
-  'Argus HVO' |
+  'Platts Diesel' | 
   'ICE GASOIL FUTURES' |
   'ICE GASOIL FUTURES (EFP)';
 
-// Fixed component for pricing components
-export interface FixedComponent {
-  type: string;
-  value: number;
-  displayValue: string;
-}
-
-// Structure for exposure tracking
-export interface ExposureResult {
-  physical: Record<Instrument, number>;
-  pricing: Record<Instrument, number>;
-}
-
-// Common parent trade interface
+// Common base types for trades
 export interface ParentTrade {
   id: string;
   tradeReference: string;
-  tradeType: TradeType;
-  counterparty: string;
+  tradeType: 'physical' | 'paper';
   createdAt: Date;
   updatedAt: Date;
+  counterparty: string;
 }
 
-// Trade types
-export type TradeType = 'physical' | 'paper';
-
-// Monthly distribution interface for pricing
-export interface MonthlyDistribution {
-  [month: string]: number;
+export interface Trade extends ParentTrade {
+  buySell: 'buy' | 'sell';
+  product: string;
+  legs: any[];
 }
 
-// Movement interface
+// Movement and audit log types for data/mockData.ts
 export interface Movement {
   id: string;
-  tradeLegId: string;
+  tradeId: string;
   movementReference: string;
-  nominatedDate?: Date;
-  nominationValidDate?: Date;
-  blDate?: Date;
-  blQuantity?: number;
-  actualized: boolean;
-  actualizedQuantity?: number;
   status: string;
+  nominatedDate: Date;
+  quantity: number;
+  // Add new fields needed by OperationsPage
+  legId?: string;
+  scheduledQuantity?: number;
   vesselName?: string;
   loadport?: string;
   disport?: string;
-  inspector?: string;
-  comments?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-// Audit log interface
 export interface AuditLog {
   id: string;
   recordId: string;
   tableName: string;
   operation: string;
-  oldData?: any;
-  newData?: any;
   timestamp: Date;
-  userId?: string;
+  userId: string;
+  // Add fields needed by AuditLogPage
+  entityType?: string;
+  entityId?: string;
+  field?: string;
+  oldValue?: string;
+  newValue?: string;
 }
 
-// Export BuySell and Product types from trade.ts to avoid circular dependencies
-export type { BuySell, Product } from './trade';
+// Re-export needed types to make them available from @/types
+export * from './pricing';
+export * from './physical';

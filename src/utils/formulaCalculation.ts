@@ -1,5 +1,4 @@
-import { FormulaToken, ExposureResult, PricingFormula, MonthlyDistribution } from '@/types/pricing';
-import { Instrument } from '@/types/common';
+import { FormulaToken, ExposureResult, Instrument, PricingFormula, MonthlyDistribution } from '@/types';
 import { getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
 
 export const createEmptyExposureResult = (): ExposureResult => ({
@@ -528,9 +527,7 @@ export const calculateMonthlyPricingDistribution = (
   Object.entries(pricingExposure).forEach(([instrument, totalExposure]) => {
     if (totalExposure === 0) return;
     
-    // Fix: Ensure this function returns MonthlyDistribution, not a number
-    const distribution = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
-    monthlyDistribution[instrument] = distribution;
+    monthlyDistribution[instrument] = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
   });
   
   return monthlyDistribution;
