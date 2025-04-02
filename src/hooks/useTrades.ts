@@ -70,6 +70,7 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           pricingType: (firstLeg.pricing_type || 'standard') as PricingType,
+          mtmFutureMonth: firstLeg.mtm_future_month,  // Add this field
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -93,7 +94,8 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
             efpPremium: leg.efp_premium,
             efpAgreedStatus: leg.efp_agreed_status,
             efpFixedValue: leg.efp_fixed_value,
-            efpDesignatedMonth: leg.efp_designated_month
+            efpDesignatedMonth: leg.efp_designated_month,
+            mtmFutureMonth: leg.mtm_future_month  // Add this field
           }))
         };
         return physicalTrade;

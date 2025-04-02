@@ -248,3 +248,45 @@ export function formatDate(date: Date): string {
     day: 'numeric',
   });
 }
+
+/**
+ * Function to check if a date range is completely in the future
+ * @param startDate Start date of the range (inclusive)
+ * @param endDate End date of the range (inclusive)
+ * @returns True if the date range is in the future
+ */
+export const isDateRangeInFuture = (startDate: Date, endDate: Date): boolean => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset hours to compare just dates
+  
+  return startDate > today && endDate > today;
+};
+
+/**
+ * Function to get available months in a date range
+ * @param startDate Start date of the range (inclusive)
+ * @param endDate End date of the range (inclusive)
+ * @returns Array of month codes in the range
+ */
+export const getMonthsInDateRange = (startDate: Date, endDate: Date): string[] => {
+  const months: string[] = [];
+  const currentDate = new Date(startDate);
+  
+  // Set to first day of month to ensure we don't skip months
+  currentDate.setDate(1);
+  
+  while (currentDate <= endDate) {
+    // Format as "MMM-YY" (e.g., "Apr-25")
+    const monthYear = currentDate.toLocaleString('en-US', { 
+      month: 'short', 
+      year: '2-digit' 
+    });
+    
+    months.push(monthYear);
+    
+    // Move to next month
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+  
+  return [...new Set(months)]; // Remove duplicates
+};

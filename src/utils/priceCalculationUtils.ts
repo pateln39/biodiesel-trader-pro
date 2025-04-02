@@ -4,6 +4,8 @@ import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { parseFormula } from './formulaCalculation';
+import { fetchForwardPrice } from './forwardPriceUtils';
+import { isDateRangeInFuture } from './dateUtils';
 
 // Define PricingPeriodType enum for export
 export type PricingPeriodType = 'historical' | 'current' | 'future';
@@ -122,7 +124,72 @@ export const calculateMTMPrice = async (
   }
   
   // Handle standard formula calculation
+  // If we have a full leg with mtmFutureMonth, we can use that for future calculations
+  if ('mtmFutureMonth' in formula && formula.mtmFutureMonth && 
+      'pricingPeriodStart' in formula && 'pricingPeriodEnd' in formula &&
+      isDateRangeInFuture(formula.pricingPeriodStart, formula.pricingPeriodEnd)) {
+    return calculateFutureMTMPrice(formula as PhysicalTradeLeg);
+  }
+  
   return calculateStandardMTMPrice(formula as PricingFormula);
+};
+
+// New function to handle future MTM calculations
+const calculateFutureMTMPrice = async (
+  leg: PhysicalTradeLeg
+): Promise<{ price: number; details: MTMPriceDetail }> => {
+  const details: MTMPriceDetail = {
+    instruments: {} as Record<Instrument, { price: number; date: Date | null }>,
+    evaluatedPrice: 0,
+    fixedComponents: []
+  };
+  
+  // Get the instruments from the MTM formula if available, or fall back to regular pricing formula
+  const mtmFormula = leg.mtmFormula || leg.formula;
+  if (!mtmFormula || !mtmFormula.tokens || mtmFormula.tokens.length === 0) {
+    return { price: 0, details };
+  }
+  
+  const instruments = extractInstrumentsFromFormula(mtmFormula);
+  if (instruments.length === 0) {
+    return { price: 0, details };
+  }
+  
+  // For future trades, use forward prices based on selected month
+  const selectedMonth = leg.mtmFutureMonth;
+  if (!selectedMonth) {
+    return { price: 0, details };
+  }
+  
+  // Fetch forward prices for all instruments in the formula
+  const instrumentPrices: Record<string, number> = {};
+  
+  for (const instrument of instruments) {
+    const forwardPrice = await fetchForwardPrice(instrument, selectedMonth);
+    
+    if (forwardPrice !== null) {
+      details.instruments[instrument] = {
+        price: forwardPrice,
+        date: null // No specific date for forward prices
+      };
+      instrumentPrices[instrument] = forwardPrice;
+    } else if (MOCK_PRICES[instrument]) {
+      // Fallback to mock prices if forward price not found
+      console.warn(`Using mock price for ${instrument}`);
+      details.instruments[instrument] = {
+        price: MOCK_PRICES[instrument],
+        date: null
+      };
+      instrumentPrices[instrument] = MOCK_PRICES[instrument];
+    }
+  }
+  
+  // Calculate price using formula evaluation with forward prices
+  const price = applyPricingFormula(mtmFormula, instrumentPrices);
+  details.evaluatedPrice = price;
+  details.futureMonth = selectedMonth;
+  
+  return { price, details };
 };
 
 // Handle EFP-specific MTM price calculation
@@ -242,6 +309,12 @@ export const calculateTradeLegPrice = async (
     return calculateEfpTradeLegPrice(formulaOrLeg as PhysicalTradeLeg, startDate, endDate);
   }
   
+  // Check if this is a future trade with specified future month
+  if ('mtmFutureMonth' in formulaOrLeg && formulaOrLeg.mtmFutureMonth && 
+      isDateRangeInFuture(startDate, endDate)) {
+    return calculateFutureTradeLegPrice(formulaOrLeg as PhysicalTradeLeg);
+  }
+  
   // For standard trades, continue with the existing implementation
   return calculateStandardTradeLegPrice(formulaOrLeg as PricingFormula, startDate, endDate);
 };
@@ -330,78 +403,64 @@ const calculateEfpTradeLegPrice = async (
   return { price, periodType, priceDetails };
 };
 
-// Keep the original function but rename it
-const calculateStandardTradeLegPrice = async (
-  formula: PricingFormula,
-  startDate: Date,
-  endDate: Date
+// New function to handle future trade leg price calculation with selected month
+const calculateFutureTradeLegPrice = async (
+  leg: PhysicalTradeLeg
 ): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
-  // Determine period type based on dates
-  const now = new Date();
-  let periodType: PricingPeriodType = 'current';
-  
-  if (endDate < now) {
-    periodType = 'historical';
-  } else if (startDate > now) {
-    periodType = 'future';
-  }
-  
-  // Extract instruments from the formula
-  const instruments = extractInstrumentsFromFormula(formula);
+  const periodType: PricingPeriodType = 'future';
   
   // Create price details object
   const priceDetails: PriceDetail = {
     instruments: {},
-    evaluatedPrice: 0
+    evaluatedPrice: 0,
+    fixedComponents: []
   };
   
-  // If there are no instruments, return default values
+  // Get formula to use
+  const formula = leg.formula;
+  if (!formula || !formula.tokens || formula.tokens.length === 0) {
+    return { price: 0, periodType, priceDetails };
+  }
+  
+  // Extract instruments from formula
+  const instruments = extractInstrumentsFromFormula(formula);
   if (instruments.length === 0) {
     return { price: 0, periodType, priceDetails };
   }
   
-  // Create a record to store average prices per instrument
-  const instrumentAveragePrices: Record<string, number> = {};
+  // Get the selected future month
+  const selectedMonth = leg.mtmFutureMonth;
+  if (!selectedMonth) {
+    return { price: 0, periodType, priceDetails };
+  }
   
-  // For each instrument, fetch historical prices in the period from database
+  // Fetch forward prices for all instruments in the formula
+  const instrumentPrices: Record<string, number> = {};
+  
   for (const instrument of instruments) {
-    const prices = await fetchHistoricalPrices(instrument, startDate, endDate);
+    const forwardPrice = await fetchForwardPrice(instrument, selectedMonth);
     
-    if (prices.length > 0) {
-      // Calculate average price for the period
-      const sum = prices.reduce((acc, p) => acc + p.price, 0);
-      const average = sum / prices.length;
-      
+    if (forwardPrice !== null) {
       priceDetails.instruments[instrument] = {
-        average,
-        prices
+        average: forwardPrice,
+        prices: [{ date: new Date(), price: forwardPrice }]
       };
-      
-      instrumentAveragePrices[instrument] = average;
-    } else if (MOCK_HISTORICAL_PRICES[instrument]) {
-      // Fallback to mock historical prices if database query fails
-      console.warn(`Using mock historical prices for ${instrument}`);
-      const mockPrices = MOCK_HISTORICAL_PRICES[instrument].filter(
-        p => p.date >= startDate && p.date <= endDate
-      );
-      
-      if (mockPrices.length > 0) {
-        const sum = mockPrices.reduce((acc, p) => acc + p.price, 0);
-        const average = sum / mockPrices.length;
-        
-        priceDetails.instruments[instrument] = {
-          average,
-          prices: mockPrices
-        };
-        
-        instrumentAveragePrices[instrument] = average;
-      }
+      instrumentPrices[instrument] = forwardPrice;
+    } else if (MOCK_PRICES[instrument]) {
+      // Fallback to mock prices
+      const mockPrice = MOCK_PRICES[instrument];
+      priceDetails.instruments[instrument] = {
+        average: mockPrice,
+        prices: [{ date: new Date(), price: mockPrice }]
+      };
+      instrumentPrices[instrument] = mockPrice;
     }
   }
   
-  // Calculate price using formula evaluation with average prices
-  const price = applyPricingFormula(formula, instrumentAveragePrices);
+  // Calculate price using formula evaluation
+  const price = applyPricingFormula(formula, instrumentPrices);
   priceDetails.evaluatedPrice = price;
+  priceDetails.futureMonth = selectedMonth;
   
   return { price, periodType, priceDetails };
 };
