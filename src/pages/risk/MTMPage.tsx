@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -110,6 +111,7 @@ const MTMPage = () => {
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
           try {
+            // Handle future pricing periods with mtmFutureMonth
             if (isDateRangeInFuture(leg.startDate, leg.endDate) && leg.mtmFutureMonth) {
               if (leg.pricingType === 'efp') {
                 const efpLeg: PhysicalTradeLeg = {
@@ -154,7 +156,7 @@ const MTMPage = () => {
                   calculatedPrice: priceResult.price,
                   mtmCalculatedPrice: mtmPriceResult.price,
                   mtmValue,
-                  periodType: priceResult.periodType
+                  periodType: priceResult.periodType || 'future' // Ensure periodType is always set
                 };
               } else if (leg.formula) {
                 const enhancedFormula = { 
@@ -191,11 +193,12 @@ const MTMPage = () => {
                   calculatedPrice: priceResult.price,
                   mtmCalculatedPrice: mtmPriceResult.price,
                   mtmValue,
-                  periodType: priceResult.periodType
+                  periodType: priceResult.periodType || 'future' // Ensure periodType is always set
                 };
               }
             }
             
+            // Handle EFP trades
             if (leg.pricingType === 'efp') {
               const efpLeg: PhysicalTradeLeg = {
                 id: leg.legId,
@@ -235,9 +238,10 @@ const MTMPage = () => {
                 calculatedPrice: priceResult.price,
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
-                periodType: priceResult.periodType
+                periodType: priceResult.periodType || 'current' // Ensure periodType is always set
               };
             } 
+            // Handle standard trades
             else if (leg.formula) {
               const priceResult = await calculateTradeLegPrice(
                 leg.formula,
@@ -260,20 +264,34 @@ const MTMPage = () => {
                 calculatedPrice: priceResult.price,
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
-                periodType: priceResult.periodType
+                periodType: priceResult.periodType || 'current' // Ensure periodType is always set
               };
             } else {
-              return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
+              // Fallback for legs without formula
+              return { 
+                ...leg, 
+                calculatedPrice: 0, 
+                mtmCalculatedPrice: 0, 
+                mtmValue: 0,
+                periodType: 'current' as PricingPeriodType // Explicit default
+              };
             }
           } catch (error) {
             console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
             toast.error(`Error calculating MTM for leg ${leg.legReference}`);
-            return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
+            return { 
+              ...leg, 
+              calculatedPrice: 0, 
+              mtmCalculatedPrice: 0, 
+              mtmValue: 0,
+              periodType: 'current' as PricingPeriodType // Explicit default for error case
+            };
           }
         })
       );
       
-      return positions;
+      // Filter out any undefined values that might have slipped through
+      return positions.filter(Boolean);
     },
     enabled: !tradesLoading && tradeLegs.length > 0
   });
