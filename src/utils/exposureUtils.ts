@@ -34,13 +34,17 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         year: '2-digit' 
       }) || defaultMonth;
       
-      // Physical side
+      // Physical side - don't add ICE GASOIL FUTURES to physical exposure
       if (!monthlyPhysical[physicalMonth]) monthlyPhysical[physicalMonth] = {};
       const productKey = mapProductToCanonical(leg.product);
-      if (!monthlyPhysical[physicalMonth][productKey]) monthlyPhysical[physicalMonth][productKey] = 0;
-      const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-      const direction = leg.buySell === 'buy' ? 1 : -1;
-      monthlyPhysical[physicalMonth][productKey] += volume * direction;
+      
+      // Skip ICE GASOIL FUTURES for physical exposure
+      if (productKey !== 'ICE GASOIL FUTURES') {
+        if (!monthlyPhysical[physicalMonth][productKey]) monthlyPhysical[physicalMonth][productKey] = 0;
+        const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+        const direction = leg.buySell === 'buy' ? 1 : -1;
+        monthlyPhysical[physicalMonth][productKey] += volume * direction;
+      }
       
       // Now handle pricing exposure - with special case for EFP trades
       if (leg.pricingType === 'efp') {

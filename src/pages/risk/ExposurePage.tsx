@@ -739,9 +739,14 @@ const ExposurePage = () => {
   }, [visibleCategories]);
 
   const shouldShowProductInCategory = (product: string, category: string): boolean => {
-    if ((category === 'Physical' || category === 'Paper') && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
+    if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
       return false;
     }
+    
+    if (category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
+      return false;
+    }
+    
     return true;
   };
 
