@@ -1,3 +1,4 @@
+
 import { PaperTrade, PaperTradeLeg } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { parseForwardMonth } from './dateParsingUtils';
@@ -147,12 +148,15 @@ export const fetchSpecificForwardPrice = async (
   
   const instrumentId = instruments.id;
   
+  // Format the date for DB query
+  const forwardMonthStr = `${forwardMonth.getFullYear()}-${String(forwardMonth.getMonth() + 1).padStart(2, '0')}-01`;
+  
   // Now fetch the specific forward price
   const { data: forwardPrice, error: priceError } = await supabase
     .from('forward_prices')
     .select('price')
     .eq('instrument_id', instrumentId)
-    .eq('forward_month', forwardMonth.toISOString().split('T')[0])
+    .eq('forward_month', forwardMonthStr)
     .single();
     
   if (priceError) {

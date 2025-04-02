@@ -1,16 +1,24 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { Eye } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw } from 'lucide-react';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import PaperMTMTable from '@/components/risk/PaperMTMTable';
+import PriceDetails from '@/components/pricing/PriceDetails';
+import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
+import { calculateTradeLegPrice, calculateMTMPrice, calculateMTMValue, PricingPeriodType, isDateRangeInFuture } from '@/utils/priceCalculationUtils';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
