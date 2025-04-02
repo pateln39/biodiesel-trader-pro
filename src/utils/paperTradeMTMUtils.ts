@@ -1,8 +1,7 @@
-
 import { PaperTrade, PaperTradeLeg } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { parseForwardMonth } from './dateParsingUtils';
-import { mapProductToCanonical } from './productMapping';
+import { mapProductToCanonical, mapProductToInstrumentCode } from './productMapping';
 import { toast } from 'sonner';
 
 /**
@@ -81,27 +80,44 @@ export const getPeriodType = (
  */
 export const getInstrumentId = async (instrumentCode: string): Promise<string | null> => {
   console.log(`Fetching instrument ID for ${instrumentCode}`);
+
+  // Map the product name to the instrument code in the database
+  const dbInstrumentCode = mapProductToInstrumentCode(instrumentCode);
+  console.log(`Mapped ${instrumentCode} to database instrument code: ${dbInstrumentCode}`);
   
   try {
     const { data: instruments, error } = await supabase
       .from('pricing_instruments')
       .select('id')
-      .eq('instrument_code', instrumentCode);
+      .eq('instrument_code', dbInstrumentCode);
       
     if (error) {
-      console.error(`Error fetching instrument ID for ${instrumentCode}:`, error);
+      console.error(`Error fetching instrument ID for ${dbInstrumentCode}:`, error);
       return null;
     }
     
     if (!instruments || instruments.length === 0) {
-      console.warn(`No instrument found with code ${instrumentCode}`);
-      return null;
+      console.warn(`No instrument found with code ${dbInstrumentCode}`);
+      
+      // Fallback: Try a fuzzy match (case insensitive) as a last resort
+      const { data: fuzzyMatches, error: fuzzyError } = await supabase
+        .from('pricing_instruments')
+        .select('id, instrument_code')
+        .ilike('instrument_code', `%${dbInstrumentCode.replace('_', '%')}%`);
+        
+      if (fuzzyError || !fuzzyMatches || fuzzyMatches.length === 0) {
+        console.error(`No fuzzy matches found for ${dbInstrumentCode}`);
+        return null;
+      }
+      
+      console.log(`Found fuzzy match for ${dbInstrumentCode}: ${fuzzyMatches[0].instrument_code}`);
+      return fuzzyMatches[0].id;
     }
     
-    console.log(`Found instrument ID for ${instrumentCode}: ${instruments[0].id}`);
+    console.log(`Found instrument ID for ${dbInstrumentCode}: ${instruments[0].id}`);
     return instruments[0].id;
   } catch (e) {
-    console.error(`Exception fetching instrument ID for ${instrumentCode}:`, e);
+    console.error(`Exception fetching instrument ID for ${dbInstrumentCode}:`, e);
     return null;
   }
 };
@@ -223,11 +239,17 @@ export const calculatePaperMTMPrice = async (
   leg: PaperTradeLeg,
   today: Date = new Date()
 ): Promise<number | null> => {
-  if (!leg || !leg.period) return null;
+  if (!leg || !leg.period) {
+    console.error(`Missing required data for leg ${leg?.legReference}: no period specified`);
+    return null;
+  }
   
   // Get the month dates
   const dates = getMonthDates(leg.period);
-  if (!dates) return null;
+  if (!dates) {
+    console.error(`Invalid period format for leg ${leg.legReference}: ${leg.period}`);
+    return null;
+  }
   
   const { startDate, endDate } = dates;
   
@@ -236,15 +258,21 @@ export const calculatePaperMTMPrice = async (
   
   // Map product codes to canonical format
   const leftProduct = mapProductToCanonical(leg.product);
+  console.log(`Mapped left product ${leg.product} to: ${leftProduct}`);
+  
   let rightProduct = null;
   
   if (leg.relationshipType === 'DIFF') {
-    rightProduct = 'Platts LSGO'; // Always LSGO for DIFF trades
+    // For DIFF trades, right side is always LSGO
+    rightProduct = 'Platts LSGO';
+    console.log(`DIFF relationship detected - right product automatically set to: ${rightProduct}`);
   } else if (leg.relationshipType === 'SPREAD' && leg.rightSide) {
     rightProduct = mapProductToCanonical(leg.rightSide.product);
+    console.log(`SPREAD relationship detected - mapped right product ${leg.rightSide.product} to: ${rightProduct}`);
   }
 
-  console.log(`Calculating MTM price for leg with products: ${leftProduct}${rightProduct ? ' and ' + rightProduct : ''}`);
+  console.log(`Calculating MTM price for leg ${leg.legReference} with products: ${leftProduct}${rightProduct ? ' and ' + rightProduct : ''}`);
+  console.log(`Period: ${leg.period} (${periodType}), Relationship Type: ${leg.relationshipType}`);
   
   try {
     // For past periods, use historical data
@@ -257,12 +285,19 @@ export const calculatePaperMTMPrice = async (
       
       // For DIFF and SPREAD trades
       const leftPrice = await fetchMonthlyAveragePrice(leftProduct, leg.period);
-      if (leftPrice === null) return null;
+      if (leftPrice === null) {
+        console.error(`Failed to get historical price for ${leftProduct} for period ${leg.period}`);
+        return null;
+      }
       
       if (rightProduct) {
         const rightPrice = await fetchMonthlyAveragePrice(rightProduct, leg.period);
-        if (rightPrice === null) return null;
+        if (rightPrice === null) {
+          console.error(`Failed to get historical price for ${rightProduct} for period ${leg.period}`);
+          return null;
+        }
         
+        console.log(`Calculated differential price: ${leftProduct} (${leftPrice}) - ${rightProduct} (${rightPrice}) = ${leftPrice - rightPrice}`);
         return leftPrice - rightPrice;
       }
       
@@ -279,12 +314,19 @@ export const calculatePaperMTMPrice = async (
       
       // For DIFF and SPREAD trades
       const leftPrice = await fetchSpecificForwardPrice(leftProduct, leg.period);
-      if (leftPrice === null) return null;
+      if (leftPrice === null) {
+        console.error(`Failed to get forward price for ${leftProduct} for period ${leg.period}`);
+        return null;
+      }
       
       if (rightProduct) {
         const rightPrice = await fetchSpecificForwardPrice(rightProduct, leg.period);
-        if (rightPrice === null) return null;
+        if (rightPrice === null) {
+          console.error(`Failed to get forward price for ${rightProduct} for period ${leg.period}`);
+          return null;
+        }
         
+        console.log(`Calculated differential price: ${leftProduct} (${leftPrice}) - ${rightProduct} (${rightPrice}) = ${leftPrice - rightPrice}`);
         return leftPrice - rightPrice;
       }
       

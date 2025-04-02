@@ -10,13 +10,18 @@ export const mapProductToCanonical = (product: string): string => {
   
   switch (normalized) {
     case 'UCOME':
+    case 'UCOME_FP':  // Handle FP suffix
       return 'Argus UCOME';
     case 'FAME0':
+    case 'FAME':
+    case 'FAME_FP':
       return 'Argus FAME0';
     case 'RME':
+    case 'RME_FP':
       return 'Argus RME';
     case 'LSGO':
     case 'PLATTS LSGO':
+    case 'PLATTS_LSGO':
       return 'Platts LSGO';
     case 'HVO':
     case 'HVO_FP':
@@ -27,6 +32,7 @@ export const mapProductToCanonical = (product: string): string => {
       return 'ICE GASOIL FUTURES';
     case 'DIESEL':
     case 'PLATTS DIESEL':
+    case 'PLATTS_DIESEL':
       return 'Platts Diesel';
     case 'ICE GASOIL FUTURES (EFP)':
     case 'EFP':
@@ -39,6 +45,39 @@ export const mapProductToCanonical = (product: string): string => {
         return product;
       }
       return product;
+  }
+};
+
+/**
+ * Maps canonical product names to their corresponding instrument codes in the database
+ */
+export const mapProductToInstrumentCode = (product: string): string => {
+  if (!product) return '';
+  
+  // Get canonical product name first
+  const canonicalProduct = mapProductToCanonical(product);
+  
+  // Map to instrument code in database
+  switch (canonicalProduct) {
+    case 'Argus UCOME':
+      return 'ARGUS_UCOME';
+    case 'Argus FAME0':
+      return 'ARGUS_FAME0';
+    case 'Argus RME':
+      return 'ARGUS_RME';
+    case 'Argus HVO':
+      return 'ARGUS_HVO';
+    case 'Platts LSGO':
+      return 'PLATTS_LSGO';
+    case 'Platts Diesel':
+      return 'PLATTS_DIESEL';
+    case 'ICE GASOIL FUTURES':
+      return 'ICE_GASOIL_FUTURES';
+    case 'EFP':
+      return 'EFP';
+    default:
+      // Try normalized version if no direct match
+      return canonicalProduct.replace(' ', '_').toUpperCase();
   }
 };
 
@@ -126,7 +165,7 @@ export const parsePaperInstrument = (
   if (instrument.includes('DIFF')) {
     // For DIFFs, the format is usually "{product} DIFF"
     const baseProduct = instrument.replace(' DIFF', '');
-    // DIFFs are typically against LSGO
+    // DIFFs are always against LSGO
     const oppositeProduct = 'LSGO';
     
     return {
@@ -153,7 +192,7 @@ export const parsePaperInstrument = (
     }
   }
   
-  // Default to FP, extract the product name
+  // Check for FP (flat price) relationship
   let baseProduct = instrument.replace(' FP', '');
   
   return {

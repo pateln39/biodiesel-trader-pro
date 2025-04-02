@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { getMonthDates, fetchMonthlyAveragePrice, fetchSpecificForwardPrice, getPeriodType } from '@/utils/paperTradeMTMUtils';
-import { mapProductToCanonical } from '@/utils/productMapping';
+import { mapProductToCanonical, mapProductToInstrumentCode } from '@/utils/productMapping';
 
 interface PaperPriceDetailsProps {
   isOpen: boolean;
@@ -41,8 +41,11 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
   const [activeTab, setActiveTab] = useState('summary');
   
   const leftProduct = mapProductToCanonical(product);
+  const leftInstrumentCode = mapProductToInstrumentCode(leftProduct);
+  
   const rightProduct = rightSide?.product ? mapProductToCanonical(rightSide.product) : 
                       relationshipType === 'DIFF' ? 'Platts LSGO' : null;
+  const rightInstrumentCode = rightProduct ? mapProductToInstrumentCode(rightProduct) : null;
   
   const dates = getMonthDates(period);
   const today = new Date();
@@ -99,7 +102,9 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
       
       return {
         leftProduct,
+        leftInstrumentCode,
         rightProduct,
+        rightInstrumentCode,
         leftHistoricalPrice,
         rightHistoricalPrice,
         leftForwardPrice,
@@ -209,6 +214,18 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
                 <CardContent>
                   <div className="space-y-4">
                     <div>
+                      <div className="text-sm text-muted-foreground">Product Mapping</div>
+                      <div className="font-medium">
+                        Input: {product} → Canonical: {priceData?.leftProduct} → Instrument Code: {priceData?.leftInstrumentCode}
+                        {priceData?.rightProduct && (
+                          <div className="mt-1">
+                            Input: {rightSide?.product || 'LSGO'} → Canonical: {priceData?.rightProduct} → Instrument Code: {priceData?.rightInstrumentCode}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
                       <div className="text-sm text-muted-foreground">Period Type</div>
                       <div className="font-medium">{periodType} period</div>
                     </div>
@@ -233,23 +250,23 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
                       {relationshipType === 'FP' ? (
                         <div className="font-medium">
                           {periodType === 'past' ? (
-                            <span>Historical average price of {leftProduct}: ${priceData?.leftHistoricalPrice?.toFixed(2) || 'N/A'}</span>
+                            <span>Historical average price of {priceData?.leftProduct}: ${priceData?.leftHistoricalPrice?.toFixed(2) || 'N/A'}</span>
                           ) : (
-                            <span>Forward price of {leftProduct} for {period}: ${priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}</span>
+                            <span>Forward price of {priceData?.leftProduct} for {period}: ${priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}</span>
                           )}
                         </div>
                       ) : (
                         <div className="font-medium">
                           {periodType === 'past' ? (
                             <span>
-                              Historical avg of {leftProduct} (${priceData?.leftHistoricalPrice?.toFixed(2) || 'N/A'}) - 
-                              Historical avg of {rightProduct} (${priceData?.rightHistoricalPrice?.toFixed(2) || 'N/A'}) = 
+                              Historical avg of {priceData?.leftProduct} (${priceData?.leftHistoricalPrice?.toFixed(2) || 'N/A'}) - 
+                              Historical avg of {priceData?.rightProduct} (${priceData?.rightHistoricalPrice?.toFixed(2) || 'N/A'}) = 
                               ${priceData?.mtmPrice?.toFixed(2) || 'N/A'}
                             </span>
                           ) : (
                             <span>
-                              Forward price of {leftProduct} (${priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}) - 
-                              Forward price of {rightProduct} (${priceData?.rightForwardPrice?.toFixed(2) || 'N/A'}) = 
+                              Forward price of {priceData?.leftProduct} (${priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}) - 
+                              Forward price of {priceData?.rightProduct} (${priceData?.rightForwardPrice?.toFixed(2) || 'N/A'}) = 
                               ${priceData?.mtmPrice?.toFixed(2) || 'N/A'}
                             </span>
                           )}
@@ -282,6 +299,7 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
+                        <TableHead>Instrument Code</TableHead>
                         <TableHead>Historical Average</TableHead>
                         <TableHead>Forward Price</TableHead>
                         <TableHead>Used</TableHead>
@@ -289,7 +307,8 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
                     </TableHeader>
                     <TableBody>
                       <TableRow>
-                        <TableCell>{leftProduct}</TableCell>
+                        <TableCell>{priceData?.leftProduct}</TableCell>
+                        <TableCell>{priceData?.leftInstrumentCode}</TableCell>
                         <TableCell>${priceData?.leftHistoricalPrice?.toFixed(2) || 'N/A'}</TableCell>
                         <TableCell>${priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}</TableCell>
                         <TableCell>
@@ -298,9 +317,10 @@ const PaperPriceDetails: React.FC<PaperPriceDetailsProps> = ({
                             : priceData?.leftForwardPrice?.toFixed(2) || 'N/A'}
                         </TableCell>
                       </TableRow>
-                      {rightProduct && (
+                      {priceData?.rightProduct && (
                         <TableRow>
-                          <TableCell>{rightProduct}</TableCell>
+                          <TableCell>{priceData?.rightProduct}</TableCell>
+                          <TableCell>{priceData?.rightInstrumentCode}</TableCell>
                           <TableCell>${priceData?.rightHistoricalPrice?.toFixed(2) || 'N/A'}</TableCell>
                           <TableCell>${priceData?.rightForwardPrice?.toFixed(2) || 'N/A'}</TableCell>
                           <TableCell>
