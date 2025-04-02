@@ -1,4 +1,3 @@
-
 import { PricingFormula } from './pricing';
 import { ParentTrade } from './common';
 
@@ -37,7 +36,7 @@ export interface PhysicalTradeLeg {
   efpAgreedStatus?: boolean;
   efpFixedValue?: number;
   efpDesignatedMonth?: string;
-  mtmFutureMonth?: string; // Added new field for MTM future month selection
+  mtmFutureMonth?: string; // Add this line to match database schema
 }
 
 export interface PhysicalTrade extends ParentTrade {
@@ -62,6 +61,6 @@ export interface PhysicalTrade extends ParentTrade {
   efpAgreedStatus?: boolean;
   efpFixedValue?: number;
   efpDesignatedMonth?: string;
-  mtmFutureMonth?: string; // Added new field for MTM future month selection
+  mtmFutureMonth?: string; // Add this line to match database schema
   legs: PhysicalTradeLeg[];
 }

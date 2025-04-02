@@ -15,6 +15,7 @@ export interface PriceDetail {
   instruments: Record<string, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
   fixedComponents?: { value: number; displayValue: string }[];
+  futureMonth?: string;
 }
 
 // Fallback mock price data if database fetch fails
@@ -317,6 +318,81 @@ export const calculateTradeLegPrice = async (
   
   // For standard trades, continue with the existing implementation
   return calculateStandardTradeLegPrice(formulaOrLeg as PricingFormula, startDate, endDate);
+};
+
+export const calculateStandardTradeLegPrice = async (
+  formula: PricingFormula, 
+  startDate: Date, 
+  endDate: Date
+) => {
+  // Determine period type based on dates
+  const now = new Date();
+  let periodType: PricingPeriodType = 'current';
+  
+  if (endDate < now) {
+    periodType = 'historical';
+  } else if (startDate > now) {
+    periodType = 'future';
+  }
+  
+  // Create price details object
+  const priceDetails: PriceDetail = {
+    instruments: {},
+    evaluatedPrice: 0
+  };
+  
+  // For empty or invalid formula, return zero
+  if (!formula.tokens || formula.tokens.length === 0) {
+    return { price: 0, periodType, priceDetails };
+  }
+  
+  // Extract instruments from formula
+  const instruments = extractInstrumentsFromFormula(formula);
+  if (instruments.length === 0) {
+    return { price: 0, periodType, priceDetails };
+  }
+  
+  // Fetch historical prices for all instruments in the formula
+  const instrumentPrices: Record<string, number> = {};
+  
+  for (const instrument of instruments) {
+    const prices = await fetchHistoricalPrices(instrument, startDate, endDate);
+    
+    if (prices.length > 0) {
+      // Calculate average price for the period
+      const sum = prices.reduce((acc, p) => acc + p.price, 0);
+      const average = sum / prices.length;
+      
+      priceDetails.instruments[instrument] = {
+        average,
+        prices
+      };
+      
+      instrumentPrices[instrument] = average;
+    } else if (MOCK_HISTORICAL_PRICES[instrument]) {
+      // Fallback to mock historical prices if database query fails
+      console.warn(`Using mock historical prices for ${instrument}`);
+      priceDetails.instruments[instrument] = {
+        average: MOCK_HISTORICAL_PRICES[instrument][0].price,
+        prices: MOCK_HISTORICAL_PRICES[instrument]
+      };
+      instrumentPrices[instrument] = MOCK_HISTORICAL_PRICES[instrument][0].price;
+    } else if (MOCK_PRICES[instrument]) {
+      // Fallback to mock prices if historical prices not available
+      console.warn(`Using mock price for ${instrument}`);
+      priceDetails.instruments[instrument] = {
+        average: MOCK_PRICES[instrument],
+        prices: [{ date: new Date(), price: MOCK_PRICES[instrument] }]
+      };
+      instrumentPrices[instrument] = MOCK_PRICES[instrument];
+    }
+  }
+  
+  // Calculate price using formula evaluation
+  const price = applyPricingFormula(formula, instrumentPrices);
+  priceDetails.evaluatedPrice = price;
+  
+  return { price, periodType, priceDetails };
 };
 
 // New function to handle EFP trade leg price calculation
