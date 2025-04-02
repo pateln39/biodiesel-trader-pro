@@ -4,7 +4,7 @@ import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { parseFormula } from './formulaCalculation';
-import { isDateRangeInFuture } from './mtmUtils';
+import { isDateRangeInFuture, parseMonthCodeToDbDate } from './mtmUtils';
 
 // Define PricingPeriodType enum for export
 export type PricingPeriodType = 'historical' | 'current' | 'future';
@@ -121,19 +121,13 @@ async function fetchForwardPrice(
   try {
     console.log(`Fetching forward price for ${instrument} with month code ${monthCode}`);
     
-    // Parse the month code (e.g., "Apr-25") to get year and month
-    const [monthName, yearShort] = monthCode.split('-');
-    const year = 2000 + parseInt(yearShort);
+    // Parse the month code to get date format required by database
+    const formattedDate = parseMonthCodeToDbDate(monthCode);
     
-    // Map month name to month number (0-11)
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthIndex = monthNames.findIndex(m => m === monthName);
-    
-    if (monthIndex === -1) return null;
-    
-    // Create first day of month date
-    const forwardDate = new Date(year, monthIndex, 1);
-    const formattedDate = forwardDate.toISOString().split('T')[0];
+    if (!formattedDate) {
+      console.error(`Failed to parse month code: ${monthCode}`);
+      return null;
+    }
     
     console.log(`Looking for forward price for date: ${formattedDate}`);
     
@@ -145,7 +139,7 @@ async function fetchForwardPrice(
       .single();
       
     if (instrumentError || !instrumentData) {
-      console.error('Error fetching instrument ID:', instrumentError);
+      console.error(`Error fetching instrument ID for ${instrument}:`, instrumentError);
       return null;
     }
     
@@ -160,7 +154,7 @@ async function fetchForwardPrice(
       .maybeSingle();
       
     if (forwardError) {
-      console.error('Error fetching forward price:', forwardError);
+      console.error(`Error fetching forward price for ${instrument} ${monthCode}:`, forwardError);
       return null;
     }
     
@@ -179,7 +173,7 @@ async function fetchForwardPrice(
   }
 }
 
-// Update calculateMTMPrice to handle MTM future month option
+// Update calculateMTMPrice to properly handle MTM future month option
 export const calculateMTMPrice = async (
   formula: PricingFormula | PhysicalTradeLeg,
   startDate?: Date,
@@ -190,7 +184,7 @@ export const calculateMTMPrice = async (
     formula, 
     startDate, 
     endDate, 
-    mtmFutureMonth: mtmFutureMonth || formula['mtmFutureMonth']
+    mtmFutureMonth: mtmFutureMonth || ('mtmFutureMonth' in formula ? formula.mtmFutureMonth : undefined)
   });
 
   // Check if an explicit mtmFutureMonth was provided or is available in the formula
@@ -202,7 +196,7 @@ export const calculateMTMPrice = async (
       startDate && endDate && 
       isDateRangeInFuture(startDate, endDate)) {
     console.log(`Using future MTM calculation with month: ${effectiveMtmFutureMonth}`);
-    return calculateFutureMTMPrice(formula as any, effectiveMtmFutureMonth);
+    return calculateFutureMTMPrice(formula, effectiveMtmFutureMonth);
   }
   
   // Check if this is a leg with EFP properties

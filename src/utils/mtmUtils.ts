@@ -50,3 +50,30 @@ export function getMonthsInDateRange(startDate: Date, endDate: Date): string[] {
 export function getDefaultMtmFutureMonth(startDate: Date): string {
   return formatMonthCode(startDate);
 }
+
+/**
+ * Parse month code into a database date format for use in queries
+ * @param monthCode Month code in the format "MMM-YY" (e.g., "Apr-25")
+ * @returns Date string in format "YYYY-MM-01"
+ */
+export function parseMonthCodeToDbDate(monthCode: string): string {
+  // Extract month name and year from the code
+  const [monthName, yearStr] = monthCode.split('-');
+  
+  // Map month names to their numeric values (0-11)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthIndex = monthNames.findIndex(m => m === monthName);
+  
+  if (monthIndex === -1) {
+    console.error(`Invalid month name in code: ${monthCode}`);
+    return '';
+  }
+  
+  // Convert 2-digit year to full year (assuming 20xx for now)
+  const fullYear = 2000 + parseInt(yearStr);
+  
+  // Format as YYYY-MM-01 (first day of month for database queries)
+  const month = (monthIndex + 1).toString().padStart(2, '0');
+  
+  return `${fullYear}-${month}-01`;
+}

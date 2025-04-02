@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -38,6 +37,7 @@ const MTMPage = () => {
     efpAgreedStatus?: boolean;
     efpFixedValue?: number;
     pricingType?: string;
+    mtmFutureMonth?: string;
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -115,8 +115,8 @@ const MTMPage = () => {
             console.log(`mtmFutureMonth: ${leg.mtmFutureMonth}, pricingType: ${leg.pricingType}`);
             
             // Handle future pricing periods with mtmFutureMonth
-            if (isDateRangeInFuture(leg.startDate, leg.endDate) && leg.mtmFutureMonth) {
-              console.log(`Future period detected for leg ${leg.legReference} with mtmFutureMonth: ${leg.mtmFutureMonth}`);
+            if (isDateRangeInFuture(leg.startDate, leg.endDate)) {
+              console.log(`Future period detected for leg ${leg.legReference}`);
               
               if (leg.pricingType === 'efp') {
                 const efpLeg: PhysicalTradeLeg = {
@@ -150,7 +150,7 @@ const MTMPage = () => {
                   leg.mtmFormula || efpLeg,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth // Ensure we pass mtmFutureMonth explicitly
                 );
                 console.log(`MTM price result for ${leg.legReference}:`, mtmPriceResult);
                 
@@ -167,35 +167,34 @@ const MTMPage = () => {
                   calculatedPrice: priceResult.price,
                   mtmCalculatedPrice: mtmPriceResult.price,
                   mtmValue,
-                  periodType: priceResult.periodType || 'future' // Ensure periodType is always set
+                  periodType: priceResult.periodType || 'future'
                 };
               } else if (leg.formula) {
                 console.log(`Using formula for future leg ${leg.legReference}:`, leg.formula);
                 
-                const enhancedFormula = { 
-                  ...leg.formula,
+                // Add mtmFutureMonth to the leg object for calculation
+                const legWithFutureMonth = {
+                  ...leg,
                   mtmFutureMonth: leg.mtmFutureMonth
                 };
                 
                 console.log(`Calculating trade price for formula future leg ${leg.legReference}`);
                 const priceResult = await calculateTradeLegPrice(
-                  enhancedFormula,
+                  legWithFutureMonth as PhysicalTradeLeg,
                   leg.startDate,
                   leg.endDate
                 );
                 console.log(`Trade price result for ${leg.legReference}:`, priceResult);
                 
-                const enhancedMtmFormula = {
-                  ...(leg.mtmFormula || leg.formula),
-                  mtmFutureMonth: leg.mtmFutureMonth
-                };
+                // Add mtmFutureMonth to the mtmFormula as well
+                const mtmFormulaWithMonth = leg.mtmFormula || leg.formula;
                 
                 console.log(`Calculating MTM price for formula future leg ${leg.legReference}`);
                 const mtmPriceResult = await calculateMTMPrice(
-                  enhancedMtmFormula,
+                  mtmFormulaWithMonth,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth // Ensure we pass mtmFutureMonth explicitly
                 );
                 console.log(`MTM price result for ${leg.legReference}:`, mtmPriceResult);
                 
@@ -212,7 +211,7 @@ const MTMPage = () => {
                   calculatedPrice: priceResult.price,
                   mtmCalculatedPrice: mtmPriceResult.price,
                   mtmValue,
-                  periodType: priceResult.periodType || 'future' // Ensure periodType is always set
+                  periodType: priceResult.periodType || 'future'
                 };
               }
             }
@@ -261,7 +260,7 @@ const MTMPage = () => {
                 calculatedPrice: priceResult.price,
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
-                periodType: priceResult.periodType || 'current' // Ensure periodType is always set
+                periodType: priceResult.periodType || 'current'
               };
             } 
             // Handle standard trades
@@ -291,7 +290,7 @@ const MTMPage = () => {
                 calculatedPrice: priceResult.price,
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
-                periodType: priceResult.periodType || 'current' // Ensure periodType is always set
+                periodType: priceResult.periodType || 'current'
               };
             } else {
               // Fallback for legs without formula
@@ -300,7 +299,7 @@ const MTMPage = () => {
                 calculatedPrice: 0, 
                 mtmCalculatedPrice: 0, 
                 mtmValue: 0,
-                periodType: 'current' as PricingPeriodType // Explicit default
+                periodType: 'current' as PricingPeriodType
               };
             }
           } catch (error) {
@@ -311,7 +310,7 @@ const MTMPage = () => {
               calculatedPrice: 0, 
               mtmCalculatedPrice: 0, 
               mtmValue: 0,
-              periodType: 'current' as PricingPeriodType // Explicit default for error case
+              periodType: 'current' as PricingPeriodType
             };
           }
         })
@@ -341,7 +340,8 @@ const MTMPage = () => {
       pricingType: leg.pricingType,
       efpPremium: leg.efpPremium,
       efpAgreedStatus: leg.efpAgreedStatus,
-      efpFixedValue: leg.efpFixedValue
+      efpFixedValue: leg.efpFixedValue,
+      mtmFutureMonth: leg.mtmFutureMonth
     });
   };
 
@@ -512,6 +512,7 @@ const MTMPage = () => {
           efpPremium={selectedLeg.efpPremium}
           efpAgreedStatus={selectedLeg.efpAgreedStatus}
           efpFixedValue={selectedLeg.efpFixedValue}
+          mtmFutureMonth={selectedLeg.mtmFutureMonth}
         />
       )}
     </Layout>
