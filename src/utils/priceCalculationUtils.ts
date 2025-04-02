@@ -119,6 +119,8 @@ async function fetchForwardPrice(
   monthCode: string
 ): Promise<number | null> {
   try {
+    console.log(`Fetching forward price for ${instrument} with month code ${monthCode}`);
+    
     // Parse the month code (e.g., "Apr-25") to get year and month
     const [monthName, yearShort] = monthCode.split('-');
     const year = 2000 + parseInt(yearShort);
@@ -133,6 +135,8 @@ async function fetchForwardPrice(
     const forwardDate = new Date(year, monthIndex, 1);
     const formattedDate = forwardDate.toISOString().split('T')[0];
     
+    console.log(`Looking for forward price for date: ${formattedDate}`);
+    
     // Query pricing_instruments to get the instrument ID
     const { data: instrumentData, error: instrumentError } = await supabase
       .from('pricing_instruments')
@@ -144,6 +148,8 @@ async function fetchForwardPrice(
       console.error('Error fetching instrument ID:', instrumentError);
       return null;
     }
+    
+    console.log(`Found instrument ID for ${instrument}: ${instrumentData.id}`);
     
     // Query forward_prices to get the price for this instrument and month
     const { data: forwardData, error: forwardError } = await supabase
@@ -159,6 +165,7 @@ async function fetchForwardPrice(
     }
     
     if (forwardData) {
+      console.log(`Found forward price for ${instrument} ${monthCode}: ${forwardData.price}`);
       return forwardData.price;
     }
     
@@ -176,33 +183,46 @@ async function fetchForwardPrice(
 export const calculateMTMPrice = async (
   formula: PricingFormula | PhysicalTradeLeg,
   startDate?: Date,
-  endDate?: Date
+  endDate?: Date,
+  mtmFutureMonth?: string
 ): Promise<{ price: number; details: MTMPriceDetail }> => {
+  console.log('calculateMTMPrice called with params:', { 
+    formula, 
+    startDate, 
+    endDate, 
+    mtmFutureMonth: mtmFutureMonth || formula['mtmFutureMonth']
+  });
+
+  // Check if an explicit mtmFutureMonth was provided or is available in the formula
+  const effectiveMtmFutureMonth = mtmFutureMonth || 
+    ('mtmFutureMonth' in formula ? formula.mtmFutureMonth as string : undefined);
+
   // Check if this is a leg with future pricing period that needs forward price calculation
-  if ('pricingPeriodStart' in formula && 
-      'pricingPeriodEnd' in formula && 
-      'mtmFutureMonth' in formula && 
-      formula.mtmFutureMonth && 
-      startDate && 
-      endDate && 
+  if (effectiveMtmFutureMonth && 
+      startDate && endDate && 
       isDateRangeInFuture(startDate, endDate)) {
-    return calculateFutureMTMPrice(formula as PhysicalTradeLeg);
+    console.log(`Using future MTM calculation with month: ${effectiveMtmFutureMonth}`);
+    return calculateFutureMTMPrice(formula as any, effectiveMtmFutureMonth);
   }
   
   // Check if this is a leg with EFP properties
   if ('efpPremium' in formula && formula.efpPremium !== undefined) {
+    console.log('Using EFP MTM calculation');
     return calculateEfpMTMPrice(formula as PhysicalTradeLeg);
   }
   
   // Handle standard formula calculation
+  console.log('Using standard MTM calculation');
   return calculateStandardMTMPrice(formula as PricingFormula);
 };
 
 // New function to handle MTM calculation for future trades with specified month
 const calculateFutureMTMPrice = async (
-  leg: PhysicalTradeLeg
+  leg: PhysicalTradeLeg | PricingFormula,
+  mtmFutureMonth: string
 ): Promise<{ price: number; details: MTMPriceDetail }> => {
-  const mtmFutureMonth = leg.mtmFutureMonth as string;
+  console.log(`calculateFutureMTMPrice called with month: ${mtmFutureMonth}`);
+  
   const details: MTMPriceDetail = {
     instruments: {} as Record<Instrument, { price: number; date: Date | null }>,
     evaluatedPrice: 0,
@@ -210,15 +230,20 @@ const calculateFutureMTMPrice = async (
   };
   
   // If the leg has an MTM formula, use it to determine which instruments to fetch
-  if (leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+  if ('mtmFormula' in leg && leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+    console.log('Using MTM formula for future calculation:', leg.mtmFormula);
     const instruments = extractInstrumentsFromFormula(leg.mtmFormula);
+    console.log('Extracted instruments from formula:', instruments);
+    
     const instrumentPrices: Record<string, number> = {};
     
     // Fetch forward prices for each instrument based on the specified month
     for (const instrument of instruments) {
+      console.log(`Fetching forward price for ${instrument} with month ${mtmFutureMonth}`);
       const forwardPrice = await fetchForwardPrice(instrument, mtmFutureMonth);
       
       if (forwardPrice !== null) {
+        console.log(`Found forward price for ${instrument}: ${forwardPrice}`);
         details.instruments[instrument] = {
           price: forwardPrice,
           date: null // We don't have a specific date for forward prices
@@ -226,6 +251,7 @@ const calculateFutureMTMPrice = async (
         
         instrumentPrices[instrument] = forwardPrice;
       } else if (MOCK_PRICES[instrument]) {
+        console.log(`Using mock price for ${instrument}: ${MOCK_PRICES[instrument]}`);
         details.instruments[instrument] = {
           price: MOCK_PRICES[instrument],
           date: new Date()
@@ -236,18 +262,63 @@ const calculateFutureMTMPrice = async (
     }
     
     // Calculate price using formula evaluation
+    console.log('Evaluating formula with prices:', instrumentPrices);
     const price = applyPricingFormula(leg.mtmFormula, instrumentPrices);
+    console.log(`Formula evaluation result: ${price}`);
     details.evaluatedPrice = price;
     
     return { price, details };
   } 
+  // If leg has tokens property directly, use it (for PricingFormula objects)
+  else if ('tokens' in leg && leg.tokens && leg.tokens.length > 0) {
+    console.log('Using direct tokens for future calculation:', leg.tokens);
+    const instruments = extractInstrumentsFromFormula(leg as PricingFormula);
+    console.log('Extracted instruments:', instruments);
+    
+    const instrumentPrices: Record<string, number> = {};
+    
+    // Fetch forward prices for each instrument based on the specified month
+    for (const instrument of instruments) {
+      console.log(`Fetching forward price for ${instrument} with month ${mtmFutureMonth}`);
+      const forwardPrice = await fetchForwardPrice(instrument, mtmFutureMonth);
+      
+      if (forwardPrice !== null) {
+        console.log(`Found forward price for ${instrument}: ${forwardPrice}`);
+        details.instruments[instrument] = {
+          price: forwardPrice,
+          date: null
+        };
+        
+        instrumentPrices[instrument] = forwardPrice;
+      } else if (MOCK_PRICES[instrument]) {
+        console.log(`Using mock price for ${instrument}: ${MOCK_PRICES[instrument]}`);
+        details.instruments[instrument] = {
+          price: MOCK_PRICES[instrument],
+          date: new Date()
+        };
+        
+        instrumentPrices[instrument] = MOCK_PRICES[instrument];
+      }
+    }
+    
+    // Calculate price using formula evaluation
+    console.log('Evaluating formula with prices:', instrumentPrices);
+    const price = applyPricingFormula(leg as PricingFormula, instrumentPrices);
+    console.log(`Formula evaluation result: ${price}`);
+    details.evaluatedPrice = price;
+    
+    return { price, details };
+  }
   // If no MTM formula exists but we have a product, use that as a direct instrument
-  else if (leg.product) {
+  else if ('product' in leg && leg.product) {
     // Try to fetch forward price for the product
     const instrument = `Argus ${leg.product}`;
+    console.log(`Using product-based calculation for ${instrument} with month ${mtmFutureMonth}`);
+    
     const forwardPrice = await fetchForwardPrice(instrument, mtmFutureMonth);
     
     if (forwardPrice !== null) {
+      console.log(`Found forward price for ${instrument}: ${forwardPrice}`);
       details.instruments[instrument] = {
         price: forwardPrice,
         date: null
@@ -256,6 +327,7 @@ const calculateFutureMTMPrice = async (
       details.evaluatedPrice = forwardPrice;
       return { price: forwardPrice, details };
     } else if (MOCK_PRICES[instrument]) {
+      console.log(`Using mock price for ${instrument}: ${MOCK_PRICES[instrument]}`);
       details.instruments[instrument] = {
         price: MOCK_PRICES[instrument],
         date: new Date()
@@ -267,6 +339,7 @@ const calculateFutureMTMPrice = async (
   }
   
   // Fallback to zero if we can't determine a price
+  console.warn(`Could not determine MTM price for future month ${mtmFutureMonth}`);
   return { price: 0, details };
 };
 
@@ -382,19 +455,24 @@ export const calculateTradeLegPrice = async (
   startDate: Date,
   endDate: Date
 ): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
+  console.log('calculateTradeLegPrice called with params:', { formulaOrLeg, startDate, endDate });
+  
   // Check if this is a future pricing period with mtmFutureMonth specified
   if ('mtmFutureMonth' in formulaOrLeg && 
       formulaOrLeg.mtmFutureMonth && 
       isDateRangeInFuture(startDate, endDate)) {
+    console.log(`Using future trade leg calculation with month: ${formulaOrLeg.mtmFutureMonth}`);
     return calculateFutureTradeLegPrice(formulaOrLeg as PhysicalTradeLeg, startDate, endDate);
   }
   
   // Check if this is an EFP trade leg
   if ('efpPremium' in formulaOrLeg && formulaOrLeg.efpPremium !== undefined) {
+    console.log('Using EFP trade leg calculation');
     return calculateEfpTradeLegPrice(formulaOrLeg as PhysicalTradeLeg, startDate, endDate);
   }
   
   // For standard trades, continue with the existing implementation
+  console.log('Using standard trade leg calculation');
   return calculateStandardTradeLegPrice(formulaOrLeg as PricingFormula, startDate, endDate);
 };
 
@@ -404,10 +482,13 @@ const calculateFutureTradeLegPrice = async (
   startDate: Date,
   endDate: Date
 ): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
+  console.log('calculateFutureTradeLegPrice called');
+  
   // This is always a future period
   const periodType: PricingPeriodType = 'future';
   
   const mtmFutureMonth = leg.mtmFutureMonth as string;
+  console.log(`Using month code: ${mtmFutureMonth}`);
   
   // Create price details object
   const priceDetails: PriceDetail = {
@@ -418,14 +499,19 @@ const calculateFutureTradeLegPrice = async (
   
   // If the leg has a formula, use it to determine which instruments to fetch
   if (leg.formula && leg.formula.tokens && leg.formula.tokens.length > 0) {
+    console.log('Using formula for future trade leg calculation:', leg.formula);
     const instruments = extractInstrumentsFromFormula(leg.formula);
+    console.log('Extracted instruments:', instruments);
+    
     const instrumentPrices: Record<string, number> = {};
     
     // Fetch forward prices for each instrument based on the specified month
     for (const instrument of instruments) {
+      console.log(`Fetching forward price for ${instrument} with month ${mtmFutureMonth}`);
       const forwardPrice = await fetchForwardPrice(instrument, mtmFutureMonth);
       
       if (forwardPrice !== null) {
+        console.log(`Found forward price for ${instrument}: ${forwardPrice}`);
         priceDetails.instruments[instrument] = {
           average: forwardPrice,
           prices: [{ date: new Date(), price: forwardPrice }]
@@ -434,6 +520,7 @@ const calculateFutureTradeLegPrice = async (
         instrumentPrices[instrument] = forwardPrice;
       } else if (MOCK_PRICES[instrument]) {
         // Fallback to mock price
+        console.log(`Using mock price for ${instrument}: ${MOCK_PRICES[instrument]}`);
         priceDetails.instruments[instrument] = {
           average: MOCK_PRICES[instrument],
           prices: [{ date: new Date(), price: MOCK_PRICES[instrument] }]
@@ -444,7 +531,9 @@ const calculateFutureTradeLegPrice = async (
     }
     
     // Calculate price using formula evaluation
+    console.log('Evaluating formula with prices:', instrumentPrices);
     const price = applyPricingFormula(leg.formula, instrumentPrices);
+    console.log(`Formula evaluation result: ${price}`);
     priceDetails.evaluatedPrice = price;
     
     return { price, periodType, priceDetails };
@@ -453,21 +542,25 @@ const calculateFutureTradeLegPrice = async (
   // For EFP pricing without a formula
   if (leg.pricingType === 'efp' && leg.efpPremium !== undefined) {
     // Handle EFP pricing for future month
+    console.log('Using EFP-specific future calculation');
     let basePrice = 0;
     const instrumentName = 'ICE GASOIL FUTURES (EFP)';
     
     // For agreed EFP, use the fixed value
     if (leg.efpAgreedStatus && leg.efpFixedValue !== undefined) {
       basePrice = leg.efpFixedValue;
+      console.log(`Using agreed EFP fixed value: ${basePrice}`);
       priceDetails.fixedComponents = [
         { value: leg.efpFixedValue, displayValue: `EFP Fixed: ${leg.efpFixedValue}` }
       ];
     } 
     // For unagreed EFP, fetch the forward price for the target month
     else {
+      console.log(`Fetching future month price for ${instrumentName} with month ${mtmFutureMonth}`);
       const forwardPrice = await fetchForwardPrice(instrumentName, mtmFutureMonth);
       if (forwardPrice !== null) {
         basePrice = forwardPrice;
+        console.log(`Found forward price: ${forwardPrice}`);
         priceDetails.instruments[instrumentName] = {
           average: forwardPrice,
           prices: [{ date: new Date(), price: forwardPrice }]
@@ -475,6 +568,7 @@ const calculateFutureTradeLegPrice = async (
       } else {
         // Fallback to mock price
         basePrice = MOCK_PRICES[instrumentName] || 0;
+        console.log(`Using mock price: ${basePrice}`);
         priceDetails.instruments[instrumentName] = {
           average: basePrice,
           prices: [{ date: new Date(), price: basePrice }]
@@ -484,6 +578,7 @@ const calculateFutureTradeLegPrice = async (
     
     // Add premium to the base price
     const price = basePrice + (leg.efpPremium || 0);
+    console.log(`Final price with premium: ${price}`);
     priceDetails.evaluatedPrice = price;
     
     if (!priceDetails.fixedComponents) {
@@ -497,6 +592,7 @@ const calculateFutureTradeLegPrice = async (
   }
   
   // Fallback to zero if we can't determine a price
+  console.warn('Could not determine price for future trade leg');
   return { 
     price: 0, 
     periodType, 
