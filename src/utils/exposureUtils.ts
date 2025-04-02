@@ -61,6 +61,9 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
             monthlyPricing[pricingMonth][instrumentKey] = 0;
           }
           
+          const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+          const direction = leg.buySell === 'buy' ? 1 : -1;
+          
           // In exposure table: Buy shows as negative in pricing column, Sell as positive
           // For EFP trades, the direction is opposite of the physical trade
           const pricingDirection = direction * -1;
@@ -100,6 +103,8 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
           if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
           
           const instruments = extractInstrumentsFromFormula(leg.formula);
+          const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+          const direction = leg.buySell === 'buy' ? 1 : -1;
           
           instruments.forEach(instrument => {
             if (!monthlyPricing[pricingMonth][instrument]) {
