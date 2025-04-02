@@ -49,19 +49,19 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         
         if (!monthlyPricing[pricingMonth]) monthlyPricing[pricingMonth] = {};
         
-        // Select the appropriate instrument based on agreed status
-        const instrumentKey = leg.efpAgreedStatus 
-          ? 'ICE GASOIL FUTURES'
-          : 'ICE GASOIL FUTURES (EFP)';
+        // Only add exposure for unagreed EFPs
+        if (!leg.efpAgreedStatus) {
+          const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
           
-        if (!monthlyPricing[pricingMonth][instrumentKey]) {
-          monthlyPricing[pricingMonth][instrumentKey] = 0;
+          if (!monthlyPricing[pricingMonth][instrumentKey]) {
+            monthlyPricing[pricingMonth][instrumentKey] = 0;
+          }
+          
+          // In exposure table: Buy shows as negative in pricing column, Sell as positive
+          // For EFP trades, the direction is opposite of the physical trade
+          const pricingDirection = direction * -1;
+          monthlyPricing[pricingMonth][instrumentKey] += volume * pricingDirection;
         }
-        
-        // In exposure table: Buy shows as negative in pricing column, Sell as positive
-        // For EFP trades, the direction is opposite of the physical trade
-        const pricingDirection = direction * -1;
-        monthlyPricing[pricingMonth][instrumentKey] += volume * pricingDirection;
       } 
       else {
         // Standard trades - use the pricing period and formula

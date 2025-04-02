@@ -21,21 +21,18 @@ export const createEfpFormula = (
     // We don't create monthlyDistribution for EFP because it's handled directly in exposureUtils.ts
   };
   
-  // Set the appropriate exposure
-  // For EFP, we track exposure in either ICE GASOIL FUTURES or ICE GASOIL FUTURES (EFP)
-  // depending on whether the EFP is agreed or not
-  const instrumentKey = isAgreed 
-    ? 'ICE GASOIL FUTURES'
-    : 'ICE GASOIL FUTURES (EFP)';
-  
-  // The exposure direction is opposite of the physical trade
-  // Buy physical = sell futures = negative pricing exposure
-  // Sell physical = buy futures = positive pricing exposure
-  const exposureDirection = buySell === 'buy' ? -1 : 1;
-  const exposureValue = quantity * exposureDirection;
-  
-  // Set the exposure
-  formula.exposures.pricing[instrumentKey] = exposureValue;
+  // Set the appropriate exposure only for unagreed EFPs
+  // For EFP, we track exposure in ICE GASOIL FUTURES (EFP) only
+  if (!isAgreed) {
+    // The exposure direction is opposite of the physical trade
+    // Buy physical = sell futures = negative pricing exposure
+    // Sell physical = buy futures = positive pricing exposure
+    const exposureDirection = buySell === 'buy' ? -1 : 1;
+    const exposureValue = quantity * exposureDirection;
+    
+    // Set the exposure
+    formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
+  }
   
   return formula;
 };
@@ -62,17 +59,15 @@ export const updateFormulaWithEfpExposure = (
   updatedFormula.exposures.pricing['ICE GASOIL FUTURES'] = 0;
   updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
   
-  // Set the appropriate exposure
-  const instrumentKey = isAgreed 
-    ? 'ICE GASOIL FUTURES'
-    : 'ICE GASOIL FUTURES (EFP)';
-  
-  // The exposure direction is opposite of the physical trade
-  const exposureDirection = buySell === 'buy' ? -1 : 1;
-  const exposureValue = quantity * exposureDirection;
-  
-  // Set the exposure
-  updatedFormula.exposures.pricing[instrumentKey] = exposureValue;
+  // Only set exposure for unagreed EFPs
+  if (!isAgreed) {
+    // The exposure direction is opposite of the physical trade
+    const exposureDirection = buySell === 'buy' ? -1 : 1;
+    const exposureValue = quantity * exposureDirection;
+    
+    // Set the exposure
+    updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
+  }
   
   return updatedFormula;
 };
