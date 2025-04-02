@@ -21,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
+import { createEfpFormula, updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -86,6 +87,20 @@ const EFPPricingForm = ({
   onChange: (field: keyof LegFormState, value: any) => void;
 }) => {
   const availableMonths = getAvailableEfpMonths();
+
+  useEffect(() => {
+    if (values.pricingType === 'efp') {
+      const updatedFormula = createEfpFormula(
+        values.quantity || 0,
+        values.buySell,
+        values.efpAgreedStatus,
+        values.efpDesignatedMonth
+      );
+      
+      onChange('formula', updatedFormula);
+    }
+  }, [values.pricingType, values.quantity, values.buySell, values.efpAgreedStatus, values.efpDesignatedMonth]);
+
   return <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -211,6 +226,20 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         monthlyDistribution
       };
     }
+    
+    if (['pricingType', 'buySell', 'quantity', 'efpAgreedStatus', 'efpDesignatedMonth'].includes(field)) {
+      const leg = newLegs[index];
+      
+      if (leg.pricingType === 'efp') {
+        leg.formula = createEfpFormula(
+          leg.quantity || 0,
+          leg.buySell,
+          leg.efpAgreedStatus,
+          leg.efpDesignatedMonth
+        );
+      }
+    }
+    
     setLegs(newLegs);
   };
 
@@ -245,36 +274,9 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         createdAt: initialData?.createdAt || new Date(),
         updatedAt: new Date()
       };
-      const tradeLegs: PhysicalTradeLeg[] = legs.map((legForm, index) => {
-        const legReference = initialData?.legs?.[index]?.legReference || generateLegReference(tradeReference, index);
-        const legData: PhysicalTradeLeg = {
-          id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
-          legReference,
-          parentTradeId: parentTrade.id,
-          buySell: legForm.buySell,
-          product: legForm.product,
-          sustainability: legForm.sustainability,
-          incoTerm: legForm.incoTerm,
-          quantity: legForm.quantity,
-          tolerance: legForm.tolerance,
-          loadingPeriodStart: legForm.loadingPeriodStart,
-          loadingPeriodEnd: legForm.loadingPeriodEnd,
-          pricingPeriodStart: legForm.pricingPeriodStart,
-          pricingPeriodEnd: legForm.pricingPeriodEnd,
-          unit: legForm.unit,
-          paymentTerm: legForm.paymentTerm,
-          creditStatus: legForm.creditStatus,
-          formula: legForm.formula,
-          mtmFormula: legForm.mtmFormula,
-          pricingType: legForm.pricingType,
-          efpPremium: legForm.efpPremium !== null ? legForm.efpPremium : undefined,
-          efpAgreedStatus: legForm.efpAgreedStatus,
-          efpFixedValue: legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined,
-          efpDesignatedMonth: legForm.efpDesignatedMonth,
-          mtmFutureMonth: legForm.mtmFutureMonth
-        };
-        return legData;
-      });
+      
+      const tradeLegs = prepareLegsForSubmission(legs);
+      
       const tradeData: any = {
         ...parentTrade,
         legs: tradeLegs,
@@ -286,6 +288,51 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         description: 'Check all required fields and date ranges above.'
       });
     }
+  };
+
+  const prepareLegsForSubmission = (legs: LegFormState[]): PhysicalTradeLeg[] => {
+    return legs.map((legForm, index) => {
+      const legReference = initialData?.legs?.[index]?.legReference || generateLegReference(tradeReference, index);
+      
+      let formula = legForm.formula;
+      if (legForm.pricingType === 'efp') {
+        formula = createEfpFormula(
+          legForm.quantity || 0,
+          legForm.buySell,
+          legForm.efpAgreedStatus,
+          legForm.efpDesignatedMonth
+        );
+      }
+      
+      const legData: PhysicalTradeLeg = {
+        id: initialData?.legs?.[index]?.id || crypto.randomUUID(),
+        legReference,
+        parentTradeId: initialData?.id || '',
+        buySell: legForm.buySell,
+        product: legForm.product,
+        sustainability: legForm.sustainability,
+        incoTerm: legForm.incoTerm,
+        quantity: legForm.quantity,
+        tolerance: legForm.tolerance,
+        loadingPeriodStart: legForm.loadingPeriodStart,
+        loadingPeriodEnd: legForm.loadingPeriodEnd,
+        pricingPeriodStart: legForm.pricingPeriodStart,
+        pricingPeriodEnd: legForm.pricingPeriodEnd,
+        unit: legForm.unit,
+        paymentTerm: legForm.paymentTerm,
+        creditStatus: legForm.creditStatus,
+        formula: formula,
+        mtmFormula: legForm.mtmFormula,
+        pricingType: legForm.pricingType,
+        efpPremium: legForm.efpPremium !== null ? legForm.efpPremium : undefined,
+        efpAgreedStatus: legForm.efpAgreedStatus,
+        efpFixedValue: legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined,
+        efpDesignatedMonth: legForm.efpDesignatedMonth,
+        mtmFutureMonth: legForm.mtmFutureMonth
+      };
+      
+      return legData;
+    });
   };
 
   const handleNumberInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {

@@ -59,7 +59,9 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         }
         
         // In exposure table: Buy shows as negative in pricing column, Sell as positive
-        monthlyPricing[pricingMonth][instrumentKey] += volume * (direction * -1);
+        // For EFP trades, the direction is opposite of the physical trade
+        const pricingDirection = direction * -1;
+        monthlyPricing[pricingMonth][instrumentKey] += volume * pricingDirection;
       } 
       else {
         // Standard trades - use the pricing period and formula
