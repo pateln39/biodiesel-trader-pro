@@ -20,6 +20,7 @@ import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation'
 import { Switch } from '@/components/ui/switch';
 import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
+import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -50,6 +51,7 @@ interface LegFormState {
   efpAgreedStatus: boolean;
   efpFixedValue: number | null;
   efpDesignatedMonth: string;
+  mtmFutureMonth: string;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -72,7 +74,8 @@ const createDefaultLeg = (): LegFormState => ({
   efpPremium: null,
   efpAgreedStatus: false,
   efpFixedValue: null,
-  efpDesignatedMonth: getAvailableEfpMonths()[0]
+  efpDesignatedMonth: getAvailableEfpMonths()[0],
+  mtmFutureMonth: "",
 });
 
 const EFPPricingForm = ({
@@ -149,7 +152,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     efpPremium: leg.efpPremium || null,
     efpAgreedStatus: leg.efpAgreedStatus || false,
     efpFixedValue: leg.efpFixedValue || null,
-    efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0]
+    efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0],
+    mtmFutureMonth: leg.mtmFutureMonth || "",
   })) || [createDefaultLeg()]);
 
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
@@ -185,64 +189,20 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const updateLeg = (index: number, field: keyof LegFormState, value: any) => {
     const newLegs = [...legs];
-    if (field === 'pricingType') {
-      newLegs[index].pricingType = value;
-      if (value === 'efp') {
-        newLegs[index].formula = createEmptyFormula();
-        const legQuantity = newLegs[index].quantity || 0;
-        const exposureDirection = newLegs[index].buySell === 'buy' ? -1 : 1;
-        const emptyResult = createEmptyExposureResult();
-        if (!newLegs[index].efpAgreedStatus) {
-          emptyResult.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
+    (newLegs[index] as any)[field] = value;
+    
+    if (['pricingPeriodStart', 'pricingPeriodEnd'].includes(field)) {
+      const leg = newLegs[index];
+      if (leg.pricingPeriodStart && leg.pricingPeriodEnd) {
+        if (isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd)) {
+          const availableMonths = getMonthsInDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd);
+          if (!leg.mtmFutureMonth || !availableMonths.includes(leg.mtmFutureMonth)) {
+            leg.mtmFutureMonth = getDefaultMtmFutureMonth(leg.pricingPeriodStart);
+          }
         }
-        newLegs[index].formula = {
-          tokens: [],
-          exposures: emptyResult
-        };
       }
-    } else if (field === 'efpAgreedStatus') {
-      newLegs[index].efpAgreedStatus = value;
-      if (newLegs[index].pricingType === 'efp') {
-        const legQuantity = newLegs[index].quantity || 0;
-        const exposureDirection = newLegs[index].buySell === 'buy' ? -1 : 1;
-        if (!newLegs[index].formula) {
-          newLegs[index].formula = createEmptyFormula();
-        }
-        const updatedExposures = {
-          ...newLegs[index].formula.exposures
-        };
-        updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
-        if (!value) {
-          updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
-        }
-        newLegs[index].formula = {
-          ...newLegs[index].formula,
-          exposures: updatedExposures
-        };
-      }
-    } else if (['quantity', 'buySell'].includes(field) && newLegs[index].pricingType === 'efp') {
-      (newLegs[index] as any)[field] = value;
-      const legQuantity = field === 'quantity' ? value || 0 : newLegs[index].quantity || 0;
-      const buySellValue = field === 'buySell' ? value : newLegs[index].buySell;
-      const exposureDirection = buySellValue === 'buy' ? -1 : 1;
-      if (!newLegs[index].formula) {
-        newLegs[index].formula = createEmptyFormula();
-      }
-      const updatedExposures = {
-        ...newLegs[index].formula.exposures
-      };
-      updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
-      if (!newLegs[index].efpAgreedStatus) {
-        updatedExposures.pricing['ICE GASOIL FUTURES (EFP)'] = legQuantity * exposureDirection;
-      }
-      newLegs[index].formula = {
-        ...newLegs[index].formula,
-        exposures: updatedExposures
-      };
-      return;
-    } else {
-      (newLegs[index] as any)[field] = value;
     }
+    
     if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && newLegs[index].formula && newLegs[index].pricingPeriodStart && newLegs[index].pricingPeriodEnd && newLegs[index].pricingType !== 'efp') {
       const leg = newLegs[index];
       const monthlyDistribution = calculateMonthlyPricingDistribution(leg.formula.tokens, leg.quantity || 0, leg.buySell, leg.pricingPeriodStart, leg.pricingPeriodEnd);
@@ -267,6 +227,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         } else {
           validations.push(validateRequiredField(leg.efpDesignatedMonth, `Leg ${legNumber} - EFP Designated Month`));
         }
+      }
+      if (leg.pricingPeriodStart && leg.pricingPeriodEnd && 
+          isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd)) {
+        validations.push(validateRequiredField(leg.mtmFutureMonth, `Leg ${legNumber} - MTM Future Month`));
       }
       return validateFields(validations);
     });
@@ -306,7 +270,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           efpPremium: legForm.efpPremium !== null ? legForm.efpPremium : undefined,
           efpAgreedStatus: legForm.efpAgreedStatus,
           efpFixedValue: legForm.efpFixedValue !== null ? legForm.efpFixedValue : undefined,
-          efpDesignatedMonth: legForm.efpDesignatedMonth
+          efpDesignatedMonth: legForm.efpDesignatedMonth,
+          mtmFutureMonth: legForm.mtmFutureMonth
         };
         return legData;
       });
@@ -505,7 +470,32 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                   <DatePicker date={leg.pricingPeriodEnd} setDate={date => updateLeg(legIndex, 'pricingPeriodEnd', date)} />
                 </div>
               </div>
-
+              
+              {leg.pricingPeriodStart && leg.pricingPeriodEnd && 
+               isDateRangeInFuture(leg.pricingPeriodStart, leg.pricingPeriodEnd) && (
+                <div className="mb-4">
+                  <Label htmlFor={`leg-${legIndex}-mtm-future-month`} className="text-orange-500">
+                    MTM Future Month <span className="text-xs">(Required for future pricing periods)</span>
+                  </Label>
+                  <Select 
+                    value={leg.mtmFutureMonth} 
+                    onValueChange={value => updateLeg(legIndex, 'mtmFutureMonth', value)}
+                  >
+                    <SelectTrigger id={`leg-${legIndex}-mtm-future-month`}>
+                      <SelectValue placeholder="Select month for MTM calculation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getMonthsInDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd).map(month => (
+                        <SelectItem key={month} value={month}>{month}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Select which month's forward prices to use for MTM calculations
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label>Loading Period Start</Label>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useQuery } from '@tanstack/react-query';
@@ -22,6 +21,7 @@ import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
 import { PaperTrade } from '@/types/paper';
 import { formatMTMDisplay } from '@/utils/tradeUtils';
 import { toast } from 'sonner';
+import { isDateRangeInFuture } from '@/utils/mtmUtils';
 
 const MTMPage = () => {
   const { trades, loading: tradesLoading, refetchTrades } = useTrades();
@@ -40,7 +40,6 @@ const MTMPage = () => {
   } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Update the type predicate to ensure compatibility
   const physicalTrades = trades.filter(
     (trade): trade is PhysicalTrade => trade.tradeType === 'physical' && 'physicalType' in trade
   );
@@ -65,6 +64,7 @@ const MTMPage = () => {
     efpPremium?: number;
     efpAgreedStatus?: boolean;
     efpFixedValue?: number;
+    mtmFutureMonth?: string;
   };
 
   const tradeLegs = physicalTrades.flatMap(trade => 
@@ -96,7 +96,8 @@ const MTMPage = () => {
         pricingType: leg.pricingType,
         efpPremium: leg.efpPremium,
         efpAgreedStatus: leg.efpAgreedStatus,
-        efpFixedValue: leg.efpFixedValue
+        efpFixedValue: leg.efpFixedValue,
+        mtmFutureMonth: leg.mtmFutureMonth
       };
     }) || []
   );
@@ -109,7 +110,92 @@ const MTMPage = () => {
       const positions = await Promise.all(
         tradeLegs.map(async (leg) => {
           try {
-            // For EFP trades, pass the leg directly instead of just the formula
+            if (isDateRangeInFuture(leg.startDate, leg.endDate) && leg.mtmFutureMonth) {
+              if (leg.pricingType === 'efp') {
+                const efpLeg: PhysicalTradeLeg = {
+                  id: leg.legId,
+                  parentTradeId: '',
+                  legReference: leg.legReference,
+                  buySell: leg.buySell as 'buy' | 'sell',
+                  product: leg.product,
+                  quantity: leg.quantity,
+                  loadingPeriodStart: new Date(),
+                  loadingPeriodEnd: new Date(),
+                  pricingPeriodStart: leg.startDate,
+                  pricingPeriodEnd: leg.endDate,
+                  pricingType: 'efp',
+                  efpPremium: leg.efpPremium,
+                  efpAgreedStatus: leg.efpAgreedStatus,
+                  efpFixedValue: leg.efpFixedValue,
+                  mtmFutureMonth: leg.mtmFutureMonth
+                };
+                
+                const priceResult = await calculateTradeLegPrice(
+                  efpLeg,
+                  leg.startDate,
+                  leg.endDate
+                );
+                
+                const mtmPriceResult = await calculateMTMPrice(
+                  leg.mtmFormula || efpLeg,
+                  leg.startDate,
+                  leg.endDate
+                );
+                
+                const mtmValue = calculateMTMValue(
+                  priceResult.price,
+                  mtmPriceResult.price,
+                  leg.quantity,
+                  leg.buySell as 'buy' | 'sell'
+                );
+                
+                return {
+                  ...leg,
+                  calculatedPrice: priceResult.price,
+                  mtmCalculatedPrice: mtmPriceResult.price,
+                  mtmValue,
+                  periodType: priceResult.periodType
+                };
+              } else if (leg.formula) {
+                const enhancedFormula = { 
+                  ...leg.formula,
+                  mtmFutureMonth: leg.mtmFutureMonth
+                };
+                
+                const priceResult = await calculateTradeLegPrice(
+                  enhancedFormula,
+                  leg.startDate,
+                  leg.endDate
+                );
+                
+                const enhancedMtmFormula = {
+                  ...(leg.mtmFormula || leg.formula),
+                  mtmFutureMonth: leg.mtmFutureMonth
+                };
+                
+                const mtmPriceResult = await calculateMTMPrice(
+                  enhancedMtmFormula,
+                  leg.startDate,
+                  leg.endDate
+                );
+                
+                const mtmValue = calculateMTMValue(
+                  priceResult.price,
+                  mtmPriceResult.price,
+                  leg.quantity,
+                  leg.buySell as 'buy' | 'sell'
+                );
+                
+                return {
+                  ...leg,
+                  calculatedPrice: priceResult.price,
+                  mtmCalculatedPrice: mtmPriceResult.price,
+                  mtmValue,
+                  periodType: priceResult.periodType
+                };
+              }
+            }
+            
             if (leg.pricingType === 'efp') {
               const efpLeg: PhysicalTradeLeg = {
                 id: leg.legId,
@@ -128,18 +214,15 @@ const MTMPage = () => {
                 efpFixedValue: leg.efpFixedValue
               };
               
-              // Calculate trade price for EFP leg
               const priceResult = await calculateTradeLegPrice(
                 efpLeg,
                 leg.startDate,
                 leg.endDate
               );
               
-              // Use mtmFormula if available, otherwise use EFP calculation
               const mtmToUse = leg.mtmFormula || efpLeg;
               const mtmPriceResult = await calculateMTMPrice(mtmToUse);
               
-              // Calculate MTM value using the prices and trade direction
               const mtmValue = calculateMTMValue(
                 priceResult.price,
                 mtmPriceResult.price,
@@ -153,22 +236,18 @@ const MTMPage = () => {
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
                 periodType: priceResult.periodType
-              } as MTMPosition;
+              };
             } 
-            // Standard trade calculation
             else if (leg.formula) {
-              // Calculate the trade price using historical data
               const priceResult = await calculateTradeLegPrice(
                 leg.formula,
                 leg.startDate,
                 leg.endDate
               );
               
-              // Use mtmFormula if available, otherwise fall back to regular formula
               const mtmFormula = leg.mtmFormula || leg.formula;
               const mtmPriceResult = await calculateMTMPrice(mtmFormula);
               
-              // Calculate MTM value using the prices and trade direction
               const mtmValue = calculateMTMValue(
                 priceResult.price,
                 mtmPriceResult.price,
@@ -182,14 +261,14 @@ const MTMPage = () => {
                 mtmCalculatedPrice: mtmPriceResult.price,
                 mtmValue,
                 periodType: priceResult.periodType
-              } as MTMPosition;
+              };
             } else {
-              return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
+              return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
             }
           } catch (error) {
             console.error(`Error calculating MTM for leg ${leg.legId}:`, error);
             toast.error(`Error calculating MTM for leg ${leg.legReference}`);
-            return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 } as MTMPosition;
+            return { ...leg, calculatedPrice: 0, mtmCalculatedPrice: 0, mtmValue: 0 };
           }
         })
       );
@@ -318,6 +397,9 @@ const MTMPage = () => {
                         {position.product}
                         {position.pricingType === 'efp' && (
                           <Badge variant="outline" className="ml-2">EFP</Badge>
+                        )}
+                        {isDateRangeInFuture(position.startDate, position.endDate) && position.mtmFutureMonth && (
+                          <Badge variant="secondary" className="ml-2">Future: {position.mtmFutureMonth}</Badge>
                         )}
                       </TableCell>
                       <TableCell>

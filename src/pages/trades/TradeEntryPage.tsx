@@ -67,7 +67,8 @@ const TradeEntryPage = () => {
           credit_status: leg.creditStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
-          pricing_type: leg.pricingType, // Store the pricing type
+          pricing_type: leg.pricingType,
+          mtm_future_month: leg.mtmFutureMonth
         };
 
         // Add EFP fields if they exist
