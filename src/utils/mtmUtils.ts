@@ -77,3 +77,32 @@ export function parseMonthCodeToDbDate(monthCode: string): string {
   
   return `${fullYear}-${month}-01`;
 }
+
+/**
+ * Convert a month code to a JavaScript Date object
+ * @param monthCode Month code in format "MMM-YY" (e.g., "Apr-25")
+ * @returns A Date object representing the first day of that month
+ */
+export function monthCodeToDate(monthCode: string): Date | null {
+  try {
+    const dbDateStr = parseMonthCodeToDbDate(monthCode);
+    if (!dbDateStr) return null;
+    
+    return new Date(dbDateStr);
+  } catch (error) {
+    console.error(`Error converting month code ${monthCode} to date:`, error);
+    return null;
+  }
+}
+
+/**
+ * Check if a string is a valid month code
+ * @param str String to check
+ * @returns Boolean indicating if the string is a valid month code
+ */
+export function isValidMonthCode(str: string): boolean {
+  if (!str) return false;
+  
+  const monthCodePattern = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}$/;
+  return monthCodePattern.test(str);
+}

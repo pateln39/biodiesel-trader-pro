@@ -119,6 +119,7 @@ const MTMPage = () => {
               console.log(`Future period detected for leg ${leg.legReference}`);
               
               if (leg.pricingType === 'efp') {
+                // Create a proper PhysicalTradeLeg for EFP calculation
                 const efpLeg: PhysicalTradeLeg = {
                   id: leg.legId,
                   parentTradeId: '',
@@ -141,7 +142,8 @@ const MTMPage = () => {
                 const priceResult = await calculateTradeLegPrice(
                   efpLeg,
                   leg.startDate,
-                  leg.endDate
+                  leg.endDate,
+                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
                 );
                 console.log(`Trade price result for ${leg.legReference}:`, priceResult);
                 
@@ -172,29 +174,24 @@ const MTMPage = () => {
               } else if (leg.formula) {
                 console.log(`Using formula for future leg ${leg.legReference}:`, leg.formula);
                 
-                // Add mtmFutureMonth to the leg object for calculation
-                const legWithFutureMonth = {
-                  ...leg,
-                  mtmFutureMonth: leg.mtmFutureMonth
-                };
-                
                 console.log(`Calculating trade price for formula future leg ${leg.legReference}`);
                 const priceResult = await calculateTradeLegPrice(
-                  legWithFutureMonth as PhysicalTradeLeg,
+                  leg.formula,
                   leg.startDate,
-                  leg.endDate
+                  leg.endDate,
+                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
                 );
                 console.log(`Trade price result for ${leg.legReference}:`, priceResult);
                 
-                // Add mtmFutureMonth to the mtmFormula as well
-                const mtmFormulaWithMonth = leg.mtmFormula || leg.formula;
+                // Use mtmFormula if available, otherwise use regular formula
+                const mtmFormulaToUse = leg.mtmFormula || leg.formula;
                 
                 console.log(`Calculating MTM price for formula future leg ${leg.legReference}`);
                 const mtmPriceResult = await calculateMTMPrice(
-                  mtmFormulaWithMonth,
+                  mtmFormulaToUse,
                   leg.startDate,
                   leg.endDate,
-                  leg.mtmFutureMonth // Ensure we pass mtmFutureMonth explicitly
+                  leg.mtmFutureMonth // Pass mtmFutureMonth explicitly
                 );
                 console.log(`MTM price result for ${leg.legReference}:`, mtmPriceResult);
                 
@@ -232,7 +229,8 @@ const MTMPage = () => {
                 pricingType: 'efp',
                 efpPremium: leg.efpPremium,
                 efpAgreedStatus: leg.efpAgreedStatus,
-                efpFixedValue: leg.efpFixedValue
+                efpFixedValue: leg.efpFixedValue,
+                mtmFutureMonth: leg.mtmFutureMonth
               };
               
               const priceResult = await calculateTradeLegPrice(

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -38,6 +37,7 @@ interface PriceDetailsProps {
   efpPremium?: number;
   efpAgreedStatus?: boolean;
   efpFixedValue?: number;
+  mtmFutureMonth?: string;
 }
 
 const PriceDetails: React.FC<PriceDetailsProps> = ({
@@ -54,6 +54,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   efpPremium,
   efpAgreedStatus,
   efpFixedValue,
+  mtmFutureMonth,
 }) => {
   const [loading, setLoading] = useState(true);
   const [priceData, setPriceData] = useState<{
@@ -97,20 +98,27 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             pricingType: 'efp',
             efpPremium,
             efpAgreedStatus,
-            efpFixedValue
+            efpFixedValue,
+            mtmFutureMonth
           };
           
           // Calculate trade price for EFP
           const tradePriceResult = await calculateTradeLegPrice(
             efpLeg,
             validStartDate,
-            validEndDate
+            validEndDate,
+            mtmFutureMonth
           );
           setPriceData(tradePriceResult);
           
           // Use mtmFormula if available, otherwise use the EFP leg
           const formulaToUse = mtmFormula || efpLeg;
-          const mtmPriceResult = await calculateMTMPrice(formulaToUse);
+          const mtmPriceResult = await calculateMTMPrice(
+            formulaToUse,
+            validStartDate,
+            validEndDate,
+            mtmFutureMonth
+          );
           
           setMtmPriceData({
             price: mtmPriceResult.price,
@@ -130,12 +138,18 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
           const tradePriceResult = await calculateTradeLegPrice(
             formula,
             validStartDate,
-            validEndDate
+            validEndDate,
+            mtmFutureMonth
           );
           setPriceData(tradePriceResult);
           
           const formulaToUse = mtmFormula || formula;
-          const mtmPriceResult = await calculateMTMPrice(formulaToUse);
+          const mtmPriceResult = await calculateMTMPrice(
+            formulaToUse,
+            validStartDate,
+            validEndDate,
+            mtmFutureMonth
+          );
           setMtmPriceData({
             price: mtmPriceResult.price,
             priceDetails: mtmPriceResult.details
@@ -157,7 +171,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
     };
 
     fetchPriceData();
-  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell, isEfp, efpPremium, efpAgreedStatus, efpFixedValue, tradeLegId]);
+  }, [isOpen, formula, mtmFormula, startDate, endDate, quantity, buySell, isEfp, efpPremium, efpAgreedStatus, efpFixedValue, tradeLegId, mtmFutureMonth]);
 
   const getInstrumentsFromPriceData = (data: any) => {
     if (!data || !data.priceDetails || !data.priceDetails.instruments) return [];
@@ -167,13 +181,11 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const tradeInstruments = priceData ? getInstrumentsFromPriceData(priceData) : [];
   const mtmInstruments = mtmPriceData ? getInstrumentsFromPriceData(mtmPriceData) : [];
 
-  // Helper to determine if this is an EFP with fixed values (no price series)
   const isEfpWithFixedValues = isEfp && efpAgreedStatus && efpFixedValue !== undefined;
 
   const getPricesByDate = () => {
     if (!priceData) return [];
     
-    // For EFP with fixed value, return empty array as there are no price series to display
     if (isEfpWithFixedValues) {
       return [];
     }
@@ -193,7 +205,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             prices: {
               [instrument]: price
             },
-            formulaPrice: 0 // Initialize formula price
+            formulaPrice: 0
           });
         } else {
           const existingEntry = dateMap.get(dateStr)!;
@@ -202,29 +214,25 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
       });
     });
     
-    // Calculate formula price for each date
     if (formula && !isEfp) {
       const entries = Array.from(dateMap.values());
       
       entries.forEach(entry => {
         const dailyInstrumentPrices: Record<Instrument, number> = {} as Record<Instrument, number>;
         
-        // Fill in the instrument prices for this day
         tradeInstruments.forEach(instrument => {
           dailyInstrumentPrices[instrument as Instrument] = entry.prices[instrument] || 0;
         });
         
-        // Apply the formula to get the daily price
         entry.formulaPrice = applyPricingFormula(formula, dailyInstrumentPrices);
       });
       
       return entries.sort((a, b) => b.date.getTime() - a.date.getTime());
     } else if (isEfp && !isEfpWithFixedValues) {
-      // For unagreed EFP, add premium to each price
       const entries = Array.from(dateMap.values());
       
       entries.forEach(entry => {
-        const instrument = tradeInstruments[0]; // Usually ICE GASOIL FUTURES
+        const instrument = tradeInstruments[0];
         if (instrument && entry.prices[instrument]) {
           entry.formulaPrice = entry.prices[instrument] + (efpPremium || 0);
         }
@@ -256,6 +264,9 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             Price Details
             {isEfp && (
               <Badge variant="outline" className="ml-2">EFP</Badge>
+            )}
+            {mtmFutureMonth && (
+              <Badge variant="secondary" className="ml-2">Future: {mtmFutureMonth}</Badge>
             )}
           </DialogTitle>
           <DialogDescription>
@@ -333,7 +344,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                       </Card>
                     </div>
 
-                    {/* Display EFP Trade Components if this is an EFP trade */}
                     {isEfp && priceData.priceDetails.fixedComponents && (
                       <Card className="mb-4">
                         <CardHeader className="pb-2">
@@ -494,7 +504,6 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
                       MTM Components
                     </h3>
 
-                    {/* Display EFP fixed components if present */}
                     {isEfp && mtmPriceData.priceDetails.fixedComponents && (
                       <Card className="mb-4">
                         <CardHeader className="bg-muted/50 pb-3">
