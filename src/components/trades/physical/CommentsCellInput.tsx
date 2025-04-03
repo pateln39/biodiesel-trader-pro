@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,57 +18,90 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
 }) => {
   const [comments, setComments] = useState<string>(initialValue);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [localComments, setLocalComments] = useState<string>(initialValue);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Function to save comments to the database
+  const saveComments = useCallback(async (newComments: string, showToast: boolean = false) => {
+    if (newComments === initialValue) return; // Don't save if nothing changed
+    
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('trade_legs')
+        .update({ comments: newComments })
+        .eq('id', legId);
 
-  // Create a debounced save function
-  const saveComments = useCallback(
-    debounce(async (newComments: string) => {
-      setIsLoading(true);
-      try {
-        const { error } = await supabase
-          .from('trade_legs')
-          .update({ comments: newComments })
-          .eq('id', legId);
-
-        if (error) {
-          console.error('Error saving comments:', error);
-          toast.error('Failed to save comments', {
-            description: error.message,
-          });
-        } else {
-          toast.success('Comments saved', {
-            description: 'Your comment has been saved successfully.',
-          });
-        }
-      } catch (err) {
-        console.error('Exception when saving comments:', err);
-      } finally {
-        setIsLoading(false);
+      if (error) {
+        console.error('Error saving comments:', error);
+        toast.error('Failed to save comments', {
+          description: error.message,
+        });
+      } else if (showToast) {
+        toast.success('Comments saved', {
+          description: 'Your comment has been saved successfully.',
+        });
       }
-    }, 800),
-    [legId]
-  );
+    } catch (err) {
+      console.error('Exception when saving comments:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [legId, initialValue]);
 
+  // Set up auto-save timer
   useEffect(() => {
-    // Clean up the debounced function on unmount
+    // Clear existing timer if there is one
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    // Only start a new timer if the comments have changed
+    if (localComments !== initialValue && localComments !== comments) {
+      timerRef.current = setTimeout(() => {
+        setComments(localComments);
+        saveComments(localComments, false); // Auto-save without toast
+      }, 10000); // 10 seconds
+    }
+
     return () => {
-      saveComments.cancel();
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
-  }, [saveComments]);
+  }, [localComments, comments, initialValue, saveComments]);
+
+  // Clear timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newComments = e.target.value;
-    setComments(newComments);
-    saveComments(newComments);
+    setLocalComments(e.target.value);
   };
 
   const handleBlur = () => {
-    saveComments.flush();
+    // If there are unsaved changes, save them and show toast
+    if (localComments !== comments) {
+      setComments(localComments);
+      saveComments(localComments, true); // Save with toast notification
+    }
+    
+    // Clear any pending auto-save
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   };
 
   return (
     <div className="relative w-full">
       <Textarea
-        value={comments}
+        value={localComments}
         onChange={handleChange}
         onBlur={handleBlur}
         placeholder="Add comments..."
