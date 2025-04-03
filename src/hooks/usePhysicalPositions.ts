@@ -3,7 +3,6 @@ import { useEffect, useMemo } from 'react';
 import { useTrades } from './useTrades';
 import { PhysicalTrade } from '@/types';
 import { formatMonthCode } from '@/utils/dateUtils';
-import { getNextMonths } from '@/utils/dateUtils';
 
 export interface PhysicalPositionData {
   month: string;
@@ -19,11 +18,22 @@ export const usePhysicalPositions = () => {
       (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
     );
     
-    // Get upcoming months
-    const nextMonths = getNextMonths(13);
+    // Get months: 2 before current month and 4 months into the future (total 7 months)
+    const today = new Date();
+    const months = [];
+    
+    // Add 2 months before current month
+    for (let i = -2; i <= 4; i++) {
+      const targetDate = new Date(
+        today.getFullYear(),
+        today.getMonth() + i,
+        1
+      );
+      months.push(formatMonthCode(targetDate));
+    }
     
     // Initialize the monthly position data with months and zero values for each product
-    const initialPositionData: PhysicalPositionData[] = nextMonths.map(month => {
+    const initialPositionData: PhysicalPositionData[] = months.map(month => {
       return {
         month,
         'UCOME': 0,
