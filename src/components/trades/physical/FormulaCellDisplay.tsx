@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
+import { PricingType } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface FormulaCellDisplayProps {
@@ -8,20 +8,44 @@ interface FormulaCellDisplayProps {
   legId: string;
   formula?: any;
   pricingType?: PricingType;
+  efpPremium?: number;
+  efpDesignatedMonth?: string;
+  efpAgreedStatus?: boolean;
+  efpFixedValue?: number;
 }
 
-const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ tradeId, legId, formula, pricingType }) => {
+const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ 
+  tradeId, 
+  legId, 
+  formula, 
+  pricingType,
+  efpPremium,
+  efpDesignatedMonth,
+  efpAgreedStatus,
+  efpFixedValue
+}) => {
   // For EFP trades, show a special formula representation
   if (pricingType === 'efp') {
-    // This component is now receiving props directly instead of a full trade object
-    // We can't access efpPremium, etc. here anymore, so we'll display a simple text
+    let displayText = '';
+    
+    if (efpAgreedStatus) {
+      // For agreed EFP trades, show the calculated total value
+      const fixedValue = efpFixedValue || 0;
+      const premium = efpPremium || 0;
+      displayText = `${fixedValue + premium}`;
+    } else {
+      // For unagreed EFP trades, show "ICE GASOIL FUTURES (EFP) + premium"
+      const designatedMonth = efpDesignatedMonth ? ` (${efpDesignatedMonth})` : '';
+      displayText = `ICE GASOIL FUTURES${designatedMonth} + ${efpPremium || 0}`;
+    }
+    
     return (
       <div className="max-w-[300px] overflow-hidden">
         <span 
           className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-          title="EFP Formula"
+          title={displayText}
         >
-          EFP
+          {displayText}
         </span>
       </div>
     );

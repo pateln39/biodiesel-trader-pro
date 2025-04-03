@@ -51,13 +51,17 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
       <TableCell>{formatDate(leg.loadingPeriodStart)}</TableCell>
       <TableCell>{formatDate(leg.loadingPeriodEnd)}</TableCell>
       <TableCell>{trade.counterparty}</TableCell>
-      <TableCell>{trade.physicalType}</TableCell>
+      <TableCell>{leg.pricingType === 'efp' ? 'EFP' : 'Standard'}</TableCell>
       <TableCell>
         <FormulaCellDisplay 
           tradeId={trade.id}
           legId={leg.id}
           formula={leg.formula}
           pricingType={leg.pricingType}
+          efpPremium={leg.efpPremium}
+          efpDesignatedMonth={leg.efpDesignatedMonth}
+          efpAgreedStatus={leg.efpAgreedStatus}
+          efpFixedValue={leg.efpFixedValue}
         />
       </TableCell>
       <TableCell>
