@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, Trash2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 import Layout from '@/components/Layout';
@@ -119,9 +119,13 @@ const TradeDeletePage = () => {
               </div>
             )}
             
-            <p className="text-base">
-              Are you sure you want to {legId ? "delete this trade leg" : "delete this trade"}?
-            </p>
+            <Alert className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 text-white mb-4">
+              <AlertTriangle className="h-5 w-5 text-[#FEC6A1]" />
+              <AlertTitle className="text-[#FEC6A1] font-medium">Warning</AlertTitle>
+              <AlertDescription className="text-white">
+                Are you sure you want to {legId ? "delete this trade leg" : "delete this trade"}?
+              </AlertDescription>
+            </Alert>
           </CardContent>
           <CardFooter className="flex justify-between">
             <Button 

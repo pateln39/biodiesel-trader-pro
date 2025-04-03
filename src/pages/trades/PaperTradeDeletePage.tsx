@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, CheckCircle2, Trash2, AlertTriangle } from 'lucide-react';
@@ -91,10 +92,10 @@ const PaperTradeDeletePage = () => {
 
     return (
       <>
-        <Alert className="mb-6 bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
-          <AlertTitle className="text-amber-600">Warning</AlertTitle>
-          <AlertDescription>
+        <Alert className="mb-6 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 text-white">
+          <AlertTriangle className="h-5 w-5 text-[#FEC6A1]" />
+          <AlertTitle className="text-[#FEC6A1] font-medium">Warning</AlertTitle>
+          <AlertDescription className="text-white">
             {isLegDeletion
               ? `You are about to delete a paper trade leg. This action cannot be undone.${!isMultiLeg ? ' Since this is the only leg, the entire trade will be deleted.' : ''}`
               : 'You are about to delete an entire paper trade. This action cannot be undone.'
