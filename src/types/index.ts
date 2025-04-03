@@ -1,4 +1,3 @@
-
 // Re-export all types from their respective files
 export * from './common';
 export * from './pricing';
@@ -15,6 +14,7 @@ export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
 export type CreditStatus = 'approved' | 'pending' | 'rejected';
 export type PhysicalTradeType = 'spot' | 'term';
 export type PricingType = 'standard' | 'efp';
+export type ContractStatus = 'sent' | 'in process' | 'action needed';
 
 export interface Trade {
   id: string;
@@ -86,4 +86,8 @@ export type DbTradeLeg = {
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;
   efp_designated_month?: string;
+  mtm_future_month?: string;
+  comments?: string;
+  contract_status?: string;
+  product_credit_status?: string;
 };

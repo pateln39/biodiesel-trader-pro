@@ -2,7 +2,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
 import {
   Table,
@@ -26,10 +25,6 @@ interface PhysicalTradeTableProps {
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
-
-  const handleEditTrade = (tradeId: string) => {
-    navigate(`/trades/edit/${tradeId}`);
-  };
 
   if (loading) {
     return <TableLoadingState />;
@@ -79,7 +74,7 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
   });
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -87,10 +82,16 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
             <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
+            <TableHead>Sustainability</TableHead>
             <TableHead>Product</TableHead>
+            <TableHead>Loading Start</TableHead>
+            <TableHead>Loading End</TableHead>
             <TableHead>Counterparty</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Formula</TableHead>
+            <TableHead>Comments</TableHead>
+            <TableHead>Product Credit</TableHead>
+            <TableHead>Contract Status</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>

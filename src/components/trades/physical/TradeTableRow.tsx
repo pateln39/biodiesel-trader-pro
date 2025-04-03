@@ -7,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
 import FormulaCellDisplay from './FormulaCellDisplay';
 import TableRowActions from './TableRowActions';
+import CommentsCellInput from './CommentsCellInput';
+import ContractStatusSelect from './ContractStatusSelect';
+import { formatDate } from '@/utils/dateUtils';
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
@@ -21,11 +24,9 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
-  // Use the dedicated pricing_type field
-  const pricingType = leg.pricingType === 'efp' ? "EFP" : "Standard";
-  
   return (
     <TableRow className={legIndex > 0 ? "border-t-0" : undefined}>
+      {/* Reference number */}
       <TableCell>
         <div className="flex items-center space-x-2">
           <Link to={`/trades/${trade.id}`} className="text-white hover:underline">
@@ -42,15 +43,61 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
           )}
         </div>
       </TableCell>
+      
+      {/* Buy/Sell */}
       <TableCell className="capitalize">{leg.buySell}</TableCell>
+      
+      {/* Incoterm */}
       <TableCell>{leg.incoTerm}</TableCell>
+      
+      {/* Quantity */}
       <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
+      
+      {/* Sustainability */}
+      <TableCell>{leg.sustainability}</TableCell>
+      
+      {/* Product */}
       <TableCell>{leg.product}</TableCell>
+      
+      {/* Loading Start Date */}
+      <TableCell>{formatDate(leg.loadingPeriodStart)}</TableCell>
+      
+      {/* Loading End Date */}
+      <TableCell>{formatDate(leg.loadingPeriodEnd)}</TableCell>
+      
+      {/* Counterparty */}
       <TableCell>{trade.counterparty}</TableCell>
-      <TableCell>{pricingType}</TableCell>
+      
+      {/* Type (EFP/Standard) */}
+      <TableCell>{leg.pricingType === 'efp' ? "EFP" : "Standard"}</TableCell>
+      
+      {/* Formula */}
       <TableCell>
         <FormulaCellDisplay trade={leg} />
       </TableCell>
+      
+      {/* Comments Box */}
+      <TableCell>
+        <CommentsCellInput 
+          tradeId={trade.id} 
+          legId={leg.id}
+          initialValue={leg.comments}
+        />
+      </TableCell>
+      
+      {/* Product Credit Status */}
+      <TableCell>{leg.productCreditStatus || 'N/A'}</TableCell>
+      
+      {/* Contract Status */}
+      <TableCell>
+        <ContractStatusSelect 
+          tradeId={trade.id} 
+          legId={leg.id}
+          initialValue={leg.contractStatus}
+        />
+      </TableCell>
+      
+      {/* Actions */}
       <TableCell className="text-center">
         <TableRowActions
           tradeId={trade.id}

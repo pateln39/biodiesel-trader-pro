@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +15,8 @@ import {
   DbParentTrade,
   DbTradeLeg,
   PricingType,
-  ProductCreditStatus
+  ProductCreditStatus,
+  ContractStatus
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
@@ -72,6 +74,8 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           pricingType: (firstLeg.pricing_type || 'standard') as PricingType,
           mtmFutureMonth: firstLeg.mtm_future_month,
+          comments: firstLeg.comments,
+          contractStatus: firstLeg.contract_status as ContractStatus,
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -97,7 +101,9 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
             efpAgreedStatus: leg.efp_agreed_status,
             efpFixedValue: leg.efp_fixed_value,
             efpDesignatedMonth: leg.efp_designated_month,
-            mtmFutureMonth: leg.mtm_future_month
+            mtmFutureMonth: leg.mtm_future_month,
+            comments: leg.comments,
+            contractStatus: leg.contract_status as ContractStatus
           }))
         };
         return physicalTrade;

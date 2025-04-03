@@ -689,6 +689,8 @@ export type Database = {
           broker: string | null
           buy_sell: string
           calculated_price: number | null
+          comments: string | null
+          contract_status: string | null
           created_at: string
           credit_status: string | null
           efp_agreed_status: boolean | null
@@ -727,6 +729,8 @@ export type Database = {
           broker?: string | null
           buy_sell: string
           calculated_price?: number | null
+          comments?: string | null
+          contract_status?: string | null
           created_at?: string
           credit_status?: string | null
           efp_agreed_status?: boolean | null
@@ -765,6 +769,8 @@ export type Database = {
           broker?: string | null
           buy_sell?: string
           calculated_price?: number | null
+          comments?: string | null
+          contract_status?: string | null
           created_at?: string
           credit_status?: string | null
           efp_agreed_status?: boolean | null
