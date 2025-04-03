@@ -845,6 +845,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          paper_trade_order: Json | null
+          physical_trade_order: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          paper_trade_order?: Json | null
+          physical_trade_order?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paper_trade_order?: Json | null
+          physical_trade_order?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

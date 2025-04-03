@@ -1,203 +1,283 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PaperTrade } from '@/types/paper';
-import { formatProductDisplay, calculateDisplayPrice } from '@/utils/productMapping';
-import TableLoadingState from '@/components/trades/TableLoadingState';
-import TableErrorState from '@/components/trades/TableErrorState';
-import PaperTradeRowActions from '@/components/trades/paper/PaperTradeRowActions';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { confirm } from '@/components/ui/dialog';
+import Layout from '@/components/Layout';
+import { Badge } from '@/components/ui/badge';
+
+// Import sortable components
 import { SortableTable } from '@/components/ui/sortable-table';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { TableCell } from '@/components/ui/table';
+import { UserPreferences } from '@/types';
+import { Table, TableHeader, TableBody, TableRow, TableHead } from '@/components/ui/table';
 
-interface PaperTradeListProps {
-  paperTrades: PaperTrade[];
-  isLoading: boolean;
-  error: Error | null;
-  refetchPaperTrades: () => void;
-}
-
-const PaperTradeList: React.FC<PaperTradeListProps> = ({
-  paperTrades,
-  isLoading,
-  error,
-  refetchPaperTrades
-}) => {
-  const [userTradeOrder, setUserTradeOrder] = useState<string[]>([]);
-
-  // Load user's preferred order when component mounts
+const PaperTradeList: React.FC = () => {
+  const navigate = useNavigate();
+  const { paperTrades, loading, refetchPaperTrades } = usePaperTrades();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState('tradeReference');
+  
+  // State for user preferences
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [orderedTrades, setOrderedTrades] = useState<PaperTrade[]>([]);
+  
+  // Load user preferences
   useEffect(() => {
-    const loadUserTradeOrder = async () => {
-      try {
-        const { data, error } = await supabase
+    const fetchUserPreferences = async () => {
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('id', 'default') // Use a default ID for now, later can be user-specific
+        .single();
+      
+      if (data && !error) {
+        setUserPreferences(data);
+      } else {
+        // Create default preferences if none exist
+        const { data: newData, error: createError } = await supabase
           .from('user_preferences')
-          .select('paper_trade_order')
+          .insert({ id: 'default' })
+          .select()
           .single();
           
-        if (error) {
-          console.error('Error loading trade order:', error);
-          return;
+        if (newData && !createError) {
+          setUserPreferences(newData);
         }
-        
-        if (data?.paper_trade_order) {
-          setUserTradeOrder(data.paper_trade_order);
-        }
-      } catch (err) {
-        console.error('Failed to load trade order:', err);
       }
     };
     
-    loadUserTradeOrder();
+    fetchUserPreferences();
   }, []);
-
-  // Sort trades based on user preference if available
-  const sortedTrades = [...paperTrades].sort((a, b) => {
-    if (userTradeOrder.length === 0) {
-      // Default sorting - newest first
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  
+  // Apply order to trades when preferences or trades change
+  useEffect(() => {
+    if (!paperTrades.length) return setOrderedTrades([]);
+    
+    if (userPreferences?.paper_trade_order?.length) {
+      // Create a map for quick lookup
+      const orderMap = new Map();
+      userPreferences.paper_trade_order.forEach((id, index) => {
+        orderMap.set(id, index);
+      });
+      
+      // Sort trades based on the preferences
+      const ordered = [...paperTrades].sort((a, b) => {
+        const aIndex = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
+        const bIndex = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
+        
+        if (aIndex === Infinity && bIndex === Infinity) {
+          // Sort by date if neither is in preferences
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        
+        return aIndex - bIndex;
+      });
+      
+      setOrderedTrades(ordered);
+    } else {
+      // Default to creation date order
+      setOrderedTrades([...paperTrades].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ));
     }
-    
-    const aIndex = userTradeOrder.indexOf(a.id);
-    const bIndex = userTradeOrder.indexOf(b.id);
-    
-    // If both trades are in the saved order, use that
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
-    }
-    
-    // If only one trade is in the saved order, put it first
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
-    
-    // For trades not in the saved order, default to newest first
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
-  // Save user's preferred order
-  const handleOrderChange = async (newTrades: PaperTrade[]) => {
-    const newOrder = newTrades.map(trade => trade.id);
-    setUserTradeOrder(newOrder);
-    
-    try {
+  }, [paperTrades, userPreferences]);
+  
+  // Mutation to update preferences
+  const { mutate: updatePreferences } = useMutation({
+    mutationFn: async (newOrder: string[]) => {
       const { error } = await supabase
         .from('user_preferences')
-        .upsert({ 
-          paper_trade_order: newOrder,
-          id: 'paper-trade-order' // Use a fixed ID for simplicity
-        }, { onConflict: 'id' });
+        .update({ paper_trade_order: newOrder })
+        .eq('id', 'default');
         
-      if (error) {
-        console.error('Error saving trade order:', error);
+      if (error) throw error;
+      return newOrder;
+    },
+    onSuccess: () => {
+      toast.success('Trade order updated', {
+        description: 'Your preferred trade order has been saved'
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to update trade order:', error);
+      toast.error('Failed to save trade order');
+    }
+  });
+  
+  // Handle order change
+  const handleOrderChange = (newItems: PaperTrade[]) => {
+    const newOrder = newItems.map(trade => trade.id);
+    updatePreferences(newOrder);
+  };
+  
+  const filteredTrades = useMemo(() => {
+    if (!orderedTrades) return [];
+    
+    const term = searchTerm.toLowerCase();
+    
+    return orderedTrades.filter((trade) => {
+      if (searchField === 'tradeReference') {
+        return trade.tradeReference.toLowerCase().includes(term);
+      } else if (searchField === 'counterparty') {
+        return trade.counterparty.toLowerCase().includes(term);
       }
-    } catch (err) {
-      console.error('Failed to save trade order:', err);
+      return true;
+    });
+  }, [orderedTrades, searchTerm, searchField]);
+
+  const handleDelete = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Are you sure?',
+      description: 'This will permanently delete the trade. Are you sure?',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('paper_trades')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw new Error(`Error deleting trade: ${error.message}`);
+      }
+
+      toast.success('Trade deleted successfully');
+      refetchPaperTrades();
+    } catch (error: any) {
+      toast.error('Failed to delete trade', {
+        description: error.message,
+      });
     }
   };
 
-  if (isLoading) {
-    return <TableLoadingState />;
-  }
-
-  if (error) {
-    return <TableErrorState error={error} onRetry={refetchPaperTrades} />;
-  }
-
-  // Create a mapping of trades by ID for sortable component
-  const processedTrades = sortedTrades.flatMap((trade) => {
-    return trade.legs.map((leg, legIndex) => ({
-      trade,
-      leg,
-      legIndex,
-      id: `${trade.id}-${leg.id}`,
-      parentId: trade.id
-    }));
-  });
-
+  // Change the render logic to use SortableTable
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead></TableHead>
-          <TableHead>Reference</TableHead>
-          <TableHead>Broker</TableHead>
-          <TableHead>Products</TableHead>
-          <TableHead>Period</TableHead>
-          <TableHead className="text-right">Quantity</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      {paperTrades && paperTrades.length > 0 ? (
-        <SortableTable
-          items={sortedTrades}
-          getItemId={(trade) => trade.id}
-          onOrderChange={handleOrderChange}
-        >
-          {(sortedItems, { dragHandleProps }) => (
-            <TableBody>
-              {sortedItems.flatMap((trade) => {
-                return trade.legs.map((leg, legIndex) => {
-                  let productDisplay = formatProductDisplay(
-                    leg.product,
-                    leg.relationshipType,
-                    leg.rightSide?.product
-                  );
-                  
-                  const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
-                  const isMultiLeg = trade.legs.length > 1;
-                  
-                  // Calculate the display price based on relationship type
-                  const displayPrice = calculateDisplayPrice(
-                    leg.relationshipType,
-                    leg.price,
-                    leg.rightSide?.price
-                  );
-                  
-                  return (
-                    <SortableTableRow key={`${trade.id}-${leg.id}`} id={trade.id}>
-                      {/* Drag Handle */}
-                      <TableCell className="w-8">
-                        {legIndex === 0 && (
-                          <div {...dragHandleProps(trade.id)} />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Link to={`/trades/paper/edit/${trade.id}`} className="text-white hover:text-white/80">
-                          {displayReference}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{leg.broker || trade.broker}</TableCell>
-                      <TableCell>{productDisplay}</TableCell>
-                      <TableCell>{leg.period}</TableCell>
-                      <TableCell className="text-right">{leg.quantity}</TableCell>
-                      <TableCell className="text-right">{displayPrice}</TableCell>
-                      <TableCell className="text-center">
-                        <PaperTradeRowActions
-                          tradeId={trade.id}
-                          legId={leg.id}
-                          isMultiLeg={isMultiLeg}
-                          legReference={leg.legReference}
-                          tradeReference={trade.tradeReference}
-                        />
-                      </TableCell>
-                    </SortableTableRow>
-                  );
-                });
-              })}
-            </TableBody>
-          )}
-        </SortableTable>
-      ) : (
-        <TableBody>
-          <TableRow>
-            <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
-              No paper trades found.
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      )}
-    </Table>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <CardHeader className="pl-0">
+          <CardTitle>Paper Trades</CardTitle>
+        </CardHeader>
+        <Button size="sm" asChild>
+          <Link to="/trades/paper/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Trade
+          </Link>
+        </Button>
+      </div>
+
+      <Separator />
+
+      <div className="flex items-center justify-between py-2">
+        <div className="flex items-center">
+          <Label htmlFor="search" className="mr-2">
+            Search:
+          </Label>
+          <Input
+            id="search"
+            type="search"
+            placeholder="Search trades..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
+          <Label htmlFor="searchField" className="ml-4 mr-2">
+            Search Field:
+          </Label>
+          <select
+            id="searchField"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="tradeReference">Trade Reference</option>
+            <option value="counterparty">Counterparty</option>
+          </select>
+        </div>
+      </div>
+      
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[30px]"></TableHead>
+              <TableHead>Trade Ref</TableHead>
+              <TableHead>Counterparty</TableHead>
+              <TableHead>Created At</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          
+          <TableBody>
+            {!paperTrades.length ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  {loading ? "Loading..." : "No paper trades found."}
+                </TableCell>
+              </TableRow>
+            ) : filteredTrades.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No matching paper trades found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              <SortableTable
+                items={filteredTrades}
+                getItemId={(trade) => trade.id}
+                onOrderChange={handleOrderChange}
+              >
+                {(sortedItems, { dragHandleProps }) => (
+                  <>
+                    {sortedItems.map((trade) => (
+                      <SortableTableRow key={trade.id} id={trade.id}>
+                        <TableCell {...dragHandleProps(trade.id)} />
+                        <TableCell>{trade.tradeReference}</TableCell>
+                        <TableCell>{trade.counterparty}</TableCell>
+                        <TableCell>
+                          {new Date(trade.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => navigate(`/trades/paper/edit/${trade.id}`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(trade.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </SortableTableRow>
+                    ))}
+                  </>
+                )}
+              </SortableTable>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 };
 

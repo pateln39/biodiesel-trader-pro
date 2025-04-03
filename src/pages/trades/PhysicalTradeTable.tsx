@@ -1,180 +1,351 @@
-
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
-import { PhysicalTrade } from '@/types';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
+  TableBody,
   TableRow,
-} from '@/components/ui/table';
+  TableHead,
+} from "@/components/ui/table"
+import { MoreHorizontal, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import TradeTableRow from '@/components/trades/physical/TradeTableRow';
-import TableLoadingState from '@/components/trades/TableLoadingState';
-import TableErrorState from '@/components/trades/TableErrorState';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import { Link } from 'react-router-dom';
+import { PhysicalTrade, UserPreferences } from '@/types';
+import { formatDate } from '@/utils/dateUtils';
+import { pricingTypeDisplay } from '@/utils/tradeUtils';
+import FormulaCellDisplay from '@/components/trades/FormulaCellDisplay';
+
+// Import sortable components
 import { SortableTable } from '@/components/ui/sortable-table';
+import { SortableTableRow } from '@/components/ui/sortable-table-row';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { TableCell } from '@/components/ui/table';
 
-interface PhysicalTradeTableProps {
-  trades: PhysicalTrade[];
-  loading: boolean;
-  error: Error | null;
-  refetchTrades: () => void;
-}
-
-const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
-  const navigate = useNavigate();
-  const [userTradeOrder, setUserTradeOrder] = useState<string[]>([]);
-
-  // Load user's preferred order when component mounts
+const PhysicalTradeTable = ({ trades = [] }: { trades: PhysicalTrade[] }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<{
+    id: string;
+    direction: 'asc' | 'desc';
+  } | null>(null);
+  const [searchField, setSearchField] = useState('tradeReference');
+  
+  // State for user preferences
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [orderedTrades, setOrderedTrades] = useState<PhysicalTrade[]>([]);
+  
+  // Load user preferences
   useEffect(() => {
-    const loadUserTradeOrder = async () => {
-      try {
-        const { data, error } = await supabase
+    const fetchUserPreferences = async () => {
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('id', 'default') // Use a default ID for now, later can be user-specific
+        .single();
+      
+      if (data && !error) {
+        setUserPreferences(data);
+      } else {
+        // Create default preferences if none exist
+        const { data: newData, error: createError } = await supabase
           .from('user_preferences')
-          .select('physical_trade_order')
+          .insert({ id: 'default' })
+          .select()
           .single();
           
-        if (error) {
-          console.error('Error loading trade order:', error);
-          return;
+        if (newData && !createError) {
+          setUserPreferences(newData);
         }
-        
-        if (data?.physical_trade_order) {
-          setUserTradeOrder(data.physical_trade_order);
-        }
-      } catch (err) {
-        console.error('Failed to load trade order:', err);
       }
     };
     
-    loadUserTradeOrder();
+    fetchUserPreferences();
   }, []);
-
-  // Sort trades based on user preference if available
-  const sortedTrades = [...trades].sort((a, b) => {
-    if (userTradeOrder.length === 0) {
-      // Default sorting - newest first
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  
+  // Apply order to trades when preferences or trades change
+  useEffect(() => {
+    if (!trades.length) return setOrderedTrades([]);
+    
+    if (userPreferences?.physical_trade_order?.length) {
+      // Create a map for quick lookup
+      const orderMap = new Map();
+      userPreferences.physical_trade_order.forEach((id, index) => {
+        orderMap.set(id, index);
+      });
+      
+      // Sort trades based on the preferences
+      const ordered = [...trades].sort((a, b) => {
+        const aIndex = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
+        const bIndex = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
+        
+        if (aIndex === Infinity && bIndex === Infinity) {
+          // Sort by date if neither is in preferences
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        
+        return aIndex - bIndex;
+      });
+      
+      setOrderedTrades(ordered);
+    } else {
+      // Default to creation date order
+      setOrderedTrades([...trades].sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ));
     }
-    
-    const aIndex = userTradeOrder.indexOf(a.id);
-    const bIndex = userTradeOrder.indexOf(b.id);
-    
-    // If both trades are in the saved order, use that
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
-    }
-    
-    // If only one trade is in the saved order, put it first
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
-    
-    // For trades not in the saved order, default to newest first
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
-  // Save user's preferred order
-  const handleOrderChange = async (newTrades: PhysicalTrade[]) => {
-    const newOrder = newTrades.map(trade => trade.id);
-    setUserTradeOrder(newOrder);
-    
-    try {
+  }, [trades, userPreferences]);
+  
+  // Mutation to update preferences
+  const { mutate: updatePreferences } = useMutation({
+    mutationFn: async (newOrder: string[]) => {
       const { error } = await supabase
         .from('user_preferences')
-        .upsert({ 
-          physical_trade_order: newOrder,
-          id: 'physical-trade-order' // Use a fixed ID for simplicity
-        }, { onConflict: 'id' });
+        .update({ physical_trade_order: newOrder })
+        .eq('id', 'default');
         
-      if (error) {
-        console.error('Error saving trade order:', error);
-      }
-    } catch (err) {
-      console.error('Failed to save trade order:', err);
+      if (error) throw error;
+      return newOrder;
+    },
+    onSuccess: () => {
+      toast.success('Trade order updated', {
+        description: 'Your preferred trade order has been saved'
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to update trade order:', error);
+      toast.error('Failed to save trade order');
+    }
+  });
+  
+  // Handle order change
+  const handleOrderChange = (newItems: PhysicalTrade[]) => {
+    const newOrder = newItems.map(trade => trade.id);
+    updatePreferences(newOrder);
+  };
+  
+  const filterStatusOptions = [
+    { label: 'All', value: null },
+    { label: 'Approved', value: 'approved' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Rejected', value: 'rejected' },
+  ];
+
+  const searchOptions = [
+    { label: 'Trade Reference', value: 'tradeReference' },
+    { label: 'Counterparty', value: 'counterparty' },
+    { label: 'Product', value: 'product' },
+  ];
+
+  const handleSort = (id: string) => {
+    if (sortColumn?.id === id) {
+      setSortColumn(prev => ({
+        id,
+        direction: prev.direction === 'asc' ? 'desc' : 'asc',
+      }));
+    } else {
+      setSortColumn({ id, direction: 'asc' });
     }
   };
 
-  if (loading) {
-    return <TableLoadingState />;
-  }
-  
-  if (error) {
-    return (
-      <TableErrorState
-        error={error}
-        onRetry={refetchTrades}
-      />
-    );
-  }
-  
-  if (trades.length === 0) {
-    return (
-      <div className="py-8 text-center">
-        <p className="text-muted-foreground mb-4">No trades found</p>
-        <Link to="/trades/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> New Trade
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-  
+  const sortTrades = (trades: PhysicalTrade[]) => {
+    if (!sortColumn) return trades;
+
+    const { id, direction } = sortColumn;
+
+    return [...trades].sort((a, b) => {
+      const aValue = (a[id as keyof PhysicalTrade] || '').toString().toLowerCase();
+      const bValue = (b[id as keyof PhysicalTrade] || '').toString().toLowerCase();
+
+      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const filterTrades = (trade: PhysicalTrade) => {
+    const searchTermLower = searchTerm.toLowerCase();
+
+    const searchFieldValue = (trade[searchField as keyof PhysicalTrade] || '').toString().toLowerCase();
+
+    const matchesSearch = searchFieldValue.includes(searchTermLower);
+
+    const matchesStatus = !selectedStatus || trade.creditStatus === selectedStatus;
+
+    return matchesSearch && matchesStatus;
+  };
+
+  const selectedFilterFunc = (trade: PhysicalTrade) => filterTrades(trade);
+
+  const filteredTrades = useMemo(() => {
+    if (!orderedTrades || orderedTrades.length === 0) return [];
+
+    let filtered = [...orderedTrades];
+
+    if (searchTerm) {
+      filtered = filtered.filter(selectedFilterFunc);
+    }
+
+    if (selectedStatus) {
+      filtered = filtered.filter(selectedFilterFunc);
+    }
+
+    const sorted = sortTrades(filtered);
+
+    return sorted;
+  }, [orderedTrades, searchTerm, selectedStatus, selectedFilterFunc, searchField]);
+
+  const isLoading = !orderedTrades && trades.length > 0;
+  const isError = !orderedTrades && trades.length === 0;
+
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead></TableHead>
-            <TableHead>Reference</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>Incoterm</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead>Sustainability</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Loading Start</TableHead>
-            <TableHead>Loading End</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Formula</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead>Product Credit</TableHead>
-            <TableHead>Contract Status</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <SortableTable
-          items={sortedTrades}
-          getItemId={(trade) => trade.id}
-          onOrderChange={handleOrderChange}
-        >
-          {(sortedItems, { dragHandleProps }) => (
-            <TableBody>
-              {sortedItems.map(trade => {
-                const sortedLegs = [...trade.legs].sort((a, b) => {
-                  if (a.legReference === trade.tradeReference) return -1;
-                  if (b.legReference === trade.tradeReference) return 1;
-                  return a.legReference.localeCompare(b.legReference);
-                });
-                
-                return sortedLegs.map((leg, legIndex) => (
-                  <TradeTableRow
-                    key={leg.id}
-                    trade={trade}
-                    leg={leg}
-                    legIndex={legIndex}
-                    dragHandleProps={legIndex === 0 ? dragHandleProps(trade.id) : undefined}
-                  />
-                ));
-              })}
-            </TableBody>
-          )}
-        </SortableTable>
-      </Table>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Input
+          placeholder="Search trades..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+
+        <div className="flex items-center space-x-2">
+          <select
+            className="rounded-md border px-2 py-1"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+          >
+            {searchOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="rounded-md border px-2 py-1"
+            value={selectedStatus || ''}
+            onChange={(e) => setSelectedStatus(e.target.value === '' ? null : e.target.value)}
+          >
+            {filterStatusOptions.map((option) => (
+              <option key={option.value} value={option.value || ''}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Physical Trades</h2>
+        <Button asChild>
+          <Link to="/trades/new">Add Trade</Link>
+        </Button>
+      </div>
+      
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[30px]"></TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('tradeReference')}>
+                  Trade Ref {sortColumn?.id === 'tradeReference' && (sortColumn.direction === 'asc' ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />)}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('counterparty')}>
+                  Counterparty {sortColumn?.id === 'counterparty' && (sortColumn.direction === 'asc' ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />)}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('product')}>
+                  Product {sortColumn?.id === 'product' && (sortColumn.direction === 'asc' ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />)}
+                </Button>
+              </TableHead>
+              <TableHead>Pricing</TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('createdAt')}>
+                  Created At {sortColumn?.id === 'createdAt' && (sortColumn.direction === 'asc' ? <ArrowDown className="ml-2 h-4 w-4" /> : <ArrowUp className="ml-2 h-4 w-4" />)}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          
+          <TableBody>
+            {filteredTrades.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No trades found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              <SortableTable
+                items={filteredTrades}
+                getItemId={(trade) => trade.id}
+                onOrderChange={handleOrderChange}
+              >
+                {(sortedItems, { dragHandleProps }) => (
+                  <>
+                    {sortedItems.map((trade) => (
+                      <SortableTableRow key={trade.id} id={trade.id}>
+                        <TableCell {...dragHandleProps(trade.id)} />
+                        <TableCell>
+                          <Link to={`/trades/${trade.id}`} className="font-medium hover:underline">
+                            {trade.tradeReference}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{trade.counterparty}</TableCell>
+                        <TableCell>{trade.product}</TableCell>
+                        <TableCell>
+                          <FormulaCellDisplay trade={trade} />
+                        </TableCell>
+                        <TableCell>{formatDate(trade.createdAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem asChild>
+                                <Link to={`/trades/${trade.id}`}>
+                                  View
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link to={`/trades/${trade.id}/edit`}>
+                                  Edit
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </SortableTableRow>
+                    ))}
+                  </>
+                )}
+              </SortableTable>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
