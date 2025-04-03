@@ -4,42 +4,35 @@ import { PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface FormulaCellDisplayProps {
-  trade: PhysicalTrade | PhysicalTradeLeg;
+  tradeId: string;
+  legId: string;
+  formula?: any;
+  pricingType?: PricingType;
 }
 
-const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ trade }) => {
+const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ tradeId, legId, formula, pricingType }) => {
   // For EFP trades, show a special formula representation
-  if ((trade as PhysicalTradeLeg).pricingType === 'efp' && 'efpPremium' in trade && trade.efpPremium !== undefined) {
-    let displayText = '';
-    
-    if (trade.efpAgreedStatus) {
-      // For agreed EFP trades, show the calculated total value
-      const fixedValue = trade.efpFixedValue || 0;
-      const premium = trade.efpPremium || 0;
-      displayText = `${fixedValue + premium}`;
-    } else {
-      // For unagreed EFP trades, show "ICE GASOIL FUTURES (EFP) + premium"
-      displayText = `ICE GASOIL FUTURES (EFP) + ${trade.efpPremium}`;
-    }
-    
+  if (pricingType === 'efp') {
+    // This component is now receiving props directly instead of a full trade object
+    // We can't access efpPremium, etc. here anymore, so we'll display a simple text
     return (
       <div className="max-w-[300px] overflow-hidden">
         <span 
           className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-          title={displayText}
+          title="EFP Formula"
         >
-          {displayText}
+          EFP
         </span>
       </div>
     );
   }
   
   // For standard trades, use the existing formula display logic
-  if (!trade.formula || !trade.formula.tokens || trade.formula.tokens.length === 0) {
+  if (!formula || !formula.tokens || formula.tokens.length === 0) {
     return <span className="text-muted-foreground italic">No formula</span>;
   }
   
-  const displayText = formulaToDisplayString(trade.formula.tokens);
+  const displayText = formulaToDisplayString(formula.tokens);
   
   return (
     <div className="max-w-[300px] overflow-hidden">
