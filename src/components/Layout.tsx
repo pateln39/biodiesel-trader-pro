@@ -17,6 +17,17 @@ const EETLogo = () => {
   );
 };
 
+// Custom BioDiesel CTRM logo component
+const BioDieselText = () => {
+  return (
+    <div className="flex items-center">
+      <span className="text-brand-blue font-bold text-xl">Bio</span>
+      <span className="text-brand-lime font-bold text-xl">Diesel</span>
+      <span className="text-white font-bold text-xl ml-1">CTRM</span>
+    </div>
+  );
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -65,7 +76,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </Button>
             <div className="flex items-center gap-2">
               <EETLogo />
-              <span className="font-bold text-xl">BioDiesel CTRM</span>
+              <BioDieselText />
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -94,7 +105,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <div className="flex flex-1">
         <aside 
           className={cn(
-            "fixed inset-y-0 left-0 pt-16 z-10 bg-gradient-to-br from-brand-navy via-brand-navy to-[#122d42] shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
+            "fixed inset-y-0 left-0 pt-16 z-10 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-[#122d42] shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
         >
