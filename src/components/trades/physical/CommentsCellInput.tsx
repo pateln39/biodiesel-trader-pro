@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { debounce } from 'lodash';
 
 interface CommentsCellInputProps {
@@ -18,7 +18,6 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
 }) => {
   const [comments, setComments] = useState<string>(initialValue);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { toast } = useToast();
 
   // Create a debounced save function
   const saveComments = useCallback(
@@ -37,6 +36,11 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
             description: error.message,
             variant: 'destructive',
           });
+        } else {
+          toast({
+            title: 'Comments saved',
+            description: 'Your comment has been saved successfully.',
+          });
         }
       } catch (err) {
         console.error('Exception when saving comments:', err);
@@ -44,7 +48,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
         setIsLoading(false);
       }
     }, 800),
-    [legId, toast]
+    [legId]
   );
 
   useEffect(() => {
@@ -60,11 +64,16 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
     saveComments(newComments);
   };
 
+  const handleBlur = () => {
+    saveComments.flush();
+  };
+
   return (
     <div className="relative w-full">
       <Textarea
         value={comments}
         onChange={handleChange}
+        onBlur={handleBlur}
         placeholder="Add comments..."
         className="min-h-[60px] w-full text-xs resize-none"
         disabled={isLoading}
