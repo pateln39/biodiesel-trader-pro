@@ -64,10 +64,10 @@ const PaperTradeDeletePage = () => {
   const renderDeleteContent = () => {
     if (isSuccess) {
       return (
-        <Alert className="mb-6 bg-green-50 border-green-200">
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-          <AlertTitle className="text-green-600">Success</AlertTitle>
-          <AlertDescription>
+        <Alert className="mb-6 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 text-white">
+          <CheckCircle2 className="h-5 w-5 text-[#FEC6A1]" />
+          <AlertTitle className="text-[#FEC6A1] font-medium">Success</AlertTitle>
+          <AlertDescription className="text-white">
             {isLegDeletion
               ? `Paper trade leg ${leg?.legReference} has been deleted.`
               : `Paper trade ${trade?.tradeReference} has been deleted.`
