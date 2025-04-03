@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { TrendingUp, Package, Clock, AlertTriangle, BarChart3, DollarSign } from 'lucide-react';
 import Layout from '@/components/Layout';
 import DashboardCard from '@/components/DashboardCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart, ComposedChart } from 'recharts';
 import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
 import { useTradesPerMonth } from '@/hooks/useTradesPerMonth';
 import TableLoadingState from '@/components/trades/TableLoadingState';
@@ -154,7 +155,7 @@ const Index = () => {
               ) : (
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={tradesPerMonthData}>
+                    <ComposedChart data={tradesPerMonthData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1D59A9" opacity={0.3} />
                       <XAxis dataKey="month" stroke="#FFFFFF" />
                       <YAxis yAxisId="left" orientation="left" stroke="#FFFFFF" />
@@ -183,7 +184,7 @@ const Index = () => {
                         dot={{ fill: '#B4D335', strokeWidth: 2 }}
                         name="Volume (mt)"
                       />
-                    </BarChart>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               )}
