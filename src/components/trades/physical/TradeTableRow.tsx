@@ -10,22 +10,35 @@ import TableRowActions from './TableRowActions';
 import CommentsCellInput from './CommentsCellInput';
 import ContractStatusSelect from './ContractStatusSelect';
 import { formatDate } from '@/utils/dateUtils';
+import { SortableTableRow } from '@/components/ui/sortable-table-row';
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
   leg: PhysicalTradeLeg;
   legIndex: number;
+  dragHandleProps?: React.ReactNode;
 }
 
 const TradeTableRow: React.FC<TradeTableRowProps> = ({
   trade,
   leg,
   legIndex,
+  dragHandleProps,
 }) => {
   const hasMultipleLegs = trade.legs && trade.legs.length > 1;
   
   return (
-    <TableRow className={legIndex > 0 ? "border-t-0" : undefined}>
+    <SortableTableRow 
+      id={trade.id} 
+      className={legIndex > 0 ? "border-t-0" : undefined}
+    >
+      {/* Drag Handle */}
+      <TableCell className="w-8">
+        {dragHandleProps && (
+          <div {...dragHandleProps} />
+        )}
+      </TableCell>
+      
       {/* Reference number */}
       <TableCell>
         <div className="flex items-center space-x-2">
@@ -107,7 +120,7 @@ const TradeTableRow: React.FC<TradeTableRowProps> = ({
           tradeReference={trade.tradeReference}
         />
       </TableCell>
-    </TableRow>
+    </SortableTableRow>
   );
 };
 

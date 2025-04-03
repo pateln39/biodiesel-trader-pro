@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { PhysicalTrade } from '@/types';
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { SortableTable } from '@/components/ui/sortable-table';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -25,6 +27,76 @@ interface PhysicalTradeTableProps {
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
+  const [userTradeOrder, setUserTradeOrder] = useState<string[]>([]);
+
+  // Load user's preferred order when component mounts
+  useEffect(() => {
+    const loadUserTradeOrder = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('user_preferences')
+          .select('physical_trade_order')
+          .single();
+          
+        if (error) {
+          console.error('Error loading trade order:', error);
+          return;
+        }
+        
+        if (data?.physical_trade_order) {
+          setUserTradeOrder(data.physical_trade_order);
+        }
+      } catch (err) {
+        console.error('Failed to load trade order:', err);
+      }
+    };
+    
+    loadUserTradeOrder();
+  }, []);
+
+  // Sort trades based on user preference if available
+  const sortedTrades = [...trades].sort((a, b) => {
+    if (userTradeOrder.length === 0) {
+      // Default sorting - newest first
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    
+    const aIndex = userTradeOrder.indexOf(a.id);
+    const bIndex = userTradeOrder.indexOf(b.id);
+    
+    // If both trades are in the saved order, use that
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
+    }
+    
+    // If only one trade is in the saved order, put it first
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    
+    // For trades not in the saved order, default to newest first
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Save user's preferred order
+  const handleOrderChange = async (newTrades: PhysicalTrade[]) => {
+    const newOrder = newTrades.map(trade => trade.id);
+    setUserTradeOrder(newOrder);
+    
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({ 
+          physical_trade_order: newOrder,
+          id: 'physical-trade-order' // Use a fixed ID for simplicity
+        }, { onConflict: 'id' });
+        
+      if (error) {
+        console.error('Error saving trade order:', error);
+      }
+    } catch (err) {
+      console.error('Failed to save trade order:', err);
+    }
+  };
 
   if (loading) {
     return <TableLoadingState />;
@@ -52,32 +124,12 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
     );
   }
   
-  const rows: JSX.Element[] = [];
-  
-  trades.forEach(trade => {
-    const sortedLegs = [...trade.legs].sort((a, b) => {
-      if (a.legReference === trade.tradeReference) return -1;
-      if (b.legReference === trade.tradeReference) return 1;
-      return a.legReference.localeCompare(b.legReference);
-    });
-    
-    sortedLegs.forEach((leg, legIndex) => {
-      rows.push(
-        <TradeTableRow
-          key={leg.id}
-          trade={trade}
-          leg={leg}
-          legIndex={legIndex}
-        />
-      );
-    });
-  });
-
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead></TableHead>
             <TableHead>Reference</TableHead>
             <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
@@ -95,9 +147,33 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {rows}
-        </TableBody>
+        <SortableTable
+          items={sortedTrades}
+          getItemId={(trade) => trade.id}
+          onOrderChange={handleOrderChange}
+        >
+          {(sortedItems, { dragHandleProps }) => (
+            <TableBody>
+              {sortedItems.map(trade => {
+                const sortedLegs = [...trade.legs].sort((a, b) => {
+                  if (a.legReference === trade.tradeReference) return -1;
+                  if (b.legReference === trade.tradeReference) return 1;
+                  return a.legReference.localeCompare(b.legReference);
+                });
+                
+                return sortedLegs.map((leg, legIndex) => (
+                  <TradeTableRow
+                    key={leg.id}
+                    trade={trade}
+                    leg={leg}
+                    legIndex={legIndex}
+                    dragHandleProps={legIndex === 0 ? dragHandleProps(trade.id) : undefined}
+                  />
+                ));
+              })}
+            </TableBody>
+          )}
+        </SortableTable>
       </Table>
     </div>
   );
