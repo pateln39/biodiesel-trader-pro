@@ -5,13 +5,17 @@ import { Calendar, Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatDate } from '@/utils/dateUtils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTrades } from '@/hooks/useTrades';
 import { PhysicalTrade } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Movement } from '@/types/common';
+
+// Import the same components used in the physical trades tab
+import PhysicalTradeTable from '@/pages/trades/PhysicalTradeTable';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatDate } from '@/utils/dateUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -69,160 +73,113 @@ const OperationsPage = () => {
           </TabsList>
 
           <TabsContent value="open-trades" className="space-y-4">
-            <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-white/10">
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Counterparty</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Total Quantity</TableHead>
-                    <TableHead className="text-right">Scheduled</TableHead>
-                    <TableHead className="text-right">Open Quantity</TableHead>
-                    <TableHead>Loading Period</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tradesLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
-                        Loading trades...
-                      </TableCell>
-                    </TableRow>
-                  ) : tradesError ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-destructive">
-                        Error loading trades. 
-                        <Button 
-                          variant="link" 
-                          className="ml-2" 
-                          onClick={() => refetchTrades()}
-                        >
-                          Try again
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ) : physicalTrades.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                        No open trades found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    physicalTrades.map((trade) => {
-                      const scheduledQuantity = movements
-                        .filter(m => m.tradeId === trade.id)
-                        .reduce((sum, m) => sum + (m.scheduledQuantity || 0), 0);
-                      
-                      const openQuantity = calculateOpenQuantity(
-                        trade.quantity,
-                        trade.tolerance || 0,
-                        scheduledQuantity
-                      );
-                      
-                      return (
-                        <TableRow key={trade.id} className="border-b border-white/5 hover:bg-brand-navy/80">
-                          <TableCell>
-                            <Link to={`/trades/${trade.id}`} className="hover:underline">
-                              {trade.tradeReference}
-                            </Link>
-                          </TableCell>
-                          <TableCell>{trade.counterparty}</TableCell>
-                          <TableCell>{trade.product}</TableCell>
-                          <TableCell className="text-right">{trade.quantity} {trade.unit}</TableCell>
-                          <TableCell className="text-right">{scheduledQuantity} {trade.unit}</TableCell>
-                          <TableCell className="text-right">{openQuantity.toFixed(2)} {trade.unit}</TableCell>
-                          <TableCell>
-                            {formatDate(trade.loadingPeriodStart)} - {formatDate(trade.loadingPeriodEnd)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Link to={`/trades/${trade.id}`}>
-                              <Button variant="ghost" size="sm">Schedule</Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+            <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+              <CardHeader>
+                <CardTitle>Open Trades</CardTitle>
+                <CardDescription className="flex justify-between items-center">
+                  <span>View and manage open trade positions</span>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PhysicalTradeTable 
+                  trades={physicalTrades}
+                  loading={tradesLoading}
+                  error={tradesError}
+                  refetchTrades={refetchTrades}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="movements" className="space-y-4">
-            <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-white/10">
-                    <TableHead>Trade Ref</TableHead>
-                    <TableHead>Vessel</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Nominated Date</TableHead>
-                    <TableHead>Loadport</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movementsLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
-                        Loading movements...
-                      </TableCell>
-                    </TableRow>
-                  ) : movementsError ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-destructive">
-                        Error loading movements. 
-                        <Button 
-                          variant="link" 
-                          className="ml-2" 
-                          onClick={() => refetchMovements()}
-                        >
-                          Try again
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ) : movements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                        No movements scheduled.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    movements.map((movement) => {
-                      const trade = physicalTrades.find(t => t.id === movement.tradeId);
-                      
-                      return (
-                        <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
-                          <TableCell>
-                            {trade ? (
-                              <Link to={`/trades/${movement.tradeId}`} className="hover:underline">
-                                {trade.tradeReference}
-                                {movement.legId && ' (Leg)'}
-                              </Link>
-                            ) : (
-                              `Trade ${movement.tradeId}`
-                            )}
-                          </TableCell>
-                          <TableCell>{movement.vesselName || 'N/A'}</TableCell>
-                          <TableCell className="text-right">
-                            {movement.scheduledQuantity || movement.quantity} {trade?.unit}
-                          </TableCell>
-                          <TableCell>{movement.nominatedDate ? formatDate(movement.nominatedDate) : 'N/A'}</TableCell>
-                          <TableCell>{movement.loadport || 'N/A'}</TableCell>
-                          <TableCell className="capitalize">{movement.status}</TableCell>
-                          <TableCell className="text-center">
-                            <Button variant="ghost" size="sm">View</Button>
+            <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+              <CardHeader>
+                <CardTitle>Movements</CardTitle>
+                <CardDescription className="flex justify-between items-center">
+                  <span>View and manage scheduled movements</span>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="data-table-container">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b border-white/10">
+                        <TableHead>Trade Ref</TableHead>
+                        <TableHead>Vessel</TableHead>
+                        <TableHead className="text-right">Quantity</TableHead>
+                        <TableHead>Nominated Date</TableHead>
+                        <TableHead>Loadport</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {movementsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-24 text-center">
+                            Loading movements...
                           </TableCell>
                         </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                      ) : movementsError ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                            Error loading movements. 
+                            <Button 
+                              variant="link" 
+                              className="ml-2" 
+                              onClick={() => refetchMovements()}
+                            >
+                              Try again
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ) : movements.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                            No movements scheduled.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        movements.map((movement) => {
+                          const trade = physicalTrades.find(t => t.id === movement.tradeId);
+                          
+                          return (
+                            <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
+                              <TableCell>
+                                {trade ? (
+                                  <Link to={`/trades/${movement.tradeId}`} className="hover:underline">
+                                    {trade.tradeReference}
+                                    {movement.legId && ' (Leg)'}
+                                  </Link>
+                                ) : (
+                                  `Trade ${movement.tradeId}`
+                                )}
+                              </TableCell>
+                              <TableCell>{movement.vesselName || 'N/A'}</TableCell>
+                              <TableCell className="text-right">
+                                {movement.scheduledQuantity || movement.quantity} {trade?.unit}
+                              </TableCell>
+                              <TableCell>{movement.nominatedDate ? formatDate(movement.nominatedDate) : 'N/A'}</TableCell>
+                              <TableCell>{movement.loadport || 'N/A'}</TableCell>
+                              <TableCell className="capitalize">{movement.status}</TableCell>
+                              <TableCell className="text-center">
+                                <Button variant="ghost" size="sm">View</Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
