@@ -30,14 +30,14 @@ export interface Trade extends ParentTrade {
 // Movement and audit log types for data/mockData.ts
 export interface Movement {
   id: string;
-  tradeId: string;
+  tradeId: string; // Maps to trade_leg_id in Supabase
   movementReference: string;
   status: string;
   nominatedDate: Date;
   quantity: number;
   // Add new fields needed by OperationsPage
-  legId?: string;
-  scheduledQuantity?: number;
+  legId?: string; // Maps to trade_leg_id in Supabase
+  scheduledQuantity?: number; // Maps to bl_quantity in Supabase
   vesselName?: string;
   loadport?: string;
   disport?: string;

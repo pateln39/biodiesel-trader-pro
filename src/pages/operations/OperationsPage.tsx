@@ -37,13 +37,13 @@ const OperationsPage = () => {
     // Map the data to match our Movement type
     return (data || []).map(item => ({
       id: item.id,
-      tradeId: item.trade_id,
+      tradeId: item.trade_leg_id, // Fixed: use trade_leg_id instead of trade_id
       movementReference: item.movement_reference || item.id,
       status: item.status,
       nominatedDate: item.nominated_date ? new Date(item.nominated_date) : new Date(),
-      quantity: item.quantity || item.bl_quantity || 0,
-      legId: item.leg_id,
-      scheduledQuantity: item.scheduled_quantity || item.quantity,
+      quantity: item.bl_quantity || 0, // Fixed: ensure quantity is always set
+      legId: item.trade_leg_id, // Fixed: use trade_leg_id instead of leg_id
+      scheduledQuantity: item.bl_quantity || 0, // Fixed: map to the correct field
       vesselName: item.vessel_name,
       loadport: item.loadport,
       disport: item.disport,
