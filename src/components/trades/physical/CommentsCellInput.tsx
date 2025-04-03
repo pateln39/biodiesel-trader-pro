@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { debounce } from 'lodash';
 
 interface CommentsCellInputProps {
@@ -31,14 +31,11 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
 
         if (error) {
           console.error('Error saving comments:', error);
-          toast({
-            title: 'Failed to save comments',
+          toast.error('Failed to save comments', {
             description: error.message,
-            variant: 'destructive',
           });
         } else {
-          toast({
-            title: 'Comments saved',
+          toast.success('Comments saved', {
             description: 'Your comment has been saved successfully.',
           });
         }
