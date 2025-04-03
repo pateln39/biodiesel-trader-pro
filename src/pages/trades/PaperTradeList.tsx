@@ -11,7 +11,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PaperTrade } from '@/types/paper';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { confirm } from '@/components/ui/dialog';
+import { confirm } from '@/utils/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 
 // Import sortable components
