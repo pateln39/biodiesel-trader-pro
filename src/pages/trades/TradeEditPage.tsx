@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,7 @@ import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PricingType, ProductCreditStatus } from '@/types';
+import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PricingType, CustomsStatus } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
@@ -79,7 +78,7 @@ const TradeEditPage = () => {
             unit: (tradeLegs[0].unit || 'MT') as Unit,
             paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
-            productCreditStatus: (tradeLegs[0].product_credit_status || 'T1') as ProductCreditStatus,
+            customsStatus: tradeLegs[0].customs_status as CustomsStatus,
             formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
             mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
             pricingType: (tradeLegs[0].pricing_type as PricingType) || 'standard',
@@ -101,7 +100,7 @@ const TradeEditPage = () => {
               unit: (leg.unit || 'MT') as Unit,
               paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
               creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              productCreditStatus: (leg.product_credit_status || 'T1') as ProductCreditStatus,
+              customsStatus: leg.customs_status as CustomsStatus,
               formula: validateAndParsePricingFormula(leg.pricing_formula),
               mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
               pricingType: (leg.pricing_type as PricingType) || 'standard',
@@ -169,7 +168,7 @@ const TradeEditPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          product_credit_status: leg.productCreditStatus,
+          customs_status: leg.customsStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,

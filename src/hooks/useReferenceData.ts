@@ -34,6 +34,7 @@ export const useReferenceData = () => {
   };
 
   const fetchCustomsStatus = async () => {
+    // Query the customs_status table which was renamed from product_credit_status
     const { data, error } = await supabase
       .from('customs_status')
       .select('name')
