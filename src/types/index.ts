@@ -1,4 +1,3 @@
-
 // Re-export all types from their respective files
 export * from './common';
 export * from './pricing';
@@ -48,13 +47,6 @@ export interface TradeLeg {
   creditStatus: CreditStatus;
   formula?: import('./pricing').PricingFormula;
   mtmFormula?: import('./pricing').PricingFormula;
-}
-
-// User preferences type
-export interface UserPreferences {
-  id: string;
-  physical_trade_order?: string[];
-  paper_trade_order?: string[];
 }
 
 // Database types

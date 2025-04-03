@@ -52,21 +52,7 @@ export default {
 		'text-lg',
 		'text-xl',
 		'text-2xl',
-		'text-3xl',
-		'cursor-grab',
-		'cursor-grabbing',
-		'hover:bg-accent/20',
-		'hover:scale-[1.005]',
-		'hover:shadow-sm',
-		'scale-[1.01]',
-		'scale-[1.02]',
-		'shadow-lg',
-		'bg-accent/50',
-		'bg-accent/30',
-		'z-50',
-		'opacity-90',
-		'group',
-		'active:cursor-grabbing'
+		'text-3xl'
 	],
 	prefix: "",
 	theme: {

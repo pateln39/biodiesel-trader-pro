@@ -49,16 +49,3 @@
 .brand-card {
   @apply bg-brand-navy border border-brand-blue/30 rounded-md;
 }
-
-/* Table drag-and-drop styling */
-.sortable-row-dragging {
-  @apply shadow-lg bg-accent/50 z-50 opacity-90 scale-[1.02] !important;
-}
-
-.sortable-row-hover {
-  @apply hover:bg-accent/20 hover:shadow-sm transition-all duration-200 !important;
-}
-
-.sortable-drag-handle {
-  @apply cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground transition-colors !important;
-}
