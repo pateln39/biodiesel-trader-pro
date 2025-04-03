@@ -67,3 +67,7 @@
   @apply hover:bg-brand-navy/80;
 }
 
+.data-table-container {
+  @apply rounded-md border border-white/10 overflow-hidden shadow-sm;
+}
+

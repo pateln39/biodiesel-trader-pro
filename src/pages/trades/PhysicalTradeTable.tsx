@@ -74,7 +74,7 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
   });
 
   return (
-    <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+    <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-white/10">

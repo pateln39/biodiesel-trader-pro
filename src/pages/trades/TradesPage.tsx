@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Import our custom components
 import PhysicalTradeTable from './PhysicalTradeTable';
@@ -86,45 +87,49 @@ const TradesPage = () => {
 
   const renderPhysicalTradesTab = () => {
     return (
-      <div className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 rounded-md shadow-sm border-r-[3px] border-brand-lime/30">
-        <div className="p-4 flex justify-between items-center border-b border-white/10">
-          <h2 className="font-semibold">Physical Trades</h2>
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" /> Filter
-          </Button>
-        </div>
-        
-        <div className="pt-2">
+      <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+        <CardHeader>
+          <CardTitle>Physical Trades</CardTitle>
+          <CardDescription className="flex justify-between items-center">
+            <span>View and manage physical trade positions</span>
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" /> Filter
+            </Button>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <PhysicalTradeTable 
             trades={physicalTrades}
             loading={physicalLoading}
             error={physicalError}
             refetchTrades={refetchTrades}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   };
 
   const renderPaperTradesTab = () => {
     return (
-      <div className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 rounded-md shadow-sm border-r-[3px] border-brand-lime/30">
-        <div className="p-4 flex justify-between items-center border-b border-white/10">
-          <h2 className="font-semibold">Paper Trades</h2>
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" /> Filter
-          </Button>
-        </div>
-        
-        <div className="pt-2">
+      <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+        <CardHeader>
+          <CardTitle>Paper Trades</CardTitle>
+          <CardDescription className="flex justify-between items-center">
+            <span>View and manage paper trade positions</span>
+            <Button variant="outline" size="sm">
+              <Filter className="mr-2 h-4 w-4" /> Filter
+            </Button>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <PaperTradeList
             paperTrades={paperTrades}
             isLoading={paperLoading}
             error={paperError}
             refetchPaperTrades={refetchPaperTrades}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     );
   };
 
