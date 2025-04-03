@@ -17,6 +17,17 @@ const EETLogo = () => {
   );
 };
 
+// Styled BioDiesel CTRM component
+const StyledBioDieselText = () => {
+  return (
+    <div className="flex items-center">
+      <span className="text-brand-blue font-bold text-xl">Bio</span>
+      <span className="text-brand-blue font-bold text-xl">Diesel</span>
+      <span className="text-brand-lime font-bold text-xl">CTRM</span>
+    </div>
+  );
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -65,7 +76,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </Button>
             <div className="flex items-center gap-2">
               <EETLogo />
-              <span className="font-bold text-xl">BioDiesel CTRM</span>
+              <StyledBioDieselText />
             </div>
           </div>
           <div className="flex items-center space-x-4">
