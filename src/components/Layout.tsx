@@ -4,7 +4,6 @@ import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import eetLogo from '/lovable-uploads/978f0d49-6e18-4116-8816-f66dd93fee46.png';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -52,14 +51,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <div className="flex items-center space-x-2">
-              <img 
-                src={eetLogo} 
-                alt="EET Logo" 
-                className="h-8 w-auto" 
-              />
-              <span className="font-bold text-xl">EET BioDiesel CTRM</span>
-            </div>
+            <span className="font-bold text-xl">BioDiesel CTRM</span>
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative group">
