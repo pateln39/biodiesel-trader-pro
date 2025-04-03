@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,6 +66,7 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
+          product_credit_status: leg.productCreditStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,

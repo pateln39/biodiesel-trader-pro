@@ -603,6 +603,24 @@ export type Database = {
         }
         Relationships: []
       }
+      product_credit_status: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       product_relationships: {
         Row: {
           created_at: string | null
@@ -697,6 +715,7 @@ export type Database = {
           pricing_period_start: string | null
           pricing_type: string | null
           product: string
+          product_credit_status: string | null
           quantity: number
           sustainability: string | null
           tolerance: number | null
@@ -734,6 +753,7 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product: string
+          product_credit_status?: string | null
           quantity: number
           sustainability?: string | null
           tolerance?: number | null
@@ -771,6 +791,7 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product?: string
+          product_credit_status?: string | null
           quantity?: number
           sustainability?: string | null
           tolerance?: number | null

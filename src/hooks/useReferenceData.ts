@@ -33,6 +33,16 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
+  const fetchProductCreditStatus = async () => {
+    const { data, error } = await supabase
+      .from('product_credit_status')
+      .select('name')
+      .order('name');
+    
+    if (error) throw error;
+    return data.map(item => item.name);
+  };
+
   const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
@@ -48,9 +58,15 @@ export const useReferenceData = () => {
     queryFn: fetchCreditStatus
   });
 
+  const { data: productCreditStatusOptions = [] } = useQuery({
+    queryKey: ['productCreditStatus'],
+    queryFn: fetchProductCreditStatus
+  });
+
   return {
     counterparties,
     sustainabilityOptions,
-    creditStatusOptions
+    creditStatusOptions,
+    productCreditStatusOptions
   };
 };

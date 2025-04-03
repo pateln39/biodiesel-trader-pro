@@ -12,6 +12,7 @@ export type Unit = 'MT' | 'KG' | 'L';
 export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
 export type CreditStatus = 'pending' | 'approved' | 'rejected';
 export type PricingType = 'standard' | 'efp';
+export type ProductCreditStatus = 'T1' | 'T2' | string;
 
 export interface PhysicalTradeLeg {
   id: string;
@@ -30,6 +31,7 @@ export interface PhysicalTradeLeg {
   unit?: Unit;
   paymentTerm?: PaymentTerm;
   creditStatus?: CreditStatus;
+  productCreditStatus?: ProductCreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   pricingType?: PricingType;
@@ -55,6 +57,7 @@ export interface PhysicalTrade extends ParentTrade {
   unit?: Unit;
   paymentTerm?: PaymentTerm;
   creditStatus?: CreditStatus;
+  productCreditStatus?: ProductCreditStatus;
   formula?: PricingFormula;
   mtmFormula?: PricingFormula;
   pricingType?: PricingType;

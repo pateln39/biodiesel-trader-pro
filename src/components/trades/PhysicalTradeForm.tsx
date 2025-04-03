@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
-import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
+import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, ProductCreditStatus, PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
 import { PricingFormula } from '@/types/pricing';
 import { Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +39,7 @@ interface LegFormState {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
+  productCreditStatus: ProductCreditStatus;
   quantity: number;
   tolerance: number;
   loadingPeriodStart: Date;
@@ -63,6 +64,7 @@ const createDefaultLeg = (): LegFormState => ({
   unit: 'MT',
   paymentTerm: '30 days',
   creditStatus: 'pending',
+  productCreditStatus: 'T1',
   quantity: 0,
   tolerance: 5,
   loadingPeriodStart: new Date(),
@@ -141,7 +143,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   const {
     counterparties,
     sustainabilityOptions,
-    creditStatusOptions
+    creditStatusOptions,
+    productCreditStatusOptions
   } = useReferenceData();
 
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
@@ -155,6 +158,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     unit: leg.unit || 'MT',
     paymentTerm: leg.paymentTerm || '30 days',
     creditStatus: leg.creditStatus || 'pending',
+    productCreditStatus: leg.productCreditStatus || 'T1',
     quantity: leg.quantity,
     tolerance: leg.tolerance || 0,
     loadingPeriodStart: leg.loadingPeriodStart,
@@ -248,7 +252,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     const legValidations = legs.map((leg, index) => {
       const legNumber = index + 1;
-      const validations = [validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`), validateRequiredField(leg.product, `Leg ${legNumber} - Product`), validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`), validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`), validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`), validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`), validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`), validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`), validateDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd, `Leg ${legNumber} - Pricing Period`), validateDateRange(leg.loadingPeriodStart, leg.loadingPeriodEnd, `Leg ${legNumber} - Loading Period`)];
+      const validations = [validateRequiredField(leg.buySell, `Leg ${legNumber} - Buy/Sell`), validateRequiredField(leg.product, `Leg ${legNumber} - Product`), validateRequiredField(leg.sustainability, `Leg ${legNumber} - Sustainability`), validateRequiredField(leg.incoTerm, `Leg ${legNumber} - Incoterm`), validateRequiredField(leg.unit, `Leg ${legNumber} - Unit`), validateRequiredField(leg.paymentTerm, `Leg ${legNumber} - Payment Term`), validateRequiredField(leg.creditStatus, `Leg ${legNumber} - Credit Status`), validateRequiredField(leg.productCreditStatus, `Leg ${legNumber} - Product Credit Status`), validateRequiredField(leg.quantity, `Leg ${legNumber} - Quantity`), validateDateRange(leg.pricingPeriodStart, leg.pricingPeriodEnd, `Leg ${legNumber} - Pricing Period`), validateDateRange(leg.loadingPeriodStart, leg.loadingPeriodEnd, `Leg ${legNumber} - Loading Period`)];
       if (leg.pricingType === 'efp') {
         validations.push(validateRequiredField(leg.efpPremium, `Leg ${legNumber} - EFP Premium`));
         if (leg.efpAgreedStatus) {
@@ -321,6 +325,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         unit: legForm.unit,
         paymentTerm: legForm.paymentTerm,
         creditStatus: legForm.creditStatus,
+        productCreditStatus: legForm.productCreditStatus,
         formula: formula,
         mtmFormula: legForm.mtmFormula,
         pricingType: legForm.pricingType,
@@ -466,6 +471,22 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor={`leg-${legIndex}-product-credit-status`}>Product Credit Status</Label>
+                  <Select value={leg.productCreditStatus} onValueChange={value => updateLeg(legIndex, 'productCreditStatus', value)}>
+                    <SelectTrigger id={`leg-${legIndex}-product-credit-status`}>
+                      <SelectValue placeholder="Select product credit status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productCreditStatusOptions.map(status => <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-payment-term`}>Payment Term</Label>
                   <Select value={leg.paymentTerm} onValueChange={value => updateLeg(legIndex, 'paymentTerm', value as PaymentTerm)}>
                     <SelectTrigger id={`leg-${legIndex}-payment-term`}>
@@ -479,9 +500,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-quantity`}>Quantity</Label>
                   <Input id={`leg-${legIndex}-quantity`} type="number" value={leg.quantity} onChange={e => updateLeg(legIndex, 'quantity', e.target.value ? Number(e.target.value) : 0)} onFocus={handleNumberInputFocus} required />
@@ -500,11 +519,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                     </SelectContent>
                   </Select>
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`leg-${legIndex}-tolerance`}>Tolerance (%)</Label>
-                  <Input id={`leg-${legIndex}-tolerance`} type="number" value={leg.tolerance} onChange={e => updateLeg(legIndex, 'tolerance', e.target.value ? Number(e.target.value) : 0)} onFocus={handleNumberInputFocus} required />
-                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                <Label htmlFor={`leg-${legIndex}-tolerance`}>Tolerance (%)</Label>
+                <Input id={`leg-${legIndex}-tolerance`} type="number" value={leg.tolerance} onChange={e => updateLeg(legIndex, 'tolerance', e.target.value ? Number(e.target.value) : 0)} onFocus={handleNumberInputFocus} required />
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">

@@ -14,7 +14,8 @@ import {
   CreditStatus,
   DbParentTrade,
   DbTradeLeg,
-  PricingType
+  PricingType,
+  ProductCreditStatus
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
@@ -67,6 +68,7 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
+          productCreditStatus: firstLeg.product_credit_status as ProductCreditStatus,
           formula: validateAndParsePricingFormula(firstLeg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(firstLeg.mtm_formula),
           pricingType: (firstLeg.pricing_type || 'standard') as PricingType,
@@ -88,6 +90,7 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
             unit: (leg.unit || 'MT') as Unit,
             paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
             creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+            productCreditStatus: leg.product_credit_status as ProductCreditStatus,
             formula: validateAndParsePricingFormula(leg.pricing_formula),
             mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
             pricingType: (leg.pricing_type || 'standard') as PricingType,
