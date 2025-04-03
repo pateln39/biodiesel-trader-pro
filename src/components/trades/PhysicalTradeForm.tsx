@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -568,7 +567,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </Select>
               </div>
 
-              <div className="rounded-md p-4 mb-4 bg-gradient-to-r from-brand-navy from-90% to-brand-lime to-100% border-r-[3px] border-brand-lime shadow-md">
+              <div className="rounded-md p-4 mb-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 shadow-md">
                 <Tabs defaultValue="price">
                   <TabsList className="w-full mb-4">
                     <TabsTrigger value="price" disabled={leg.pricingType === 'efp'} className={leg.pricingType === 'efp' ? 'opacity-50' : ''}>
