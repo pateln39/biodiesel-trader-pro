@@ -73,9 +73,9 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
       </TableCell>
       <TableCell>
         <Badge variant={
-          leg.productCreditStatus === 'approved' ? 'success' :
-          leg.productCreditStatus === 'rejected' ? 'destructive' :
-          'outline'
+          leg.productCreditStatus === 'approved' ? "default" :
+          leg.productCreditStatus === 'rejected' ? "destructive" :
+          "outline"
         }>
           {leg.productCreditStatus || 'pending'}
         </Badge>
@@ -91,6 +91,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
         <TableRowActions 
           tradeId={trade.id} 
           legId={leg.id}
+          isMultiLeg={trade.legs.length > 1}
           tradeReference={trade.tradeReference}
           legReference={leg.legReference}
         />

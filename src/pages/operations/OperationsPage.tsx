@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTrades } from '@/hooks/useTrades';
-import { PhysicalTrade } from '@/types';
+import { PhysicalTrade, Movement } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { Movement } from '@/types/common';
 
 // Import the same components used in the physical trades tab
 import PhysicalTradeTable from '@/pages/trades/PhysicalTradeTable';
@@ -34,7 +33,30 @@ const OperationsPage = () => {
       .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data || [];
+    
+    // Map the data to match our Movement type
+    return (data || []).map(item => ({
+      id: item.id,
+      tradeId: item.trade_id,
+      movementReference: item.movement_reference || item.id,
+      status: item.status,
+      nominatedDate: item.nominated_date ? new Date(item.nominated_date) : new Date(),
+      quantity: item.quantity || item.bl_quantity || 0,
+      legId: item.leg_id,
+      scheduledQuantity: item.scheduled_quantity || item.quantity,
+      vesselName: item.vessel_name,
+      loadport: item.loadport,
+      disport: item.disport,
+      // Additional fields
+      actualized: item.actualized,
+      actualized_date: item.actualized_date,
+      actualized_quantity: item.actualized_quantity,
+      bl_date: item.bl_date,
+      bl_quantity: item.bl_quantity,
+      cash_flow_date: item.cash_flow_date,
+      comments: item.comments,
+      created_at: item.created_at
+    }));
   };
   
   const { 

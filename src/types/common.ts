@@ -1,3 +1,4 @@
+
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -40,6 +41,15 @@ export interface Movement {
   vesselName?: string;
   loadport?: string;
   disport?: string;
+  // Additional fields from Supabase 
+  actualized?: boolean;
+  actualized_date?: string;
+  actualized_quantity?: number;
+  bl_date?: string;
+  bl_quantity?: number;
+  cash_flow_date?: string;
+  comments?: string;
+  created_at?: string;
 }
 
 export interface AuditLog {
