@@ -231,13 +231,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
         </Button>
       </div>
       
-      <Card 
-        className="border border-muted" 
-        style={{ 
-          background: 'linear-gradient(to bottom, #091C3E 0%, #091C3E 50%, #B4D335 100%)',
-          border: '1px solid rgba(180, 211, 53, 0.7)'
-        }}
-      >
+      <Card className="border border-muted">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 flex-wrap min-h-[2.5rem]">
             {value.tokens.length > 0 ? (
