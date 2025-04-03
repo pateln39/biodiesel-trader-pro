@@ -28,6 +28,13 @@ export function SortableTableRow({
     isOver,
   } = useSortable({ id });
 
+  console.log(`[SortableTableRow] Rendering row ${id}`, { 
+    isDragging, 
+    isOver, 
+    hasTransform: !!transform,
+    dragHandle 
+  });
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -41,10 +48,12 @@ export function SortableTableRow({
     }
 
     if (dragHandle && child.props['data-drag-handle']) {
+      console.log(`[SortableTableRow] Adding drag handle to child for row ${id}`);
       return React.cloneElement(child, {
         ...child.props,
         ...listeners,
         ...attributes,
+        className: cn(child.props.className, 'cursor-grab active:cursor-grabbing'),
       });
     }
 
@@ -57,9 +66,9 @@ export function SortableTableRow({
       style={style}
       className={cn(
         // Basic hover effect for all rows
-        'hover:scale-[1.01] hover:shadow-md transition-all duration-200 hover:z-10 hover:relative',
+        'group hover:bg-accent/20 hover:scale-[1.005] transition-all duration-200',
         // Enhanced effect when dragging
-        isDragging && 'scale-[1.02] shadow-lg bg-accent/50 z-50 cursor-grabbing',
+        isDragging && 'scale-[1.01] shadow-lg bg-accent/50 z-50 cursor-grabbing',
         // Highlight drop target
         isOver && 'bg-accent/30',
         className

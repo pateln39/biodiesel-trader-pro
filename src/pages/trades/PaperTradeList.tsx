@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -11,17 +12,15 @@ import { PaperTrade } from '@/types/paper';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { confirm } from '@/components/ui/dialog';
-import Layout from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
 
 // Import sortable components
 import { SortableTable } from '@/components/ui/sortable-table';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
-import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { TableCell } from '@/components/ui/table';
-import { UserPreferences } from '@/types';
 import { Table, TableHeader, TableBody, TableRow, TableHead } from '@/components/ui/table';
+import { useTradeOrder } from '@/hooks/useTradeOrder';
+import { supabase } from '@/integrations/supabase/client';
 
 const PaperTradeList: React.FC = () => {
   const navigate = useNavigate();
@@ -29,101 +28,19 @@ const PaperTradeList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState('tradeReference');
   
-  // State for user preferences
-  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
-  const [orderedTrades, setOrderedTrades] = useState<PaperTrade[]>([]);
+  // Use the refactored hook for ordering trades
+  const { orderedTrades, handleOrderChange } = useTradeOrder<PaperTrade>(
+    paperTrades,
+    'paper_trade_order'
+  );
   
-  // Load user preferences
-  useEffect(() => {
-    const fetchUserPreferences = async () => {
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('id', 'default') // Use a default ID for now, later can be user-specific
-        .single();
-      
-      if (data && !error) {
-        setUserPreferences(data);
-      } else {
-        // Create default preferences if none exist
-        const { data: newData, error: createError } = await supabase
-          .from('user_preferences')
-          .insert({ id: 'default' })
-          .select()
-          .single();
-          
-        if (newData && !createError) {
-          setUserPreferences(newData);
-        }
-      }
-    };
-    
-    fetchUserPreferences();
-  }, []);
-  
-  // Apply order to trades when preferences or trades change
-  useEffect(() => {
-    if (!paperTrades.length) return setOrderedTrades([]);
-    
-    if (userPreferences?.paper_trade_order?.length) {
-      // Create a map for quick lookup
-      const orderMap = new Map();
-      userPreferences.paper_trade_order.forEach((id, index) => {
-        orderMap.set(id, index);
-      });
-      
-      // Sort trades based on the preferences
-      const ordered = [...paperTrades].sort((a, b) => {
-        const aIndex = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
-        const bIndex = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
-        
-        if (aIndex === Infinity && bIndex === Infinity) {
-          // Sort by date if neither is in preferences
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        
-        return aIndex - bIndex;
-      });
-      
-      setOrderedTrades(ordered);
-    } else {
-      // Default to creation date order
-      setOrderedTrades([...paperTrades].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
-    }
-  }, [paperTrades, userPreferences]);
-  
-  // Mutation to update preferences
-  const { mutate: updatePreferences } = useMutation({
-    mutationFn: async (newOrder: string[]) => {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update({ paper_trade_order: newOrder })
-        .eq('id', 'default');
-        
-      if (error) throw error;
-      return newOrder;
-    },
-    onSuccess: () => {
-      toast.success('Trade order updated', {
-        description: 'Your preferred trade order has been saved'
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to update trade order:', error);
-      toast.error('Failed to save trade order');
-    }
+  console.log('[PaperTradeList] Rendering with trades:', { 
+    paperTrades: paperTrades.length,
+    orderedTrades: orderedTrades.length
   });
   
-  // Handle order change
-  const handleOrderChange = (newItems: PaperTrade[]) => {
-    const newOrder = newItems.map(trade => trade.id);
-    updatePreferences(newOrder);
-  };
-  
-  const filteredTrades = useMemo(() => {
-    if (!orderedTrades) return [];
+  const filteredTrades = React.useMemo(() => {
+    if (!orderedTrades.length) return [];
     
     const term = searchTerm.toLowerCase();
     
@@ -166,7 +83,9 @@ const PaperTradeList: React.FC = () => {
     }
   };
 
-  // Change the render logic to use SortableTable
+  // Debug logging for drag and drop
+  console.log('[PaperTradeList] Filtered trades ready for rendering:', filteredTrades.length);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

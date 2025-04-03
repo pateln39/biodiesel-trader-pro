@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import {
   Table,
   TableHeader,
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Link } from 'react-router-dom';
-import { PhysicalTrade, UserPreferences } from '@/types';
+import { PhysicalTrade } from '@/types';
 import { formatDate } from '@/utils/dateUtils';
 import { pricingTypeDisplay } from '@/utils/tradeUtils';
 import FormulaCellDisplay from '@/components/trades/FormulaCellDisplay';
@@ -27,10 +28,8 @@ import FormulaCellDisplay from '@/components/trades/FormulaCellDisplay';
 // Import sortable components
 import { SortableTable } from '@/components/ui/sortable-table';
 import { SortableTableRow } from '@/components/ui/sortable-table-row';
-import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { TableCell } from '@/components/ui/table';
+import { useTradeOrder } from '@/hooks/useTradeOrder';
 
 const PhysicalTradeTable = ({ trades = [] }: { trades: PhysicalTrade[] }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,98 +40,16 @@ const PhysicalTradeTable = ({ trades = [] }: { trades: PhysicalTrade[] }) => {
   } | null>(null);
   const [searchField, setSearchField] = useState('tradeReference');
   
-  // State for user preferences
-  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
-  const [orderedTrades, setOrderedTrades] = useState<PhysicalTrade[]>([]);
+  // Use the refactored hook for ordering trades
+  const { orderedTrades, handleOrderChange } = useTradeOrder<PhysicalTrade>(
+    trades,
+    'physical_trade_order'
+  );
   
-  // Load user preferences
-  useEffect(() => {
-    const fetchUserPreferences = async () => {
-      const { data, error } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('id', 'default') // Use a default ID for now, later can be user-specific
-        .single();
-      
-      if (data && !error) {
-        setUserPreferences(data);
-      } else {
-        // Create default preferences if none exist
-        const { data: newData, error: createError } = await supabase
-          .from('user_preferences')
-          .insert({ id: 'default' })
-          .select()
-          .single();
-          
-        if (newData && !createError) {
-          setUserPreferences(newData);
-        }
-      }
-    };
-    
-    fetchUserPreferences();
-  }, []);
-  
-  // Apply order to trades when preferences or trades change
-  useEffect(() => {
-    if (!trades.length) return setOrderedTrades([]);
-    
-    if (userPreferences?.physical_trade_order?.length) {
-      // Create a map for quick lookup
-      const orderMap = new Map();
-      userPreferences.physical_trade_order.forEach((id, index) => {
-        orderMap.set(id, index);
-      });
-      
-      // Sort trades based on the preferences
-      const ordered = [...trades].sort((a, b) => {
-        const aIndex = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
-        const bIndex = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
-        
-        if (aIndex === Infinity && bIndex === Infinity) {
-          // Sort by date if neither is in preferences
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        
-        return aIndex - bIndex;
-      });
-      
-      setOrderedTrades(ordered);
-    } else {
-      // Default to creation date order
-      setOrderedTrades([...trades].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
-    }
-  }, [trades, userPreferences]);
-  
-  // Mutation to update preferences
-  const { mutate: updatePreferences } = useMutation({
-    mutationFn: async (newOrder: string[]) => {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update({ physical_trade_order: newOrder })
-        .eq('id', 'default');
-        
-      if (error) throw error;
-      return newOrder;
-    },
-    onSuccess: () => {
-      toast.success('Trade order updated', {
-        description: 'Your preferred trade order has been saved'
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to update trade order:', error);
-      toast.error('Failed to save trade order');
-    }
+  console.log('[PhysicalTradeTable] Rendering with trades:', { 
+    trades: trades.length,
+    orderedTrades: orderedTrades?.length || 0
   });
-  
-  // Handle order change
-  const handleOrderChange = (newItems: PhysicalTrade[]) => {
-    const newOrder = newItems.map(trade => trade.id);
-    updatePreferences(newOrder);
-  };
   
   const filterStatusOptions = [
     { label: 'All', value: null },
@@ -201,12 +118,13 @@ const PhysicalTradeTable = ({ trades = [] }: { trades: PhysicalTrade[] }) => {
     }
 
     const sorted = sortTrades(filtered);
-
+    
+    console.log('[PhysicalTradeTable] Filtered and sorted trades:', sorted.length);
     return sorted;
-  }, [orderedTrades, searchTerm, selectedStatus, selectedFilterFunc, searchField]);
+  }, [orderedTrades, searchTerm, selectedStatus, selectedFilterFunc, searchField, sortColumn]);
 
-  const isLoading = !orderedTrades && trades.length > 0;
-  const isError = !orderedTrades && trades.length === 0;
+  // Debug logging for drag and drop
+  console.log('[PhysicalTradeTable] Filtered trades ready for rendering:', filteredTrades.length);
 
   return (
     <div className="space-y-4">
