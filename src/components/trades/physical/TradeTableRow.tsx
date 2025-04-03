@@ -73,11 +73,11 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
       </TableCell>
       <TableCell>
         <Badge variant={
-          leg.productCreditStatus === 'approved' ? "default" :
-          leg.productCreditStatus === 'rejected' ? "destructive" :
+          leg.customsStatus === 'approved' ? "default" :
+          leg.customsStatus === 'rejected' ? "destructive" :
           "outline"
         }>
-          {leg.productCreditStatus || 'pending'}
+          {leg.customsStatus || 'pending'}
         </Badge>
       </TableCell>
       <TableCell>

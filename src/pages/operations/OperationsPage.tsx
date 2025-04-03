@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Filter } from 'lucide-react';
@@ -10,8 +9,8 @@ import { useTrades } from '@/hooks/useTrades';
 import { PhysicalTrade, Movement } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
-// Import the same components used in the physical trades tab
 import PhysicalTradeTable from '@/pages/trades/PhysicalTradeTable';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/utils/dateUtils';
@@ -26,6 +25,13 @@ const OperationsPage = () => {
     refetchTrades
   } = useTrades();
   
+  const { 
+    counterparties,
+    sustainabilityOptions,
+    creditStatusOptions,
+    customsStatusOptions
+  } = useReferenceData();
+
   const fetchMovements = async (): Promise<Movement[]> => {
     const { data, error } = await supabase
       .from('movements')
@@ -34,20 +40,18 @@ const OperationsPage = () => {
       
     if (error) throw error;
     
-    // Map the data to match our Movement type
     return (data || []).map(item => ({
       id: item.id,
-      tradeId: item.trade_leg_id, // Fixed: use trade_leg_id instead of trade_id
+      tradeId: item.trade_leg_id,
       movementReference: item.movement_reference || item.id,
       status: item.status,
       nominatedDate: item.nominated_date ? new Date(item.nominated_date) : new Date(),
-      quantity: item.bl_quantity || 0, // Fixed: ensure quantity is always set
-      legId: item.trade_leg_id, // Fixed: use trade_leg_id instead of leg_id
-      scheduledQuantity: item.bl_quantity || 0, // Fixed: map to the correct field
+      quantity: item.bl_quantity || 0,
+      legId: item.trade_leg_id,
+      scheduledQuantity: item.bl_quantity || 0,
       vesselName: item.vessel_name,
       loadport: item.loadport,
       disport: item.disport,
-      // Additional fields
       actualized: item.actualized,
       actualized_date: item.actualized_date,
       actualized_quantity: item.actualized_quantity,

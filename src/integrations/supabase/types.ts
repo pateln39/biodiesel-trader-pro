@@ -114,6 +114,24 @@ export type Database = {
         }
         Relationships: []
       }
+      customs_status: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       forward_prices: {
         Row: {
           created_at: string
@@ -603,24 +621,6 @@ export type Database = {
         }
         Relationships: []
       }
-      product_credit_status: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       product_relationships: {
         Row: {
           created_at: string | null
@@ -693,6 +693,7 @@ export type Database = {
           contract_status: string | null
           created_at: string
           credit_status: string | null
+          customs_status: string | null
           efp_agreed_status: boolean | null
           efp_designated_month: string | null
           efp_fixed_value: number | null
@@ -733,6 +734,7 @@ export type Database = {
           contract_status?: string | null
           created_at?: string
           credit_status?: string | null
+          customs_status?: string | null
           efp_agreed_status?: boolean | null
           efp_designated_month?: string | null
           efp_fixed_value?: number | null
@@ -773,6 +775,7 @@ export type Database = {
           contract_status?: string | null
           created_at?: string
           credit_status?: string | null
+          customs_status?: string | null
           efp_agreed_status?: boolean | null
           efp_designated_month?: string | null
           efp_fixed_value?: number | null

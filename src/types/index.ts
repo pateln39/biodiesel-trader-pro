@@ -1,3 +1,4 @@
+
 // Re-export all types from their respective files
 export * from './common';
 export * from './pricing';
@@ -12,6 +13,7 @@ export type IncoTerm = 'CIF' | 'FOB' | 'DES' | 'DAP' | 'FCA';
 export type Unit = 'MT' | 'KG' | 'L';
 export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
 export type CreditStatus = 'approved' | 'pending' | 'rejected';
+export type CustomsStatus = 'T1' | 'T2' | string;
 export type PhysicalTradeType = 'spot' | 'term';
 export type PricingType = 'standard' | 'efp';
 export type ContractStatus = 'sent' | 'in process' | 'action needed';
@@ -45,6 +47,7 @@ export interface TradeLeg {
   unit: Unit;
   paymentTerm: PaymentTerm;
   creditStatus: CreditStatus;
+  customsStatus?: CustomsStatus;
   formula?: import('./pricing').PricingFormula;
   mtmFormula?: import('./pricing').PricingFormula;
 }
@@ -89,5 +92,5 @@ export type DbTradeLeg = {
   mtm_future_month?: string;
   comments?: string;
   contract_status?: string;
-  product_credit_status?: string;
+  customs_status?: string;
 };
