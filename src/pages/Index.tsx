@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, Package, Clock, AlertTriangle, BarChart3, DollarSign } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart } from 'recharts';
 import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
+import { useTradesPerMonth } from '@/hooks/useTradesPerMonth';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 
@@ -47,7 +47,8 @@ const pnlData = [
 ];
 
 const Index = () => {
-  const { physicalPositionData, loading, error, refetchTrades } = usePhysicalPositions();
+  const { physicalPositionData, loading: positionsLoading, error: positionsError, refetchTrades: refetchPositions } = usePhysicalPositions();
+  const { tradesPerMonthData, loading: tradesLoading, error: tradesError, refetchTrades: refetchTradesPerMonth } = useTradesPerMonth();
 
   return (
     <Layout>
@@ -99,16 +100,15 @@ const Index = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Physical Position Table */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Physical Position by Month and Grade</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
+              {positionsLoading ? (
                 <TableLoadingState />
-              ) : error ? (
-                <TableErrorState error={error} onRetry={refetchTrades} />
+              ) : positionsError ? (
+                <TableErrorState error={positionsError} onRetry={refetchPositions} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -142,52 +142,56 @@ const Index = () => {
             </CardContent>
           </Card>
           
-          {/* Trades per Month */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Trades per Month</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tradesPerMonthData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1D59A9" opacity={0.3} />
-                    <XAxis dataKey="month" stroke="#FFFFFF" />
-                    <YAxis yAxisId="left" orientation="left" stroke="#FFFFFF" />
-                    <YAxis yAxisId="right" orientation="right" stroke="#B4D335" />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-brand-navy p-3 border border-brand-blue/30 rounded shadow">
-                              <p className="text-brand-lime">{`Volume: ${payload[1]?.value || 0} mt`}</p>
-                              <p className="text-white">{`Count: ${payload[0]?.value || 0}`}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="count" fill="#1D59A9" name="Count" />
-                    <Line 
-                      yAxisId="right" 
-                      type="monotone" 
-                      dataKey="volume" 
-                      stroke="#B4D335" 
-                      strokeWidth={3} 
-                      dot={{ fill: '#B4D335', strokeWidth: 2 }}
-                      name="Volume (mt)"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {tradesLoading ? (
+                <TableLoadingState />
+              ) : tradesError ? (
+                <TableErrorState error={tradesError} onRetry={refetchTradesPerMonth} />
+              ) : (
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tradesPerMonthData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1D59A9" opacity={0.3} />
+                      <XAxis dataKey="month" stroke="#FFFFFF" />
+                      <YAxis yAxisId="left" orientation="left" stroke="#FFFFFF" />
+                      <YAxis yAxisId="right" orientation="right" stroke="#B4D335" />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-brand-navy p-3 border border-brand-blue/30 rounded shadow">
+                                <p className="text-brand-lime">{`Volume: ${payload[1]?.value || 0} mt`}</p>
+                                <p className="text-white">{`Count: ${payload[0]?.value || 0}`}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend />
+                      <Bar yAxisId="left" dataKey="count" fill="#1D59A9" name="Count" />
+                      <Line 
+                        yAxisId="right" 
+                        type="monotone" 
+                        dataKey="volume" 
+                        stroke="#B4D335" 
+                        strokeWidth={3} 
+                        dot={{ fill: '#B4D335', strokeWidth: 2 }}
+                        name="Volume (mt)"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* QIU Table */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">QIU</CardTitle>
@@ -228,7 +232,6 @@ const Index = () => {
             </CardContent>
           </Card>
           
-          {/* Demurrage Chart */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Demurrage per Month</CardTitle>
@@ -273,7 +276,6 @@ const Index = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Open Demurrage Claims */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Open Demurrage Claims</CardTitle>
@@ -286,7 +288,6 @@ const Index = () => {
             </CardContent>
           </Card>
           
-          {/* QB Limit */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">QB Limit</CardTitle>
@@ -303,7 +304,6 @@ const Index = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-1">
-          {/* PnL Chart */}
           <Card className="bg-brand-navy text-white border-brand-blue/30">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">PnL</CardTitle>
