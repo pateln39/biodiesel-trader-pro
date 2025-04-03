@@ -1,9 +1,21 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+// Custom EET logo component
+const EETLogo = () => {
+  return (
+    <div className="flex items-center">
+      <span className="text-brand-blue font-bold text-2xl">E</span>
+      <span className="text-brand-blue font-bold text-2xl">E</span>
+      <span className="text-brand-lime font-bold text-2xl">T</span>
+    </div>
+  );
+};
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -51,7 +63,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <span className="font-bold text-xl">BioDiesel CTRM</span>
+            <div className="flex items-center gap-2">
+              <EETLogo />
+              <span className="font-bold text-xl">BioDiesel CTRM</span>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative group">
