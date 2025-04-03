@@ -357,7 +357,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       
       <div className="overflow-x-auto border rounded">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+          <thead className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
             <tr>
               <th className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"></th>
               <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={1}>PRODUCT TYPE</th>
@@ -380,10 +380,10 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Period</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-transparent divide-y divide-gray-200">
             {legs.length > 0 ? (
               legs.map((leg, index) => (
-                <tr key={leg.id || index} className="bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+                <tr key={leg.id || index} className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
                   <td className="px-2 py-3 text-white">
                     <Button 
                       type="button" 
@@ -413,7 +413,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     </Select>
                   </td>
                   
-                  {/* Update read-only inputs to match the row background */}
                   <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
@@ -520,7 +519,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-white bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+                <td colSpan={12} className="px-6 py-4 text-center text-white bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
                   No trade legs yet. Click "Add Row" to start building your trade.
                 </td>
               </tr>

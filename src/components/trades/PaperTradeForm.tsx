@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -289,7 +290,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Trade Table</h3>
-        <div className="border rounded-md p-4 bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime">
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
           <PaperTradeTable
             legs={tradeLegs}
             onLegsChange={handleLegsChange}
@@ -301,7 +302,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Exposure Table</h3>
-        <div className="border rounded-md p-4 bg-gradient-to-r from-brand-navy via-[#0E2A5C] to-brand-lime overflow-x-auto">
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 overflow-x-auto">
           <Table className="min-w-full divide-y divide-gray-200">
             <TableHeader className="bg-transparent">
               <TableRow>
