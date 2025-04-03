@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle } from 'lucide-react';
@@ -85,8 +86,8 @@ const TradesPage = () => {
 
   const renderPhysicalTradesTab = () => {
     return (
-      <div className="bg-card rounded-md border shadow-sm">
-        <div className="p-4 flex justify-between items-center border-b">
+      <div className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 rounded-md shadow-sm border-r-[3px] border-brand-lime/30">
+        <div className="p-4 flex justify-between items-center border-b border-white/10">
           <h2 className="font-semibold">Physical Trades</h2>
           <Button variant="outline" size="sm">
             <Filter className="mr-2 h-4 w-4" /> Filter
@@ -107,8 +108,8 @@ const TradesPage = () => {
 
   const renderPaperTradesTab = () => {
     return (
-      <div className="bg-card rounded-md border shadow-sm">
-        <div className="p-4 flex justify-between items-center border-b">
+      <div className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 rounded-md shadow-sm border-r-[3px] border-brand-lime/30">
+        <div className="p-4 flex justify-between items-center border-b border-white/10">
           <h2 className="font-semibold">Paper Trades</h2>
           <Button variant="outline" size="sm">
             <Filter className="mr-2 h-4 w-4" /> Filter

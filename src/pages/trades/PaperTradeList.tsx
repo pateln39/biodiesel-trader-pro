@@ -30,74 +30,75 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Reference</TableHead>
-          <TableHead>Broker</TableHead>
-          <TableHead>Products</TableHead>
-          <TableHead>Period</TableHead>
-          <TableHead className="text-right">Quantity</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead className="text-center">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {paperTrades && paperTrades.length > 0 ? (
-          paperTrades.flatMap((trade) => {
-            return trade.legs.map((leg, legIndex) => {
-              let productDisplay = formatProductDisplay(
-                leg.product,
-                leg.relationshipType,
-                leg.rightSide?.product
-              );
-              
-              const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
-              const isMultiLeg = trade.legs.length > 1;
-              
-              // Calculate the display price based on relationship type
-              const displayPrice = calculateDisplayPrice(
-                leg.relationshipType,
-                leg.price,
-                leg.rightSide?.price
-              );
-              
-              return (
-                <TableRow key={`${trade.id}-${leg.id}`}>
-                  <TableCell>
-                    <Link to={`/trades/paper/edit/${trade.id}`} className="text-white hover:text-white/80">
-                      {displayReference}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{leg.broker || trade.broker}</TableCell>
-                  <TableCell>{productDisplay}</TableCell>
-                  <TableCell>{leg.period}</TableCell>
-                  <TableCell className="text-right">{leg.quantity}</TableCell>
-                  <TableCell className="text-right">{displayPrice}</TableCell>
-                  <TableCell className="text-center">
-                    <PaperTradeRowActions
-                      tradeId={trade.id}
-                      legId={leg.id}
-                      isMultiLeg={isMultiLeg}
-                      legReference={leg.legReference}
-                      tradeReference={trade.tradeReference}
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            });
-          })
-        ) : (
-          <TableRow>
-            <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-              No paper trades found.
-            </TableCell>
+    <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-b border-white/10">
+            <TableHead>Reference</TableHead>
+            <TableHead>Broker</TableHead>
+            <TableHead>Products</TableHead>
+            <TableHead>Period</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-center">Actions</TableHead>
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {paperTrades && paperTrades.length > 0 ? (
+            paperTrades.flatMap((trade) => {
+              return trade.legs.map((leg, legIndex) => {
+                let productDisplay = formatProductDisplay(
+                  leg.product,
+                  leg.relationshipType,
+                  leg.rightSide?.product
+                );
+                
+                const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
+                const isMultiLeg = trade.legs.length > 1;
+                
+                // Calculate the display price based on relationship type
+                const displayPrice = calculateDisplayPrice(
+                  leg.relationshipType,
+                  leg.price,
+                  leg.rightSide?.price
+                );
+                
+                return (
+                  <TableRow key={`${trade.id}-${leg.id}`} className="border-b border-white/5">
+                    <TableCell>
+                      <Link to={`/trades/paper/edit/${trade.id}`} className="text-white hover:text-white/80">
+                        {displayReference}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{leg.broker || trade.broker}</TableCell>
+                    <TableCell>{productDisplay}</TableCell>
+                    <TableCell>{leg.period}</TableCell>
+                    <TableCell className="text-right">{leg.quantity}</TableCell>
+                    <TableCell className="text-right">{displayPrice}</TableCell>
+                    <TableCell className="text-center">
+                      <PaperTradeRowActions
+                        tradeId={trade.id}
+                        legId={leg.id}
+                        isMultiLeg={isMultiLeg}
+                        legReference={leg.legReference}
+                        tradeReference={trade.tradeReference}
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              });
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                No paper trades found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
 export default PaperTradeList;
-

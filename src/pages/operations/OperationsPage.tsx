@@ -69,10 +69,10 @@ const OperationsPage = () => {
           </TabsList>
 
           <TabsContent value="open-trades" className="space-y-4">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-b border-white/10">
                     <TableHead>Reference</TableHead>
                     <TableHead>Counterparty</TableHead>
                     <TableHead>Product</TableHead>
@@ -122,7 +122,7 @@ const OperationsPage = () => {
                       );
                       
                       return (
-                        <TableRow key={trade.id}>
+                        <TableRow key={trade.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                           <TableCell>
                             <Link to={`/trades/${trade.id}`} className="hover:underline">
                               {trade.tradeReference}
@@ -151,10 +151,10 @@ const OperationsPage = () => {
           </TabsContent>
 
           <TabsContent value="movements" className="space-y-4">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-b border-white/10">
                     <TableHead>Trade Ref</TableHead>
                     <TableHead>Vessel</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
@@ -195,7 +195,7 @@ const OperationsPage = () => {
                       const trade = physicalTrades.find(t => t.id === movement.tradeId);
                       
                       return (
-                        <TableRow key={movement.id}>
+                        <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                           <TableCell>
                             {trade ? (
                               <Link to={`/trades/${movement.tradeId}`} className="hover:underline">

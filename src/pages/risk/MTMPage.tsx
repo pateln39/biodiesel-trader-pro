@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { format } from 'date-fns';
@@ -368,7 +369,7 @@ const MTMPage = () => {
 
         <Separator />
         
-        <Card>
+        <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
           <CardHeader>
             <CardTitle>MTM Positions</CardTitle>
             <CardDescription>
@@ -395,84 +396,86 @@ const MTMPage = () => {
                     <p>Loading MTM positions...</p>
                   </div>
                 ) : mtmPositions && mtmPositions.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Trade Ref</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>B/S</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="text-right">Trade Price</TableHead>
-                        <TableHead className="text-right">MTM Price</TableHead>
-                        <TableHead className="text-right">MTM Value</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {mtmPositions.map((position) => (
-                        <TableRow key={position.legId}>
-                          <TableCell>
-                            {position.physicalType === 'term' ? (
-                              <>
-                                {position.tradeRef}-{position.legReference.split('-').pop()}
-                              </>
-                            ) : (
-                              <>
-                                {position.tradeRef}
-                              </>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {position.product}
-                            {position.pricingType === 'efp' && (
-                              <Badge variant="outline" className="ml-2">EFP</Badge>
-                            )}
-                            {isDateRangeInFuture(position.startDate, position.endDate) && position.mtmFutureMonth && (
-                              <Badge variant="secondary" className="ml-2">Future: {position.mtmFutureMonth}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
-                              {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {position.quantity.toLocaleString()} MT
-                          </TableCell>
-                          <TableCell className="text-right">
-                            ${position.calculatedPrice.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            ${position.mtmCalculatedPrice.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              ${position.mtmValue.toFixed(2)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              position.periodType === 'historical' ? 'default' : 
-                              position.periodType === 'current' ? 'secondary' : 
-                              'outline'
-                            }>
-                              {position.periodType || 'Unknown'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleViewPrices(position)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-b border-white/10">
+                          <TableHead>Trade Ref</TableHead>
+                          <TableHead>Product</TableHead>
+                          <TableHead>B/S</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead className="text-right">Trade Price</TableHead>
+                          <TableHead className="text-right">MTM Price</TableHead>
+                          <TableHead className="text-right">MTM Value</TableHead>
+                          <TableHead>Period</TableHead>
+                          <TableHead></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {mtmPositions.map((position) => (
+                          <TableRow key={position.legId} className="border-b border-white/5 hover:bg-brand-navy/80">
+                            <TableCell>
+                              {position.physicalType === 'term' ? (
+                                <>
+                                  {position.tradeRef}-{position.legReference.split('-').pop()}
+                                </>
+                              ) : (
+                                <>
+                                  {position.tradeRef}
+                                </>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {position.product}
+                              {position.pricingType === 'efp' && (
+                                <Badge variant="outline" className="ml-2">EFP</Badge>
+                              )}
+                              {isDateRangeInFuture(position.startDate, position.endDate) && position.mtmFutureMonth && (
+                                <Badge variant="secondary" className="ml-2">Future: {position.mtmFutureMonth}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={position.buySell === 'buy' ? "default" : "outline"}>
+                                {position.buySell.charAt(0).toUpperCase() + position.buySell.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {position.quantity.toLocaleString()} MT
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${position.calculatedPrice.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              ${position.mtmCalculatedPrice.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={position.mtmValue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                ${position.mtmValue.toFixed(2)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                position.periodType === 'historical' ? 'default' : 
+                                position.periodType === 'current' ? 'secondary' : 
+                                'outline'
+                              }>
+                                {position.periodType || 'Unknown'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleViewPrices(position)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center p-12 text-muted-foreground">
                     <p>No MTM positions available. Add trades with pricing formulas to see data here.</p>

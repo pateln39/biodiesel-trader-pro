@@ -49,3 +49,21 @@
 .brand-card {
   @apply bg-brand-navy border border-brand-blue/30 rounded-md;
 }
+
+/* New gradient-related utility classes */
+.brand-gradient-diagonal {
+  @apply bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30;
+}
+
+.table-row-border {
+  @apply border-b border-white/5;
+}
+
+.table-header-border {
+  @apply border-b border-white/10;
+}
+
+.table-hover-effect {
+  @apply hover:bg-brand-navy/80;
+}
+

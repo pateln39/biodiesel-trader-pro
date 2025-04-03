@@ -74,10 +74,10 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
   });
 
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="rounded-md border overflow-x-auto bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-b border-white/10">
             <TableHead>Reference</TableHead>
             <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
