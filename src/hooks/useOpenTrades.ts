@@ -80,7 +80,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       updated_at: new Date(item.updated_at),
       // Map the new fields
       pricing_type: item.pricing_type as PricingType,
-      pricing_formula: item.pricing_formula,
+      pricing_formula: item.pricing_formula as unknown as PricingFormula, // Properly cast the JSON to PricingFormula
       comments: item.comments,
       contract_status: item.contract_status as ContractStatus
     }));
