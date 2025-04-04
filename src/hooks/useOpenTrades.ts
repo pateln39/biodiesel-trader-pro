@@ -67,7 +67,15 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) {
+      console.error('[OPEN TRADES] Error in Supabase query:', error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.warn('[OPEN TRADES] No data returned from Supabase');
+      return [];
+    }
     
     return data.map(item => ({
       id: item.id,
@@ -106,7 +114,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       qbe_status: item.qbe_status,
       nominated_value: item.nominated_value,
       balance: item.balance,
-      // Map EFP related fields - these are properly accessed now from the explicit select
+      // Map EFP related fields
       efp_premium: item.efp_premium,
       efp_agreed_status: item.efp_agreed_status,
       efp_fixed_value: item.efp_fixed_value,
