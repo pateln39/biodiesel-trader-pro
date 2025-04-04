@@ -16,7 +16,7 @@ export type PricingType = 'standard' | 'efp' | 'fixed';
 // Update CustomsStatus to match what's being used in the code
 export type CustomsStatus = 'cleared' | 'pending' | 'rejected' | 'T1' | 'T2' | string;
 // Update ContractStatus to include values from both common.ts and what's used in components
-export type ContractStatus = 'draft' | 'signed' | 'pending' | 'cancelled' | 'sent' | 'in process' | 'action needed';
+export type ContractStatus = 'draft' | 'signed' | 'pending' | 'cancelled' | 'sent' | 'in process' | 'action needed' | 'confirmed';
 
 export interface PhysicalTradeLeg {
   id: string;
