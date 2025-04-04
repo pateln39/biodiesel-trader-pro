@@ -280,6 +280,38 @@ export type Database = {
         }
         Relationships: []
       }
+      movements: {
+        Row: {
+          bl_quantity: number
+          created_at: string
+          id: string
+          trade_leg_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bl_quantity: number
+          created_at?: string
+          id?: string
+          trade_leg_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bl_quantity?: number
+          created_at?: string
+          id?: string
+          trade_leg_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movements_trade_leg_id_fkey"
+            columns: ["trade_leg_id"]
+            isOneToOne: false
+            referencedRelation: "trade_legs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       open_trades: {
         Row: {
           balance: number | null

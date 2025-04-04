@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useReferenceData } from '@/hooks/useReferenceData';
 
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
+import MovementsTable from '@/components/operations/MovementsTable';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -27,8 +28,9 @@ const OperationsPage = () => {
         </div>
 
         <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full md:w-[400px] grid-cols-1">
+          <TabsList className="grid w-full md:w-[400px] grid-cols-2">
             <TabsTrigger value="open-trades">Open Trades</TabsTrigger>
+            <TabsTrigger value="movements">Movements</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open-trades" className="space-y-4">
@@ -44,6 +46,23 @@ const OperationsPage = () => {
               </CardHeader>
               <CardContent>
                 <OpenTradesTable />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="movements" className="space-y-4">
+            <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+              <CardHeader>
+                <CardTitle>Movements</CardTitle>
+                <CardDescription className="flex justify-between items-center">
+                  <span>View and manage product movements</span>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MovementsTable />
               </CardContent>
             </Card>
           </TabsContent>
