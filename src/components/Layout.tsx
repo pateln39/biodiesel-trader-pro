@@ -22,6 +22,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const lastClickTimeRef = useRef<number>(0);
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -51,7 +52,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
 
-  // Handle click outside sidebar to close it
+  // Handle double click outside sidebar to close it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarOpen && 
@@ -59,7 +60,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           !sidebarRef.current.contains(event.target as Node) &&
           // Ignore clicks on the toggle button
           !(event.target as Element).closest('[data-sidebar-toggle]')) {
-        setSidebarOpen(false);
+        
+        const clickTime = new Date().getTime();
+        const timeSinceLastClick = clickTime - lastClickTimeRef.current;
+        
+        // Check if this is a double-click (time between clicks is less than 300ms)
+        if (timeSinceLastClick < 300 && timeSinceLastClick > 0) {
+          setSidebarOpen(false);
+        }
+        
+        lastClickTimeRef.current = clickTime;
       }
     };
 
