@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -48,7 +47,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       const valueA = a[sortField as keyof OpenTrade];
       const valueB = b[sortField as keyof OpenTrade];
       
-      // Handle different data types
       if (valueA === valueB) return 0;
       if (valueA === null || valueA === undefined) return 1;
       if (valueB === null || valueB === undefined) return -1;
@@ -75,42 +73,32 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
 
   const createMovement = async (trade: OpenTrade) => {
     try {
-      // Generate a simple movement reference using the trade reference plus a timestamp
       const movementReference = `${trade.trade_reference}-M${Date.now().toString().slice(-6)}`;
       
-      // Insert a new movement record based on the trade data
       const { data, error } = await supabase
         .from('movements')
         .insert({
-          // The correct field name should match what's in the database schema
-          // Instead of trade_leg_id, we use the exact field name from the database
+          movement_reference: movementReference,
           parent_trade_id: trade.parent_trade_id,
-          vessel_name: trade.vessel_name,
-          loadport: trade.loadport,
-          disport: trade.disport,
           trade_reference: trade.trade_reference,
           counterparty: trade.counterparty,
           buy_sell: trade.buy_sell,
           product: trade.product,
+          quantity: trade.quantity,
           sustainability: trade.sustainability,
           inco_term: trade.inco_term,
-          quantity: trade.quantity,
           tolerance: trade.tolerance,
           loading_period_start: trade.loading_period_start,
           loading_period_end: trade.loading_period_end,
+          unit: trade.unit,
+          vessel_name: trade.vessel_name,
+          loadport: trade.loadport,
+          disport: trade.disport,
+          status: 'pending',
           pricing_type: trade.pricing_type,
           pricing_formula: trade.pricing_formula,
-          unit: trade.unit,
           comments: trade.comments,
-          movement_reference: movementReference,
-          nominated_date: new Date().toISOString().split('T')[0],
-          status: 'pending',
-          bl_quantity: null,
-          actualized: false,
-          actualized_date: null,
-          actualized_quantity: null,
-          bl_date: null,
-          cash_flow_date: null
+          nominated_date: new Date().toISOString().split('T')[0]
         })
         .select();
       
@@ -121,7 +109,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       }
       
       toast.success("Movement created successfully");
-      // Refresh data if needed
       handleRefresh();
     } catch (err) {
       console.error('Error in createMovement:', err);
