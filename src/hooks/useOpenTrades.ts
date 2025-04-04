@@ -110,8 +110,8 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       comments: item.comments,
       contract_status: item.contract_status as ContractStatus,
       // Map newly added fields
-      nominated_value: item.nominated_value,
-      balance: item.balance,
+      nominated_value: item.nominated_value || 0, // Ensure nominated_value is never null
+      balance: item.balance !== null && item.balance !== undefined ? item.balance : item.quantity, // Default to quantity if balance is null
       // Map EFP related fields
       efp_premium: item.efp_premium,
       efp_agreed_status: item.efp_agreed_status,

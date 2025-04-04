@@ -30,6 +30,9 @@ const OperationsPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Operations</h1>
+          <Button onClick={handleRefreshTables}>
+            Refresh Data
+          </Button>
         </div>
 
         <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -50,7 +53,7 @@ const OperationsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <OpenTradesTable onRefresh={handleRefreshTables} />
+                <OpenTradesTable onRefresh={handleRefreshTables} key={`open-trades-${refreshTrigger}`} />
               </CardContent>
             </Card>
           </TabsContent>

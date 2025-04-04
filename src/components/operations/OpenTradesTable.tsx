@@ -183,7 +183,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableHeader>
           <TableBody>
             {sortedTrades.map((trade) => {
-              const isZeroBalance = trade.balance !== undefined && trade.balance <= 0;
+              // Updated to handle null/undefined balance values
+              const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
               
               return (
                 <TableRow 
@@ -265,7 +266,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                     )}
                   </TableCell>
                   <TableCell className="text-right">{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
-                  <TableCell className="text-right">{trade.balance?.toLocaleString() || '-'} MT</TableCell>
+                  <TableCell className="text-right">{trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT</TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center space-x-1">
                       <TooltipProvider>
