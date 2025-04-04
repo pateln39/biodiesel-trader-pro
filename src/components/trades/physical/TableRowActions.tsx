@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,15 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     }
   };
   
+  // Handle row edit action
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log(`[ROW_ACTIONS] Navigating to trade edit: ${tradeId}`);
+    navigate(`/trades/edit/${tradeId}`);
+  };
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -49,6 +58,11 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleEdit}>
+          <Edit className="mr-2 h-4 w-4" />
+          Edit Trade
+        </DropdownMenuItem>
+        
         {isMultiLeg && legId && legReference ? (
           <DropdownMenuItem 
             onClick={handleDelete}
