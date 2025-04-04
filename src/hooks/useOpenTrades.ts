@@ -51,9 +51,19 @@ export interface OpenTrade {
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
   try {
+    // Get all EFP related fields from the open_trades table
     const { data, error } = await supabase
       .from('open_trades')
-      .select('*')
+      .select(`
+        id, trade_leg_id, parent_trade_id, trade_reference, counterparty, 
+        buy_sell, product, sustainability, inco_term, quantity, tolerance,
+        loading_period_start, loading_period_end, pricing_period_start, 
+        pricing_period_end, unit, payment_term, credit_status, customs_status,
+        vessel_name, loadport, disport, scheduled_quantity, open_quantity, 
+        status, created_at, updated_at, pricing_type, pricing_formula, 
+        comments, contract_status, qbe_status, nominated_value, balance,
+        efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month
+      `)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     
@@ -96,7 +106,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       qbe_status: item.qbe_status,
       nominated_value: item.nominated_value,
       balance: item.balance,
-      // Map EFP related fields
+      // Map EFP related fields - these are properly accessed now from the explicit select
       efp_premium: item.efp_premium,
       efp_agreed_status: item.efp_agreed_status,
       efp_fixed_value: item.efp_fixed_value,
