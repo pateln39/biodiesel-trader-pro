@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
-import { Loader2, Edit, Truck, ArrowUpDown } from 'lucide-react';
+import { Loader2, Edit, ArrowUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/tooltip";
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
 interface OpenTradesTableProps {
@@ -70,51 +70,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       return 0;
     });
   }, [openTrades, sortField, sortDirection]);
-
-  const createMovement = async (trade: OpenTrade) => {
-    try {
-      const movementReference = `${trade.trade_reference}-M${Date.now().toString().slice(-6)}`;
-      
-      const { data, error } = await supabase
-        .from('movements')
-        .insert({
-          movement_reference: movementReference,
-          parent_trade_id: trade.parent_trade_id,
-          trade_reference: trade.trade_reference,
-          counterparty: trade.counterparty,
-          buy_sell: trade.buy_sell,
-          product: trade.product,
-          quantity: trade.quantity,
-          sustainability: trade.sustainability,
-          inco_term: trade.inco_term,
-          tolerance: trade.tolerance,
-          loading_period_start: trade.loading_period_start,
-          loading_period_end: trade.loading_period_end,
-          unit: trade.unit,
-          vessel_name: trade.vessel_name,
-          loadport: trade.loadport,
-          disport: trade.disport,
-          status: 'pending',
-          pricing_type: trade.pricing_type,
-          pricing_formula: trade.pricing_formula,
-          comments: trade.comments,
-          nominated_date: new Date().toISOString().split('T')[0]
-        })
-        .select();
-      
-      if (error) {
-        console.error('Error creating movement:', error);
-        toast.error("Failed to create movement");
-        return;
-      }
-      
-      toast.success("Movement created successfully");
-      handleRefresh();
-    } catch (err) {
-      console.error('Error in createMovement:', err);
-      toast.error("An unexpected error occurred");
-    }
-  };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
@@ -301,23 +256,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>View/Edit Trade</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => createMovement(trade)}
-                        >
-                          <Truck className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Create Movement</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
