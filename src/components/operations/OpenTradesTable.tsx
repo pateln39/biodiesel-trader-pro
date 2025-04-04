@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -82,12 +81,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       const { data, error } = await supabase
         .from('movements')
         .insert({
-          movement_reference: movementReference,
           trade_leg_id: trade.trade_leg_id,
           parent_trade_id: trade.parent_trade_id,
-          vessel_name: trade.vessel_name || null,
-          loadport: trade.loadport || null,
-          disport: trade.disport || null,
+          vessel_name: trade.vessel_name,
+          loadport: trade.loadport,
+          disport: trade.disport,
           trade_reference: trade.trade_reference,
           counterparty: trade.counterparty,
           buy_sell: trade.buy_sell,
@@ -102,10 +100,15 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           pricing_formula: trade.pricing_formula,
           unit: trade.unit,
           comments: trade.comments,
-          nominated_date: new Date(), // Set the nominated date to today
+          movement_reference: movementReference,
+          nominated_date: new Date().toISOString().split('T')[0],
           status: 'pending',
-          bl_quantity: null, // Initialize with null
-          actualized: false // Not actualized by default
+          bl_quantity: null,
+          actualized: false,
+          actualized_date: null,
+          actualized_quantity: null,
+          bl_date: null,
+          cash_flow_date: null
         })
         .select();
       
