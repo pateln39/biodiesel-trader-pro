@@ -79,8 +79,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       const { data, error } = await supabase
         .from('movements')
         .insert({
-          trade_leg_id: trade.trade_leg_id,
-          parent_trade_id: trade.parent_trade_id,
+          vessel_name: trade.vessel_name || null,
+          loadport: trade.loadport || null,
+          disport: trade.disport || null,
           trade_reference: trade.trade_reference,
           counterparty: trade.counterparty,
           buy_sell: trade.buy_sell,
@@ -91,6 +92,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           tolerance: trade.tolerance,
           loading_period_start: trade.loading_period_start,
           loading_period_end: trade.loading_period_end,
+          pricing_type: trade.pricing_type,
+          pricing_formula: trade.pricing_formula,
+          unit: trade.unit,
+          comments: trade.comments,
           status: 'pending'
         })
         .select();
