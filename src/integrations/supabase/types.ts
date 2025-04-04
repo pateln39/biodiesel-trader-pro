@@ -373,6 +373,10 @@ export type Database = {
           credit_status: string | null
           customs_status: string | null
           disport: string | null
+          efp_agreed_status: boolean | null
+          efp_designated_month: string | null
+          efp_fixed_value: number | null
+          efp_premium: number | null
           id: string
           inco_term: string | null
           loading_period_end: string | null
@@ -409,6 +413,10 @@ export type Database = {
           credit_status?: string | null
           customs_status?: string | null
           disport?: string | null
+          efp_agreed_status?: boolean | null
+          efp_designated_month?: string | null
+          efp_fixed_value?: number | null
+          efp_premium?: number | null
           id?: string
           inco_term?: string | null
           loading_period_end?: string | null
@@ -445,6 +453,10 @@ export type Database = {
           credit_status?: string | null
           customs_status?: string | null
           disport?: string | null
+          efp_agreed_status?: boolean | null
+          efp_designated_month?: string | null
+          efp_fixed_value?: number | null
+          efp_premium?: number | null
           id?: string
           inco_term?: string | null
           loading_period_end?: string | null
