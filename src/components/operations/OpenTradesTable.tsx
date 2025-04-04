@@ -82,7 +82,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       const { data, error } = await supabase
         .from('movements')
         .insert({
-          trade_leg_id: trade.trade_leg_id, 
+          // The correct field name should match what's in the database schema
+          // Instead of trade_leg_id, we use the exact field name from the database
           parent_trade_id: trade.parent_trade_id,
           vessel_name: trade.vessel_name,
           loadport: trade.loadport,
