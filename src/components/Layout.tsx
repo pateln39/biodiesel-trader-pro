@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -50,6 +51,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
 
+  // Handle click outside sidebar to close it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sidebarOpen && 
+          sidebarRef.current && 
+          !sidebarRef.current.contains(event.target as Node) &&
+          // Ignore clicks on the toggle button
+          !(event.target as Element).closest('[data-sidebar-toggle]')) {
+        setSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [sidebarOpen]);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-gradient-to-b from-brand-navy via-brand-navy/75 to-brand-lime/25 text-primary-foreground shadow-md z-20 border-b-[1px] border-brand-lime/70">
@@ -59,6 +79,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               variant="ghost" 
               size="icon" 
               onClick={toggleSidebar}
+              data-sidebar-toggle="true"
               className="text-primary-foreground hover:bg-primary/90"
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -93,6 +114,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       <div className="flex flex-1">
         <aside 
+          ref={sidebarRef}
           className={cn(
             "fixed inset-y-0 left-0 pt-16 z-10 bg-gradient-to-br from-brand-navy via-brand-navy to-[#122d42] shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
