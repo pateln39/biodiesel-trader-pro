@@ -24,6 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -115,7 +116,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
             <TableHead>Counterparty</TableHead>
             <TableHead>Pricing Type</TableHead>
             <TableHead>Formula</TableHead>
-            <TableHead>Comments</TableHead>
+            <TableHead className="text-center">Comments</TableHead>
             <TableHead>Customs Status</TableHead>
             <TableHead>QBE Status</TableHead>
             <TableHead>Contract Status</TableHead>
@@ -150,13 +151,16 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                 </Badge>
               </TableCell>
               <TableCell>
-                {trade.pricing_formula ? (
-                  <span className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded">
-                    {JSON.stringify(trade.pricing_formula).substring(0, 20)}...
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground italic">No formula</span>
-                )}
+                <FormulaCellDisplay
+                  tradeId={trade.parent_trade_id}
+                  legId={trade.trade_leg_id}
+                  formula={trade.pricing_formula}
+                  pricingType={trade.pricing_type}
+                  efpPremium={trade.efp_premium}
+                  efpDesignatedMonth={trade.efp_designated_month}
+                  efpAgreedStatus={trade.efp_agreed_status}
+                  efpFixedValue={trade.efp_fixed_value}
+                />
               </TableCell>
               <TableCell className="text-center">
                 <Dialog>

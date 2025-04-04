@@ -42,6 +42,11 @@ export interface OpenTrade {
   qbe_status?: string;
   nominated_value?: number;
   balance?: number;
+  // EFP related properties needed for formula display
+  efp_premium?: number;
+  efp_agreed_status?: boolean;
+  efp_fixed_value?: number;
+  efp_designated_month?: string;
 }
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
@@ -88,9 +93,14 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       comments: item.comments,
       contract_status: item.contract_status as ContractStatus,
       // Map newly added fields
-      qbe_status: item.qbe_status, // Note: DB column is QBE_Status but camelCase in JS
+      qbe_status: item.qbe_status,
       nominated_value: item.nominated_value,
-      balance: item.balance
+      balance: item.balance,
+      // Map EFP related fields
+      efp_premium: item.efp_premium,
+      efp_agreed_status: item.efp_agreed_status,
+      efp_fixed_value: item.efp_fixed_value,
+      efp_designated_month: item.efp_designated_month
     }));
   } catch (error: any) {
     console.error('[OPEN TRADES] Error fetching open trades:', error);
