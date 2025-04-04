@@ -1,5 +1,5 @@
 
-import { Instrument, OperatorType } from './common';
+import { Instrument, OperatorType, ExposureResult } from './common';
 
 export interface FormulaNode {
   id: string;
@@ -12,11 +12,6 @@ export interface FormulaToken {
   id: string;
   type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket";
   value: string;
-}
-
-export interface ExposureResult {
-  physical: Record<Instrument, number>;
-  pricing: Record<Instrument, number>;
 }
 
 export interface MonthlyDistribution {

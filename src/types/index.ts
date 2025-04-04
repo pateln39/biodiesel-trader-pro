@@ -5,8 +5,6 @@ export * from './physical';
 export * from './paper';
 export * from './common';
 
-// No need to re-define TradeType since it's exported from ./common
-
 // Explicit re-exports to avoid name conflicts when importing
 import { PhysicalTrade } from './physical';
 import { 
@@ -23,7 +21,8 @@ import {
   DbParentTrade,
   DbTradeLeg,
   TradeType,
-  Instrument
+  Instrument,
+  ExposureResult
 } from './common';
 import { PricingFormula, PricingComponent } from './pricing';
 
@@ -45,5 +44,6 @@ export type {
   PricingComponent,
   DbParentTrade,
   DbTradeLeg,
-  Instrument
+  Instrument,
+  ExposureResult
 };

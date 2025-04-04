@@ -21,9 +21,9 @@ export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
-export type CustomsStatus = "cleared" | "pending" | "rejected";
+export type CustomsStatus = "cleared" | "pending" | "rejected" | "T1" | "T2" | string;
 export type PricingType = "standard" | "efp" | "fixed";
-export type ContractStatus = "draft" | "signed" | "pending" | "cancelled";
+export type ContractStatus = "draft" | "signed" | "pending" | "cancelled" | "sent" | "in process" | "action needed";
 
 // Common base types for trades
 export interface ParentTrade {
@@ -112,4 +112,10 @@ export interface AuditLog {
   field: string;
   oldValue: string | null;
   newValue: string;
+}
+
+// Define ExposureResult for formulaUtils.ts
+export interface ExposureResult {
+  physical: Record<Instrument, number>;
+  pricing: Record<Instrument, number>;
 }
