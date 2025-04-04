@@ -1,5 +1,6 @@
 
-import { TradeType } from './index';
+// Import TradeType from common instead of index to avoid circular dependency
+import { TradeType } from './common';
 
 export type BuySell = "buy" | "sell";
 export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "LSGO" | "HVO";

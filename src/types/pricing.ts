@@ -62,3 +62,11 @@ export interface MTMPriceDetail {
   evaluatedPrice: number;
   fixedComponents?: FixedComponent[];
 }
+
+// Add PricingComponent interface which is referenced in imports but was missing
+export interface PricingComponent {
+  type: string;
+  value: string | number;
+  instrument?: Instrument;
+  operator?: OperatorType;
+}

@@ -11,60 +11,77 @@ export type Instrument =
   'ICE GASOIL FUTURES' |
   'ICE GASOIL FUTURES (EFP)';
 
+// Define TradeType here
+export type TradeType = 'physical' | 'paper';
+
+// Common types for trades
+export type BuySell = 'buy' | 'sell';
+export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "LSGO" | "HVO";
+export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
+export type Unit = "MT" | "KG" | "L";
+export type CreditStatus = "approved" | "pending" | "rejected";
+export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
+
 // Common base types for trades
 export interface ParentTrade {
   id: string;
   tradeReference: string;
-  tradeType: 'physical' | 'paper';
+  tradeType: TradeType;
   createdAt: Date;
   updatedAt: Date;
   counterparty: string;
 }
 
 export interface Trade extends ParentTrade {
-  buySell: 'buy' | 'sell';
+  buySell: BuySell;
   product: string;
   legs: any[];
 }
 
-// Movement and audit log types for data/mockData.ts
-export interface Movement {
+// Add database interface mappings that were missing
+export interface DbParentTrade {
   id: string;
-  tradeId: string; // Maps to trade_leg_id in Supabase
-  movementReference: string;
-  status: string;
-  nominatedDate: Date;
-  quantity: number;
-  // Add new fields needed by OperationsPage
-  legId?: string; // Maps to trade_leg_id in Supabase
-  scheduledQuantity?: number; // Maps to bl_quantity in Supabase
-  vesselName?: string;
-  loadport?: string;
-  disport?: string;
-  // Additional fields from Supabase 
-  actualized?: boolean;
-  actualized_date?: string;
-  actualized_quantity?: number;
-  bl_date?: string;
-  bl_quantity?: number;
-  cash_flow_date?: string;
-  comments?: string;
-  created_at?: string;
+  trade_reference: string;
+  trade_type: string;
+  physical_type?: string;
+  counterparty: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface AuditLog {
+export interface DbTradeLeg {
   id: string;
-  recordId: string;
-  tableName: string;
-  operation: string;
-  timestamp: Date;
-  userId: string;
-  // Add fields needed by AuditLogPage
-  entityType?: string;
-  entityId?: string;
-  field?: string;
-  oldValue?: string;
-  newValue?: string;
+  parent_trade_id: string;
+  leg_reference: string;
+  buy_sell: string;
+  product: string;
+  sustainability?: string;
+  inco_term?: string;
+  quantity: number;
+  tolerance?: number;
+  loading_period_start?: string;
+  loading_period_end?: string;
+  pricing_period_start?: string;
+  pricing_period_end?: string;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  customs_status?: string;
+  pricing_formula?: any;
+  mtm_formula?: any;
+  price?: number;
+  calculated_price?: number;
+  last_calculation_date?: string;
+  created_at: string;
+  updated_at: string;
+  pricing_type?: string;
+  efp_premium?: number;
+  efp_agreed_status?: boolean;
+  efp_fixed_value?: number;
+  efp_designated_month?: string;
+  mtm_future_month?: string;
+  comments?: string;
+  contract_status?: string;
 }
 
 // Re-export needed types to make them available from @/types

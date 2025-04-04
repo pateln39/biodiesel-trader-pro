@@ -12,11 +12,11 @@ import {
   Unit,
   PaymentTerm,
   CreditStatus,
-  DbParentTrade,
-  DbTradeLeg,
-  PricingType,
   CustomsStatus,
-  ContractStatus
+  PricingType,
+  ContractStatus,
+  DbParentTrade,
+  DbTradeLeg
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';

@@ -1,17 +1,25 @@
+
 // Export from type modules
-export * from './common';
+export * from './pricing';
 export * from './physical';
 export * from './paper';
-export * from './pricing';
-export * from './trade';
 
-// Re-export types used across the application
-import { PhysicalTrade, Trade } from './trade';
-import { PricingFormula, PricingComponent } from './pricing';
+// Define and export TradeType which is missing
+export type TradeType = 'physical' | 'paper';
+
+// Re-export specific types to avoid ambiguities
+import { PhysicalTrade } from './physical';
+import { Trade, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus } from './common';
+import { PricingFormula } from './pricing';
 
 export type {
   PhysicalTrade,
   Trade,
-  PricingFormula,
-  PricingComponent
+  BuySell,
+  Product,
+  IncoTerm,
+  Unit,
+  PaymentTerm,
+  CreditStatus,
+  PricingFormula
 };
