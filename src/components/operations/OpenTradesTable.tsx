@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
-import { Loader2, Edit, MessageSquare } from 'lucide-react';
+import { Loader2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -13,18 +13,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger,
-  DialogClose
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
+import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -32,41 +22,10 @@ interface OpenTradesTableProps {
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
-  const [selectedTrade, setSelectedTrade] = useState<OpenTrade | null>(null);
-  const [comments, setComments] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
   
   const handleRefresh = () => {
     refetchOpenTrades();
     if (onRefresh) onRefresh();
-  };
-
-  const handleOpenCommentsDialog = (trade: OpenTrade) => {
-    setSelectedTrade(trade);
-    setComments(trade.comments || '');
-  };
-
-  const saveComments = async () => {
-    if (!selectedTrade) return;
-    
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('open_trades')
-        .update({ comments })
-        .eq('id', selectedTrade.id);
-      
-      if (error) throw error;
-      
-      toast.success('Comments saved successfully');
-      refetchOpenTrades();
-    } catch (err: any) {
-      toast.error('Failed to save comments', {
-        description: err.message
-      });
-    } finally {
-      setIsUpdating(false);
-    }
   };
 
   if (loading) {
@@ -116,7 +75,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
             <TableHead>Counterparty</TableHead>
             <TableHead>Pricing Type</TableHead>
             <TableHead>Formula</TableHead>
-            <TableHead className="text-center">Comments</TableHead>
+            <TableHead>Comments</TableHead>
             <TableHead>Customs Status</TableHead>
             <TableHead>Credit Status</TableHead>
             <TableHead>Contract Status</TableHead>
@@ -162,43 +121,12 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   efpFixedValue={trade.efp_fixed_value}
                 />
               </TableCell>
-              <TableCell className="text-center">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleOpenCommentsDialog(trade)}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Comments for {trade.trade_reference}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 pt-4">
-                      <Textarea
-                        value={comments}
-                        onChange={(e) => setComments(e.target.value)}
-                        placeholder="Add your comments here..."
-                        className="min-h-[120px] resize-none"
-                        rows={6}
-                      />
-                      <div className="flex justify-end space-x-2 pt-2">
-                        <DialogClose asChild>
-                          <Button variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <DialogClose asChild>
-                          <Button onClick={saveComments} disabled={isUpdating} className="bg-brand-lime hover:bg-brand-lime/90 text-black">
-                            {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Save
-                          </Button>
-                        </DialogClose>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+              <TableCell>
+                <CommentsCellInput
+                  tradeId={trade.parent_trade_id}
+                  legId={trade.trade_leg_id}
+                  initialValue={trade.comments || ''}
+                />
               </TableCell>
               <TableCell>
                 {trade.customs_status && (
