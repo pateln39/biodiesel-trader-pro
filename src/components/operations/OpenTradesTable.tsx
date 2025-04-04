@@ -177,19 +177,20 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                     <DialogHeader>
                       <DialogTitle>Comments for {trade.trade_reference}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-4">
                       <Textarea
                         value={comments}
                         onChange={(e) => setComments(e.target.value)}
                         placeholder="Add your comments here..."
-                        rows={5}
+                        className="min-h-[120px] resize-none"
+                        rows={6}
                       />
-                      <div className="flex justify-end space-x-2">
+                      <div className="flex justify-end space-x-2 pt-2">
                         <DialogClose asChild>
                           <Button variant="outline">Cancel</Button>
                         </DialogClose>
                         <DialogClose asChild>
-                          <Button onClick={saveComments} disabled={isUpdating}>
+                          <Button onClick={saveComments} disabled={isUpdating} className="bg-brand-lime hover:bg-brand-lime/90 text-black">
                             {isUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             Save
                           </Button>

@@ -55,6 +55,7 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         
         // Only add exposure for unagreed EFPs
         if (!leg.efpAgreedStatus) {
+          // Always use the consistent name 'ICE GASOIL FUTURES (EFP)'
           const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
           
           if (!monthlyPricing[pricingMonth][instrumentKey]) {

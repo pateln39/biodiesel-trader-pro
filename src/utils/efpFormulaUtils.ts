@@ -30,7 +30,7 @@ export const createEfpFormula = (
     const exposureDirection = buySell === 'buy' ? -1 : 1;
     const exposureValue = quantity * exposureDirection;
     
-    // Set the exposure
+    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
     formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
   }
   
@@ -65,7 +65,7 @@ export const updateFormulaWithEfpExposure = (
     const exposureDirection = buySell === 'buy' ? -1 : 1;
     const exposureValue = quantity * exposureDirection;
     
-    // Set the exposure
+    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
     updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
   }
   
