@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Edit, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +24,6 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   legReference,
   tradeReference,
 }) => {
-  const navigate = useNavigate();
   
   // Handle row delete action
   const handleDelete = (e: React.MouseEvent) => {
@@ -41,15 +39,6 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
     }
   };
   
-  // Handle edit action
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log(`[ROW_ACTIONS] Requesting edit for trade: ${tradeId}`);
-    navigate(`/trades/edit/${tradeId}`);
-  };
-  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -58,10 +47,6 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleEdit}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Trade
-        </DropdownMenuItem>
         {isMultiLeg && legId && legReference ? (
           <DropdownMenuItem 
             onClick={handleDelete}
