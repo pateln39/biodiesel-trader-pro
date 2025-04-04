@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       const { data, error } = await supabase
         .from('movements')
         .insert({
-          trade_leg_id: trade.trade_leg_id,
+          trade_leg_id: trade.trade_leg_id, 
           parent_trade_id: trade.parent_trade_id,
           vessel_name: trade.vessel_name,
           loadport: trade.loadport,
