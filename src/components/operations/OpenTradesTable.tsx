@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
-import { Loader2, Edit } from 'lucide-react';
+import { Loader2, Edit, Truck, ArrowUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/tooltip";
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from "sonner";
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -22,10 +24,97 @@ interface OpenTradesTableProps {
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   const handleRefresh = () => {
     refetchOpenTrades();
     if (onRefresh) onRefresh();
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedTrades = React.useMemo(() => {
+    if (!sortField) return openTrades;
+    
+    return [...openTrades].sort((a, b) => {
+      const valueA = a[sortField as keyof OpenTrade];
+      const valueB = b[sortField as keyof OpenTrade];
+      
+      // Handle different data types
+      if (valueA === valueB) return 0;
+      if (valueA === null || valueA === undefined) return 1;
+      if (valueB === null || valueB === undefined) return -1;
+      
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        return sortDirection === 'asc' 
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      }
+      
+      if (valueA instanceof Date && valueB instanceof Date) {
+        return sortDirection === 'asc' 
+          ? valueA.getTime() - valueB.getTime()
+          : valueB.getTime() - valueA.getTime();
+      }
+      
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+      }
+      
+      return 0;
+    });
+  }, [openTrades, sortField, sortDirection]);
+
+  const createMovement = async (trade: OpenTrade) => {
+    try {
+      // Insert a new movement record based on the trade data
+      const { data, error } = await supabase
+        .from('movements')
+        .insert({
+          trade_leg_id: trade.trade_leg_id,
+          parent_trade_id: trade.parent_trade_id,
+          trade_reference: trade.trade_reference,
+          counterparty: trade.counterparty,
+          buy_sell: trade.buy_sell,
+          product: trade.product,
+          sustainability: trade.sustainability,
+          inco_term: trade.inco_term,
+          quantity: trade.quantity,
+          tolerance: trade.tolerance,
+          loading_period_start: trade.loading_period_start,
+          loading_period_end: trade.loading_period_end,
+          status: 'pending'
+        })
+        .select();
+      
+      if (error) {
+        console.error('Error creating movement:', error);
+        toast.error("Failed to create movement");
+        return;
+      }
+      
+      toast.success("Movement created successfully");
+      // Refresh data if needed
+      handleRefresh();
+    } catch (err) {
+      console.error('Error in createMovement:', err);
+      toast.error("An unexpected error occurred");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUpDown className="h-4 w-4 ml-1 text-primary" /> 
+      : <ArrowUpDown className="h-4 w-4 ml-1 text-primary rotate-180" />;
   };
 
   if (loading) {
@@ -64,15 +153,45 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       <Table>
         <TableHeader>
           <TableRow className="border-b border-white/10">
-            <TableHead>Trade Ref</TableHead>
-            <TableHead>Buy/Sell</TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('trade_reference')}>
+              <div className="flex items-center">
+                Trade Ref
+                <SortIcon field="trade_reference" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('buy_sell')}>
+              <div className="flex items-center">
+                Buy/Sell
+                <SortIcon field="buy_sell" />
+              </div>
+            </TableHead>
             <TableHead>Incoterm</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right cursor-pointer" onClick={() => handleSort('quantity')}>
+              <div className="flex items-center justify-end">
+                Quantity
+                <SortIcon field="quantity" />
+              </div>
+            </TableHead>
             <TableHead>Sustainability</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Loading Start</TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
+              <div className="flex items-center">
+                Product
+                <SortIcon field="product" />
+              </div>
+            </TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('loading_period_start')}>
+              <div className="flex items-center">
+                Loading Start
+                <SortIcon field="loading_period_start" />
+              </div>
+            </TableHead>
             <TableHead>Loading End</TableHead>
-            <TableHead>Counterparty</TableHead>
+            <TableHead className="cursor-pointer" onClick={() => handleSort('counterparty')}>
+              <div className="flex items-center">
+                Counterparty
+                <SortIcon field="counterparty" />
+              </div>
+            </TableHead>
             <TableHead>Pricing Type</TableHead>
             <TableHead>Formula</TableHead>
             <TableHead>Comments</TableHead>
@@ -85,7 +204,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {openTrades.map((trade) => (
+          {sortedTrades.map((trade) => (
             <TableRow key={trade.id} className="border-b border-white/5 hover:bg-brand-navy/80">
               <TableCell>
                 <Link to={`/trades/${trade.parent_trade_id}`} className="hover:underline">
@@ -176,6 +295,23 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>View/Edit Trade</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => createMovement(trade)}
+                        >
+                          <Truck className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Create Movement</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
