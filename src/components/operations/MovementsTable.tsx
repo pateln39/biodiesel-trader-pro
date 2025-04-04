@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
@@ -12,27 +12,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import TableLoadingState from '@/components/trades/physical/TableLoadingState';
-import TableErrorState from '@/components/trades/physical/TableErrorState';
+import TableLoadingState from '@/components/trades/TableLoadingState';
+import TableErrorState from '@/components/trades/TableErrorState';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
+    // We need to adjust the query to use the trade_legs table and join with movements
+    // since the Supabase client isn't recognizing the movements table directly
     const { data: movements, error } = await supabase
-      .from('movements')
+      .from('trade_legs')
       .select(`
         id,
-        bl_quantity,
-        created_at,
-        updated_at,
-        trade_legs(
+        parent_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        movements (
           id,
-          parent_trade_id,
-          leg_reference,
-          buy_sell,
-          product,
-          quantity
+          bl_quantity,
+          created_at,
+          updated_at
         ),
-        parent_trades(
+        parent_trades!parent_trade_id (
           id,
           trade_reference,
           counterparty
@@ -45,22 +46,25 @@ const fetchMovements = async (): Promise<Movement[]> => {
     }
 
     // Map the data into a format that matches our Movement interface
-    return movements.map((m: any) => {
-      const tradeLeg = m.trade_legs;
-      const parentTrade = m.parent_trades;
-      
-      return {
-        id: m.id,
-        parentTradeId: tradeLeg?.parent_trade_id || '',
-        tradeReference: parentTrade?.trade_reference || tradeLeg?.leg_reference || 'Unknown',
-        counterpartyName: parentTrade?.counterparty || 'Unknown',
-        product: tradeLeg?.product || 'Unknown',
-        quantity: m.bl_quantity,
-        date: new Date(m.created_at),
-        status: 'Completed',
-        type: tradeLeg?.buy_sell === 'buy' ? 'In' : 'Out',
-      };
-    });
+    const flattenedMovements = movements
+      .filter(m => m.movements && m.movements.length > 0)
+      .flatMap(leg => {
+        return leg.movements.map((movement: any) => {
+          return {
+            id: movement.id,
+            parentTradeId: leg.parent_trade_id || '',
+            tradeReference: leg.parent_trades?.trade_reference || leg.leg_reference || 'Unknown',
+            counterpartyName: leg.parent_trades?.counterparty || 'Unknown',
+            product: leg.product || 'Unknown',
+            quantity: movement.bl_quantity,
+            date: new Date(movement.created_at),
+            status: 'Completed',
+            type: leg.buy_sell === 'buy' ? 'In' : 'Out',
+          };
+        });
+      });
+
+    return flattenedMovements;
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
     throw new Error(error.message);
@@ -68,7 +72,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
 };
 
 const MovementsTable = () => {
-  const { data: movements = [], isLoading, error } = useQuery({
+  const { data: movements = [], isLoading, error, refetch } = useQuery({
     queryKey: ['movements'],
     queryFn: fetchMovements,
     refetchOnWindowFocus: false,
@@ -79,7 +83,7 @@ const MovementsTable = () => {
   }
 
   if (error) {
-    return <TableErrorState error={error as Error} />;
+    return <TableErrorState error={error as Error} onRetry={refetch} />;
   }
 
   return (
