@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -7,6 +6,7 @@ import { OpenTrade } from '@/hooks/useOpenTrades';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatDateForStorage } from '@/utils/dateParsingUtils';
 import {
   Form,
   FormControl,
@@ -104,17 +104,17 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         inco_term: trade.inco_term,
         scheduled_quantity: values.scheduledQuantity,
         bl_quantity: 0, // Default, can be updated later
-        nomination_eta: values.nominationEta,
-        nomination_valid: values.nominationValid,
+        nomination_eta: values.nominationEta ? values.nominationEta.toISOString() : null,
+        nomination_valid: values.nominationValid ? values.nominationValid.toISOString() : null,
         cash_flow: values.cashFlow,
         barge_name: values.bargeName,
         loadport: values.loadport,
         loadport_inspector: values.loadportInspector,
         disport: values.disport,
         disport_inspector: values.disportInspector,
-        bl_date: values.blDate,
+        bl_date: values.blDate ? formatDateForStorage(values.blDate) : null,
         actual_quantity: values.actualQuantity,
-        cod_date: values.codDate,
+        cod_date: values.codDate ? formatDateForStorage(values.codDate) : null,
         pricing_type: trade.pricing_type,
         pricing_formula: trade.pricing_formula,
         comments: trade.comments,

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ const TableRowActions: React.FC<TableRowActionsProps> = ({
   legReference,
   tradeReference,
 }) => {
+  const navigate = useNavigate();
   
   // Handle row delete action
   const handleDelete = (e: React.MouseEvent) => {
