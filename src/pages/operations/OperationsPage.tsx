@@ -38,11 +38,11 @@ const OperationsPage = () => {
       id: item.id,
       tradeId: item.trade_leg_id,
       movementReference: item.movement_reference || item.id,
-      status: item.status,
+      status: item.status || 'pending',
       nominatedDate: item.nominated_date ? new Date(item.nominated_date) : new Date(),
-      quantity: item.bl_quantity || 0,
+      quantity: item.quantity || 0,
       legId: item.trade_leg_id,
-      scheduledQuantity: item.bl_quantity || 0,
+      scheduledQuantity: item.bl_quantity || item.quantity || 0,
       vesselName: item.vessel_name,
       loadport: item.loadport,
       disport: item.disport,
@@ -95,7 +95,7 @@ const OperationsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <OpenTradesTable />
+                <OpenTradesTable onRefresh={() => refetchMovements()} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -116,7 +116,7 @@ const OperationsPage = () => {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-white/10">
-                        <TableHead>Trade Ref</TableHead>
+                        <TableHead>Movement Ref</TableHead>
                         <TableHead>Vessel</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                         <TableHead>Nominated Date</TableHead>
@@ -155,14 +155,7 @@ const OperationsPage = () => {
                         movements.map((movement) => (
                           <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                             <TableCell>
-                              {movement.tradeId ? (
-                                <Link to={`/trades/${movement.tradeId}`} className="hover:underline">
-                                  {movement.movementReference}
-                                  {movement.legId && ' (Leg)'}
-                                </Link>
-                              ) : (
-                                `${movement.movementReference}`
-                              )}
+                              {movement.movementReference}
                             </TableCell>
                             <TableCell>{movement.vesselName || 'N/A'}</TableCell>
                             <TableCell className="text-right">

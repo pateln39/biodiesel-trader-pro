@@ -75,10 +75,16 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
 
   const createMovement = async (trade: OpenTrade) => {
     try {
+      // Generate a simple movement reference using the trade reference plus a timestamp
+      const movementReference = `${trade.trade_reference}-M${Date.now().toString().slice(-6)}`;
+      
       // Insert a new movement record based on the trade data
       const { data, error } = await supabase
         .from('movements')
         .insert({
+          movement_reference: movementReference,
+          trade_leg_id: trade.trade_leg_id,
+          parent_trade_id: trade.parent_trade_id,
           vessel_name: trade.vessel_name || null,
           loadport: trade.loadport || null,
           disport: trade.disport || null,
@@ -96,7 +102,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           pricing_formula: trade.pricing_formula,
           unit: trade.unit,
           comments: trade.comments,
-          status: 'pending'
+          nominated_date: new Date(), // Set the nominated date to today
+          status: 'pending',
+          bl_quantity: null, // Initialize with null
+          actualized: false // Not actualized by default
         })
         .select();
       

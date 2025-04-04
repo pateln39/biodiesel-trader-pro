@@ -282,8 +282,14 @@ export type Database = {
       }
       movements: {
         Row: {
+          actualized: boolean | null
+          actualized_date: string | null
+          actualized_quantity: number | null
           balance: number | null
+          bl_date: string | null
+          bl_quantity: number | null
           buy_sell: string | null
+          cash_flow_date: string | null
           comments: string | null
           contract_status: string | null
           counterparty: string | null
@@ -300,6 +306,8 @@ export type Database = {
           loading_period_end: string | null
           loading_period_start: string | null
           loadport: string | null
+          movement_reference: string | null
+          nominated_date: string | null
           nominated_value: number | null
           open_quantity: number | null
           parent_trade_id: string | null
@@ -321,8 +329,14 @@ export type Database = {
           vessel_name: string | null
         }
         Insert: {
+          actualized?: boolean | null
+          actualized_date?: string | null
+          actualized_quantity?: number | null
           balance?: number | null
+          bl_date?: string | null
+          bl_quantity?: number | null
           buy_sell?: string | null
+          cash_flow_date?: string | null
           comments?: string | null
           contract_status?: string | null
           counterparty?: string | null
@@ -339,6 +353,8 @@ export type Database = {
           loading_period_end?: string | null
           loading_period_start?: string | null
           loadport?: string | null
+          movement_reference?: string | null
+          nominated_date?: string | null
           nominated_value?: number | null
           open_quantity?: number | null
           parent_trade_id?: string | null
@@ -360,8 +376,14 @@ export type Database = {
           vessel_name?: string | null
         }
         Update: {
+          actualized?: boolean | null
+          actualized_date?: string | null
+          actualized_quantity?: number | null
           balance?: number | null
+          bl_date?: string | null
+          bl_quantity?: number | null
           buy_sell?: string | null
+          cash_flow_date?: string | null
           comments?: string | null
           contract_status?: string | null
           counterparty?: string | null
@@ -378,6 +400,8 @@ export type Database = {
           loading_period_end?: string | null
           loading_period_start?: string | null
           loadport?: string | null
+          movement_reference?: string | null
+          nominated_date?: string | null
           nominated_value?: number | null
           open_quantity?: number | null
           parent_trade_id?: string | null
