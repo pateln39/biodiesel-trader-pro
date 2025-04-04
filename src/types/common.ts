@@ -87,17 +87,43 @@ export interface DbTradeLeg {
   contract_status?: string;
 }
 
-// Define types needed for mock data
+// Enhanced Movement type with all the new fields
 export interface Movement {
   id: string;
-  parentTradeId: string;
+  referenceNumber?: string;
+  tradeLegId?: string;
+  parentTradeId?: string;
   tradeReference: string;
   counterpartyName: string;
+  buySell?: BuySell;
   product: string;
-  quantity: number;
-  date: Date;
+  incoTerm?: string;
+  sustainability?: string;
+  scheduledQuantity?: number;
+  blQuantity?: number;
+  actualQuantity?: number;
+  nominationEta?: Date;
+  nominationValid?: Date;
+  cashFlow?: string;
+  bargeName?: string;
+  loadport?: string;
+  loadportInspector?: string;
+  disport?: string;
+  disportInspector?: string;
+  blDate?: Date;
+  codDate?: Date;
+  pricingType?: string;
+  pricingFormula?: any;
+  comments?: string;
+  customsStatus?: string;
+  creditStatus?: string;
+  contractStatus?: string;
   status: string;
-  type: string;
+  date: Date;
+  type?: string; // Legacy field, can be removed if not needed
+  quantity?: number; // Legacy field, can be removed if not needed
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AuditLog {

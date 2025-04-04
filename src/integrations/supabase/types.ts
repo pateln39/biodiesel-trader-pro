@@ -282,24 +282,105 @@ export type Database = {
       }
       movements: {
         Row: {
+          actual_quantity: number | null
+          barge_name: string | null
+          bl_date: string | null
           bl_quantity: number
+          buy_sell: string | null
+          cash_flow: string | null
+          cod_date: string | null
+          comments: string | null
+          contract_status: string | null
+          counterparty: string | null
           created_at: string
+          credit_status: string | null
+          customs_status: string | null
+          disport: string | null
+          disport_inspector: string | null
           id: string
+          inco_term: string | null
+          loadport: string | null
+          loadport_inspector: string | null
+          nomination_eta: string | null
+          nomination_valid: string | null
+          parent_trade_id: string | null
+          pricing_formula: Json | null
+          pricing_type: string | null
+          product: string | null
+          reference_number: string | null
+          scheduled_quantity: number | null
+          status: string | null
+          sustainability: string | null
           trade_leg_id: string | null
+          trade_reference: string | null
           updated_at: string
         }
         Insert: {
+          actual_quantity?: number | null
+          barge_name?: string | null
+          bl_date?: string | null
           bl_quantity: number
+          buy_sell?: string | null
+          cash_flow?: string | null
+          cod_date?: string | null
+          comments?: string | null
+          contract_status?: string | null
+          counterparty?: string | null
           created_at?: string
+          credit_status?: string | null
+          customs_status?: string | null
+          disport?: string | null
+          disport_inspector?: string | null
           id?: string
+          inco_term?: string | null
+          loadport?: string | null
+          loadport_inspector?: string | null
+          nomination_eta?: string | null
+          nomination_valid?: string | null
+          parent_trade_id?: string | null
+          pricing_formula?: Json | null
+          pricing_type?: string | null
+          product?: string | null
+          reference_number?: string | null
+          scheduled_quantity?: number | null
+          status?: string | null
+          sustainability?: string | null
           trade_leg_id?: string | null
+          trade_reference?: string | null
           updated_at?: string
         }
         Update: {
+          actual_quantity?: number | null
+          barge_name?: string | null
+          bl_date?: string | null
           bl_quantity?: number
+          buy_sell?: string | null
+          cash_flow?: string | null
+          cod_date?: string | null
+          comments?: string | null
+          contract_status?: string | null
+          counterparty?: string | null
           created_at?: string
+          credit_status?: string | null
+          customs_status?: string | null
+          disport?: string | null
+          disport_inspector?: string | null
           id?: string
+          inco_term?: string | null
+          loadport?: string | null
+          loadport_inspector?: string | null
+          nomination_eta?: string | null
+          nomination_valid?: string | null
+          parent_trade_id?: string | null
+          pricing_formula?: Json | null
+          pricing_type?: string | null
+          product?: string | null
+          reference_number?: string | null
+          scheduled_quantity?: number | null
+          status?: string | null
+          sustainability?: string | null
           trade_leg_id?: string | null
+          trade_reference?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -942,6 +1023,13 @@ export type Database = {
           scheduled: number
         }
         Returns: number
+      }
+      generate_movement_reference: {
+        Args: {
+          trade_ref: string
+          leg_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

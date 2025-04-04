@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import MovementsTable from '@/components/operations/MovementsTable';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   
   const { 
     counterparties,
@@ -19,6 +20,10 @@ const OperationsPage = () => {
     creditStatusOptions,
     customsStatusOptions
   } = useReferenceData();
+
+  const handleRefreshTables = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <Layout>
@@ -45,7 +50,7 @@ const OperationsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <OpenTradesTable />
+                <OpenTradesTable onRefresh={handleRefreshTables} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -62,7 +67,7 @@ const OperationsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <MovementsTable />
+                <MovementsTable key={`movements-${refreshTrigger}`} />
               </CardContent>
             </Card>
           </TabsContent>
