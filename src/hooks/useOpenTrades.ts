@@ -1,7 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { PhysicalTrade, Movement } from '@/types';
+import { PhysicalTrade } from '@/types';
 import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types/physical';
 import { PricingFormula } from '@/types/pricing';
 
