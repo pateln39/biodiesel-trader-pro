@@ -18,6 +18,7 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
+import { ContractStatus } from '@/types';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -257,7 +258,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   <TableCell>
                     {trade.contract_status && (
                       <Badge variant={
-                        trade.contract_status === 'confirmed' ? "default" :
+                        trade.contract_status === 'signed' ? "default" :
                         trade.contract_status === 'cancelled' ? "destructive" :
                         "outline"
                       }>
@@ -287,7 +288,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                               {selectedTrade && (
                                 <ScheduleMovementForm 
                                   trade={selectedTrade} 
-                                  onScheduled={handleMovementScheduled}
+                                  onSuccess={handleMovementScheduled}
                                   onCancel={() => setIsDialogOpen(false)}
                                 />
                               )}

@@ -1,4 +1,3 @@
-
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -23,7 +22,7 @@ export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
 export type CustomsStatus = "cleared" | "pending" | "rejected" | "T1" | "T2" | string;
 export type PricingType = "standard" | "efp" | "fixed";
-export type ContractStatus = "draft" | "signed" | "pending" | "cancelled" | "sent" | "in process" | "action needed";
+export type ContractStatus = "draft" | "signed" | "pending" | "cancelled" | "sent" | "in process" | "action needed" | "confirmed";
 
 // Common base types for trades
 export interface ParentTrade {
