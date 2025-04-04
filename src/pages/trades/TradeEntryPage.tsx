@@ -66,7 +66,7 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          product_credit_status: leg.productCreditStatus,
+          customs_status: leg.customsStatus, // Updated: correctly map to customs_status column
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
@@ -96,6 +96,9 @@ const TradeEntryPage = () => {
       
       // Force invalidate the trades query cache
       queryClient.invalidateQueries({ queryKey: ['trades'] });
+      
+      // Also invalidate the openTrades query cache to refresh the open trades table
+      queryClient.invalidateQueries({ queryKey: ['openTrades'] });
 
       toast.success('Trade created successfully', {
         description: `Trade reference: ${tradeData.tradeReference}`
