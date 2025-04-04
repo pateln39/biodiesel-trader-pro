@@ -21,6 +21,9 @@ export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
+export type CustomsStatus = "cleared" | "pending" | "rejected";
+export type PricingType = "standard" | "efp" | "fixed";
+export type ContractStatus = "draft" | "signed" | "pending" | "cancelled";
 
 // Common base types for trades
 export interface ParentTrade {
@@ -84,6 +87,29 @@ export interface DbTradeLeg {
   contract_status?: string;
 }
 
-// Re-export needed types to make them available from @/types
-export * from './pricing';
-export * from './physical';
+// Define types needed for mock data
+export interface Movement {
+  id: string;
+  parentTradeId: string;
+  tradeReference: string;
+  counterpartyName: string;
+  product: string;
+  quantity: number;
+  date: Date;
+  status: string;
+  type: string;
+}
+
+export interface AuditLog {
+  id: string;
+  recordId: string;
+  tableName: string;
+  operation: string;
+  timestamp: Date;
+  userId: string;
+  entityType: string;
+  entityId: string;
+  field: string;
+  oldValue: string | null;
+  newValue: string;
+}

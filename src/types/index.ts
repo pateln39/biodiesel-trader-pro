@@ -3,23 +3,47 @@
 export * from './pricing';
 export * from './physical';
 export * from './paper';
+export * from './common';
 
-// Define and export TradeType which is missing
-export type TradeType = 'physical' | 'paper';
+// No need to re-define TradeType since it's exported from ./common
 
-// Re-export specific types to avoid ambiguities
+// Explicit re-exports to avoid name conflicts when importing
 import { PhysicalTrade } from './physical';
-import { Trade, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus } from './common';
-import { PricingFormula } from './pricing';
+import { 
+  Trade, 
+  BuySell, 
+  Product, 
+  IncoTerm, 
+  Unit, 
+  PaymentTerm, 
+  CreditStatus, 
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  DbParentTrade,
+  DbTradeLeg,
+  TradeType,
+  Instrument
+} from './common';
+import { PricingFormula, PricingComponent } from './pricing';
 
+// Re-export specific types explicitly to avoid ambiguities
 export type {
   PhysicalTrade,
   Trade,
+  TradeType,
   BuySell,
   Product,
   IncoTerm,
   Unit,
   PaymentTerm,
   CreditStatus,
-  PricingFormula
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  PricingFormula,
+  PricingComponent,
+  DbParentTrade,
+  DbTradeLeg,
+  Instrument
 };
