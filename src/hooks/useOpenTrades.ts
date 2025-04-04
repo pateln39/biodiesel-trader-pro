@@ -2,7 +2,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade, Movement } from '@/types';
-import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus } from '@/types/physical';
+import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types/physical';
+import { PricingFormula } from '@/types/pricing';
 
 export interface OpenTrade {
   id: string;
@@ -32,6 +33,11 @@ export interface OpenTrade {
   status: 'open' | 'closed';
   created_at: Date;
   updated_at: Date;
+  // New fields added to OpenTrade interface
+  pricing_type?: PricingType;
+  pricing_formula?: PricingFormula;
+  comments?: string; // Independent from trade_legs.comments
+  contract_status?: ContractStatus;
 }
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
@@ -71,7 +77,12 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       open_quantity: item.open_quantity || 0,
       status: item.status as 'open' | 'closed',
       created_at: new Date(item.created_at),
-      updated_at: new Date(item.updated_at)
+      updated_at: new Date(item.updated_at),
+      // Map the new fields
+      pricing_type: item.pricing_type as PricingType,
+      pricing_formula: item.pricing_formula,
+      comments: item.comments,
+      contract_status: item.contract_status as ContractStatus
     }));
   } catch (error: any) {
     console.error('[OPEN TRADES] Error fetching open trades:', error);

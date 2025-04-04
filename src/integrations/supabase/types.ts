@@ -365,6 +365,8 @@ export type Database = {
       open_trades: {
         Row: {
           buy_sell: string
+          comments: string | null
+          contract_status: string | null
           counterparty: string
           created_at: string
           credit_status: string | null
@@ -378,8 +380,10 @@ export type Database = {
           open_quantity: number | null
           parent_trade_id: string | null
           payment_term: string | null
+          pricing_formula: Json | null
           pricing_period_end: string | null
           pricing_period_start: string | null
+          pricing_type: string | null
           product: string
           quantity: number
           scheduled_quantity: number | null
@@ -394,6 +398,8 @@ export type Database = {
         }
         Insert: {
           buy_sell: string
+          comments?: string | null
+          contract_status?: string | null
           counterparty: string
           created_at?: string
           credit_status?: string | null
@@ -407,8 +413,10 @@ export type Database = {
           open_quantity?: number | null
           parent_trade_id?: string | null
           payment_term?: string | null
+          pricing_formula?: Json | null
           pricing_period_end?: string | null
           pricing_period_start?: string | null
+          pricing_type?: string | null
           product: string
           quantity: number
           scheduled_quantity?: number | null
@@ -423,6 +431,8 @@ export type Database = {
         }
         Update: {
           buy_sell?: string
+          comments?: string | null
+          contract_status?: string | null
           counterparty?: string
           created_at?: string
           credit_status?: string | null
@@ -436,8 +446,10 @@ export type Database = {
           open_quantity?: number | null
           parent_trade_id?: string | null
           payment_term?: string | null
+          pricing_formula?: Json | null
           pricing_period_end?: string | null
           pricing_period_start?: string | null
+          pricing_type?: string | null
           product?: string
           quantity?: number
           scheduled_quantity?: number | null
