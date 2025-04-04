@@ -118,7 +118,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
             <TableHead>Formula</TableHead>
             <TableHead className="text-center">Comments</TableHead>
             <TableHead>Customs Status</TableHead>
-            <TableHead>QBE Status</TableHead>
+            <TableHead>Credit Status</TableHead>
             <TableHead>Contract Status</TableHead>
             <TableHead className="text-right">Nominated Value</TableHead>
             <TableHead className="text-right">Balance</TableHead>
@@ -210,7 +210,17 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   </Badge>
                 )}
               </TableCell>
-              <TableCell>{trade.qbe_status || 'N/A'}</TableCell>
+              <TableCell>
+                {trade.credit_status && (
+                  <Badge variant={
+                    trade.credit_status === 'approved' ? "default" :
+                    trade.credit_status === 'rejected' ? "destructive" :
+                    "outline"
+                  }>
+                    {trade.credit_status}
+                  </Badge>
+                )}
+              </TableCell>
               <TableCell>
                 {trade.contract_status && (
                   <Badge variant={

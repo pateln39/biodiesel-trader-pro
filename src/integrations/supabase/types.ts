@@ -391,7 +391,6 @@ export type Database = {
           pricing_period_start: string | null
           pricing_type: string | null
           product: string
-          qbe_status: string | null
           quantity: number
           scheduled_quantity: number | null
           status: string | null
@@ -431,7 +430,6 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product: string
-          qbe_status?: string | null
           quantity: number
           scheduled_quantity?: number | null
           status?: string | null
@@ -471,7 +469,6 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product?: string
-          qbe_status?: string | null
           quantity?: number
           scheduled_quantity?: number | null
           status?: string | null

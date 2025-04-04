@@ -39,7 +39,6 @@ export interface OpenTrade {
   comments?: string; // Independent from trade_legs.comments
   contract_status?: ContractStatus;
   // New fields based on database additions
-  qbe_status?: string;
   nominated_value?: number;
   balance?: number;
   // EFP related properties needed for formula display
@@ -61,7 +60,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
         pricing_period_end, unit, payment_term, credit_status, customs_status,
         vessel_name, loadport, disport, scheduled_quantity, open_quantity, 
         status, created_at, updated_at, pricing_type, pricing_formula, 
-        comments, contract_status, qbe_status, nominated_value, balance,
+        comments, contract_status, nominated_value, balance,
         efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month
       `)
       .eq('status', 'open')
@@ -111,7 +110,6 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       comments: item.comments,
       contract_status: item.contract_status as ContractStatus,
       // Map newly added fields
-      qbe_status: item.qbe_status,
       nominated_value: item.nominated_value,
       balance: item.balance,
       // Map EFP related fields
