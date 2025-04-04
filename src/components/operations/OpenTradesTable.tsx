@@ -105,14 +105,22 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
         <TableHeader>
           <TableRow className="border-b border-white/10">
             <TableHead>Trade Ref</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Pricing Type</TableHead>
+            <TableHead>Buy/Sell</TableHead>
+            <TableHead>Incoterm</TableHead>
             <TableHead className="text-right">Quantity</TableHead>
-            <TableHead className="text-right">Open Qty</TableHead>
-            <TableHead>Loading Period</TableHead>
+            <TableHead>Sustainability</TableHead>
+            <TableHead>Product</TableHead>
+            <TableHead>Loading Start</TableHead>
+            <TableHead>Loading End</TableHead>
+            <TableHead>Counterparty</TableHead>
+            <TableHead>Pricing Type</TableHead>
+            <TableHead>Formula</TableHead>
+            <TableHead>Comments</TableHead>
+            <TableHead>Customs Status</TableHead>
+            <TableHead>QBE Status</TableHead>
             <TableHead>Contract Status</TableHead>
-            <TableHead className="text-center">Comments</TableHead>
+            <TableHead className="text-right">Nominated Value</TableHead>
+            <TableHead className="text-right">Balance</TableHead>
             <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -124,32 +132,30 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   {trade.trade_reference}
                 </Link>
               </TableCell>
-              <TableCell>{trade.counterparty}</TableCell>
               <TableCell>
-                {trade.product}
-                {trade.sustainability && <span className="ml-2 text-sm text-muted-foreground">({trade.sustainability})</span>}
+                <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>
+                  {trade.buy_sell}
+                </Badge>
               </TableCell>
+              <TableCell>{trade.inco_term}</TableCell>
+              <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
+              <TableCell>{trade.sustainability || 'N/A'}</TableCell>
+              <TableCell>{trade.product}</TableCell>
+              <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
+              <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
+              <TableCell>{trade.counterparty}</TableCell>
               <TableCell>
                 <Badge variant="outline">
                   {trade.pricing_type === 'efp' ? 'EFP' : 'Standard'}
                 </Badge>
               </TableCell>
-              <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
-              <TableCell className="text-right">{Math.round(trade.open_quantity * 100) / 100} {trade.unit || 'MT'}</TableCell>
               <TableCell>
-                {trade.loading_period_start && trade.loading_period_end ? (
-                  `${formatDate(trade.loading_period_start)} - ${formatDate(trade.loading_period_end)}`
-                ) : 'N/A'}
-              </TableCell>
-              <TableCell>
-                {trade.contract_status && (
-                  <Badge variant={
-                    trade.contract_status === 'sent' ? "default" :
-                    trade.contract_status === 'action needed' ? "destructive" :
-                    "outline"
-                  }>
-                    {trade.contract_status}
-                  </Badge>
+                {trade.pricing_formula ? (
+                  <span className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded">
+                    {JSON.stringify(trade.pricing_formula).substring(0, 20)}...
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground italic">No formula</span>
                 )}
               </TableCell>
               <TableCell className="text-center">
@@ -189,6 +195,31 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   </DialogContent>
                 </Dialog>
               </TableCell>
+              <TableCell>
+                {trade.customs_status && (
+                  <Badge variant={
+                    trade.customs_status === 'approved' ? "default" :
+                    trade.customs_status === 'rejected' ? "destructive" :
+                    "outline"
+                  }>
+                    {trade.customs_status}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell>{trade.qbe_status || 'N/A'}</TableCell>
+              <TableCell>
+                {trade.contract_status && (
+                  <Badge variant={
+                    trade.contract_status === 'sent' ? "default" :
+                    trade.contract_status === 'action needed' ? "destructive" :
+                    "outline"
+                  }>
+                    {trade.contract_status}
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="text-right">{trade.nominated_value || '-'}</TableCell>
+              <TableCell className="text-right">{trade.balance || '-'}</TableCell>
               <TableCell className="text-center">
                 <div className="flex justify-center space-x-1">
                   <TooltipProvider>
