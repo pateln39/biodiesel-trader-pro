@@ -17,26 +17,24 @@ import TableErrorState from '@/components/trades/TableErrorState';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
-    // We need to adjust the query to use the trade_legs table and join with movements
-    // since the Supabase client isn't recognizing the movements table directly
+    // Directly query the movements table
     const { data: movements, error } = await supabase
-      .from('trade_legs')
+      .from('movements')
       .select(`
         id,
-        parent_trade_id,
-        leg_reference,
-        buy_sell,
-        product,
-        movements (
+        trade_leg_id,
+        bl_quantity,
+        created_at,
+        updated_at,
+        trade_legs:trade_leg_id (
           id,
-          bl_quantity,
-          created_at,
-          updated_at
-        ),
-        parent_trades!parent_trade_id (
-          id,
-          trade_reference,
-          counterparty
+          parent_trade_id,
+          buy_sell,
+          product,
+          parent_trades:parent_trade_id (
+            trade_reference,
+            counterparty
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -46,25 +44,21 @@ const fetchMovements = async (): Promise<Movement[]> => {
     }
 
     // Map the data into a format that matches our Movement interface
-    const flattenedMovements = movements
-      .filter(m => m.movements && m.movements.length > 0)
-      .flatMap(leg => {
-        return leg.movements.map((movement: any) => {
-          return {
-            id: movement.id,
-            parentTradeId: leg.parent_trade_id || '',
-            tradeReference: leg.parent_trades?.trade_reference || leg.leg_reference || 'Unknown',
-            counterpartyName: leg.parent_trades?.counterparty || 'Unknown',
-            product: leg.product || 'Unknown',
-            quantity: movement.bl_quantity,
-            date: new Date(movement.created_at),
-            status: 'Completed',
-            type: leg.buy_sell === 'buy' ? 'In' : 'Out',
-          };
-        });
-      });
+    const formattedMovements = (movements || []).map((m: any) => {
+      return {
+        id: m.id,
+        parentTradeId: m.trade_legs?.parent_trade_id || '',
+        tradeReference: m.trade_legs?.parent_trades?.trade_reference || 'Unknown',
+        counterpartyName: m.trade_legs?.parent_trades?.counterparty || 'Unknown',
+        product: m.trade_legs?.product || 'Unknown',
+        quantity: m.bl_quantity,
+        date: new Date(m.created_at),
+        status: 'Completed',
+        type: m.trade_legs?.buy_sell === 'buy' ? 'In' : 'Out',
+      };
+    });
 
-    return flattenedMovements;
+    return formattedMovements;
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
     throw new Error(error.message);
