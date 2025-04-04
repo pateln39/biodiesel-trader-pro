@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -116,7 +117,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         actual_quantity: values.actualQuantity,
         cod_date: values.codDate ? formatDateForStorage(values.codDate) : null,
         pricing_type: trade.pricing_type,
-        pricing_formula: trade.pricing_formula,
+        pricing_formula: trade.pricing_formula ? JSON.parse(JSON.stringify(trade.pricing_formula)) : null,
         comments: trade.comments,
         customs_status: trade.customs_status,
         credit_status: trade.credit_status,
