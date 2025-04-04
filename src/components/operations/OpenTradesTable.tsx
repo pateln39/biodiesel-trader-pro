@@ -257,8 +257,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   <TableCell>
                     {trade.contract_status && (
                       <Badge variant={
-                        trade.contract_status === 'sent' ? "default" :
-                        trade.contract_status === 'action needed' ? "destructive" :
+                        trade.contract_status === 'confirmed' ? "default" :
+                        trade.contract_status === 'cancelled' ? "destructive" :
                         "outline"
                       }>
                         {trade.contract_status}
@@ -272,31 +272,29 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              disabled={isZeroBalance}
-                              onClick={() => handleScheduleMovement(trade)}
-                            >
-                              <Ship className="h-4 w-4" />
-                            </Button>
+                            <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-8 w-8 p-0"
+                                  disabled={isZeroBalance}
+                                  onClick={() => handleScheduleMovement(trade)}
+                                >
+                                  <Ship className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              {selectedTrade && (
+                                <ScheduleMovementForm 
+                                  trade={selectedTrade} 
+                                  onScheduled={handleMovementScheduled}
+                                  onCancel={() => setIsDialogOpen(false)}
+                                />
+                              )}
+                            </Dialog>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>Schedule Movement</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link to={`/trades/${trade.parent_trade_id}`}>
-                                <CalendarDays className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>View Details</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -308,16 +306,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableBody>
         </Table>
       </div>
-
-      {selectedTrade && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <ScheduleMovementForm 
-            trade={selectedTrade} 
-            onSuccess={handleMovementScheduled} 
-            onCancel={() => setIsDialogOpen(false)} 
-          />
-        </Dialog>
-      )}
     </>
   );
 };
