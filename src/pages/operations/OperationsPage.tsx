@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Filter } from 'lucide-react';
@@ -11,19 +12,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useReferenceData } from '@/hooks/useReferenceData';
 
-import PhysicalTradeTable from '@/pages/trades/PhysicalTradeTable';
+import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDate } from '@/utils/dateUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
-  
-  const { 
-    trades, 
-    loading: tradesLoading, 
-    error: tradesError, 
-    refetchTrades
-  } = useTrades();
   
   const { 
     counterparties,
@@ -72,15 +66,6 @@ const OperationsPage = () => {
     queryKey: ['movements'],
     queryFn: fetchMovements
   });
-  
-  const physicalTrades = trades.filter(trade => 
-    trade.tradeType === 'physical'
-  ) as PhysicalTrade[];
-
-  const calculateOpenQuantity = (total: number, tolerance: number, scheduled: number) => {
-    const maxQuantity = total * (1 + tolerance / 100);
-    return maxQuantity - scheduled;
-  };
 
   return (
     <Layout>
@@ -110,12 +95,7 @@ const OperationsPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PhysicalTradeTable 
-                  trades={physicalTrades}
-                  loading={tradesLoading}
-                  error={tradesError}
-                  refetchTrades={refetchTrades}
-                />
+                <OpenTradesTable />
               </CardContent>
             </Card>
           </TabsContent>
@@ -172,34 +152,30 @@ const OperationsPage = () => {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        movements.map((movement) => {
-                          const trade = physicalTrades.find(t => t.id === movement.tradeId);
-                          
-                          return (
-                            <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
-                              <TableCell>
-                                {trade ? (
-                                  <Link to={`/trades/${movement.tradeId}`} className="hover:underline">
-                                    {trade.tradeReference}
-                                    {movement.legId && ' (Leg)'}
-                                  </Link>
-                                ) : (
-                                  `Trade ${movement.tradeId}`
-                                )}
-                              </TableCell>
-                              <TableCell>{movement.vesselName || 'N/A'}</TableCell>
-                              <TableCell className="text-right">
-                                {movement.scheduledQuantity || movement.quantity} {trade?.unit}
-                              </TableCell>
-                              <TableCell>{movement.nominatedDate ? formatDate(movement.nominatedDate) : 'N/A'}</TableCell>
-                              <TableCell>{movement.loadport || 'N/A'}</TableCell>
-                              <TableCell className="capitalize">{movement.status}</TableCell>
-                              <TableCell className="text-center">
-                                <Button variant="ghost" size="sm">View</Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
+                        movements.map((movement) => (
+                          <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
+                            <TableCell>
+                              {movement.tradeId ? (
+                                <Link to={`/trades/${movement.tradeId}`} className="hover:underline">
+                                  {movement.movementReference}
+                                  {movement.legId && ' (Leg)'}
+                                </Link>
+                              ) : (
+                                `${movement.movementReference}`
+                              )}
+                            </TableCell>
+                            <TableCell>{movement.vesselName || 'N/A'}</TableCell>
+                            <TableCell className="text-right">
+                              {movement.scheduledQuantity || movement.quantity} MT
+                            </TableCell>
+                            <TableCell>{movement.nominatedDate ? formatDate(movement.nominatedDate) : 'N/A'}</TableCell>
+                            <TableCell>{movement.loadport || 'N/A'}</TableCell>
+                            <TableCell className="capitalize">{movement.status}</TableCell>
+                            <TableCell className="text-center">
+                              <Button variant="ghost" size="sm">View</Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
                       )}
                     </TableBody>
                   </Table>

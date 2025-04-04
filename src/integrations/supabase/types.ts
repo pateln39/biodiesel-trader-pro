@@ -362,6 +362,111 @@ export type Database = {
           },
         ]
       }
+      open_trades: {
+        Row: {
+          buy_sell: string
+          counterparty: string
+          created_at: string
+          credit_status: string | null
+          customs_status: string | null
+          disport: string | null
+          id: string
+          inco_term: string | null
+          loading_period_end: string | null
+          loading_period_start: string | null
+          loadport: string | null
+          open_quantity: number | null
+          parent_trade_id: string | null
+          payment_term: string | null
+          pricing_period_end: string | null
+          pricing_period_start: string | null
+          product: string
+          quantity: number
+          scheduled_quantity: number | null
+          status: string | null
+          sustainability: string | null
+          tolerance: number | null
+          trade_leg_id: string | null
+          trade_reference: string
+          unit: string | null
+          updated_at: string
+          vessel_name: string | null
+        }
+        Insert: {
+          buy_sell: string
+          counterparty: string
+          created_at?: string
+          credit_status?: string | null
+          customs_status?: string | null
+          disport?: string | null
+          id?: string
+          inco_term?: string | null
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          loadport?: string | null
+          open_quantity?: number | null
+          parent_trade_id?: string | null
+          payment_term?: string | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product: string
+          quantity: number
+          scheduled_quantity?: number | null
+          status?: string | null
+          sustainability?: string | null
+          tolerance?: number | null
+          trade_leg_id?: string | null
+          trade_reference: string
+          unit?: string | null
+          updated_at?: string
+          vessel_name?: string | null
+        }
+        Update: {
+          buy_sell?: string
+          counterparty?: string
+          created_at?: string
+          credit_status?: string | null
+          customs_status?: string | null
+          disport?: string | null
+          id?: string
+          inco_term?: string | null
+          loading_period_end?: string | null
+          loading_period_start?: string | null
+          loadport?: string | null
+          open_quantity?: number | null
+          parent_trade_id?: string | null
+          payment_term?: string | null
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          product?: string
+          quantity?: number
+          scheduled_quantity?: number | null
+          status?: string | null
+          sustainability?: string | null
+          tolerance?: number | null
+          trade_leg_id?: string | null
+          trade_reference?: string
+          unit?: string | null
+          updated_at?: string
+          vessel_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_trades_parent_trade_id_fkey"
+            columns: ["parent_trade_id"]
+            isOneToOne: false
+            referencedRelation: "parent_trades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_trades_trade_leg_id_fkey"
+            columns: ["trade_leg_id"]
+            isOneToOne: false
+            referencedRelation: "trade_legs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paper_trade_legs: {
         Row: {
           broker: string | null
@@ -718,7 +823,6 @@ export type Database = {
           pricing_period_start: string | null
           pricing_type: string | null
           product: string
-          product_credit_status: string | null
           quantity: number
           sustainability: string | null
           tolerance: number | null
@@ -759,7 +863,6 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product: string
-          product_credit_status?: string | null
           quantity: number
           sustainability?: string | null
           tolerance?: number | null
@@ -800,7 +903,6 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product?: string
-          product_credit_status?: string | null
           quantity?: number
           sustainability?: string | null
           tolerance?: number | null
@@ -853,7 +955,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_open_quantity: {
+        Args: {
+          total: number
+          tolerance: number
+          scheduled: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
