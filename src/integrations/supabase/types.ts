@@ -364,6 +364,7 @@ export type Database = {
       }
       open_trades: {
         Row: {
+          balance: number | null
           buy_sell: string
           comments: string | null
           contract_status: string | null
@@ -377,6 +378,7 @@ export type Database = {
           loading_period_end: string | null
           loading_period_start: string | null
           loadport: string | null
+          nominated_value: number | null
           open_quantity: number | null
           parent_trade_id: string | null
           payment_term: string | null
@@ -385,6 +387,7 @@ export type Database = {
           pricing_period_start: string | null
           pricing_type: string | null
           product: string
+          qbe_status: string | null
           quantity: number
           scheduled_quantity: number | null
           status: string | null
@@ -397,6 +400,7 @@ export type Database = {
           vessel_name: string | null
         }
         Insert: {
+          balance?: number | null
           buy_sell: string
           comments?: string | null
           contract_status?: string | null
@@ -410,6 +414,7 @@ export type Database = {
           loading_period_end?: string | null
           loading_period_start?: string | null
           loadport?: string | null
+          nominated_value?: number | null
           open_quantity?: number | null
           parent_trade_id?: string | null
           payment_term?: string | null
@@ -418,6 +423,7 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product: string
+          qbe_status?: string | null
           quantity: number
           scheduled_quantity?: number | null
           status?: string | null
@@ -430,6 +436,7 @@ export type Database = {
           vessel_name?: string | null
         }
         Update: {
+          balance?: number | null
           buy_sell?: string
           comments?: string | null
           contract_status?: string | null
@@ -443,6 +450,7 @@ export type Database = {
           loading_period_end?: string | null
           loading_period_start?: string | null
           loadport?: string | null
+          nominated_value?: number | null
           open_quantity?: number | null
           parent_trade_id?: string | null
           payment_term?: string | null
@@ -451,6 +459,7 @@ export type Database = {
           pricing_period_start?: string | null
           pricing_type?: string | null
           product?: string
+          qbe_status?: string | null
           quantity?: number
           scheduled_quantity?: number | null
           status?: string | null

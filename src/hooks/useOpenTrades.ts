@@ -33,11 +33,15 @@ export interface OpenTrade {
   status: 'open' | 'closed';
   created_at: Date;
   updated_at: Date;
-  // New fields added to OpenTrade interface
+  // Previously added fields
   pricing_type?: PricingType;
   pricing_formula?: PricingFormula;
   comments?: string; // Independent from trade_legs.comments
   contract_status?: ContractStatus;
+  // New fields based on database additions
+  qbe_status?: string;
+  nominated_value?: number;
+  balance?: number;
 }
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
@@ -78,11 +82,15 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       status: item.status as 'open' | 'closed',
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at),
-      // Map the new fields
+      // Map previously added fields
       pricing_type: item.pricing_type as PricingType,
       pricing_formula: item.pricing_formula as unknown as PricingFormula, // Properly cast the JSON to PricingFormula
       comments: item.comments,
-      contract_status: item.contract_status as ContractStatus
+      contract_status: item.contract_status as ContractStatus,
+      // Map newly added fields
+      qbe_status: item.qbe_status, // Note: DB column is QBE_Status but camelCase in JS
+      nominated_value: item.nominated_value,
+      balance: item.balance
     }));
   } catch (error: any) {
     console.error('[OPEN TRADES] Error fetching open trades:', error);
