@@ -305,10 +305,13 @@ export type Database = {
         Row: {
           actual_quantity: number | null
           barge_name: string | null
+          barge_orders_checked: boolean | null
           bl_date: string | null
           bl_quantity: number
           buy_sell: string | null
           cash_flow: string | null
+          coa_received_checked: boolean | null
+          coa_sent_checked: boolean | null
           cod_date: string | null
           comments: string | null
           contract_status: string | null
@@ -318,10 +321,13 @@ export type Database = {
           customs_status: string | null
           disport: string | null
           disport_inspector: string | null
+          ead_checked: boolean | null
           id: string
           inco_term: string | null
+          load_plan_checked: boolean | null
           loadport: string | null
           loadport_inspector: string | null
+          nomination_checked: boolean | null
           nomination_eta: string | null
           nomination_valid: string | null
           parent_trade_id: string | null
@@ -339,10 +345,13 @@ export type Database = {
         Insert: {
           actual_quantity?: number | null
           barge_name?: string | null
+          barge_orders_checked?: boolean | null
           bl_date?: string | null
           bl_quantity: number
           buy_sell?: string | null
           cash_flow?: string | null
+          coa_received_checked?: boolean | null
+          coa_sent_checked?: boolean | null
           cod_date?: string | null
           comments?: string | null
           contract_status?: string | null
@@ -352,10 +361,13 @@ export type Database = {
           customs_status?: string | null
           disport?: string | null
           disport_inspector?: string | null
+          ead_checked?: boolean | null
           id?: string
           inco_term?: string | null
+          load_plan_checked?: boolean | null
           loadport?: string | null
           loadport_inspector?: string | null
+          nomination_checked?: boolean | null
           nomination_eta?: string | null
           nomination_valid?: string | null
           parent_trade_id?: string | null
@@ -373,10 +385,13 @@ export type Database = {
         Update: {
           actual_quantity?: number | null
           barge_name?: string | null
+          barge_orders_checked?: boolean | null
           bl_date?: string | null
           bl_quantity?: number
           buy_sell?: string | null
           cash_flow?: string | null
+          coa_received_checked?: boolean | null
+          coa_sent_checked?: boolean | null
           cod_date?: string | null
           comments?: string | null
           contract_status?: string | null
@@ -386,10 +401,13 @@ export type Database = {
           customs_status?: string | null
           disport?: string | null
           disport_inspector?: string | null
+          ead_checked?: boolean | null
           id?: string
           inco_term?: string | null
+          load_plan_checked?: boolean | null
           loadport?: string | null
           loadport_inspector?: string | null
+          nomination_checked?: boolean | null
           nomination_eta?: string | null
           nomination_valid?: string | null
           parent_trade_id?: string | null
