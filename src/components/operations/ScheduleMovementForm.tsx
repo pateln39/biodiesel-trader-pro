@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,6 +44,7 @@ import { useInspectors } from '@/hooks/useInspectors';
 import AddInspectorDialog from './AddInspectorDialog';
 import { formatMovementReference } from '@/utils/tradeUtils';
 import { Movement } from '@/types';
+import { formatDateForStorage } from '@/utils/dateParsingUtils';
 
 // Form schema validation
 const formSchema = z.object({
@@ -132,9 +132,9 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           .from('movements')
           .update({
             scheduled_quantity: data.scheduledQuantity,
-            nomination_eta: data.nominationEta,
-            nomination_valid: data.nominationValid,
-            cash_flow: data.cashFlow,
+            nomination_eta: data.nominationEta ? formatDateForStorage(data.nominationEta) : null,
+            nomination_valid: data.nominationValid ? formatDateForStorage(data.nominationValid) : null,
+            cash_flow: data.cashFlow ? formatDateForStorage(data.cashFlow) : null,
             barge_name: data.bargeName,
             loadport: data.loadport,
             loadport_inspector: data.loadportInspector,
@@ -158,9 +158,9 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           inco_term: trade.inco_term,
           scheduled_quantity: data.scheduledQuantity,
           bl_quantity: data.scheduledQuantity, // Initially set BL quantity equal to scheduled
-          nomination_eta: data.nominationEta,
-          nomination_valid: data.nominationValid,
-          cash_flow: data.cashFlow,
+          nomination_eta: data.nominationEta ? formatDateForStorage(data.nominationEta) : null,
+          nomination_valid: data.nominationValid ? formatDateForStorage(data.nominationValid) : null,
+          cash_flow: data.cashFlow ? formatDateForStorage(data.cashFlow) : null,
           barge_name: data.bargeName,
           loadport: data.loadport,
           loadport_inspector: data.loadportInspector,
@@ -321,6 +321,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
