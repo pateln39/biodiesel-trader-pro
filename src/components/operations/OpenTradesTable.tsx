@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -26,9 +25,13 @@ import TradeMovementsDialog from './TradeMovementsDialog';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
+  filterStatus?: 'all' | 'in-process' | 'completed';
 }
 
-const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
+const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
+  onRefresh,
+  filterStatus = 'all'
+}) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -134,6 +137,28 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
     });
   }, [openTrades, sortField, sortDirection]);
 
+  const filteredTrades = React.useMemo(() => {
+    if (!sortedTrades) return [];
+    
+    if (filterStatus === 'all') {
+      return sortedTrades;
+    } else if (filterStatus === 'in-process') {
+      return sortedTrades.filter(trade => 
+        trade.balance === undefined || 
+        trade.balance === null || 
+        trade.balance > 0
+      );
+    } else if (filterStatus === 'completed') {
+      return sortedTrades.filter(trade => 
+        trade.balance !== undefined && 
+        trade.balance !== null && 
+        trade.balance <= 0
+      );
+    }
+    
+    return sortedTrades;
+  }, [sortedTrades, filterStatus]);
+
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
     return sortDirection === 'asc' 
@@ -165,6 +190,17 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
     return (
       <div className="text-center py-10">
         <p className="text-muted-foreground mb-4">No open trades found</p>
+        <Button variant="outline" onClick={handleRefresh}>
+          Refresh
+        </Button>
+      </div>
+    );
+  }
+
+  if (filteredTrades.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-muted-foreground mb-4">No trades match the selected filter</p>
         <Button variant="outline" onClick={handleRefresh}>
           Refresh
         </Button>
@@ -229,7 +265,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTrades.map((trade) => {
+            {filteredTrades.map((trade) => {
               const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
               
               const displayReference = trade.trade_leg_id ? 

@@ -9,10 +9,16 @@ import { useReferenceData } from '@/hooks/useReferenceData';
 
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
+import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
+import MovementsFilter from '@/components/operations/MovementsFilter';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const [openTradesFilterStatus, setOpenTradesFilterStatus] = useState<'all' | 'in-process' | 'completed'>('all');
+  const [movementsFilterStatus, setMovementsFilterStatus] = useState<string[]>([]);
+  const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
+  const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   
   const { 
     counterparties,
@@ -47,15 +53,30 @@ const OperationsPage = () => {
                 <CardTitle>Open Trades</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage open trade positions</span>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsOpenTradesFilterOpen(true)}
+                  >
                     <Filter className="mr-2 h-4 w-4" /> Filter
                   </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <OpenTradesTable onRefresh={handleRefreshTables} key={`open-trades-${refreshTrigger}`} />
+                <OpenTradesTable 
+                  onRefresh={handleRefreshTables} 
+                  key={`open-trades-${refreshTrigger}`} 
+                  filterStatus={openTradesFilterStatus}
+                />
               </CardContent>
             </Card>
+            
+            <OpenTradesFilter 
+              open={isOpenTradesFilterOpen} 
+              onOpenChange={setIsOpenTradesFilterOpen}
+              selectedStatus={openTradesFilterStatus}
+              onStatusChange={setOpenTradesFilterStatus}
+            />
           </TabsContent>
 
           <TabsContent value="movements" className="space-y-4">
@@ -64,15 +85,29 @@ const OperationsPage = () => {
                 <CardTitle>Movements</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage product movements</span>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsMovementsFilterOpen(true)}
+                  >
                     <Filter className="mr-2 h-4 w-4" /> Filter
                   </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <MovementsTable key={`movements-${refreshTrigger}`} />
+                <MovementsTable 
+                  key={`movements-${refreshTrigger}`} 
+                  filterStatuses={movementsFilterStatus}
+                />
               </CardContent>
             </Card>
+            
+            <MovementsFilter 
+              open={isMovementsFilterOpen} 
+              onOpenChange={setIsMovementsFilterOpen}
+              selectedStatuses={movementsFilterStatus}
+              onStatusesChange={setMovementsFilterStatus}
+            />
           </TabsContent>
         </Tabs>
       </div>
