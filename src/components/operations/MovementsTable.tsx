@@ -42,7 +42,7 @@ import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { formatLegReference } from '@/utils/tradeUtils';
+import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -129,16 +129,29 @@ const fetchMovements = async (): Promise<Movement[]> => {
     return (movements || []).map((m: any) => {
       // Get the proper full reference for displaying
       let displayReference = m.trade_reference || 'Unknown';
+      let legReference = '';
+      
       if (m.trade_leg_id && tradeLegReferences[m.trade_leg_id]) {
         const { legRef, tradeRef } = tradeLegReferences[m.trade_leg_id];
+        legReference = legRef;
         if (legRef && tradeRef) {
           displayReference = formatLegReference(tradeRef, legRef);
+        }
+      }
+      
+      // Format movement reference number to include leg reference
+      let movementReference = m.reference_number;
+      if (displayReference && legReference && m.reference_number) {
+        // Check if reference_number already contains the leg suffix
+        const legSuffix = legReference.split('-').pop();
+        if (!m.reference_number.includes(`-${legSuffix}-`)) {
+          movementReference = formatMovementReference(displayReference, legReference, m.reference_number.split('-').pop() || '1');
         }
       }
 
       return {
         id: m.id,
-        referenceNumber: m.reference_number,
+        referenceNumber: movementReference || m.reference_number,
         tradeLegId: m.trade_leg_id,
         parentTradeId: m.parent_trade_id,
         tradeReference: displayReference,

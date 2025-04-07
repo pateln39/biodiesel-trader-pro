@@ -1,4 +1,3 @@
-
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -32,6 +31,46 @@ export const formatLegReference = (tradeReference: string, legReference: string)
   
   // Fallback: just return the trade reference
   return tradeReference;
+};
+
+// Generate a movement reference number that includes the leg reference
+export const generateMovementReference = (tradeReference: string, legReference: string, movementCount: number): string => {
+  // Extract the base trade reference
+  const tradeRef = tradeReference.split('-')[0];
+  
+  // Extract the numeric part from the trade reference
+  const numericPart = tradeReference.split('-')[1] || '';
+  
+  // Extract the leg suffix (e.g., 'a', 'b') from the leg reference
+  let legSuffix = '';
+  if (legReference && legReference.includes('-')) {
+    legSuffix = legReference.split('-').pop() || '';
+  }
+  
+  // Format the movement reference including the leg suffix
+  return `${tradeRef}-${numericPart}-${legSuffix}-${movementCount}`;
+};
+
+// Format a movement reference for display
+export const formatMovementReference = (tradeReference: string, legReference: string, movementNumber: string | number): string => {
+  // Extract the leg suffix if it exists
+  let legSuffix = '';
+  if (legReference && legReference.includes('-')) {
+    legSuffix = legReference.split('-').pop() || '';
+  }
+  
+  // Check if the movement number already includes the leg reference
+  if (typeof movementNumber === 'string' && movementNumber.includes(`-${legSuffix}-`)) {
+    return movementNumber;
+  }
+  
+  // Extract the base parts from the trade reference
+  const parts = tradeReference.split('-');
+  const dateCode = parts[0];
+  const randomCode = parts[1];
+  
+  // Format with leg suffix included
+  return `${dateCode}-${randomCode}-${legSuffix}-${movementNumber}`;
 };
 
 // Format product display name based on relationship type (for Trades table UI)
@@ -136,4 +175,3 @@ export const isPricingInstrument = (product: string): boolean => {
   const pricingInstruments = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
   return pricingInstruments.includes(product);
 };
-
