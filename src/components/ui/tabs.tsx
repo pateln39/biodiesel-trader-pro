@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 
@@ -50,4 +51,11 @@ const TabsContent = React.forwardRef<
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+// Add a new component for underlined tab titles
+const TabsTitle = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <h3 className={cn("font-bold text-lg underline mb-4", className)}>
+    {children}
+  </h3>
+)
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, TabsTitle }
