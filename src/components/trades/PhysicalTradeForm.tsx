@@ -29,6 +29,7 @@ interface PhysicalTradeFormProps {
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: PhysicalTrade;
+  readOnly?: boolean;
 }
 
 interface LegFormState {
@@ -138,7 +139,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   onSubmit,
   onCancel,
   isEditMode = false,
-  initialData
+  initialData,
+  readOnly = false
 }) => {
   const {
     counterparties,
@@ -249,6 +251,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (readOnly) {
+      return;
+    }
+    
     const isCounterpartyValid = validateRequiredField(counterparty, 'Counterparty');
     const legValidations = legs.map((leg, index) => {
       const legNumber = index + 1;
@@ -348,7 +355,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="physical-type">Trade Type</Label>
-          <Select value={physicalType} onValueChange={value => setPhysicalType(value as PhysicalTradeType)}>
+          <Select 
+            value={physicalType} 
+            onValueChange={value => setPhysicalType(value as PhysicalTradeType)}
+            disabled={readOnly}
+          >
             <SelectTrigger id="physical-type">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
@@ -361,7 +372,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="counterparty">Counterparty</Label>
-          <Select value={counterparty} onValueChange={setCounterparty}>
+          <Select 
+            value={counterparty} 
+            onValueChange={setCounterparty}
+            disabled={readOnly}
+          >
             <SelectTrigger id="counterparty">
               <SelectValue placeholder="Select counterparty" />
             </SelectTrigger>
@@ -377,7 +392,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Trade Legs</h3>
-          {physicalType === 'term' && <Button type="button" variant="outline" onClick={addLeg}>
+          {physicalType === 'term' && !readOnly && <Button type="button" variant="outline" onClick={addLeg}>
               <Plus className="h-4 w-4 mr-1" />
               Add Leg
             </Button>}
@@ -630,11 +645,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
+          {readOnly ? 'Back' : 'Cancel'}
         </Button>
-        <Button type="submit">
-          {isEditMode ? 'Update Trade' : 'Create Trade'}
-        </Button>
+        {!readOnly && (
+          <Button type="submit">
+            {isEditMode ? 'Update Trade' : 'Create Trade'}
+          </Button>
+        )}
       </div>
     </form>;
 };
