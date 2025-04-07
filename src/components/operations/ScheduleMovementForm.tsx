@@ -1,510 +1,575 @@
+
 import React, { useState, useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { OpenTrade } from '@/hooks/useOpenTrades';
+import { Movement } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { formatDateForStorage } from '@/utils/dateParsingUtils';
+import { useInspectors, Inspector } from '@/hooks/useInspectors';
+import AddInspectorDialog from './AddInspectorDialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon } from "lucide-react"
-import { format } from 'date-fns';
-import { cn } from "@/lib/utils"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { useToast } from "@/components/ui/use-toast"
-import { DatePicker } from "@/components/ui/date-picker"
-import { supabase } from '@/integrations/supabase/client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateMovementReference } from '@/utils/tradeUtils';
-import { BuySell, ContractStatus, CreditStatus, CustomsStatus, IncoTerm, Movement, PaymentTerm, PricingType, Product, Unit } from '@/types';
-import { toast } from "sonner";
-
-// Define our own trade type for this component to avoid import issues
-interface Trade {
-  id: string;
-  trade_leg_id: string;
-  parent_trade_id: string;
-  trade_reference: string;
-  leg_reference?: string;
-  counterparty: string;
-  buy_sell: BuySell;
-  product: Product;
-  sustainability?: string;
-  inco_term?: IncoTerm;
-  quantity: number;
-  tolerance?: number;
-  unit?: Unit;
-  payment_term?: PaymentTerm;
-  credit_status?: CreditStatus;
-  customs_status?: CustomsStatus;
-  vessel_name?: string;
-  loadport?: string;
-  disport?: string;
-  scheduled_quantity: number;
-  open_quantity: number;
-  pricing_type?: PricingType;
-  pricing_formula?: any;
-  comments?: string;
-  contract_status?: ContractStatus;
-}
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
+import { PlusCircle } from 'lucide-react';
 
 interface ScheduleMovementFormProps {
-  trade: Trade;
+  trade: OpenTrade;
   onSuccess: () => void;
   onCancel: () => void;
   isEditMode?: boolean;
   initialMovement?: Movement;
 }
 
-const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ 
-  trade, 
-  onSuccess, 
-  onCancel, 
+// Form schema
+const formSchema = z.object({
+  scheduledQuantity: z.number()
+    .positive('Quantity must be greater than 0')
+    .refine(val => val > 0, {
+      message: 'Quantity must be greater than 0',
+    }),
+  nominationEta: z.date().optional(),
+  nominationValid: z.date().optional(),
+  cashFlow: z.date().optional(),
+  bargeName: z.string().min(1, 'Barge name is required'),
+  loadport: z.string().min(1, 'Loadport is required'),
+  loadportInspector: z.string().optional(),
+  disport: z.string().min(1, 'Disport is required'),
+  disportInspector: z.string().optional(),
+  blDate: z.date().optional(),
+  actualQuantity: z.number().optional(),
+  codDate: z.date().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
+  trade,
+  onSuccess,
+  onCancel,
   isEditMode = false,
-  initialMovement 
+  initialMovement,
 }) => {
-  const [nominationEta, setNominationEta] = useState<Date | undefined>(
-    initialMovement?.nominationEta ? new Date(initialMovement.nominationEta) : undefined
-  );
-  const [nominationValid, setNominationValid] = useState<Date | undefined>(
-    initialMovement?.nominationValid ? new Date(initialMovement.nominationValid) : undefined
-  );
-  const [cashFlow, setCashFlow] = useState<Date | undefined>(
-    initialMovement?.cashFlow ? new Date(initialMovement.cashFlow) : undefined
-  );
-  const [bargeName, setBargeName] = useState(initialMovement?.bargeName || '');
-  const [loadport, setLoadport] = useState(initialMovement?.loadport || '');
-  const [loadportInspector, setLoadportInspector] = useState(initialMovement?.loadportInspector || '');
-  const [disport, setDisport] = useState(initialMovement?.disport || '');
-  const [disportInspector, setDisportInspector] = useState(initialMovement?.disportInspector || '');
-  const [blDate, setBlDate] = useState<Date | undefined>(
-    initialMovement?.blDate ? new Date(initialMovement.blDate) : undefined
-  );
-  const [blQuantity, setBlQuantity] = useState<number | undefined>(initialMovement?.blQuantity);
-  const [actualQuantity, setActualQuantity] = useState<number | undefined>(initialMovement?.actualQuantity);
-  const [codDate, setCodDate] = useState<Date | undefined>(
-    initialMovement?.codDate ? new Date(initialMovement.codDate) : undefined
-  );
-  const [referenceNumber, setReferenceNumber] = useState(initialMovement?.referenceNumber || '');
-  const { toast: uiToast } = useToast();
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (!isEditMode && !initialMovement) {
-      const movementNumber = Math.floor(1000 + Math.random() * 9000);
-      const legReference = trade.leg_reference || '';
-      const newReferenceNumber = generateMovementReference(legReference, movementNumber);
-      setReferenceNumber(newReferenceNumber);
-    }
-  }, [trade.leg_reference, isEditMode, initialMovement]);
-
-  const createMovementMutation = useMutation({
-    mutationFn: async (movementData: any) => {
-      let response;
-      
-      if (isEditMode && initialMovement) {
-        const { data, error } = await supabase
-          .from('movements')
-          .update(movementData)
-          .eq('id', initialMovement.id)
-          .select();
-          
-        if (error) throw error;
-        response = data;
-      } else {
-        const { data, error } = await supabase
-          .from('movements')
-          .insert(movementData)
-          .select();
-          
-        if (error) throw error;
-        response = data;
+  const [showAddLoadportInspector, setShowAddLoadportInspector] = useState(false);
+  const [showAddDisportInspector, setShowAddDisportInspector] = useState(false);
+  const { data: inspectors = [], isLoading: loadingInspectors } = useInspectors();
+  
+  // Set default form values based on whether we're in edit mode
+  const defaultValues: Partial<FormValues> = isEditMode && initialMovement
+    ? {
+        scheduledQuantity: initialMovement.scheduledQuantity || 0,
+        nominationEta: initialMovement.nominationEta,
+        nominationValid: initialMovement.nominationValid,
+        cashFlow: initialMovement.cashFlow,
+        bargeName: initialMovement.bargeName || '',
+        loadport: initialMovement.loadport || '',
+        loadportInspector: initialMovement.loadportInspector,
+        disport: initialMovement.disport || '',
+        disportInspector: initialMovement.disportInspector,
+        blDate: initialMovement.blDate,
+        actualQuantity: initialMovement.actualQuantity,
+        codDate: initialMovement.codDate,
       }
-      
-      return response;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      queryClient.invalidateQueries({ queryKey: ['openTrades'] });
-      toast(isEditMode ? "Movement Updated" : "Movement Scheduled", {
-        description: isEditMode 
-          ? "Your movement has been updated successfully." 
-          : "Your movement has been scheduled successfully."
-      });
-      onSuccess();
-    },
-    onError: (error: any) => {
-      toast("Failed to " + (isEditMode ? "Update" : "Schedule") + " Movement", {
-        description: error.message
-      });
-    }
+    : {
+        scheduledQuantity: 0,
+        bargeName: '',
+        loadport: '',
+        disport: '',
+      };
+  
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
   });
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!isEditMode && blQuantity === undefined) {
-      toast("Required Field Missing", {
-        description: "BL Quantity is required to schedule a movement."
+  // Set form values when initialMovement changes
+  useEffect(() => {
+    if (isEditMode && initialMovement) {
+      form.reset({
+        scheduledQuantity: initialMovement.scheduledQuantity || 0,
+        nominationEta: initialMovement.nominationEta,
+        nominationValid: initialMovement.nominationValid,
+        cashFlow: initialMovement.cashFlow,
+        bargeName: initialMovement.bargeName || '',
+        loadport: initialMovement.loadport || '',
+        loadportInspector: initialMovement.loadportInspector,
+        disport: initialMovement.disport || '',
+        disportInspector: initialMovement.disportInspector,
+        blDate: initialMovement.blDate,
+        actualQuantity: initialMovement.actualQuantity,
+        codDate: initialMovement.codDate,
       });
-      return;
     }
+  }, [form, initialMovement, isEditMode]);
 
-    const movementData = {
-      referenceNumber: referenceNumber,
-      tradeLegId: trade.trade_leg_id,
-      parentTradeId: trade.parent_trade_id,
-      tradeReference: trade.trade_reference,
-      counterparty: trade.counterparty,
-      product: trade.product,
-      buySell: trade.buy_sell,
-      incoTerm: trade.inco_term,
-      sustainability: trade.sustainability,
-      scheduledQuantity: trade.quantity,
-      nominationEta: nominationEta?.toISOString(),
-      nominationValid: nominationValid?.toISOString(),
-      cashFlow: cashFlow?.toISOString(),
-      bargeName: bargeName,
-      loadport: loadport,
-      loadportInspector: loadportInspector,
-      disport: disport,
-      disportInspector: disportInspector,
-      blDate: blDate?.toISOString(),
-      blQuantity: blQuantity,
-      actualQuantity: actualQuantity,
-      codDate: codDate?.toISOString(),
-      pricingType: trade.pricing_type,
-      pricingFormula: trade.pricing_formula,
-      comments: initialMovement?.comments || '',
-      customsStatus: initialMovement?.customsStatus || '',
-      creditStatus: initialMovement?.creditStatus || '',
-      contractStatus: trade.contract_status,
-      status: initialMovement?.status || 'scheduled',
-    };
+  // Calculate max quantity - for new movements, use trade balance
+  // For edit mode, we can use the original scheduled quantity plus the trade balance
+  const maxSchedulableQuantity = isEditMode && initialMovement
+    ? (trade.balance || 0) + (initialMovement.scheduledQuantity || 0)
+    : trade.balance || 0;
 
-    const snakeCaseData = {
-      reference_number: movementData.referenceNumber,
-      trade_leg_id: movementData.tradeLegId,
-      parent_trade_id: movementData.parentTradeId,
-      trade_reference: movementData.tradeReference,
-      counterparty: movementData.counterparty,
-      product: movementData.product,
-      buy_sell: movementData.buySell,
-      inco_term: movementData.incoTerm,
-      sustainability: movementData.sustainability,
-      scheduled_quantity: movementData.scheduledQuantity,
-      nomination_eta: movementData.nominationEta,
-      nomination_valid: movementData.nominationValid,
-      cash_flow: movementData.cashFlow,
-      barge_name: movementData.bargeName,
-      loadport: movementData.loadport,
-      loadport_inspector: movementData.loadportInspector,
-      disport: movementData.disport,
-      disport_inspector: movementData.disportInspector,
-      bl_date: movementData.blDate,
-      bl_quantity: movementData.blQuantity || 0,
-      actual_quantity: movementData.actualQuantity,
-      cod_date: movementData.codDate,
-      pricing_type: movementData.pricingType,
-      pricing_formula: movementData.pricingFormula,
-      comments: movementData.comments,
-      customs_status: movementData.customsStatus,
-      credit_status: movementData.creditStatus,
-      contract_status: movementData.contractStatus,
-      status: movementData.status,
-    };
+  // Handler for form submission
+  const onSubmit = async (values: FormValues) => {
+    try {
+      // Validate quantity only for new movements (not in edit mode)
+      // or if the quantity is being increased in edit mode
+      if (!isEditMode && values.scheduledQuantity > maxSchedulableQuantity) {
+        form.setError('scheduledQuantity', {
+          type: 'manual',
+          message: `Cannot schedule more than the available balance (${maxSchedulableQuantity} MT)`,
+        });
+        return;
+      } else if (isEditMode && initialMovement && 
+                 values.scheduledQuantity > initialMovement.scheduledQuantity! + trade.balance!) {
+        form.setError('scheduledQuantity', {
+          type: 'manual',
+          message: `Cannot increase by more than the available balance (current: ${initialMovement.scheduledQuantity} MT, max additional: ${trade.balance} MT)`,
+        });
+        return;
+      }
 
-    createMovementMutation.mutate(snakeCaseData);
+      const movementData = {
+        trade_leg_id: trade.trade_leg_id,
+        parent_trade_id: trade.parent_trade_id,
+        trade_reference: trade.trade_reference,
+        counterparty: trade.counterparty,
+        buy_sell: trade.buy_sell,
+        product: trade.product,
+        sustainability: trade.sustainability,
+        inco_term: trade.inco_term,
+        scheduled_quantity: values.scheduledQuantity,
+        bl_quantity: isEditMode && initialMovement ? initialMovement.blQuantity : 0,
+        nomination_eta: values.nominationEta ? values.nominationEta.toISOString() : null,
+        nomination_valid: values.nominationValid ? values.nominationValid.toISOString() : null,
+        cash_flow: values.cashFlow ? formatDateForStorage(values.cashFlow) : null,
+        barge_name: values.bargeName,
+        loadport: values.loadport,
+        loadport_inspector: values.loadportInspector,
+        disport: values.disport,
+        disport_inspector: values.disportInspector,
+        bl_date: values.blDate ? formatDateForStorage(values.blDate) : null,
+        actual_quantity: values.actualQuantity,
+        cod_date: values.codDate ? formatDateForStorage(values.codDate) : null,
+        pricing_type: trade.pricing_type,
+        pricing_formula: trade.pricing_formula ? JSON.parse(JSON.stringify(trade.pricing_formula)) : null,
+        comments: trade.comments,
+        customs_status: trade.customs_status,
+        credit_status: trade.credit_status,
+        contract_status: trade.contract_status,
+        status: isEditMode && initialMovement ? initialMovement.status : 'scheduled',
+      };
+
+      let error;
+      
+      if (isEditMode && initialMovement) {
+        // Update existing movement
+        const { error: updateError } = await supabase
+          .from('movements')
+          .update(movementData)
+          .eq('id', initialMovement.id);
+        
+        error = updateError;
+      } else {
+        // Create new movement
+        const { error: insertError } = await supabase
+          .from('movements')
+          .insert(movementData);
+        
+        error = insertError;
+      }
+
+      if (error) {
+        console.error('Error with movement:', error);
+        toast.error('Failed to process movement: ' + error.message);
+        return;
+      }
+
+      onSuccess();
+    } catch (error: any) {
+      console.error('Error in movement processing:', error);
+      toast.error('An unexpected error occurred: ' + error.message);
+    }
   };
-
-  const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    const formElement = (e.target as HTMLButtonElement).closest('form');
-    if (formElement) {
-      formElement.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  
+  const handleInspectorAdded = (inspectorType: 'loadport' | 'disport') => (inspectorName: string) => {
+    if (inspectorType === 'loadport') {
+      form.setValue('loadportInspector', inspectorName);
+    } else {
+      form.setValue('disportInspector', inspectorName);
     }
   };
 
   return (
-    <DialogContent className="sm:max-w-[425px]">
+    <DialogContent className="sm:max-w-[700px]">
       <DialogHeader>
-        <DialogTitle>{isEditMode ? "Edit Movement" : "Schedule Movement"}</DialogTitle>
+        <DialogTitle>{isEditMode ? 'Edit Movement' : 'Schedule Barge Movement'}</DialogTitle>
         <DialogDescription>
           {isEditMode 
-            ? `Edit movement details for: ${trade.trade_reference}`
-            : `Schedule a new movement for trade: ${trade.trade_reference}`
+            ? `Edit movement details for trade ${trade.trade_reference}.`
+            : `Schedule a movement for trade ${trade.trade_reference}. Available balance: ${maxSchedulableQuantity} MT.`
           }
         </DialogDescription>
       </DialogHeader>
-      <form onSubmit={onSubmit} className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="referenceNumber" className="text-right">
-            Reference Number
-          </Label>
-          <Input
-            type="text"
-            id="referenceNumber"
-            value={referenceNumber}
-            readOnly
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="nominationEta" className="text-right">
-            Nomination ETA
-          </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "col-span-3 flex justify-start text-left font-normal",
-                  !nominationEta && "text-muted-foreground"
-                )}
-              >
-                {nominationEta ? (
-                  format(nominationEta, "PPP")
-                ) : (
-                  <span>Pick a date</span>
-                )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={nominationEta}
-                onSelect={setNominationEta}
-                disabled={false}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="nominationValid" className="text-right">
-            Nomination Valid
-          </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "col-span-3 flex justify-start text-left font-normal",
-                  !nominationValid && "text-muted-foreground"
-                )}
-              >
-                {nominationValid ? (
-                  format(nominationValid, "PPP")
-                ) : (
-                  <span>Pick a date</span>
-                )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={nominationValid}
-                onSelect={setNominationValid}
-                disabled={false}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="cashFlow" className="text-right">
-            Cash Flow Date
-          </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "col-span-3 flex justify-start text-left font-normal",
-                  !cashFlow && "text-muted-foreground"
-                )}
-              >
-                {cashFlow ? (
-                  format(cashFlow, "PPP")
-                ) : (
-                  <span>Pick a date</span>
-                )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={cashFlow}
-                onSelect={setCashFlow}
-                disabled={false}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="bargeName" className="text-right">
-            Barge Name
-          </Label>
-          <Input
-            type="text"
-            id="bargeName"
-            value={bargeName}
-            onChange={(e) => setBargeName(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="loadport" className="text-right">
-            Loadport
-          </Label>
-          <Input
-            type="text"
-            id="loadport"
-            value={loadport}
-            onChange={(e) => setLoadport(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="loadportInspector" className="text-right">
-            Loadport Inspector
-          </Label>
-          <Input
-            type="text"
-            id="loadportInspector"
-            value={loadportInspector}
-            onChange={(e) => setLoadportInspector(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="disport" className="text-right">
-            Disport
-          </Label>
-          <Input
-            type="text"
-            id="disport"
-            value={disport}
-            onChange={(e) => setDisport(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="disportInspector" className="text-right">
-            Disport Inspector
-          </Label>
-          <Input
-            type="text"
-            id="disportInspector"
-            value={disportInspector}
-            onChange={(e) => setDisportInspector(e.target.value)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="blDate" className="text-right">
-            BL Date
-          </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "col-span-3 flex justify-start text-left font-normal",
-                  !blDate && "text-muted-foreground"
-                )}
-              >
-                {blDate ? (
-                  format(blDate, "PPP")
-                ) : (
-                  <span>Pick a date</span>
-                )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={blDate}
-                onSelect={setBlDate}
-                disabled={false}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="blQuantity" className="text-right">
-            BL Quantity
-          </Label>
-          <Input
-            type="number"
-            id="blQuantity"
-            value={blQuantity || ''}
-            onChange={(e) => setBlQuantity(e.target.value ? parseFloat(e.target.value) : undefined)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="actualQuantity" className="text-right">
-            Actual Quantity
-          </Label>
-          <Input
-            type="number"
-            id="actualQuantity"
-            value={actualQuantity || ''}
-            onChange={(e) => setActualQuantity(e.target.value ? parseFloat(e.target.value) : undefined)}
-            className="col-span-3"
-          />
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="codDate" className="text-right">
-            COD Date
-          </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "col-span-3 flex justify-start text-left font-normal",
-                  !codDate && "text-muted-foreground"
-                )}
-              >
-                {codDate ? (
-                  format(codDate, "PPP")
-                ) : (
-                  <span>Pick a date</span>
-                )}
-                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={codDate}
-                onSelect={setCodDate}
-                disabled={false}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-      </form>
-      <DialogFooter>
-        <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" onClick={handleButtonClick}>
-          {isEditMode ? "Update" : "Schedule"}
-        </Button>
-      </DialogFooter>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {/* Read-only trade information */}
+            <div className="border p-3 rounded col-span-2 bg-muted/20">
+              <h4 className="font-medium mb-2">Trade Information</h4>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <span className="font-medium">Reference:</span> {trade.trade_reference}
+                </div>
+                <div>
+                  <span className="font-medium">Type:</span> {trade.buy_sell.toUpperCase()}
+                </div>
+                <div>
+                  <span className="font-medium">Product:</span> {trade.product}
+                </div>
+                <div>
+                  <span className="font-medium">Counterparty:</span> {trade.counterparty}
+                </div>
+                <div>
+                  <span className="font-medium">Total Quantity:</span> {trade.quantity} MT
+                </div>
+                <div>
+                  <span className="font-medium">Available:</span> {isEditMode && initialMovement 
+                    ? `${maxSchedulableQuantity} MT (including current ${initialMovement.scheduledQuantity} MT)`
+                    : `${maxSchedulableQuantity} MT`
+                  }
+                </div>
+              </div>
+            </div>
+
+            {/* Form fields */}
+            <FormField
+              control={form.control}
+              name="scheduledQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Scheduled Quantity (MT)*</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.001}
+                      {...field}
+                      onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bargeName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Barge Name*</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="loadport"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loadport*</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="disport"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Disport*</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="loadportInspector"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Loadport Inspector</FormLabel>
+                  <div className="flex space-x-2">
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select inspector" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingInspectors ? (
+                          <SelectItem value="loading" disabled>
+                            Loading inspectors...
+                          </SelectItem>
+                        ) : (
+                          <>
+                            {inspectors.map((inspector: Inspector) => (
+                              <SelectItem key={inspector.id} value={inspector.name}>
+                                {inspector.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="add-new" className="text-blue-600 font-medium">
+                              + Add new inspector
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setShowAddLoadportInspector(true)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="disportInspector"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Disport Inspector</FormLabel>
+                  <div className="flex space-x-2">
+                    <Select
+                      onValueChange={(value) => {
+                        if (value === 'add-new') {
+                          setShowAddDisportInspector(true);
+                        } else {
+                          field.onChange(value);
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select inspector" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingInspectors ? (
+                          <SelectItem value="loading" disabled>
+                            Loading inspectors...
+                          </SelectItem>
+                        ) : (
+                          <>
+                            {inspectors.map((inspector: Inspector) => (
+                              <SelectItem key={inspector.id} value={inspector.name}>
+                                {inspector.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="add-new" className="text-blue-600 font-medium">
+                              + Add new inspector
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setShowAddDisportInspector(true)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="cashFlow"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Cash Flow Date</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select cash flow date"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="nominationEta"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Nomination ETA</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select ETA date"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="nominationValid"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Nomination Valid Until</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select valid date"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="blDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>BL Date</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select BL date"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="codDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>COD Date</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select COD date"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="actualQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Actual Quantity (MT)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.001}
+                      {...field}
+                      onChange={e => {
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                        field.onChange(value);
+                      }}
+                      value={field.value === undefined ? '' : field.value}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit">{isEditMode ? 'Update Movement' : 'Schedule Movement'}</Button>
+          </DialogFooter>
+        </form>
+      </Form>
+
+      {/* Add Inspector Dialogs */}
+      <AddInspectorDialog 
+        open={showAddLoadportInspector} 
+        onOpenChange={setShowAddLoadportInspector}
+        onInspectorAdded={handleInspectorAdded('loadport')}
+      />
+      
+      <AddInspectorDialog 
+        open={showAddDisportInspector} 
+        onOpenChange={setShowAddDisportInspector}
+        onInspectorAdded={handleInspectorAdded('disport')}
+      />
     </DialogContent>
   );
 };

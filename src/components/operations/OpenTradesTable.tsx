@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
-import { Loader2, ArrowUpDown, Ship, MessageSquare } from 'lucide-react';
+import { Loader2, ArrowUpDown, Ship } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -18,47 +18,17 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus, BuySell, Product, IncoTerm, Unit, PaymentTerm } from '@/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ContractStatus } from '@/types';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
-}
-
-// Define a type that matches what ScheduleMovementForm expects
-interface TradeForSchedule {
-  id: string;
-  trade_leg_id: string;
-  parent_trade_id: string;
-  trade_reference: string;
-  leg_reference?: string;
-  counterparty: string;
-  buy_sell: BuySell;
-  product: Product;
-  sustainability?: string;
-  inco_term?: IncoTerm;
-  quantity: number;
-  tolerance?: number;
-  unit?: Unit;
-  payment_term?: PaymentTerm;
-  credit_status?: string;
-  customs_status?: string;
-  vessel_name?: string;
-  loadport?: string;
-  disport?: string;
-  scheduled_quantity: number;
-  open_quantity: number;
-  pricing_type?: string;
-  pricing_formula?: any;
-  comments?: string;
-  contract_status?: ContractStatus;
 }
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedTrade, setSelectedTrade] = useState<TradeForSchedule | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const handleRefresh = () => {
@@ -67,35 +37,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   };
 
   const handleScheduleMovement = (trade: OpenTrade) => {
-    const scheduleableTrade: TradeForSchedule = {
-      id: trade.id,
-      trade_leg_id: trade.trade_leg_id,
-      parent_trade_id: trade.parent_trade_id,
-      trade_reference: trade.trade_reference,
-      leg_reference: trade.leg_reference,
-      counterparty: trade.counterparty,
-      buy_sell: trade.buy_sell as BuySell,
-      product: trade.product as Product,
-      sustainability: trade.sustainability,
-      inco_term: trade.inco_term as IncoTerm,
-      quantity: trade.quantity,
-      tolerance: trade.tolerance,
-      unit: trade.unit as Unit,
-      payment_term: trade.payment_term as PaymentTerm,
-      credit_status: trade.credit_status,
-      customs_status: trade.customs_status,
-      vessel_name: trade.vessel_name,
-      loadport: trade.loadport,
-      disport: trade.disport,
-      scheduled_quantity: trade.scheduled_quantity,
-      open_quantity: trade.open_quantity,
-      pricing_type: trade.pricing_type,
-      pricing_formula: trade.pricing_formula,
-      comments: trade.comments,
-      contract_status: trade.contract_status as ContractStatus
-    };
-    
-    setSelectedTrade(scheduleableTrade);
+    setSelectedTrade(trade);
     setIsDialogOpen(true);
   };
 
@@ -242,8 +184,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableHeader>
           <TableBody>
             {sortedTrades.map((trade) => {
+              // Updated to handle null/undefined balance values
               const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
               
+              // Generate proper leg reference display
               const displayReference = trade.trade_leg_id ? 
                 formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
                 trade.trade_reference;
@@ -254,6 +198,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   className={`border-b border-white/5 hover:bg-brand-navy/80 ${isZeroBalance ? 'opacity-50' : ''}`}
                 >
                   <TableCell>
+                    {/* Removed link, just showing the reference */}
                     <span className="font-medium">
                       {displayReference}
                     </span>
@@ -288,35 +233,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                     />
                   </TableCell>
                   <TableCell>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                                {trade.comments && (
-                                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
-                                )}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0">
-                              <div className="p-4 pt-2">
-                                <p className="text-sm font-medium mb-2">Comments</p>
-                                <CommentsCellInput
-                                  tradeId={trade.parent_trade_id}
-                                  legId={trade.trade_leg_id}
-                                  initialValue={trade.comments || ''}
-                                />
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Add or view comments</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <CommentsCellInput
+                      tradeId={trade.parent_trade_id}
+                      legId={trade.trade_leg_id}
+                      initialValue={trade.comments || ''}
+                    />
                   </TableCell>
                   <TableCell>
                     {trade.customs_status && (

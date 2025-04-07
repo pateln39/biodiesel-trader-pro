@@ -42,7 +42,7 @@ import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { formatLegReference, generateMovementReference } from '@/utils/tradeUtils';
+import { formatLegReference } from '@/utils/tradeUtils';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -129,29 +129,16 @@ const fetchMovements = async (): Promise<Movement[]> => {
     return (movements || []).map((m: any) => {
       // Get the proper full reference for displaying
       let displayReference = m.trade_reference || 'Unknown';
-      let legReference = '';
       if (m.trade_leg_id && tradeLegReferences[m.trade_leg_id]) {
         const { legRef, tradeRef } = tradeLegReferences[m.trade_leg_id];
         if (legRef && tradeRef) {
           displayReference = formatLegReference(tradeRef, legRef);
-          legReference = legRef;
-        }
-      }
-
-      // Format the reference number to include leg suffix
-      let formattedReferenceNumber = m.reference_number;
-      if (legReference && m.reference_number) {
-        // Extract the leg suffix
-        const legSuffix = legReference.split('-').pop() || '';
-        // Check if the reference number already has the leg suffix
-        if (!m.reference_number.startsWith(legSuffix)) {
-          formattedReferenceNumber = `${legSuffix}-${m.reference_number}`;
         }
       }
 
       return {
         id: m.id,
-        referenceNumber: formattedReferenceNumber,
+        referenceNumber: m.reference_number,
         tradeLegId: m.trade_leg_id,
         parentTradeId: m.parent_trade_id,
         tradeReference: displayReference,
@@ -389,8 +376,8 @@ const MovementsTable = () => {
                 <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.counterpartyName}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">
-                    {movement.pricingType === 'efp' ? 'EFP' : 'Standard'}
+                  <Badge variant={movement.pricingType === 'efp' ? "default" : "outline"}>
+                    {movement.pricingType || 'Standard'}
                   </Badge>
                 </TableCell>
                 <TableCell>
