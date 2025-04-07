@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Movement } from '@/types';
+import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
 import { Edit, Trash2, MessageSquare } from 'lucide-react';
 import {
@@ -103,7 +103,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
       disportInspector: m.disport_inspector,
       blDate: m.bl_date ? new Date(m.bl_date) : undefined,
       codDate: m.cod_date ? new Date(m.cod_date) : undefined,
-      pricingType: m.pricing_type,
+      pricingType: m.pricing_type as PricingType | undefined,
       pricingFormula: validateAndParsePricingFormula(m.pricing_formula),
       comments: m.comments,
       customsStatus: m.customs_status,
@@ -318,7 +318,7 @@ const MovementsTable = () => {
                 <TableCell>
                   {movement.tradeLegId && movement.pricingFormula ? (
                     <FormulaCellDisplay
-                      tradeId={movement.parentTradeId}
+                      tradeId={movement.parentTradeId ?? ''}
                       legId={movement.tradeLegId}
                       formula={movement.pricingFormula}
                       pricingType={movement.pricingType}
