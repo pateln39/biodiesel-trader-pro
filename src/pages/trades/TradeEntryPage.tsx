@@ -1,11 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
@@ -19,98 +18,10 @@ import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const providedReference = queryParams.get('reference');
-  const readOnlyMode = queryParams.get('readonly') === 'true';
-  
-  const tradeReference = providedReference || generateTradeReference();
+  const tradeReference = generateTradeReference();
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
-  const [initialData, setInitialData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  useEffect(() => {
-    // If we have a provided reference, fetch the trade data
-    if (providedReference) {
-      const fetchTradeData = async () => {
-        setIsLoading(true);
-        try {
-          // Fetch parent trade data
-          const { data: parentTradeData, error: parentTradeError } = await supabase
-            .from('parent_trades')
-            .select('*')
-            .eq('trade_reference', providedReference)
-            .single();
-          
-          if (parentTradeError) {
-            throw new Error(`Error fetching trade: ${parentTradeError.message}`);
-          }
-          
-          // Determine trade type
-          const fetchedTradeType = parentTradeData.trade_type as TradeType;
-          setTradeType(fetchedTradeType);
-          
-          if (fetchedTradeType === 'physical') {
-            // Fetch physical trade legs
-            const { data: legData, error: legError } = await supabase
-              .from('trade_legs')
-              .select('*')
-              .eq('parent_trade_id', parentTradeData.id);
-              
-            if (legError) {
-              throw new Error(`Error fetching trade legs: ${legError.message}`);
-            }
-            
-            setInitialData({
-              tradeReference: parentTradeData.trade_reference,
-              tradeType: fetchedTradeType,
-              physicalType: parentTradeData.physical_type,
-              counterparty: parentTradeData.counterparty,
-              legs: legData
-            });
-          } else {
-            // For paper trades, fetch from paper_trades and paper_trade_legs
-            const { data: paperTradeData, error: paperTradeError } = await supabase
-              .from('paper_trades')
-              .select('*')
-              .eq('trade_reference', providedReference)
-              .single();
-              
-            if (paperTradeError) {
-              throw new Error(`Error fetching paper trade: ${paperTradeError.message}`);
-            }
-            
-            const { data: paperLegData, error: paperLegError } = await supabase
-              .from('paper_trade_legs')
-              .select('*')
-              .eq('paper_trade_id', paperTradeData.id);
-              
-            if (paperLegError) {
-              throw new Error(`Error fetching paper trade legs: ${paperLegError.message}`);
-            }
-            
-            setInitialData({
-              tradeReference: paperTradeData.trade_reference,
-              tradeType: 'paper',
-              broker: paperTradeData.broker,
-              legs: paperLegData
-            });
-          }
-        } catch (error: any) {
-          toast.error('Failed to fetch trade data', {
-            description: error.message
-          });
-          console.error('Error fetching trade data:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      fetchTradeData();
-    }
-  }, [providedReference]);
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -226,84 +137,51 @@ const TradeEntryPage = () => {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {readOnlyMode ? 'View Trade' : 'New Trade'}
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
           <p className="text-muted-foreground">
-            {readOnlyMode 
-              ? `Viewing trade ${tradeReference}`
-              : 'Create a new trade by filling out the form below'
-            }
+            Create a new trade by filling out the form below
           </p>
-          {readOnlyMode && (
-            <div className="mt-2">
-              <Badge variant="secondary">Read Only</Badge>
-            </div>
-          )}
         </div>
 
         <Separator />
 
-        {isLoading ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-center h-40">
-                <div className="text-center">
-                  <div className="relative h-10 w-10 mx-auto mb-2">
-                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
-                      <div className="h-8 w-8 animate-spin rounded-full border-4 border-r-transparent border-brand-lime" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Loading trade data...</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Trade Details</CardTitle>
-              <CardDescription>
-                {readOnlyMode ? 'View trade details' : 'Select trade type and enter details'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs
-                defaultValue={tradeType}
-                value={tradeType}
-                onValueChange={(value) => setTradeType(value as TradeType)}
-                className="w-full"
-              >
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="physical">Physical Trade</TabsTrigger>
-                  <TabsTrigger value="paper">Paper Trade</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="physical">
-                  <PhysicalTradeForm 
-                    tradeReference={tradeReference} 
-                    onSubmit={handlePhysicalSubmit} 
-                    onCancel={handleCancel}
-                    isEditMode={providedReference ? true : false}
-                    initialData={initialData}
-                    readOnly={readOnlyMode}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="paper">
-                  <PaperTradeForm 
-                    tradeReference={tradeReference} 
-                    onSubmit={handlePaperSubmit} 
-                    onCancel={handleCancel}
-                    isEditMode={providedReference ? true : false}
-                    initialData={initialData}
-                    readOnly={readOnlyMode}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Trade Details</CardTitle>
+            <CardDescription>
+              Select trade type and enter details
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs
+              defaultValue="physical"
+              value={tradeType}
+              onValueChange={(value) => setTradeType(value as TradeType)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="physical">Physical Trade</TabsTrigger>
+                <TabsTrigger value="paper">Paper Trade</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="physical">
+                <PhysicalTradeForm 
+                  tradeReference={tradeReference} 
+                  onSubmit={handlePhysicalSubmit} 
+                  onCancel={handleCancel} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="paper">
+                <PaperTradeForm 
+                  tradeReference={tradeReference} 
+                  onSubmit={handlePaperSubmit} 
+                  onCancel={handleCancel} 
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

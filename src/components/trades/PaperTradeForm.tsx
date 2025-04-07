@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,7 +23,11 @@ interface PaperTradeFormProps {
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: any;
-  readOnly?: boolean;
+}
+
+interface BrokerOption {
+  id: string;
+  name: string;
 }
 
 const ALL_PRODUCTS = [
@@ -39,8 +44,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   onSubmit, 
   onCancel,
   isEditMode = false,
-  initialData,
-  readOnly = false
+  initialData
 }) => {
   const [selectedBroker, setSelectedBroker] = useState('');
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
@@ -200,11 +204,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (readOnly) {
-      toast.info('This form is in read-only mode');
-      return;
-    }
-    
     const broker = brokers.find(b => b.id === selectedBroker);
     const brokerName = broker?.name || '';
     
@@ -242,7 +241,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
             <Select 
               value={selectedBroker} 
               onValueChange={setSelectedBroker}
-              disabled={isAddingBroker || readOnly}
+              disabled={isAddingBroker}
             >
               <SelectTrigger id="broker" className="flex-grow">
                 <SelectValue placeholder="Select broker" />
@@ -255,19 +254,17 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
                 ))}
               </SelectContent>
             </Select>
-            {!readOnly && (
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsAddingBroker(!isAddingBroker)}
-              >
-                {isAddingBroker ? 'Cancel' : '+ Add Broker'}
-              </Button>
-            )}
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsAddingBroker(!isAddingBroker)}
+            >
+              {isAddingBroker ? 'Cancel' : '+ Add Broker'}
+            </Button>
           </div>
         </div>
         
-        {isAddingBroker && !readOnly && (
+        {isAddingBroker && (
           <div className="space-y-2">
             <Label htmlFor="new-broker">New Broker</Label>
             <div className="flex space-x-2">
@@ -297,7 +294,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           <PaperTradeTable
             legs={tradeLegs}
             onLegsChange={handleLegsChange}
-            readOnly={readOnly}
           />
         </div>
       </div>
@@ -340,13 +336,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
 
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
-          {readOnly ? 'Back' : 'Cancel'}
+          Cancel
         </Button>
-        {!readOnly && (
-          <Button type="submit">
-            {isEditMode ? 'Update Trade' : 'Create Trade'}
-          </Button>
-        )}
+        <Button type="submit">
+          {isEditMode ? 'Update Trade' : 'Create Trade'}
+        </Button>
       </div>
     </form>
   );
