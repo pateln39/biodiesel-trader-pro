@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
 import { Edit, Trash2, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -355,6 +356,7 @@ const MovementsTable = () => {
           <TableRow className="border-b border-white/10">
             <TableHead>Reference Number</TableHead>
             <TableHead>Trade Reference</TableHead>
+            <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
             <TableHead>Quantity</TableHead>
             <TableHead>Sustainability</TableHead>
@@ -362,7 +364,6 @@ const MovementsTable = () => {
             <TableHead>Loading Start</TableHead>
             <TableHead>Loading End</TableHead>
             <TableHead>Counterparty</TableHead>
-            <TableHead>Pricing Type</TableHead>
             <TableHead>Formula</TableHead>
             <TableHead>Comments</TableHead>
             <TableHead>Customs Status</TableHead>
@@ -395,8 +396,24 @@ const MovementsTable = () => {
               <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell className="font-medium">
-                  {/* No link, just display the reference */}
-                  {movement.tradeReference}
+                  <Link 
+                    to={`/trades/entry?reference=${movement.tradeReference}&readOnly=true`}
+                    className="text-white hover:text-white hover:underline"
+                  >
+                    {movement.tradeReference}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge 
+                    variant={movement.buySell === 'buy' ? 'default' : 'secondary'}
+                    className={`uppercase font-bold ${
+                      movement.buySell === 'buy' 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {movement.buySell}
+                  </Badge>
                 </TableCell>
                 <TableCell>{movement.incoTerm}</TableCell>
                 <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
@@ -405,11 +422,6 @@ const MovementsTable = () => {
                 <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.counterpartyName}</TableCell>
-                <TableCell>
-                  <Badge variant={movement.pricingType === 'efp' ? "default" : "outline"}>
-                    {movement.pricingType || 'Standard'}
-                  </Badge>
-                </TableCell>
                 <TableCell>
                   {movement.tradeLegId && movement.pricingFormula ? (
                     <FormulaCellDisplay

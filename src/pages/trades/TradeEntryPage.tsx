@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -18,12 +18,79 @@ import { formatDateForStorage } from '@/utils/dateUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const tradeReference = generateTradeReference();
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
   
+  // Parse URL parameters to check for readOnly mode and reference
+  const queryParams = new URLSearchParams(location.search);
+  const isReadOnly = queryParams.get('readOnly') === 'true';
+  const referenceFromUrl = queryParams.get('reference');
+  
+  // State for initial data when coming from a link
+  const [initialData, setInitialData] = useState<any>(null);
+  const [loading, setLoading] = useState(referenceFromUrl ? true : false);
+  
+  // Fetch the trade data if reference is provided in URL
+  useEffect(() => {
+    if (referenceFromUrl) {
+      const fetchTradeData = async () => {
+        try {
+          setLoading(true);
+          
+          // First, get the parent trade
+          const { data: parentTradeData, error: parentTradeError } = await supabase
+            .from('parent_trades')
+            .select('*')
+            .eq('trade_reference', referenceFromUrl)
+            .single();
+            
+          if (parentTradeError) {
+            throw new Error(`Error fetching parent trade: ${parentTradeError.message}`);
+          }
+          
+          // Set the trade type based on the parent trade
+          if (parentTradeData.trade_type) {
+            setTradeType(parentTradeData.trade_type as TradeType);
+          }
+          
+          // Get the trade legs
+          const { data: legData, error: legError } = await supabase
+            .from('trade_legs')
+            .select('*')
+            .eq('parent_trade_id', parentTradeData.id);
+            
+          if (legError) {
+            throw new Error(`Error fetching trade legs: ${legError.message}`);
+          }
+          
+          // Prepare the initial data object
+          const tradeData = {
+            ...parentTradeData,
+            legs: legData || []
+          };
+          
+          setInitialData(tradeData);
+        } catch (error: any) {
+          console.error('Error loading trade:', error);
+          toast.error('Error loading trade data', {
+            description: error.message
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchTradeData();
+    }
+  }, [referenceFromUrl]);
+  
   const handlePhysicalSubmit = async (tradeData: any) => {
+    // Skip the submission if in read-only mode
+    if (isReadOnly) return;
+    
     try {
       // Extract parent trade data
       const parentTrade = {
@@ -114,6 +181,9 @@ const TradeEntryPage = () => {
   };
   
   const handlePaperSubmit = async (tradeData: any) => {
+    // Skip the submission if in read-only mode
+    if (isReadOnly) return;
+    
     try {
       // Use the createPaperTrade from usePaperTrades hook
       createPaperTrade(tradeData, {
@@ -133,13 +203,27 @@ const TradeEntryPage = () => {
     navigate('/trades');
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-lime"></div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isReadOnly ? 'View Trade' : 'New Trade'}
+          </h1>
           <p className="text-muted-foreground">
-            Create a new trade by filling out the form below
+            {isReadOnly 
+              ? 'View trade details below (read-only)' 
+              : 'Create a new trade by filling out the form below'}
           </p>
         </div>
 
@@ -149,34 +233,40 @@ const TradeEntryPage = () => {
           <CardHeader>
             <CardTitle>Trade Details</CardTitle>
             <CardDescription>
-              Select trade type and enter details
+              {isReadOnly ? 'View trade details' : 'Select trade type and enter details'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs
-              defaultValue="physical"
+              defaultValue={tradeType}
               value={tradeType}
               onValueChange={(value) => setTradeType(value as TradeType)}
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="physical">Physical Trade</TabsTrigger>
-                <TabsTrigger value="paper">Paper Trade</TabsTrigger>
+                <TabsTrigger value="physical" disabled={isReadOnly}>Physical Trade</TabsTrigger>
+                <TabsTrigger value="paper" disabled={isReadOnly}>Paper Trade</TabsTrigger>
               </TabsList>
               
               <TabsContent value="physical">
                 <PhysicalTradeForm 
-                  tradeReference={tradeReference} 
+                  tradeReference={initialData?.trade_reference || tradeReference} 
                   onSubmit={handlePhysicalSubmit} 
-                  onCancel={handleCancel} 
+                  onCancel={handleCancel}
+                  isEditMode={!!initialData}
+                  initialData={initialData}
+                  readOnly={isReadOnly}
                 />
               </TabsContent>
               
               <TabsContent value="paper">
                 <PaperTradeForm 
-                  tradeReference={tradeReference} 
+                  tradeReference={initialData?.trade_reference || tradeReference} 
                   onSubmit={handlePaperSubmit} 
-                  onCancel={handleCancel} 
+                  onCancel={handleCancel}
+                  isEditMode={!!initialData}
+                  initialData={initialData}
+                  readOnly={isReadOnly}
                 />
               </TabsContent>
             </Tabs>
