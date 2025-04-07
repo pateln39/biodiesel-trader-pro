@@ -14,8 +14,9 @@ export interface FormulaToken {
   value: string | number;
 }
 
+// Update the MonthlyDistribution to handle both simple and nested formats
 export interface MonthlyDistribution {
-  [monthCode: string]: number;
+  [monthCode: string]: number | Record<string, number>;
 }
 
 export interface PricingFormula {

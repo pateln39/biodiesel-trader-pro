@@ -82,12 +82,43 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
         if (leg.formula && leg.formula.monthlyDistribution) {
           const { monthlyDistribution } = leg.formula;
           
-          Object.entries(monthlyDistribution).forEach(([instrument, monthlyValues]) => {
-            const canonicalInstrument = mapProductToCanonical(instrument);
-            
-            Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-              // Make sure the monthCode is in the correct format (MMM-YY)
-              // Handle both the new format "Apr-24" and the legacy format "2024-04"
+          // First, check and handle the case where monthlyDistribution is a mapping of instruments to months
+          for (const [key, value] of Object.entries(monthlyDistribution)) {
+            if (typeof value === 'object') {
+              // This is the format we want: instrument -> month -> value
+              const instrument = key;
+              const canonicalInstrument = mapProductToCanonical(instrument);
+              
+              for (const [monthCode, monthValue] of Object.entries(value)) {
+                // Make sure the monthCode is in the correct format (MMM-YY)
+                // Handle both the new format "Apr-24" and the legacy format "2024-04"
+                let formattedMonthCode = monthCode;
+                
+                // Check if the monthCode is in YYYY-MM format and convert it
+                if (monthCode.match(/^\d{4}-\d{2}$/)) {
+                  const [year, month] = monthCode.split('-');
+                  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+                  formattedMonthCode = date.toLocaleDateString('default', { 
+                    month: 'short', 
+                    year: '2-digit' 
+                  });
+                }
+                
+                // Process each monthly distribution value
+                if (!monthlyPricing[formattedMonthCode]) {
+                  monthlyPricing[formattedMonthCode] = {};
+                }
+                
+                if (!monthlyPricing[formattedMonthCode][canonicalInstrument]) {
+                  monthlyPricing[formattedMonthCode][canonicalInstrument] = 0;
+                }
+                
+                monthlyPricing[formattedMonthCode][canonicalInstrument] += Number(monthValue);
+              }
+            } else if (typeof value === 'number') {
+              // This is the old format where we have monthCode -> volume
+              // In this case, we need to extract instruments from the formula
+              const monthCode = key;
               let formattedMonthCode = monthCode;
               
               // Check if the monthCode is in YYYY-MM format and convert it
@@ -100,18 +131,25 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
                 });
               }
               
-              // Process each monthly distribution value
+              // Get instruments from the formula
+              const instruments = extractInstrumentsFromFormula(leg.formula);
+              
               if (!monthlyPricing[formattedMonthCode]) {
                 monthlyPricing[formattedMonthCode] = {};
               }
               
-              if (!monthlyPricing[formattedMonthCode][canonicalInstrument]) {
-                monthlyPricing[formattedMonthCode][canonicalInstrument] = 0;
-              }
-              
-              monthlyPricing[formattedMonthCode][canonicalInstrument] += value;
-            });
-          });
+              // Distribute the volume across all instruments in the formula
+              instruments.forEach(instrument => {
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                
+                if (!monthlyPricing[formattedMonthCode][canonicalInstrument]) {
+                  monthlyPricing[formattedMonthCode][canonicalInstrument] = 0;
+                }
+                
+                monthlyPricing[formattedMonthCode][canonicalInstrument] += Number(value);
+              });
+            }
+          }
         } 
         // Otherwise use the formula exposures
         else if (leg.formula && leg.formula.exposures && leg.formula.exposures.pricing) {

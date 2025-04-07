@@ -1,3 +1,4 @@
+
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
 import { formatMonthCode } from '@/utils/dateUtils';
@@ -250,8 +251,8 @@ export function calculateMonthlyPricingDistribution(
   buySell: 'buy' | 'sell',
   startDate: Date,
   endDate: Date
-): Record<string, Record<string, Record<string, number>>> {
-  const distribution: Record<string, Record<string, Record<string, number>>> = {};
+): Record<string, Record<string, number>> {
+  const distribution: Record<string, Record<string, number>> = {};
   const instrumentExposures: Record<string, number> = {};
   
   const exposures = calculatePricingExposure(tokens, quantity, buySell);
@@ -277,6 +278,7 @@ export function calculateMonthlyPricingDistribution(
   const monthCodes: string[] = [];
   
   while (currentDate <= end) {
+    // Format month codes in a consistent MMM-YY format (e.g. Apr-24)
     const formattedMonthCode = currentDate.toLocaleDateString('default', { 
       month: 'short', 
       year: '2-digit' 
@@ -292,6 +294,7 @@ export function calculateMonthlyPricingDistribution(
     return distribution;
   }
   
+  // Initialize distribution structure
   Object.keys(instrumentExposures).forEach(instrument => {
     if (!distribution[instrument]) {
       distribution[instrument] = {};
@@ -304,8 +307,9 @@ export function calculateMonthlyPricingDistribution(
     });
   });
   
+  // Distribute exposures evenly across months
   Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
-    const exposurePerMonth = Math.round(totalExposure / totalMonths);
+    const exposurePerMonth = totalExposure / totalMonths;
     
     monthCodes.forEach(monthCode => {
       distribution[instrument][monthCode] = exposurePerMonth;

@@ -179,7 +179,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
     if (newLegs[legIndex].pricingPeriodStart && newLegs[legIndex].pricingPeriodEnd) {
-      const monthlyDistribution = calculateMonthlyPricingDistribution(formula.tokens, newLegs[legIndex].quantity || 0, newLegs[legIndex].buySell, newLegs[legIndex].pricingPeriodStart, newLegs[legIndex].pricingPeriodEnd);
+      const monthlyDistribution = calculateMonthlyPricingDistribution(
+        formula.tokens, 
+        newLegs[legIndex].quantity || 0, 
+        newLegs[legIndex].buySell, 
+        newLegs[legIndex].pricingPeriodStart, 
+        newLegs[legIndex].pricingPeriodEnd
+      );
       newLegs[legIndex].formula = {
         ...formula,
         monthlyDistribution
@@ -224,7 +230,13 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     
     if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && newLegs[index].formula && newLegs[index].pricingPeriodStart && newLegs[index].pricingPeriodEnd && newLegs[index].pricingType !== 'efp') {
       const leg = newLegs[index];
-      const monthlyDistribution = calculateMonthlyPricingDistribution(leg.formula.tokens, leg.quantity || 0, leg.buySell, leg.pricingPeriodStart, leg.pricingPeriodEnd);
+      const monthlyDistribution = calculateMonthlyPricingDistribution(
+        leg.formula.tokens, 
+        leg.quantity || 0, 
+        leg.buySell, 
+        leg.pricingPeriodStart, 
+        leg.pricingPeriodEnd
+      );
       leg.formula = {
         ...leg.formula,
         monthlyDistribution
