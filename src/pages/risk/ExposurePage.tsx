@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -35,6 +36,7 @@ interface PricingInstrument {
   display_name: string;
   instrument_code: string;
   is_active: boolean;
+}
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
@@ -771,7 +773,8 @@ const ExposurePage = () => {
 
   const isLoadingData = isLoading || instrumentsLoading;
 
-  return <Layout>
+  return (
+    <Layout>
       <Helmet>
         <title>Exposure Reporting</title>
       </Helmet>
