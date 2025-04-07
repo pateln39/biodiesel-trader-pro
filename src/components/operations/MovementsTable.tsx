@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -365,11 +366,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
               <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
               <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell 
-                className="bg-gray-100 dark:bg-gray-700/30 text-muted-foreground font-medium"
-              >
-                {movement.bargeName || '-'}
-              </TableCell>
+              <TableCell>{movement.bargeName || '-'}</TableCell>
               <TableCell>{movement.loadport || '-'}</TableCell>
               <TableCell>{movement.loadportInspector || '-'}</TableCell>
               <TableCell>{movement.disport || '-'}</TableCell>
