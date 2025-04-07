@@ -1,4 +1,3 @@
-
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -154,20 +153,32 @@ export interface PricingFormula {
 }
 
 export interface PriceDetail {
-  instrument: string;
-  date: Date;
-  price: number;
+  instruments?: Record<Instrument, {
+    average: number;
+    prices: { date: Date; price: number }[];
+  }>;
+  fixedComponents?: { displayValue: string; value: number }[];
+  instrument?: string;
+  date?: Date;
+  price?: number;
 }
 
 export interface MTMPriceDetail {
-  instrument: string;
-  month: string;
-  price: number;
+  instruments?: Record<Instrument, {
+    price: number;
+    date: Date;
+  }>;
+  instrument?: string;
+  month?: string;
+  price?: number;
+  fixedComponents?: { displayValue: string; value: number }[];
+  evaluatedPrice?: number;
 }
 
 export interface MonthlyDistribution {
   month: string;
   percentage: number;
+  [instrument: string]: number | string;
 }
 
 // Define ExposureResult for formulaUtils.ts
