@@ -63,3 +63,6 @@ export interface PricingComponent {
   instrument?: Instrument;
   operator?: OperatorType;
 }
+
+// Re-export OperatorType for external usage
+export type { OperatorType };

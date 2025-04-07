@@ -1,5 +1,5 @@
-import { FormulaToken, OperatorType } from '@/types/pricing';
-import { Instrument, ExposureResult } from '@/types/common';
+import { FormulaToken } from '@/types/pricing';
+import { Instrument, ExposureResult, OperatorType } from '@/types/common';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];

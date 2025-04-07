@@ -202,7 +202,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     if (token.type === 'percentage') {
       return `${token.value}%`;
     }
-    return token.value;
+    return String(token.value);
   };
 
   const formatExposure = (value: number): string => {
