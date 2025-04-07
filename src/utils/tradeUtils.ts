@@ -1,3 +1,4 @@
+
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -33,17 +34,25 @@ export const formatLegReference = (tradeReference: string, legReference: string)
   return tradeReference;
 };
 
-// Generate a movement reference number with leg suffix
+// Generate a movement reference number with proper format: TRADE_REFERENCE-LEG_SUFFIX-MOVEMENT_NUMBER
 export const generateMovementReference = (legReference: string, movementNumber: number): string => {
-  // Extract the leg suffix (a, b, c, etc.) from the leg reference
+  // Extract the trade reference and leg suffix from the leg reference
+  let tradeRef = '';
   let legSuffix = '';
   
   if (legReference && legReference.includes('-')) {
-    legSuffix = legReference.split('-').pop() || '';
+    const parts = legReference.split('-');
+    // Last part is the leg suffix
+    legSuffix = parts.pop() || '';
+    // The rest is the trade reference
+    tradeRef = parts.join('-');
+    
+    // Format: TRADE_REFERENCE-LEG_SUFFIX-MOVEMENT_NUMBER (e.g., 250407-41621-a-1)
+    return `${tradeRef}-${legSuffix}-${movementNumber}`;
   }
   
-  // Format: LEG_SUFFIX-MOVEMENT_NUMBER (e.g., a-1, b-2)
-  return `${legSuffix}-${movementNumber}`;
+  // Fallback if we can't parse the leg reference properly
+  return `${legReference}-${movementNumber}`;
 };
 
 // Format product display name based on relationship type (for Trades table UI)

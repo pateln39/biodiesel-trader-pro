@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   DialogContent,
@@ -16,76 +17,153 @@ import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useToast } from "@/components/ui/use-toast"
 import { DatePicker } from "@/components/ui/date-picker"
-import { Movement, OpenTrade } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateMovementReference } from '@/utils/tradeUtils';
+import { BuySell, ContractStatus, CreditStatus, CustomsStatus, IncoTerm, Movement, PaymentTerm, PricingType, Product, Unit } from '@/types';
 
-interface ScheduleMovementFormProps {
-  trade: OpenTrade;
-  onSuccess: () => void;
-  onCancel: () => void;
+// Define our own trade type for this component to avoid import issues
+interface Trade {
+  id: string;
+  trade_leg_id: string;
+  parent_trade_id: string;
+  trade_reference: string;
+  leg_reference?: string;
+  counterparty: string;
+  buy_sell: BuySell;
+  product: Product;
+  sustainability?: string;
+  inco_term?: IncoTerm;
+  quantity: number;
+  tolerance?: number;
+  unit?: Unit;
+  payment_term?: PaymentTerm;
+  credit_status?: CreditStatus;
+  customs_status?: CustomsStatus;
+  vessel_name?: string;
+  loadport?: string;
+  disport?: string;
+  scheduled_quantity: number;
+  open_quantity: number;
+  pricing_type?: PricingType;
+  pricing_formula?: any;
+  comments?: string;
+  contract_status?: ContractStatus;
 }
 
-const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ trade, onSuccess, onCancel }) => {
-  const [nominationEta, setNominationEta] = useState<Date | undefined>(undefined);
-  const [nominationValid, setNominationValid] = useState<Date | undefined>(undefined);
-  const [cashFlow, setCashFlow] = useState<Date | undefined>(undefined);
-  const [bargeName, setBargeName] = useState('');
-  const [loadport, setLoadport] = useState('');
-  const [loadportInspector, setLoadportInspector] = useState('');
-  const [disport, setDisport] = useState('');
-  const [disportInspector, setDisportInspector] = useState('');
-  const [blDate, setBlDate] = useState<Date | undefined>(undefined);
-  const [blQuantity, setBlQuantity] = useState<number | undefined>(undefined);
-  const [actualQuantity, setActualQuantity] = useState<number | undefined>(undefined);
-  const [codDate, setCodDate] = useState<Date | undefined>(undefined);
-  const [referenceNumber, setReferenceNumber] = useState('');
+interface ScheduleMovementFormProps {
+  trade: Trade;
+  onSuccess: () => void;
+  onCancel: () => void;
+  isEditMode?: boolean;
+  initialMovement?: Movement;
+}
+
+const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ 
+  trade, 
+  onSuccess, 
+  onCancel, 
+  isEditMode = false,
+  initialMovement 
+}) => {
+  const [nominationEta, setNominationEta] = useState<Date | undefined>(
+    initialMovement?.nominationEta ? new Date(initialMovement.nominationEta) : undefined
+  );
+  const [nominationValid, setNominationValid] = useState<Date | undefined>(
+    initialMovement?.nominationValid ? new Date(initialMovement.nominationValid) : undefined
+  );
+  const [cashFlow, setCashFlow] = useState<Date | undefined>(
+    initialMovement?.cashFlow ? new Date(initialMovement.cashFlow) : undefined
+  );
+  const [bargeName, setBargeName] = useState(initialMovement?.bargeName || '');
+  const [loadport, setLoadport] = useState(initialMovement?.loadport || '');
+  const [loadportInspector, setLoadportInspector] = useState(initialMovement?.loadportInspector || '');
+  const [disport, setDisport] = useState(initialMovement?.disport || '');
+  const [disportInspector, setDisportInspector] = useState(initialMovement?.disportInspector || '');
+  const [blDate, setBlDate] = useState<Date | undefined>(
+    initialMovement?.blDate ? new Date(initialMovement.blDate) : undefined
+  );
+  const [blQuantity, setBlQuantity] = useState<number | undefined>(initialMovement?.blQuantity);
+  const [actualQuantity, setActualQuantity] = useState<number | undefined>(initialMovement?.actualQuantity);
+  const [codDate, setCodDate] = useState<Date | undefined>(
+    initialMovement?.codDate ? new Date(initialMovement.codDate) : undefined
+  );
+  const [referenceNumber, setReferenceNumber] = useState(initialMovement?.referenceNumber || '');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Generate a movement reference number
-    const movementNumber = Math.floor(1000 + Math.random() * 9000);
-    const legReference = trade.leg_reference || '';
-    const newReferenceNumber = generateMovementReference(legReference, movementNumber);
-    setReferenceNumber(newReferenceNumber);
-  }, [trade.leg_reference]);
+    // Only generate a new reference number if we're not in edit mode
+    if (!isEditMode && !initialMovement) {
+      // Generate a movement reference number
+      const movementNumber = Math.floor(1000 + Math.random() * 9000);
+      const legReference = trade.leg_reference || '';
+      const newReferenceNumber = generateMovementReference(legReference, movementNumber);
+      setReferenceNumber(newReferenceNumber);
+    }
+  }, [trade.leg_reference, isEditMode, initialMovement]);
 
   const createMovementMutation = useMutation({
-    mutationFn: async (movementData: Omit<Movement, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const { data, error } = await supabase
-        .from('movements')
-        .insert([movementData])
-        .select();
-
-      if (error) {
-        throw error;
+    mutationFn: async (movementData: any) => {
+      let response;
+      
+      if (isEditMode && initialMovement) {
+        // Update existing movement
+        const { data, error } = await supabase
+          .from('movements')
+          .update(movementData)
+          .eq('id', initialMovement.id)
+          .select();
+          
+        if (error) throw error;
+        response = data;
+      } else {
+        // Create new movement
+        const { data, error } = await supabase
+          .from('movements')
+          .insert(movementData)
+          .select();
+          
+        if (error) throw error;
+        response = data;
       }
-      return data;
+      
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       toast({
-        title: "Movement Scheduled",
-        description: "Your movement has been scheduled successfully.",
-      })
+        title: isEditMode ? "Movement Updated" : "Movement Scheduled",
+        description: isEditMode 
+          ? "Your movement has been updated successfully." 
+          : "Your movement has been scheduled successfully.",
+      });
       onSuccess();
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Failed to Schedule Movement",
+        title: isEditMode ? "Failed to Update Movement" : "Failed to Schedule Movement",
         description: error.message,
-      })
+      });
     }
   });
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const movementData: Omit<Movement, 'id' | 'createdAt' | 'updatedAt'> = {
+    // Make sure blQuantity is defined for a new movement
+    if (!isEditMode && blQuantity === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Required Field Missing",
+        description: "BL Quantity is required to schedule a movement.",
+      });
+      return;
+    }
+
+    const movementData = {
       referenceNumber: referenceNumber,
       tradeLegId: trade.trade_leg_id,
       parentTradeId: trade.parent_trade_id,
@@ -110,22 +188,58 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ trade, onSu
       codDate: codDate?.toISOString(),
       pricingType: trade.pricing_type,
       pricingFormula: trade.pricing_formula,
-      comments: '',
-      customsStatus: '',
-      creditStatus: '',
+      comments: initialMovement?.comments || '',
+      customsStatus: initialMovement?.customsStatus || '',
+      creditStatus: initialMovement?.creditStatus || '',
       contractStatus: trade.contract_status,
-      status: 'scheduled',
+      status: initialMovement?.status || 'scheduled',
     };
 
-    createMovementMutation.mutate(movementData);
+    // Convert to snake_case for Supabase
+    const snakeCaseData = {
+      reference_number: movementData.referenceNumber,
+      trade_leg_id: movementData.tradeLegId,
+      parent_trade_id: movementData.parentTradeId,
+      trade_reference: movementData.tradeReference,
+      counterparty: movementData.counterparty,
+      product: movementData.product,
+      buy_sell: movementData.buySell,
+      inco_term: movementData.incoTerm,
+      sustainability: movementData.sustainability,
+      scheduled_quantity: movementData.scheduledQuantity,
+      nomination_eta: movementData.nominationEta,
+      nomination_valid: movementData.nominationValid,
+      cash_flow: movementData.cashFlow,
+      barge_name: movementData.bargeName,
+      loadport: movementData.loadport,
+      loadport_inspector: movementData.loadportInspector,
+      disport: movementData.disport,
+      disport_inspector: movementData.disportInspector,
+      bl_date: movementData.blDate,
+      bl_quantity: movementData.blQuantity || 0, // Ensure this is never null
+      actual_quantity: movementData.actualQuantity,
+      cod_date: movementData.codDate,
+      pricing_type: movementData.pricingType,
+      pricing_formula: movementData.pricingFormula,
+      comments: movementData.comments,
+      customs_status: movementData.customsStatus,
+      credit_status: movementData.creditStatus,
+      contract_status: movementData.contractStatus,
+      status: movementData.status,
+    };
+
+    createMovementMutation.mutate(snakeCaseData);
   };
 
   return (
     <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
-        <DialogTitle>Schedule Movement</DialogTitle>
+        <DialogTitle>{isEditMode ? "Edit Movement" : "Schedule Movement"}</DialogTitle>
         <DialogDescription>
-          Schedule a new movement for trade: {trade.trade_reference}
+          {isEditMode 
+            ? `Edit movement details for: ${trade.trade_reference}`
+            : `Schedule a new movement for trade: ${trade.trade_reference}`
+          }
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={onSubmit} className="grid gap-4 py-4">
@@ -163,7 +277,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ trade, onSu
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <DatePicker
+              <Calendar
                 mode="single"
                 selected={nominationEta}
                 onSelect={setNominationEta}
@@ -390,7 +504,9 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ trade, onSu
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Schedule</Button>
+        <Button type="button" onClick={onSubmit}>
+          {isEditMode ? "Update" : "Schedule"}
+        </Button>
       </DialogFooter>
     </DialogContent>
   );
