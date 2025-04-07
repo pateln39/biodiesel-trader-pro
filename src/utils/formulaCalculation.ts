@@ -1,3 +1,4 @@
+
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
 import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
@@ -230,18 +231,134 @@ export function calculatePricingExposure(
     Object.keys(createEmptyExposureResult().pricing).map(key => [key, 0])
   ) as Record<Instrument, number>;
   
-  const exposureDirection = buySell === 'buy' ? -1 : 1;
+  // If no tokens, return empty exposures
+  if (tokens.length === 0) {
+    return exposures;
+  }
   
-  for (const token of tokens) {
-    if (token.type === 'instrument') {
-      const instrumentName = String(token.value);
-      if (instrumentName in exposures) {
-        exposures[instrumentName as Instrument] = quantity * exposureDirection;
+  const exposureDirection = buySell === 'buy' ? -1 : 1;
+  const instrumentNodes = parseFormula(tokens);
+  
+  // Get all instruments referenced in the formula
+  const instrumentCoefficients = calculateInstrumentCoefficients(instrumentNodes);
+  
+  // Apply coefficients to exposures
+  Object.entries(instrumentCoefficients).forEach(([instrument, coefficient]) => {
+    if (instrument in exposures) {
+      exposures[instrument as Instrument] = quantity * exposureDirection * coefficient;
+    }
+  });
+  
+  return exposures;
+}
+
+// Calculate coefficients for each instrument based on the formula structure
+function calculateInstrumentCoefficients(node: ParseNode): Record<string, number> {
+  const coefficients: Record<string, number> = {};
+  
+  // Base cases
+  if (node.type === 'instrument') {
+    const instrument = String(node.value);
+    coefficients[instrument] = 1;
+    return coefficients;
+  }
+  
+  if (node.type === 'value') {
+    return coefficients; // No instruments in a value node
+  }
+  
+  // Recursive cases
+  if (node.type === 'binary' && node.left && node.right) {
+    const leftCoefficients = calculateInstrumentCoefficients(node.left);
+    const rightCoefficients = calculateInstrumentCoefficients(node.right);
+    
+    // Combine coefficients based on operator
+    if (node.operator === '+') {
+      // Addition: just combine the coefficients
+      Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+      });
+      
+      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+      });
+    } 
+    else if (node.operator === '-') {
+      // Subtraction: add left coefficients, subtract right coefficients
+      Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+      });
+      
+      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) - coefficient;
+      });
+    }
+    else if (node.operator === '*') {
+      // Multiplication - Different cases:
+      
+      // Case 1: Left is a value (e.g., 50% * RME)
+      if (node.left.type === 'value' && node.left.value !== undefined) {
+        const multiplier = Number(node.left.value);
+        Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+          coefficients[instrument] = (coefficients[instrument] || 0) + (multiplier * coefficient);
+        });
+      }
+      // Case 2: Right is a value (e.g., RME * 50%)
+      else if (node.right.type === 'value' && node.right.value !== undefined) {
+        const multiplier = Number(node.right.value);
+        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+          coefficients[instrument] = (coefficients[instrument] || 0) + (multiplier * coefficient);
+        });
+      }
+      // Case 3: Both sides have instruments - more complex case, handled conservatively
+      else {
+        // For now, apply a simple approach for instrument * instrument
+        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+        });
+        
+        Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+        });
+      }
+    }
+    else if (node.operator === '/') {
+      // Division - Different cases:
+      
+      // Case 1: Right is a value (e.g., RME / 2)
+      if (node.right.type === 'value' && node.right.value !== undefined) {
+        const divisor = Number(node.right.value);
+        if (divisor !== 0) {
+          Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+            coefficients[instrument] = (coefficients[instrument] || 0) + (coefficient / divisor);
+          });
+        }
+      }
+      // Case 2: Other cases - handled conservatively 
+      else {
+        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
+          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+        });
       }
     }
   }
   
-  return exposures;
+  // Handle unary operations (like -RME)
+  if (node.type === 'unary' && node.right) {
+    const rightCoefficients = calculateInstrumentCoefficients(node.right);
+    
+    if (node.operator === '-') {
+      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) - coefficient;
+      });
+    } else {
+      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
+        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
+      });
+    }
+  }
+  
+  return coefficients;
 }
 
 export function calculateMonthlyPricingDistribution(
