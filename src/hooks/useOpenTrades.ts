@@ -51,19 +51,40 @@ export interface OpenTrade {
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
   try {
-    // Add leg_reference to the selected fields
+    // First check if leg_reference column exists in open_trades table
+    const { data: columnInfo, error: columnError } = await supabase
+      .from('open_trades')
+      .select('*')
+      .limit(1);
+    
+    let includeFieldInQuery = true;
+    if (columnError) {
+      console.error('[OPEN TRADES] Error checking columns:', columnError);
+      includeFieldInQuery = false;
+    }
+    
+    // Build the query based on column existence
+    let queryFields = `
+      id, trade_leg_id, parent_trade_id, trade_reference, counterparty, 
+      buy_sell, product, sustainability, inco_term, quantity, tolerance,
+      loading_period_start, loading_period_end, pricing_period_start, 
+      pricing_period_end, unit, payment_term, credit_status, customs_status,
+      vessel_name, loadport, disport, scheduled_quantity, open_quantity, 
+      status, created_at, updated_at, pricing_type, pricing_formula, 
+      comments, contract_status, nominated_value, balance,
+      efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month
+    `;
+    
+    // Only include leg_reference if it exists
+    if (includeFieldInQuery && columnInfo && columnInfo[0] && 'leg_reference' in columnInfo[0]) {
+      queryFields += ', leg_reference';
+    } else {
+      console.warn('[OPEN TRADES] leg_reference column not found in open_trades table');
+    }
+    
     const { data, error } = await supabase
       .from('open_trades')
-      .select(`
-        id, trade_leg_id, parent_trade_id, trade_reference, leg_reference, counterparty, 
-        buy_sell, product, sustainability, inco_term, quantity, tolerance,
-        loading_period_start, loading_period_end, pricing_period_start, 
-        pricing_period_end, unit, payment_term, credit_status, customs_status,
-        vessel_name, loadport, disport, scheduled_quantity, open_quantity, 
-        status, created_at, updated_at, pricing_type, pricing_formula, 
-        comments, contract_status, nominated_value, balance,
-        efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month
-      `)
+      .select(queryFields)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     
@@ -77,12 +98,38 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       return [];
     }
     
+    // If leg_reference isn't in open_trades, we need to fetch it from trade_legs
+    let legReferenceMap: Record<string, string> = {};
+    
+    if (!includeFieldInQuery || !('leg_reference' in (data[0] || {}))) {
+      // Collect all trade_leg_ids to fetch their references
+      const legIds = data.map(item => item.trade_leg_id).filter(Boolean);
+      
+      if (legIds.length > 0) {
+        const { data: legData, error: legError } = await supabase
+          .from('trade_legs')
+          .select('id, leg_reference')
+          .in('id', legIds);
+          
+        if (!legError && legData) {
+          // Create a map of leg_id to leg_reference
+          legReferenceMap = legData.reduce((map, leg) => {
+            map[leg.id] = leg.leg_reference;
+            return map;
+          }, {} as Record<string, string>);
+        } else {
+          console.error('[OPEN TRADES] Error fetching leg references:', legError);
+        }
+      }
+    }
+    
     return data.map(item => ({
       id: item.id,
       trade_leg_id: item.trade_leg_id,
       parent_trade_id: item.parent_trade_id,
       trade_reference: item.trade_reference,
-      leg_reference: item.leg_reference,
+      // Use leg_reference from the item if it exists, otherwise from our map
+      leg_reference: item.leg_reference || legReferenceMap[item.trade_leg_id] || '',
       counterparty: item.counterparty,
       buy_sell: item.buy_sell as BuySell,
       product: item.product as Product,

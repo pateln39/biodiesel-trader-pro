@@ -62,30 +62,65 @@ const fetchMovements = async (): Promise<Movement[]> => {
       .filter(Boolean);
     
     // Fetch trade quantities for all associated legs in one query
-    let tradeQuantities = {};
-    let tradeFormulas = {};
-    let tradePricingTypes = {};
-    let tradeLegReferences = {};
+    let tradeQuantities: Record<string, number> = {};
+    let tradeFormulas: Record<string, any> = {};
+    let tradePricingTypes: Record<string, string> = {};
+    let tradeLegReferences: Record<string, { legRef: string, tradeRef: string }> = {};
     
     if (tradeLegsIds.length > 0) {
-      // Get the latest information from open_trades instead of trade_legs
-      // This ensures we get the most up-to-date info including formula changes
-      const { data: openTrades, error: openTradesError } = await supabase
+      // First check if leg_reference column exists in open_trades table
+      let openTradesQuery = supabase
         .from('open_trades')
-        .select('trade_leg_id, quantity, pricing_formula, pricing_type, leg_reference, trade_reference')
+        .select('trade_leg_id, quantity, pricing_formula, pricing_type, trade_reference')
         .in('trade_leg_id', tradeLegsIds);
+      
+      // Execute the query
+      const { data: openTrades, error: openTradesError } = await openTradesQuery;
         
       if (openTradesError) {
-        console.error('Error fetching open trades data:', openTradesError);
+        console.error('[MOVEMENTS] Error fetching open trades data:', openTradesError);
       } else if (openTrades) {
-        // Create maps for quantity, pricing formula, pricing type, and leg reference
+        // Create maps for quantity, pricing formula, and pricing type
         openTrades.forEach(trade => {
           tradeQuantities[trade.trade_leg_id] = trade.quantity;
           tradeFormulas[trade.trade_leg_id] = trade.pricing_formula;
           tradePricingTypes[trade.trade_leg_id] = trade.pricing_type;
-          tradeLegReferences[trade.trade_leg_id] = {
-            legRef: trade.leg_reference,
-            tradeRef: trade.trade_reference
+        });
+      }
+      
+      // Separately fetch leg references from trade_legs table
+      const { data: legData, error: legError } = await supabase
+        .from('trade_legs')
+        .select('id, leg_reference, parent_trade_id')
+        .in('id', tradeLegsIds);
+      
+      if (legError) {
+        console.error('[MOVEMENTS] Error fetching leg references:', legError);
+      } else if (legData) {
+        // Get parent trade references for each leg
+        const parentTradeIds = [...new Set(legData.map(leg => leg.parent_trade_id))].filter(Boolean);
+        let parentTradeRefs: Record<string, string> = {};
+        
+        if (parentTradeIds.length > 0) {
+          const { data: parentData, error: parentError } = await supabase
+            .from('parent_trades')
+            .select('id, trade_reference')
+            .in('id', parentTradeIds);
+          
+          if (!parentError && parentData) {
+            parentTradeRefs = parentData.reduce((map, parent) => {
+              map[parent.id] = parent.trade_reference;
+              return map;
+            }, {} as Record<string, string>);
+          }
+        }
+        
+        // Create map of leg_id to reference info
+        legData.forEach(leg => {
+          const tradeRef = parentTradeRefs[leg.parent_trade_id] || '';
+          tradeLegReferences[leg.id] = {
+            legRef: leg.leg_reference,
+            tradeRef: tradeRef
           };
         });
       }
@@ -129,7 +164,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
         codDate: m.cod_date ? new Date(m.cod_date) : undefined,
         // Use pricing type from open_trades for consistency
         pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
-          tradePricingTypes[m.trade_leg_id] as PricingType :
+          tradePricingTypes[m.trade_leg_id] as PricingType | undefined :
           m.pricing_type as PricingType | undefined,
         // Use the pricing formula from open_trades instead of the movement's own formula
         pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
