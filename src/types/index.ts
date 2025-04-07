@@ -41,6 +41,13 @@ export interface Movement {
   date: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Adding the checklist properties
+  bargeOrdersChecked?: boolean;
+  nominationChecked?: boolean;
+  loadPlanChecked?: boolean;
+  coaReceivedChecked?: boolean;
+  coaSentChecked?: boolean;
+  eadChecked?: boolean;
 }
 
 // Explicit re-exports to avoid name conflicts when importing
