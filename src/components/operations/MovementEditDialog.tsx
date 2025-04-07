@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ScheduleMovementForm from './ScheduleMovementForm';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import { toast } from '@/hooks/use-toast';
+import { BuySell, IncoTerm, CreditStatus, CustomsStatus, ContractStatus, Unit, PaymentTerm, Product, PricingType } from '@/types';
 
 interface MovementEditDialogProps {
   open: boolean;
@@ -36,7 +37,30 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
         .single();
       
       if (error) throw error;
-      return data;
+      
+      // Properly cast the data to the expected types
+      if (data) {
+        return {
+          ...data,
+          buy_sell: data.buy_sell as BuySell,
+          product: data.product as Product,
+          inco_term: data.inco_term as IncoTerm,
+          unit: data.unit as Unit,
+          payment_term: data.payment_term as PaymentTerm,
+          credit_status: data.credit_status as CreditStatus,
+          customs_status: data.customs_status as CustomsStatus,
+          contract_status: data.contract_status as ContractStatus,
+          pricing_type: data.pricing_type as PricingType,
+          loading_period_start: data.loading_period_start ? new Date(data.loading_period_start) : undefined,
+          loading_period_end: data.loading_period_end ? new Date(data.loading_period_end) : undefined,
+          pricing_period_start: data.pricing_period_start ? new Date(data.pricing_period_start) : undefined,
+          pricing_period_end: data.pricing_period_end ? new Date(data.pricing_period_end) : undefined,
+          created_at: new Date(data.created_at),
+          updated_at: new Date(data.updated_at)
+        };
+      }
+      
+      return null;
     },
     enabled: open && !!movement.tradeLegId,
     refetchOnWindowFocus: false,
