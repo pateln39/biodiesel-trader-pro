@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, MessageSquare } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -17,7 +17,7 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   Select,
   SelectContent,
@@ -38,10 +38,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
+import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
-    // Directly query the movements table
+    // First fetch movements
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
@@ -49,6 +53,28 @@ const fetchMovements = async (): Promise<Movement[]> => {
 
     if (error) {
       throw new Error(`Error fetching movements: ${error.message}`);
+    }
+
+    // Get the complete array of trade_leg_ids to fetch trade quantities
+    const tradeLegsIds = movements.map(m => m.trade_leg_id).filter(Boolean);
+    
+    // Fetch trade quantities for all associated legs in one query
+    let tradeQuantities = {};
+    if (tradeLegsIds.length > 0) {
+      const { data: legs, error: legsError } = await supabase
+        .from('trade_legs')
+        .select('id, quantity')
+        .in('id', tradeLegsIds);
+        
+      if (legsError) {
+        console.error('Error fetching trade quantities:', legsError);
+      } else if (legs) {
+        // Create a map of leg_id -> quantity
+        tradeQuantities = legs.reduce((acc, leg) => {
+          acc[leg.id] = leg.quantity;
+          return acc;
+        }, {});
+      }
     }
 
     return (movements || []).map((m: any) => ({
@@ -62,6 +88,8 @@ const fetchMovements = async (): Promise<Movement[]> => {
       buySell: m.buy_sell,
       incoTerm: m.inco_term,
       sustainability: m.sustainability,
+      // Use the total trade quantity from the associated trade leg
+      quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
       scheduledQuantity: m.scheduled_quantity,
       blQuantity: m.bl_quantity,
       actualQuantity: m.actual_quantity,
@@ -76,7 +104,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
       blDate: m.bl_date ? new Date(m.bl_date) : undefined,
       codDate: m.cod_date ? new Date(m.cod_date) : undefined,
       pricingType: m.pricing_type,
-      pricingFormula: m.pricing_formula,
+      pricingFormula: validateAndParsePricingFormula(m.pricing_formula),
       comments: m.comments,
       customsStatus: m.customs_status,
       creditStatus: m.credit_status,
@@ -117,17 +145,14 @@ const MovementsTable = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
-      toast({
-        title: "Status updated",
+      toast.success("Status updated", {
         description: "Movement status has been updated successfully."
       });
     },
     onError: (error) => {
       console.error('[MOVEMENTS] Error updating status:', error);
-      toast({
-        title: "Failed to update status",
-        description: "There was an error updating the movement status.",
-        variant: "destructive"
+      toast.error("Failed to update status", {
+        description: "There was an error updating the movement status."
       });
     }
   });
@@ -146,17 +171,14 @@ const MovementsTable = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
-      toast({
-        title: "Comments updated",
+      toast.success("Comments updated", {
         description: "Movement comments have been updated successfully."
       });
     },
     onError: (error) => {
       console.error('[MOVEMENTS] Error updating comments:', error);
-      toast({
-        title: "Failed to update comments",
-        description: "There was an error updating the movement comments.",
-        variant: "destructive"
+      toast.error("Failed to update comments", {
+        description: "There was an error updating the movement comments."
       });
     }
   });
@@ -178,17 +200,14 @@ const MovementsTable = () => {
       // 2. Invalidate openTrades query to ensure trade statuses are updated
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
-      toast({
-        title: "Movement deleted",
+      toast.success("Movement deleted", {
         description: "Movement has been deleted successfully."
       });
     },
     onError: (error) => {
       console.error('[MOVEMENTS] Error deleting movement:', error);
-      toast({
-        title: "Failed to delete movement",
-        description: "There was an error deleting the movement.",
-        variant: "destructive"
+      toast.error("Failed to delete movement", {
+        description: "There was an error deleting the movement."
       });
     }
   });
@@ -285,7 +304,7 @@ const MovementsTable = () => {
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell>{movement.tradeReference}</TableCell>
                 <TableCell>{movement.incoTerm}</TableCell>
-                <TableCell>{movement.blQuantity?.toLocaleString()} MT</TableCell>
+                <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
                 <TableCell>{movement.sustainability || '-'}</TableCell>
                 <TableCell>{movement.product}</TableCell>
                 <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
@@ -296,16 +315,49 @@ const MovementsTable = () => {
                     {movement.pricingType || 'Standard'}
                   </Badge>
                 </TableCell>
-                <TableCell>{movement.pricingFormula ? JSON.stringify(movement.pricingFormula).slice(0, 20) + '...' : '-'}</TableCell>
                 <TableCell>
-                  <div className="max-w-[150px]">
-                    <CommentsCellInput
-                      tradeId={movement.id}
-                      initialValue={movement.comments || ''}
-                      onSave={(comments) => handleCommentsChange(movement.id, comments)}
-                      isMovement={true}
+                  {movement.tradeLegId && movement.pricingFormula ? (
+                    <FormulaCellDisplay
+                      tradeId={movement.parentTradeId}
+                      legId={movement.tradeLegId}
+                      formula={movement.pricingFormula}
+                      pricingType={movement.pricingType}
                     />
-                  </div>
+                  ) : (
+                    <span className="text-muted-foreground italic">No formula</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                              {movement.comments && (
+                                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-0">
+                            <div className="p-4 pt-2">
+                              <p className="text-sm font-medium mb-2">Comments</p>
+                              <CommentsCellInput
+                                tradeId={movement.id}
+                                initialValue={movement.comments || ''}
+                                onSave={(comments) => handleCommentsChange(movement.id, comments)}
+                                isMovement={true}
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Add or view comments</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
                 <TableCell>
                   {movement.customsStatus && (
