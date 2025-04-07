@@ -37,6 +37,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import MovementEditDialog from './MovementEditDialog';
+import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -131,6 +132,35 @@ const MovementsTable = () => {
     }
   });
 
+  // Add a new mutation to update comments
+  const updateCommentsMutation = useMutation({
+    mutationFn: async ({ id, comments }: { id: string, comments: string }) => {
+      const { data, error } = await supabase
+        .from('movements')
+        .update({ comments })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      toast({
+        title: "Comments updated",
+        description: "Movement comments have been updated successfully."
+      });
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error updating comments:', error);
+      toast({
+        title: "Failed to update comments",
+        description: "There was an error updating the movement comments.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const deleteMovementMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -165,6 +195,10 @@ const MovementsTable = () => {
 
   const handleStatusChange = (id: string, newStatus: string) => {
     updateStatusMutation.mutate({ id, status: newStatus });
+  };
+
+  const handleCommentsChange = (id: string, comments: string) => {
+    updateCommentsMutation.mutate({ id, comments });
   };
 
   const handleDeleteMovement = (id: string) => {
@@ -210,13 +244,21 @@ const MovementsTable = () => {
           <TableRow>
             <TableHead>Reference Number</TableHead>
             <TableHead>Trade Reference</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Type</TableHead>
+            <TableHead>Incoterm</TableHead>
+            <TableHead>Quantity</TableHead>
+            <TableHead>Sustainability</TableHead>
             <TableHead>Product</TableHead>
+            <TableHead>Loading Start</TableHead>
+            <TableHead>Loading End</TableHead>
+            <TableHead>Counterparty</TableHead>
+            <TableHead>Pricing Type</TableHead>
+            <TableHead>Formula</TableHead>
+            <TableHead>Comments</TableHead>
+            <TableHead>Customs Status</TableHead>
+            <TableHead>Credit Status</TableHead>
             <TableHead>Scheduled Quantity</TableHead>
-            <TableHead>BL Quantity</TableHead>
-            <TableHead>Actual Quantity</TableHead>
             <TableHead>Nomination ETA</TableHead>
+            <TableHead>Nomination Valid</TableHead>
             <TableHead>Cash Flow Date</TableHead>
             <TableHead>Barge Name</TableHead>
             <TableHead>Loadport</TableHead>
@@ -224,6 +266,8 @@ const MovementsTable = () => {
             <TableHead>Disport</TableHead>
             <TableHead>Disport Inspector</TableHead>
             <TableHead>BL Date</TableHead>
+            <TableHead>Actual Quantity</TableHead>
+            <TableHead>COD Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -231,7 +275,7 @@ const MovementsTable = () => {
         <TableBody>
           {movements.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={18} className="h-24 text-center">
+              <TableCell colSpan={28} className="h-24 text-center">
                 No movements found
               </TableCell>
             </TableRow>
@@ -240,17 +284,54 @@ const MovementsTable = () => {
               <TableRow key={movement.id}>
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell>{movement.tradeReference}</TableCell>
+                <TableCell>{movement.incoTerm}</TableCell>
+                <TableCell>{movement.blQuantity?.toLocaleString()} MT</TableCell>
+                <TableCell>{movement.sustainability || '-'}</TableCell>
+                <TableCell>{movement.product}</TableCell>
+                <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
+                <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.counterpartyName}</TableCell>
                 <TableCell>
-                  <Badge variant={movement.buySell === 'buy' ? "default" : "outline"}>
-                    {movement.buySell}
+                  <Badge variant={movement.pricingType === 'efp' ? "default" : "outline"}>
+                    {movement.pricingType || 'Standard'}
                   </Badge>
                 </TableCell>
-                <TableCell>{movement.product}</TableCell>
+                <TableCell>{movement.pricingFormula ? JSON.stringify(movement.pricingFormula).slice(0, 20) + '...' : '-'}</TableCell>
+                <TableCell>
+                  <div className="max-w-[150px]">
+                    <CommentsCellInput
+                      tradeId={movement.id}
+                      initialValue={movement.comments || ''}
+                      onSave={(comments) => handleCommentsChange(movement.id, comments)}
+                      isMovement={true}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {movement.customsStatus && (
+                    <Badge variant={
+                      movement.customsStatus === 'approved' ? "default" :
+                      movement.customsStatus === 'rejected' ? "destructive" :
+                      "outline"
+                    }>
+                      {movement.customsStatus}
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {movement.creditStatus && (
+                    <Badge variant={
+                      movement.creditStatus === 'approved' ? "default" :
+                      movement.creditStatus === 'rejected' ? "destructive" :
+                      "outline"
+                    }>
+                      {movement.creditStatus}
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>{movement.scheduledQuantity?.toLocaleString()} MT</TableCell>
-                <TableCell>{movement.blQuantity?.toLocaleString()} MT</TableCell>
-                <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
                 <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
+                <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.bargeName || '-'}</TableCell>
                 <TableCell>{movement.loadport || '-'}</TableCell>
@@ -258,6 +339,8 @@ const MovementsTable = () => {
                 <TableCell>{movement.disport || '-'}</TableCell>
                 <TableCell>{movement.disportInspector || '-'}</TableCell>
                 <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
+                <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
+                <TableCell>{movement.codDate ? format(movement.codDate, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>
                   <Select
                     defaultValue={movement.status}
