@@ -1,4 +1,3 @@
-
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
 import { formatMonthCode } from '@/utils/dateUtils';
@@ -278,11 +277,7 @@ export function calculateMonthlyPricingDistribution(
   const monthCodes: string[] = [];
   
   while (currentDate <= end) {
-    // Format month codes in a consistent MMM-YY format (e.g. Apr-24)
-    const formattedMonthCode = currentDate.toLocaleDateString('default', { 
-      month: 'short', 
-      year: '2-digit' 
-    });
+    const formattedMonthCode = formatMonthCode(currentDate);
     
     monthCodes.push(formattedMonthCode);
     
@@ -294,7 +289,6 @@ export function calculateMonthlyPricingDistribution(
     return distribution;
   }
   
-  // Initialize distribution structure
   Object.keys(instrumentExposures).forEach(instrument => {
     if (!distribution[instrument]) {
       distribution[instrument] = {};
@@ -307,7 +301,6 @@ export function calculateMonthlyPricingDistribution(
     });
   });
   
-  // Distribute exposures evenly across months
   Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
     const exposurePerMonth = totalExposure / totalMonths;
     

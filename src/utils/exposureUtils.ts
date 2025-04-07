@@ -1,7 +1,7 @@
-
 import { PhysicalTrade } from '@/types';
 import { mapProductToCanonical } from './productMapping';
 import { parseForwardMonth } from './dateParsingUtils';
+import { formatMonthCode } from './dateUtils';
 
 // Type definitions for exposure calculations
 export interface MonthlyProductVolume {
@@ -29,10 +29,8 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
   for (const trade of trades) {
     for (const leg of trade.legs || []) {
       // Handle physical exposure first (this is the same for all trade types)
-      const physicalMonth = leg.loadingPeriodStart?.toLocaleDateString('default', { 
-        month: 'short', 
-        year: '2-digit' 
-      }) || defaultMonth;
+      const physicalMonth = leg.loadingPeriodStart ? 
+        formatMonthCode(leg.loadingPeriodStart) : defaultMonth;
       
       // Physical side - don't add ICE GASOIL FUTURES to physical exposure
       if (!monthlyPhysical[physicalMonth]) monthlyPhysical[physicalMonth] = {};
@@ -73,10 +71,8 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
       } 
       else {
         // Standard trades - use the pricing period and formula
-        const pricingMonth = leg.pricingPeriodStart?.toLocaleDateString('default', { 
-          month: 'short', 
-          year: '2-digit' 
-        }) || defaultMonth;
+        const pricingMonth = leg.pricingPeriodStart ? 
+          formatMonthCode(leg.pricingPeriodStart) : defaultMonth;
         
         // Handle monthly distribution if it exists - IMPORTANT: Process regardless of physical month
         if (leg.formula && leg.formula.monthlyDistribution) {
@@ -91,17 +87,18 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
               
               for (const [monthCode, monthValue] of Object.entries(value)) {
                 // Make sure the monthCode is in the correct format (MMM-YY)
-                // Handle both the new format "Apr-24" and the legacy format "2024-04"
+                // Handle all possible formats: "Apr-24", "Apr 24", "2024-04"
                 let formattedMonthCode = monthCode;
                 
+                // Convert "Apr 24" to "Apr-24"
+                if (monthCode.match(/^[A-Za-z]{3}\s\d{2}$/)) {
+                  formattedMonthCode = monthCode.replace(' ', '-');
+                }
                 // Check if the monthCode is in YYYY-MM format and convert it
-                if (monthCode.match(/^\d{4}-\d{2}$/)) {
+                else if (monthCode.match(/^\d{4}-\d{2}$/)) {
                   const [year, month] = monthCode.split('-');
                   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                  formattedMonthCode = date.toLocaleDateString('default', { 
-                    month: 'short', 
-                    year: '2-digit' 
-                  });
+                  formattedMonthCode = formatMonthCode(date);
                 }
                 
                 // Process each monthly distribution value
@@ -121,14 +118,15 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
               const monthCode = key;
               let formattedMonthCode = monthCode;
               
+              // Convert "Apr 24" to "Apr-24"
+              if (monthCode.match(/^[A-Za-z]{3}\s\d{2}$/)) {
+                formattedMonthCode = monthCode.replace(' ', '-');
+              }
               // Check if the monthCode is in YYYY-MM format and convert it
-              if (monthCode.match(/^\d{4}-\d{2}$/)) {
+              else if (monthCode.match(/^\d{4}-\d{2}$/)) {
                 const [year, month] = monthCode.split('-');
                 const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-                formattedMonthCode = date.toLocaleDateString('default', { 
-                  month: 'short', 
-                  year: '2-digit' 
-                });
+                formattedMonthCode = formatMonthCode(date);
               }
               
               // Get instruments from the formula

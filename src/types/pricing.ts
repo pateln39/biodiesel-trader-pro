@@ -15,8 +15,9 @@ export interface FormulaToken {
 }
 
 // Update the MonthlyDistribution to handle both simple and nested formats
+// Ensure monthCode is in the format "MMM-YY"
 export interface MonthlyDistribution {
-  [monthCode: string]: number | Record<string, number>;
+  [instrumentOrMonthCode: string]: number | Record<string, number>;
 }
 
 export interface PricingFormula {
