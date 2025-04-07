@@ -46,13 +46,17 @@ import AddInspectorDialog from './AddInspectorDialog';
 import { formatMovementReference } from '@/utils/tradeUtils';
 import { Movement } from '@/types';
 import { formatDateForStorage } from '@/utils/dateParsingUtils';
+import { DatePicker } from '@/components/ui/date-picker';
 
 // Form schema validation
 const formSchema = z.object({
   scheduledQuantity: z.coerce.number().positive("Quantity must be positive"),
+  actualQuantity: z.coerce.number().positive("Quantity must be positive").optional(),
   nominationEta: z.date().optional(),
   nominationValid: z.date().optional(),
   cashFlow: z.date().optional(),
+  blDate: z.date().optional(),
+  codDate: z.date().optional(),
   bargeName: z.string().optional(),
   loadport: z.string().optional(),
   loadportInspector: z.string().optional(),
@@ -113,9 +117,12 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       scheduledQuantity: initialMovement?.scheduledQuantity || trade.balance || trade.quantity,
+      actualQuantity: initialMovement?.actualQuantity,
       nominationEta: initialMovement?.nominationEta,
       nominationValid: initialMovement?.nominationValid,
       cashFlow: initialMovement?.cashFlow ? new Date(initialMovement.cashFlow) : undefined,
+      blDate: initialMovement?.blDate,
+      codDate: initialMovement?.codDate,
       bargeName: initialMovement?.bargeName || '',
       loadport: initialMovement?.loadport || trade.loadport || '',
       loadportInspector: initialMovement?.loadportInspector || '',
@@ -133,9 +140,12 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           .from('movements')
           .update({
             scheduled_quantity: data.scheduledQuantity,
+            actual_quantity: data.actualQuantity,
             nomination_eta: data.nominationEta ? formatDateForStorage(data.nominationEta) : null,
             nomination_valid: data.nominationValid ? formatDateForStorage(data.nominationValid) : null,
             cash_flow: data.cashFlow ? formatDateForStorage(data.cashFlow) : null,
+            bl_date: data.blDate ? formatDateForStorage(data.blDate) : null,
+            cod_date: data.codDate ? formatDateForStorage(data.codDate) : null,
             barge_name: data.bargeName,
             loadport: data.loadport,
             loadport_inspector: data.loadportInspector,
@@ -158,10 +168,13 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           sustainability: trade.sustainability,
           inco_term: trade.inco_term,
           scheduled_quantity: data.scheduledQuantity,
+          actual_quantity: data.actualQuantity,
           bl_quantity: data.scheduledQuantity, // Initially set BL quantity equal to scheduled
           nomination_eta: data.nominationEta ? formatDateForStorage(data.nominationEta) : null,
           nomination_valid: data.nominationValid ? formatDateForStorage(data.nominationValid) : null,
           cash_flow: data.cashFlow ? formatDateForStorage(data.cashFlow) : null,
+          bl_date: data.blDate ? formatDateForStorage(data.blDate) : null,
+          cod_date: data.codDate ? formatDateForStorage(data.codDate) : null,
           barge_name: data.bargeName,
           loadport: data.loadport,
           loadport_inspector: data.loadportInspector,
@@ -263,7 +276,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               name="scheduledQuantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity (MT)</FormLabel>
+                  <FormLabel>Scheduled Quantity (MT)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
@@ -277,6 +290,29 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                       Available: {trade.balance || trade.quantity} MT
                     </FormDescription>
                   )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="actualQuantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Actual Quantity (MT)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      {...field} 
+                      min={0}
+                      value={field.value || ''}
+                      onChange={(e) => {
+                        const value = e.target.value === '' ? undefined : Number(e.target.value);
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -302,35 +338,11 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Nomination ETA</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    date={field.value}
+                    setDate={field.onChange}
+                    placeholder="Select ETA date"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -342,35 +354,11 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Nomination Valid Until</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    date={field.value}
+                    setDate={field.onChange}
+                    placeholder="Select valid until date"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -382,35 +370,43 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Cash Flow Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    date={field.value}
+                    setDate={field.onChange}
+                    placeholder="Select cash flow date"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="blDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>BL Date</FormLabel>
+                  <DatePicker
+                    date={field.value}
+                    setDate={field.onChange}
+                    placeholder="Select BL date"
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="codDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>COD Date</FormLabel>
+                  <DatePicker
+                    date={field.value}
+                    setDate={field.onChange}
+                    placeholder="Select COD date"
+                  />
                   <FormMessage />
                 </FormItem>
               )}
