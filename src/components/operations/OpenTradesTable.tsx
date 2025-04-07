@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
-import { Loader2, ArrowUpDown, Ship, MessageSquare, Eye } from 'lucide-react';
+import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -33,14 +33,12 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   filterStatus = 'all'
 }) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedTrade, setSelectedTrade] = useState<OpenTrade | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
-  const [selectedTradeForComments, setSelectedTradeForComments] = useState<OpenTrade | null>(null);
-  const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
-  const [selectedTradeForMovements, setSelectedTradeForMovements] = useState<OpenTrade | null>(null);
+  const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCommentsDialogOpen, setIsCommentsDialogOpen] = React.useState(false);
+  const [selectedTradeForComments, setSelectedTradeForComments] = React.useState<OpenTrade | null>(null);
+  const [isMovementsDialogOpen, setIsMovementsDialogOpen] = React.useState(false);
+  const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
   
   const handleRefresh = () => {
@@ -97,74 +95,27 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     }
   };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  const sortedTrades = React.useMemo(() => {
-    if (!sortField) return openTrades;
-    
-    return [...openTrades].sort((a, b) => {
-      const valueA = a[sortField as keyof OpenTrade];
-      const valueB = b[sortField as keyof OpenTrade];
-      
-      if (valueA === valueB) return 0;
-      if (valueA === null || valueA === undefined) return 1;
-      if (valueB === null || valueB === undefined) return -1;
-      
-      if (typeof valueA === 'string' && typeof valueB === 'string') {
-        return sortDirection === 'asc' 
-          ? valueA.localeCompare(valueB)
-          : valueB.localeCompare(valueA);
-      }
-      
-      if (valueA instanceof Date && valueB instanceof Date) {
-        return sortDirection === 'asc' 
-          ? valueA.getTime() - valueB.getTime()
-          : valueB.getTime() - valueA.getTime();
-      }
-      
-      if (typeof valueA === 'number' && typeof valueB === 'number') {
-        return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
-      }
-      
-      return 0;
-    });
-  }, [openTrades, sortField, sortDirection]);
-
   const filteredTrades = React.useMemo(() => {
-    if (!sortedTrades) return [];
+    if (!openTrades) return [];
     
     if (filterStatus === 'all') {
-      return sortedTrades;
+      return openTrades;
     } else if (filterStatus === 'in-process') {
-      return sortedTrades.filter(trade => 
+      return openTrades.filter(trade => 
         trade.balance === undefined || 
         trade.balance === null || 
         trade.balance > 0
       );
     } else if (filterStatus === 'completed') {
-      return sortedTrades.filter(trade => 
+      return openTrades.filter(trade => 
         trade.balance !== undefined && 
         trade.balance !== null && 
         trade.balance <= 0
       );
     }
     
-    return sortedTrades;
-  }, [sortedTrades, filterStatus]);
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
-    return sortDirection === 'asc' 
-      ? <ArrowUpDown className="h-4 w-4 ml-1 text-primary" /> 
-      : <ArrowUpDown className="h-4 w-4 ml-1 text-primary rotate-180" />;
-  };
+    return openTrades;
+  }, [openTrades, filterStatus]);
 
   if (loading) {
     return (
@@ -214,45 +165,15 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10">
-              <TableHead className="cursor-pointer" onClick={() => handleSort('trade_reference')}>
-                <div className="flex items-center">
-                  Trade Ref
-                  <SortIcon field="trade_reference" />
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('buy_sell')}>
-                <div className="flex items-center">
-                  Buy/Sell
-                  <SortIcon field="buy_sell" />
-                </div>
-              </TableHead>
+              <TableHead>Trade Ref</TableHead>
+              <TableHead>Buy/Sell</TableHead>
               <TableHead>Incoterm</TableHead>
-              <TableHead className="text-right cursor-pointer" onClick={() => handleSort('quantity')}>
-                <div className="flex items-center justify-end">
-                  Quantity
-                  <SortIcon field="quantity" />
-                </div>
-              </TableHead>
+              <TableHead className="text-right">Quantity</TableHead>
               <TableHead>Sustainability</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('product')}>
-                <div className="flex items-center">
-                  Product
-                  <SortIcon field="product" />
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('loading_period_start')}>
-                <div className="flex items-center">
-                  Loading Start
-                  <SortIcon field="loading_period_start" />
-                </div>
-              </TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Loading Start</TableHead>
               <TableHead>Loading End</TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('counterparty')}>
-                <div className="flex items-center">
-                  Counterparty
-                  <SortIcon field="counterparty" />
-                </div>
-              </TableHead>
+              <TableHead>Counterparty</TableHead>
               <TableHead>Pricing Type</TableHead>
               <TableHead>Formula</TableHead>
               <TableHead>Comments</TableHead>
