@@ -137,9 +137,13 @@ const MovementsTable = () => {
       if (error) throw error;
       return id;
     },
-    onSuccess: (id) => {
+    onSuccess: () => {
+      // After successful deletion:
+      // 1. Invalidate movements query to refresh movements list
       queryClient.invalidateQueries({ queryKey: ['movements'] });
+      // 2. Invalidate openTrades query to ensure trade statuses are updated
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
+      
       toast({
         title: "Movement deleted",
         description: "Movement has been deleted successfully."
