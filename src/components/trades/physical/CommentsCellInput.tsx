@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,14 +6,18 @@ import { debounce } from 'lodash';
 
 interface CommentsCellInputProps {
   tradeId: string;
-  legId: string;
+  legId?: string;
   initialValue?: string;
+  onSave?: (comments: string) => void;
+  isMovement?: boolean;
 }
 
 const CommentsCellInput: React.FC<CommentsCellInputProps> = ({ 
   tradeId, 
   legId,
-  initialValue = '' 
+  initialValue = '',
+  onSave,
+  isMovement = false
 }) => {
   const [comments, setComments] = useState<string>(initialValue);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -27,27 +30,39 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
     
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('trade_legs')
-        .update({ comments: newComments })
-        .eq('id', legId);
+      // If onSave prop is provided, use it instead of default save behavior
+      if (onSave) {
+        onSave(newComments);
+        if (showToast) {
+          toast.success('Comments saved', {
+            description: 'Your comment has been saved successfully.',
+          });
+        }
+      } 
+      // Otherwise use the default behavior (saving to trade_legs)
+      else if (legId) {
+        const { error } = await supabase
+          .from('trade_legs')
+          .update({ comments: newComments })
+          .eq('id', legId);
 
-      if (error) {
-        console.error('Error saving comments:', error);
-        toast.error('Failed to save comments', {
-          description: error.message,
-        });
-      } else if (showToast) {
-        toast.success('Comments saved', {
-          description: 'Your comment has been saved successfully.',
-        });
+        if (error) {
+          console.error('Error saving comments:', error);
+          toast.error('Failed to save comments', {
+            description: error.message,
+          });
+        } else if (showToast) {
+          toast.success('Comments saved', {
+            description: 'Your comment has been saved successfully.',
+          });
+        }
       }
     } catch (err) {
       console.error('Exception when saving comments:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [legId, initialValue]);
+  }, [legId, initialValue, onSave]);
 
   // Set up auto-save timer
   useEffect(() => {
