@@ -1,5 +1,11 @@
 
-// Add this to the existing types or update if it already exists
+// Export from type modules
+export * from './pricing';
+export * from './physical';
+export * from './paper';
+export * from './common';
+
+// Add or update the Movement interface
 export interface Movement {
   id: string;
   referenceNumber?: string;
@@ -35,3 +41,46 @@ export interface Movement {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Explicit re-exports to avoid name conflicts when importing
+import { PhysicalTrade } from './physical';
+import { 
+  Trade, 
+  BuySell, 
+  Product, 
+  IncoTerm, 
+  Unit, 
+  PaymentTerm, 
+  CreditStatus, 
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  DbParentTrade,
+  DbTradeLeg,
+  TradeType,
+  Instrument,
+  ExposureResult
+} from './common';
+import { PricingFormula, PricingComponent } from './pricing';
+
+// Re-export specific types explicitly to avoid ambiguities
+export type {
+  PhysicalTrade,
+  Trade,
+  TradeType,
+  BuySell,
+  Product,
+  IncoTerm,
+  Unit,
+  PaymentTerm,
+  CreditStatus,
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  PricingFormula,
+  PricingComponent,
+  DbParentTrade,
+  DbTradeLeg,
+  Instrument,
+  ExposureResult
+};
