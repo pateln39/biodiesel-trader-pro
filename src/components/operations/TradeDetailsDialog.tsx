@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,30 +67,30 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
           id: leg.id,
           parentTradeId: leg.parent_trade_id,
           legReference: leg.leg_reference,
-          buySell: leg.buy_sell,
-          product: leg.product,
+          buySell: leg.buy_sell as BuySell,
+          product: leg.product as Product,
           sustainability: leg.sustainability || '',
-          incoTerm: leg.inco_term,
+          incoTerm: leg.inco_term as IncoTerm,
           quantity: leg.quantity,
           tolerance: leg.tolerance || 0,
           loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
           loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
           pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
           pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-          unit: leg.unit,
-          paymentTerm: leg.payment_term,
-          creditStatus: leg.credit_status,
-          customsStatus: leg.customs_status,
+          unit: leg.unit as Unit,
+          paymentTerm: leg.payment_term as PaymentTerm,
+          creditStatus: leg.credit_status as CreditStatus,
+          customsStatus: leg.customs_status as CustomsStatus,
           formula: validateAndParsePricingFormula(leg.pricing_formula),
           mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-          pricingType: leg.pricing_type,
+          pricingType: leg.pricing_type as PricingType,
           efpPremium: leg.efp_premium,
           efpAgreedStatus: leg.efp_agreed_status,
           efpFixedValue: leg.efp_fixed_value,
           efpDesignatedMonth: leg.efp_designated_month,
           mtmFutureMonth: leg.mtm_future_month,
           comments: leg.comments,
-          contractStatus: leg.contract_status
+          contractStatus: leg.contract_status as ContractStatus
         }))
       };
 
