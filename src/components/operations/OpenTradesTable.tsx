@@ -18,7 +18,7 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus, BuySell, Product, IncoTerm, Unit } from '@/types';
+import { ContractStatus, BuySell, Product, IncoTerm, Unit, PaymentTerm } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
@@ -40,7 +40,7 @@ interface TradeForSchedule {
   quantity: number;
   tolerance?: number;
   unit?: Unit;
-  payment_term?: string;
+  payment_term?: PaymentTerm;
   credit_status?: string;
   customs_status?: string;
   vessel_name?: string;
@@ -81,7 +81,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       quantity: trade.quantity,
       tolerance: trade.tolerance,
       unit: trade.unit as Unit,
-      payment_term: trade.payment_term,
+      payment_term: trade.payment_term as PaymentTerm,
       credit_status: trade.credit_status,
       customs_status: trade.customs_status,
       vessel_name: trade.vessel_name,
