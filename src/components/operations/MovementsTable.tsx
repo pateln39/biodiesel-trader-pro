@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,20 +59,26 @@ const fetchMovements = async (): Promise<Movement[]> => {
     
     // Fetch trade quantities for all associated legs in one query
     let tradeQuantities = {};
+    let tradeFormulas = {};
+    let tradePricingTypes = {};
+    
     if (tradeLegsIds.length > 0) {
-      const { data: legs, error: legsError } = await supabase
-        .from('trade_legs')
-        .select('id, quantity')
-        .in('id', tradeLegsIds);
+      // Get the latest information from open_trades instead of trade_legs
+      // This ensures we get the most up-to-date info including formula changes
+      const { data: openTrades, error: openTradesError } = await supabase
+        .from('open_trades')
+        .select('trade_leg_id, quantity, pricing_formula, pricing_type')
+        .in('trade_leg_id', tradeLegsIds);
         
-      if (legsError) {
-        console.error('Error fetching trade quantities:', legsError);
-      } else if (legs) {
-        // Create a map of leg_id -> quantity
-        tradeQuantities = legs.reduce((acc, leg) => {
-          acc[leg.id] = leg.quantity;
-          return acc;
-        }, {});
+      if (openTradesError) {
+        console.error('Error fetching open trades data:', openTradesError);
+      } else if (openTrades) {
+        // Create maps for quantity, pricing formula, and pricing type
+        openTrades.forEach(trade => {
+          tradeQuantities[trade.trade_leg_id] = trade.quantity;
+          tradeFormulas[trade.trade_leg_id] = trade.pricing_formula;
+          tradePricingTypes[trade.trade_leg_id] = trade.pricing_type;
+        });
       }
     }
 
@@ -88,7 +93,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
       buySell: m.buy_sell,
       incoTerm: m.inco_term,
       sustainability: m.sustainability,
-      // Use the total trade quantity from the associated trade leg
+      // Use the total trade quantity from the associated open trade
       quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
       scheduledQuantity: m.scheduled_quantity,
       blQuantity: m.bl_quantity,
@@ -103,8 +108,14 @@ const fetchMovements = async (): Promise<Movement[]> => {
       disportInspector: m.disport_inspector,
       blDate: m.bl_date ? new Date(m.bl_date) : undefined,
       codDate: m.cod_date ? new Date(m.cod_date) : undefined,
-      pricingType: m.pricing_type as PricingType | undefined,
-      pricingFormula: validateAndParsePricingFormula(m.pricing_formula),
+      // Use pricing type from open_trades for consistency
+      pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
+        tradePricingTypes[m.trade_leg_id] as PricingType :
+        m.pricing_type as PricingType | undefined,
+      // Use the pricing formula from open_trades instead of the movement's own formula
+      pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
+        validateAndParsePricingFormula(tradeFormulas[m.trade_leg_id]) : 
+        validateAndParsePricingFormula(m.pricing_formula),
       comments: m.comments,
       customsStatus: m.customs_status,
       creditStatus: m.credit_status,
@@ -157,7 +168,6 @@ const MovementsTable = () => {
     }
   });
 
-  // Add a new mutation to update comments
   const updateCommentsMutation = useMutation({
     mutationFn: async ({ id, comments }: { id: string, comments: string }) => {
       const { data, error } = await supabase
@@ -194,10 +204,7 @@ const MovementsTable = () => {
       return id;
     },
     onSuccess: () => {
-      // After successful deletion:
-      // 1. Invalidate movements query to refresh movements list
       queryClient.invalidateQueries({ queryKey: ['movements'] });
-      // 2. Invalidate openTrades query to ensure trade statuses are updated
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
       toast.success("Movement deleted", {

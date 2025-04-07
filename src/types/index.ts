@@ -17,6 +17,7 @@ export interface Movement {
   buySell?: string;
   incoTerm?: string;
   sustainability?: string;
+  quantity?: number; // Added this field to match the open trade's quantity
   scheduledQuantity?: number;
   blQuantity?: number;
   actualQuantity?: number;
@@ -30,7 +31,7 @@ export interface Movement {
   disportInspector?: string;
   blDate?: Date;
   codDate?: Date;
-  pricingType?: string;
+  pricingType?: PricingType;
   pricingFormula?: any;
   comments?: string;
   customsStatus?: string;
