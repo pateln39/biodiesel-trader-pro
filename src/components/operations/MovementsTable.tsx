@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -253,7 +252,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow className="border-b border-white/10">
-            <TableHead>Reference Number</TableHead>
+            <TableHead>Movement Reference Number</TableHead>
             <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
             <TableHead>Quantity</TableHead>
