@@ -1,4 +1,5 @@
-import { FormulaToken, OperatorType } from '@/types/common';
+import { FormulaToken, OperatorType } from '@/types/pricing';
+import { Instrument, ExposureResult } from '@/types/common';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];
@@ -96,9 +97,278 @@ export function evaluateFormula(formula: FormulaToken[]): number {
         currentOperator = null;
       }
     } else if (token.type === 'operator') {
-      currentOperator = token.value;
+      currentOperator = token.value as OperatorType;
     }
   }
 
   return result;
+}
+
+export function canAddTokenType(tokens: FormulaToken[], type: string): boolean {
+  if (tokens.length === 0) {
+    return ['instrument', 'fixedValue', 'percentage', 'openBracket'].includes(type);
+  }
+
+  const lastToken = tokens[tokens.length - 1];
+
+  switch (type) {
+    case 'instrument':
+    case 'fixedValue':
+    case 'percentage':
+      return lastToken.type === 'operator' || lastToken.type === 'openBracket';
+    
+    case 'operator':
+      return ['number', 'instrument', 'fixedValue', 'percentage', 'closeBracket'].includes(lastToken.type);
+    
+    case 'openBracket':
+      return lastToken.type === 'operator' || lastToken.type === 'openBracket';
+    
+    case 'closeBracket':
+      const openBracketCount = tokens.filter(t => t.type === 'openBracket').length;
+      const closeBracketCount = tokens.filter(t => t.type === 'closeBracket').length;
+      return ['number', 'instrument', 'fixedValue', 'percentage', 'closeBracket'].includes(lastToken.type)
+        && openBracketCount > closeBracketCount;
+    
+    default:
+      return false;
+  }
+}
+
+export function createEmptyExposureResult(): ExposureResult {
+  return {
+    physical: {
+      'Argus UCOME': 0,
+      'Argus RME': 0,
+      'Argus FAME0': 0,
+      'Platts LSGO': 0,
+      'Platts Diesel': 0,
+      'Argus HVO': 0,
+      'ICE GASOIL FUTURES': 0,
+      'ICE GASOIL FUTURES (EFP)': 0
+    },
+    pricing: {
+      'Argus UCOME': 0,
+      'Argus RME': 0,
+      'Argus FAME0': 0,
+      'Platts LSGO': 0,
+      'Platts Diesel': 0,
+      'Argus HVO': 0,
+      'ICE GASOIL FUTURES': 0,
+      'ICE GASOIL FUTURES (EFP)': 0
+    }
+  };
+}
+
+export function calculateExposures(
+  tokens: FormulaToken[], 
+  quantity: number, 
+  buySell: 'buy' | 'sell',
+  selectedProduct?: string
+): ExposureResult {
+  const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell, selectedProduct);
+  const pricingExposure = calculatePricingExposure(tokens, quantity, buySell);
+  
+  return {
+    physical: physicalExposure,
+    pricing: pricingExposure
+  };
+}
+
+export function calculatePhysicalExposure(
+  tokens: FormulaToken[], 
+  quantity: number, 
+  buySell: 'buy' | 'sell',
+  selectedProduct?: string
+): Record<Instrument, number> {
+  const exposures = Object.fromEntries(
+    Object.keys(createEmptyExposureResult().physical).map(key => [key, 0])
+  ) as Record<Instrument, number>;
+  
+  const exposureDirection = buySell === 'buy' ? 1 : -1;
+  
+  if (tokens.length === 0 && selectedProduct) {
+    switch (selectedProduct) {
+      case 'UCOME':
+      case 'UCOME-5':
+        exposures['Argus UCOME'] = quantity * exposureDirection;
+        break;
+      case 'RME':
+      case 'RME DC':
+        exposures['Argus RME'] = quantity * exposureDirection;
+        break;
+      case 'FAME0':
+        exposures['Argus FAME0'] = quantity * exposureDirection;
+        break;
+      case 'HVO':
+        exposures['Argus HVO'] = quantity * exposureDirection;
+        break;
+      default:
+        break;
+    }
+    return exposures;
+  }
+  
+  for (const token of tokens) {
+    if (token.type === 'instrument') {
+      const instrumentName = String(token.value);
+      if (instrumentName in exposures) {
+        exposures[instrumentName as Instrument] = quantity * exposureDirection;
+      }
+    }
+  }
+  
+  return exposures;
+}
+
+export function calculatePricingExposure(
+  tokens: FormulaToken[], 
+  quantity: number, 
+  buySell: 'buy' | 'sell'
+): Record<Instrument, number> {
+  const exposures = Object.fromEntries(
+    Object.keys(createEmptyExposureResult().pricing).map(key => [key, 0])
+  ) as Record<Instrument, number>;
+  
+  const exposureDirection = buySell === 'buy' ? -1 : 1;
+  
+  for (const token of tokens) {
+    if (token.type === 'instrument') {
+      const instrumentName = String(token.value);
+      if (instrumentName in exposures) {
+        exposures[instrumentName as Instrument] = quantity * exposureDirection;
+      }
+    }
+  }
+  
+  return exposures;
+}
+
+export function calculateMonthlyPricingDistribution(
+  tokens: FormulaToken[],
+  quantity: number,
+  buySell: 'buy' | 'sell',
+  startDate: Date,
+  endDate: Date
+): Record<string, number> {
+  const distribution: Record<string, number> = {};
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  start.setDate(1);
+  end.setDate(1);
+  
+  let totalMonths = 0;
+  const currentDate = new Date(start);
+  
+  while (currentDate <= end) {
+    const monthCode = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    distribution[monthCode] = 0;
+    
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    totalMonths++;
+  }
+  
+  if (totalMonths === 0) {
+    return distribution;
+  }
+  
+  const exposures = calculatePricingExposure(tokens, quantity, buySell);
+  const totalExposure = Object.values(exposures).reduce((sum, value) => sum + Math.abs(value), 0);
+  
+  const exposurePerMonth = totalExposure / totalMonths;
+  
+  Object.keys(distribution).forEach(monthCode => {
+    distribution[monthCode] = Math.round(exposurePerMonth);
+  });
+  
+  return distribution;
+}
+
+interface ParseNode {
+  type: string;
+  value?: any;
+  left?: ParseNode;
+  right?: ParseNode;
+  operator?: string;
+}
+
+export function parseFormula(tokens: FormulaToken[]): ParseNode {
+  let position = 0;
+  
+  function parseExpression(): ParseNode {
+    let left = parseTerm();
+    
+    while (position < tokens.length && 
+           tokens[position].type === 'operator' && 
+           (tokens[position].value === '+' || tokens[position].value === '-')) {
+      const operator = String(tokens[position].value);
+      position++;
+      const right = parseTerm();
+      left = {
+        type: 'binary',
+        operator,
+        left,
+        right
+      };
+    }
+    
+    return left;
+  }
+  
+  function parseTerm(): ParseNode {
+    let left = parseFactor();
+    
+    while (position < tokens.length && 
+           tokens[position].type === 'operator' && 
+           (tokens[position].value === '*' || tokens[position].value === '/')) {
+      const operator = String(tokens[position].value);
+      position++;
+      const right = parseFactor();
+      left = {
+        type: 'binary',
+        operator,
+        left,
+        right
+      };
+    }
+    
+    return left;
+  }
+  
+  function parseFactor(): ParseNode {
+    if (position < tokens.length && tokens[position].type === 'operator' && tokens[position].value === '-') {
+      position++;
+      const operand = parseFactor();
+      return { type: 'unary', operator: '-', right: operand };
+    }
+    
+    if (position < tokens.length && tokens[position].type === 'openBracket') {
+      position++;
+      const expr = parseExpression();
+      if (position < tokens.length && tokens[position].type === 'closeBracket') {
+        position++;
+      } else {
+        console.error('Expected closing bracket');
+      }
+      return expr;
+    }
+    
+    if (position < tokens.length) {
+      const token = tokens[position];
+      position++;
+      
+      if (token.type === 'instrument') {
+        return { type: 'instrument', value: String(token.value) };
+      } else if (token.type === 'fixedValue' || token.type === 'number') {
+        return { type: 'value', value: Number(token.value) };
+      } else if (token.type === 'percentage') {
+        return { type: 'value', value: Number(token.value) / 100 };
+      }
+    }
+    
+    return { type: 'value', value: 0 };
+  }
+  
+  return parseExpression();
 }

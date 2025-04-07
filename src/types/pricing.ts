@@ -1,3 +1,4 @@
+
 import { Instrument, OperatorType, ExposureResult } from './common';
 
 export interface FormulaNode {
@@ -8,9 +9,9 @@ export interface FormulaNode {
 }
 
 export interface FormulaToken {
-  id: string;
-  type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket";
-  value: string;
+  id?: string;
+  type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable";
+  value: string | number;
 }
 
 export interface MonthlyDistribution {

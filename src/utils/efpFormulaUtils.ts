@@ -1,4 +1,3 @@
-
 import { PricingFormula } from '@/types/pricing';
 import { BuySell } from '@/types';
 import { createEmptyExposureResult } from './formulaCalculation';

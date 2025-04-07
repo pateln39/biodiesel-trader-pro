@@ -1,7 +1,11 @@
 
+
 import { FormulaToken, PricingFormula } from '@/types/pricing';
 import { Instrument, ExposureResult } from '@/types/common';
-import { createEmptyExposureResult, calculateExposures } from './formulaCalculation';
+import { 
+  createEmptyExposureResult, 
+  calculateExposures 
+} from './formulaCalculation';
 
 // Generate a unique ID for formula tokens
 export const generateNodeId = (): string => {
