@@ -141,12 +141,18 @@ export const formatDate = (date: Date): string => {
   });
 };
 
-// Updated to exclude Paper column when calculating netExposure
-export const calculateNetExposure = (
-  physical: number,
-  pricing: number
-): number => {
-  return physical + pricing;
+// Calculate net exposure for a product
+export const calculateNetExposure = (physical: number, pricing: number): number => {
+  // Net exposure = physical + pricing
+  // This calculation is used by the exposure table to determine total risk position
+  const result = physical + pricing;
+  
+  // Log calculations when they're non-zero for debugging
+  if (physical !== 0 || pricing !== 0) {
+    console.log(`Net exposure calculation: ${physical} (physical) + ${pricing} (pricing) = ${result}`);
+  }
+  
+  return result;
 };
 
 // Generate instrument name from product and relationship type (for database storage)
@@ -174,4 +180,29 @@ export const generateInstrumentName = (
 export const isPricingInstrument = (product: string): boolean => {
   const pricingInstruments = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
   return pricingInstruments.includes(product);
+};
+
+// Utility function to debug trade exposure
+export const debugTradeExposure = (trade: any, leg: any): void => {
+  console.group(`Trade Exposure Debug: ${trade.tradeReference} / Leg: ${leg.legReference}`);
+  console.log('Trade buy/sell:', leg.buySell);
+  console.log('Product:', leg.product);
+  console.log('Quantity:', leg.quantity);
+  console.log('Tolerance:', leg.tolerance || 0);
+  
+  const calculatedVolume = leg.quantity * (1 + (leg.tolerance || 0) / 100);
+  console.log('Calculated volume with tolerance:', calculatedVolume);
+  
+  console.log('Loading period start:', leg.loadingPeriodStart);
+  console.log('Pricing period start:', leg.pricingPeriodStart);
+  
+  if (leg.formula) {
+    console.log('Formula tokens:', leg.formula.tokens);
+    console.log('Formula exposures:', leg.formula.exposures);
+    console.log('Monthly distribution:', leg.formula.monthlyDistribution);
+  } else {
+    console.log('No formula found!');
+  }
+  
+  console.groupEnd();
 };
