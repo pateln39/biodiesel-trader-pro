@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { OpenTrade } from '@/hooks/useOpenTrades';
+import { Movement } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -41,6 +42,8 @@ interface ScheduleMovementFormProps {
   trade: OpenTrade;
   onSuccess: () => void;
   onCancel: () => void;
+  isEditMode?: boolean;
+  initialMovement?: Movement;
 }
 
 // Form schema
@@ -69,30 +72,83 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   trade,
   onSuccess,
   onCancel,
+  isEditMode = false,
+  initialMovement,
 }) => {
   const [showAddLoadportInspector, setShowAddLoadportInspector] = useState(false);
   const [showAddDisportInspector, setShowAddDisportInspector] = useState(false);
   const { data: inspectors = [], isLoading: loadingInspectors } = useInspectors();
   
+  // Set default form values based on whether we're in edit mode
+  const defaultValues: Partial<FormValues> = isEditMode && initialMovement
+    ? {
+        scheduledQuantity: initialMovement.scheduledQuantity || 0,
+        nominationEta: initialMovement.nominationEta,
+        nominationValid: initialMovement.nominationValid,
+        cashFlow: initialMovement.cashFlow,
+        bargeName: initialMovement.bargeName || '',
+        loadport: initialMovement.loadport || '',
+        loadportInspector: initialMovement.loadportInspector,
+        disport: initialMovement.disport || '',
+        disportInspector: initialMovement.disportInspector,
+        blDate: initialMovement.blDate,
+        actualQuantity: initialMovement.actualQuantity,
+        codDate: initialMovement.codDate,
+      }
+    : {
+        scheduledQuantity: 0,
+        bargeName: '',
+        loadport: '',
+        disport: '',
+      };
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      scheduledQuantity: 0,
-      bargeName: '',
-      loadport: '',
-      disport: '',
-    },
+    defaultValues,
   });
 
-  const maxSchedulableQuantity = trade.balance || 0;
+  // Set form values when initialMovement changes
+  useEffect(() => {
+    if (isEditMode && initialMovement) {
+      form.reset({
+        scheduledQuantity: initialMovement.scheduledQuantity || 0,
+        nominationEta: initialMovement.nominationEta,
+        nominationValid: initialMovement.nominationValid,
+        cashFlow: initialMovement.cashFlow,
+        bargeName: initialMovement.bargeName || '',
+        loadport: initialMovement.loadport || '',
+        loadportInspector: initialMovement.loadportInspector,
+        disport: initialMovement.disport || '',
+        disportInspector: initialMovement.disportInspector,
+        blDate: initialMovement.blDate,
+        actualQuantity: initialMovement.actualQuantity,
+        codDate: initialMovement.codDate,
+      });
+    }
+  }, [form, initialMovement, isEditMode]);
+
+  // Calculate max quantity - for new movements, use trade balance
+  // For edit mode, we can use the original scheduled quantity plus the trade balance
+  const maxSchedulableQuantity = isEditMode && initialMovement
+    ? (trade.balance || 0) + (initialMovement.scheduledQuantity || 0)
+    : trade.balance || 0;
 
   // Handler for form submission
   const onSubmit = async (values: FormValues) => {
     try {
-      if (values.scheduledQuantity > maxSchedulableQuantity) {
+      // Validate quantity only for new movements (not in edit mode)
+      // or if the quantity is being increased in edit mode
+      if (!isEditMode && values.scheduledQuantity > maxSchedulableQuantity) {
         form.setError('scheduledQuantity', {
           type: 'manual',
           message: `Cannot schedule more than the available balance (${maxSchedulableQuantity} MT)`,
+        });
+        return;
+      } else if (isEditMode && initialMovement && 
+                 values.scheduledQuantity > initialMovement.scheduledQuantity! + trade.balance!) {
+        form.setError('scheduledQuantity', {
+          type: 'manual',
+          message: `Cannot increase by more than the available balance (current: ${initialMovement.scheduledQuantity} MT, max additional: ${trade.balance} MT)`,
         });
         return;
       }
@@ -107,7 +163,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         sustainability: trade.sustainability,
         inco_term: trade.inco_term,
         scheduled_quantity: values.scheduledQuantity,
-        bl_quantity: 0, // Default, can be updated later
+        bl_quantity: isEditMode && initialMovement ? initialMovement.blQuantity : 0,
         nomination_eta: values.nominationEta ? values.nominationEta.toISOString() : null,
         nomination_valid: values.nominationValid ? values.nominationValid.toISOString() : null,
         cash_flow: values.cashFlow ? formatDateForStorage(values.cashFlow) : null,
@@ -125,20 +181,37 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         customs_status: trade.customs_status,
         credit_status: trade.credit_status,
         contract_status: trade.contract_status,
-        status: 'scheduled',
+        status: isEditMode && initialMovement ? initialMovement.status : 'scheduled',
       };
 
-      const { error } = await supabase.from('movements').insert(movementData);
+      let error;
+      
+      if (isEditMode && initialMovement) {
+        // Update existing movement
+        const { error: updateError } = await supabase
+          .from('movements')
+          .update(movementData)
+          .eq('id', initialMovement.id);
+        
+        error = updateError;
+      } else {
+        // Create new movement
+        const { error: insertError } = await supabase
+          .from('movements')
+          .insert(movementData);
+        
+        error = insertError;
+      }
 
       if (error) {
-        console.error('Error creating movement:', error);
-        toast.error('Failed to schedule movement: ' + error.message);
+        console.error('Error with movement:', error);
+        toast.error('Failed to process movement: ' + error.message);
         return;
       }
 
       onSuccess();
     } catch (error: any) {
-      console.error('Error in movement creation:', error);
+      console.error('Error in movement processing:', error);
       toast.error('An unexpected error occurred: ' + error.message);
     }
   };
@@ -154,9 +227,12 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   return (
     <DialogContent className="sm:max-w-[700px]">
       <DialogHeader>
-        <DialogTitle>Schedule Barge Movement</DialogTitle>
+        <DialogTitle>{isEditMode ? 'Edit Movement' : 'Schedule Barge Movement'}</DialogTitle>
         <DialogDescription>
-          Schedule a movement for trade {trade.trade_reference}. Available balance: {maxSchedulableQuantity} MT.
+          {isEditMode 
+            ? `Edit movement details for trade ${trade.trade_reference}.`
+            : `Schedule a movement for trade ${trade.trade_reference}. Available balance: ${maxSchedulableQuantity} MT.`
+          }
         </DialogDescription>
       </DialogHeader>
 
@@ -183,7 +259,10 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                   <span className="font-medium">Total Quantity:</span> {trade.quantity} MT
                 </div>
                 <div>
-                  <span className="font-medium">Available:</span> {maxSchedulableQuantity} MT
+                  <span className="font-medium">Available:</span> {isEditMode && initialMovement 
+                    ? `${maxSchedulableQuantity} MT (including current ${initialMovement.scheduledQuantity} MT)`
+                    : `${maxSchedulableQuantity} MT`
+                  }
                 </div>
               </div>
             </div>
@@ -199,7 +278,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                     <Input
                       type="number"
                       min={0}
-                      max={maxSchedulableQuantity}
                       step={0.001}
                       {...field}
                       onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
@@ -475,7 +553,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
             <Button variant="outline" type="button" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit">Schedule Movement</Button>
+            <Button type="submit">{isEditMode ? 'Update Movement' : 'Schedule Movement'}</Button>
           </DialogFooter>
         </form>
       </Form>

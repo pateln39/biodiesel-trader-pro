@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import MovementEditDialog from './MovementEditDialog';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -97,6 +98,9 @@ const MovementsTable = () => {
     queryFn: fetchMovements,
     refetchOnWindowFocus: false,
   });
+
+  const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
@@ -165,6 +169,17 @@ const MovementsTable = () => {
 
   const handleDeleteMovement = (id: string) => {
     deleteMovementMutation.mutate(id);
+  };
+
+  const handleEditMovement = (movement: Movement) => {
+    setSelectedMovement(movement);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditComplete = () => {
+    setEditDialogOpen(false);
+    setSelectedMovement(null);
+    queryClient.invalidateQueries({ queryKey: ['movements'] });
   };
 
   if (isLoading) {
@@ -262,7 +277,15 @@ const MovementsTable = () => {
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell>
+                <TableCell className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => handleEditMovement(movement)}
+                  >
+                    <Edit className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -293,6 +316,15 @@ const MovementsTable = () => {
           )}
         </TableBody>
       </Table>
+      
+      {selectedMovement && (
+        <MovementEditDialog 
+          open={editDialogOpen} 
+          onOpenChange={setEditDialogOpen}
+          movement={selectedMovement}
+          onSuccess={handleEditComplete}
+        />
+      )}
     </div>
   );
 };
