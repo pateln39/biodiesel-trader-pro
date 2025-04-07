@@ -44,6 +44,7 @@ import { toast } from 'sonner';
 import { useInspectors } from '@/hooks/useInspectors';
 import AddInspectorDialog from './AddInspectorDialog';
 import { formatMovementReference } from '@/utils/tradeUtils';
+import { Movement } from '@/types';
 
 // Form schema validation
 const formSchema = z.object({
@@ -64,15 +65,20 @@ interface ScheduleMovementFormProps {
   trade: OpenTrade;
   onSuccess: () => void;
   onCancel: () => void;
+  isEditMode?: boolean;
+  initialMovement?: Movement;
 }
 
 const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({ 
   trade, 
   onSuccess,
-  onCancel
+  onCancel,
+  isEditMode = false,
+  initialMovement
 }) => {
   const queryClient = useQueryClient();
-  const { inspectors, isLoading: loadingInspectors } = useInspectors();
+  const { data: inspectorsData, isLoading: loadingInspectors } = useInspectors();
+  const inspectors = inspectorsData || [];
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
   const [inspectorToAdd, setInspectorToAdd] = useState<'loadport' | 'disport'>('loadport');
   
@@ -105,50 +111,72 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      scheduledQuantity: trade.balance || trade.quantity,
-      nominationEta: undefined,
-      nominationValid: undefined,
-      cashFlow: undefined,
-      bargeName: '',
-      loadport: trade.loadport || '',
-      loadportInspector: '',
-      disport: trade.disport || '',
-      disportInspector: '',
+      scheduledQuantity: initialMovement?.scheduledQuantity || trade.balance || trade.quantity,
+      nominationEta: initialMovement?.nominationEta,
+      nominationValid: initialMovement?.nominationValid,
+      cashFlow: initialMovement?.cashFlow ? new Date(initialMovement.cashFlow) : undefined,
+      bargeName: initialMovement?.bargeName || '',
+      loadport: initialMovement?.loadport || trade.loadport || '',
+      loadportInspector: initialMovement?.loadportInspector || '',
+      disport: initialMovement?.disport || trade.disport || '',
+      disportInspector: initialMovement?.disportInspector || '',
     },
   });
 
-  // Create movement mutation
-  const createMovementMutation = useMutation({
+  // Create/update movement mutation
+  const movementMutation = useMutation({
     mutationFn: async (data: FormValues & { referenceNumber: string }) => {
-      const { error } = await supabase.from('movements').insert({
-        parent_trade_id: trade.parent_trade_id,
-        trade_leg_id: trade.trade_leg_id,
-        reference_number: data.referenceNumber,
-        trade_reference: trade.trade_reference,
-        counterparty: trade.counterparty,
-        buy_sell: trade.buy_sell,
-        product: trade.product,
-        sustainability: trade.sustainability,
-        inco_term: trade.inco_term,
-        scheduled_quantity: data.scheduledQuantity,
-        bl_quantity: data.scheduledQuantity, // Initially set BL quantity equal to scheduled
-        nomination_eta: data.nominationEta,
-        nomination_valid: data.nominationValid,
-        cash_flow: data.cashFlow,
-        barge_name: data.bargeName,
-        loadport: data.loadport,
-        loadport_inspector: data.loadportInspector,
-        disport: data.disport,
-        disport_inspector: data.disportInspector,
-        status: 'scheduled',
-        pricing_type: trade.pricing_type,
-        pricing_formula: trade.pricing_formula,
-        customs_status: trade.customs_status,
-        credit_status: trade.credit_status,
-        contract_status: trade.contract_status,
-      });
+      if (isEditMode && initialMovement) {
+        // Update existing movement
+        const { error } = await supabase
+          .from('movements')
+          .update({
+            scheduled_quantity: data.scheduledQuantity,
+            nomination_eta: data.nominationEta,
+            nomination_valid: data.nominationValid,
+            cash_flow: data.cashFlow,
+            barge_name: data.bargeName,
+            loadport: data.loadport,
+            loadport_inspector: data.loadportInspector,
+            disport: data.disport,
+            disport_inspector: data.disportInspector,
+          })
+          .eq('id', initialMovement.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Create new movement
+        const { error } = await supabase.from('movements').insert({
+          trade_leg_id: trade.trade_leg_id,
+          parent_trade_id: trade.parent_trade_id,
+          reference_number: data.referenceNumber,
+          trade_reference: trade.trade_reference,
+          counterparty: trade.counterparty,
+          buy_sell: trade.buy_sell,
+          product: trade.product,
+          sustainability: trade.sustainability,
+          inco_term: trade.inco_term,
+          scheduled_quantity: data.scheduledQuantity,
+          bl_quantity: data.scheduledQuantity, // Initially set BL quantity equal to scheduled
+          nomination_eta: data.nominationEta,
+          nomination_valid: data.nominationValid,
+          cash_flow: data.cashFlow,
+          barge_name: data.bargeName,
+          loadport: data.loadport,
+          loadport_inspector: data.loadportInspector,
+          disport: data.disport,
+          disport_inspector: data.disportInspector,
+          status: 'scheduled',
+          pricing_type: trade.pricing_type,
+          pricing_formula: trade.pricing_formula,
+          customs_status: trade.customs_status,
+          credit_status: trade.credit_status,
+          contract_status: trade.contract_status,
+        });
+
+        if (error) throw error;
+      }
+      
       return data;
     },
     onSuccess: () => {
@@ -156,33 +184,51 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
-      toast.success('Movement scheduled', {
-        description: 'The movement has been scheduled successfully',
+      toast.success(isEditMode ? 'Movement updated' : 'Movement scheduled', {
+        description: isEditMode 
+          ? 'The movement has been updated successfully'
+          : 'The movement has been scheduled successfully',
       });
       
       onSuccess();
     },
     onError: (error: any) => {
-      console.error('Error scheduling movement:', error);
-      toast.error('Failed to schedule movement', {
-        description: error.message || 'An error occurred while scheduling the movement',
+      console.error(isEditMode ? 'Error updating movement:' : 'Error scheduling movement:', error);
+      toast.error(isEditMode ? 'Failed to update movement' : 'Failed to schedule movement', {
+        description: error.message || 'An error occurred',
       });
     },
   });
 
+  // Handle inspector selection
+  const handleInspectorSelect = (value: string, type: 'loadport' | 'disport') => {
+    if (value === 'other') {
+      setInspectorToAdd(type);
+      setIsAddInspectorOpen(true);
+    } else {
+      form.setValue(type === 'loadport' ? 'loadportInspector' : 'disportInspector', value);
+    }
+  };
+
   // Submit handler
   const onSubmit = (values: FormValues) => {
-    // Create reference number with format: TRADEREF-N where N is sequential
-    const newMovementCount = existingMovementsCount + 1;
+    // For new movements, create reference number with format: TRADEREF-LEG-N where N is sequential
+    let referenceNumber = '';
     
-    // Generate a movement reference that includes the leg reference
-    const referenceNumber = formatMovementReference(
-      trade.trade_reference, 
-      trade.leg_reference || '', 
-      newMovementCount
-    );
+    if (!isEditMode) {
+      const newMovementCount = existingMovementsCount + 1;
+      
+      // Generate a movement reference that includes the leg reference
+      referenceNumber = formatMovementReference(
+        trade.trade_reference, 
+        trade.leg_reference || '', 
+        newMovementCount
+      );
+    } else if (initialMovement) {
+      referenceNumber = initialMovement.referenceNumber || '';
+    }
     
-    createMovementMutation.mutate({
+    movementMutation.mutate({
       ...values,
       referenceNumber
     });
@@ -193,11 +239,13 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Ship className="h-5 w-5" />
-          Schedule Movement for Trade {trade.trade_reference}
+          {isEditMode ? 'Edit Movement' : 'Schedule Movement'} for Trade {trade.trade_reference}
         </DialogTitle>
         <DialogDescription>
-          Enter the details for scheduling a product movement. The scheduled quantity 
-          cannot exceed the available balance.
+          {isEditMode 
+            ? 'Update the details for this product movement.'
+            : 'Enter the details for scheduling a product movement. The scheduled quantity cannot exceed the available balance.'
+          }
         </DialogDescription>
       </DialogHeader>
 
@@ -215,12 +263,14 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                       type="number" 
                       {...field} 
                       min={0}
-                      max={trade.balance || trade.quantity}
+                      max={!isEditMode ? (trade.balance || trade.quantity) : undefined}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Available: {trade.balance || trade.quantity} MT
-                  </FormDescription>
+                  {!isEditMode && (
+                    <FormDescription>
+                      Available: {trade.balance || trade.quantity} MT
+                    </FormDescription>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -378,7 +428,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                 <FormItem>
                   <FormLabel>Loadport Inspector</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => handleInspectorSelect(value, 'loadport')} 
                     defaultValue={field.value}
                   >
                     <FormControl>
@@ -423,7 +473,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                 <FormItem>
                   <FormLabel>Disport Inspector</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
+                    onValueChange={(value) => handleInspectorSelect(value, 'disport')} 
                     defaultValue={field.value}
                   >
                     <FormControl>
@@ -452,8 +502,10 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
             <Button variant="outline" type="button" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={createMovementMutation.isPending}>
-              {createMovementMutation.isPending ? "Scheduling..." : "Schedule Movement"}
+            <Button type="submit" disabled={movementMutation.isPending}>
+              {movementMutation.isPending 
+                ? (isEditMode ? "Updating..." : "Scheduling...") 
+                : (isEditMode ? "Update Movement" : "Schedule Movement")}
             </Button>
           </DialogFooter>
         </form>
@@ -462,7 +514,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       <AddInspectorDialog
         open={isAddInspectorOpen}
         onOpenChange={setIsAddInspectorOpen}
-        onSuccess={(name) => {
+        onInspectorAdded={(name) => {
           // Set the newly created inspector to the form
           if (inspectorToAdd === 'loadport') {
             form.setValue('loadportInspector', name);
