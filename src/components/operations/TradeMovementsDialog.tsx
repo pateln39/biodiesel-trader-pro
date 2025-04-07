@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -154,7 +153,6 @@ const TradeMovementsDialog: React.FC<TradeMovementsDialogProps> = ({
                 <TableHead>Disport</TableHead>
                 <TableHead>Nomination ETA</TableHead>
                 <TableHead>BL Date</TableHead>
-                <TableHead>BL Quantity</TableHead>
                 <TableHead>Actual Quantity</TableHead>
               </TableRow>
             </TableHeader>
@@ -173,7 +171,6 @@ const TradeMovementsDialog: React.FC<TradeMovementsDialogProps> = ({
                   <TableCell>{movement.disport || '-'}</TableCell>
                   <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
                   <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
-                  <TableCell>{movement.blQuantity?.toLocaleString()} MT</TableCell>
                   <TableCell>{movement.actualQuantity?.toLocaleString() || '-'} MT</TableCell>
                 </TableRow>
               ))}
