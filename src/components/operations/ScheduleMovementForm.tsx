@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { formatDateForStorage } from '@/utils/dateParsingUtils';
+import { useInspectors, Inspector } from '@/hooks/useInspectors';
+import AddInspectorDialog from './AddInspectorDialog';
 import {
   Form,
   FormControl,
@@ -33,16 +35,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PlusCircle } from 'lucide-react';
 
 interface ScheduleMovementFormProps {
   trade: OpenTrade;
   onSuccess: () => void;
   onCancel: () => void;
 }
-
-// Inspector options
-const INSPECTOR_OPTIONS = ['Saybolt', 'Amspec', 'Camia'];
-const CASH_FLOW_OPTIONS = ['Positive', 'Negative', 'Neutral'];
 
 // Form schema
 const formSchema = z.object({
@@ -53,7 +52,7 @@ const formSchema = z.object({
     }),
   nominationEta: z.date().optional(),
   nominationValid: z.date().optional(),
-  cashFlow: z.string().optional(),
+  cashFlow: z.date().optional(),
   bargeName: z.string().min(1, 'Barge name is required'),
   loadport: z.string().min(1, 'Loadport is required'),
   loadportInspector: z.string().optional(),
@@ -71,6 +70,10 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
+  const [showAddLoadportInspector, setShowAddLoadportInspector] = useState(false);
+  const [showAddDisportInspector, setShowAddDisportInspector] = useState(false);
+  const { data: inspectors = [], isLoading: loadingInspectors } = useInspectors();
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -107,7 +110,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         bl_quantity: 0, // Default, can be updated later
         nomination_eta: values.nominationEta ? values.nominationEta.toISOString() : null,
         nomination_valid: values.nominationValid ? values.nominationValid.toISOString() : null,
-        cash_flow: values.cashFlow,
+        cash_flow: values.cashFlow ? formatDateForStorage(values.cashFlow) : null,
         barge_name: values.bargeName,
         loadport: values.loadport,
         loadport_inspector: values.loadportInspector,
@@ -137,6 +140,14 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     } catch (error: any) {
       console.error('Error in movement creation:', error);
       toast.error('An unexpected error occurred: ' + error.message);
+    }
+  };
+  
+  const handleInspectorAdded = (inspectorType: 'loadport' | 'disport') => (inspectorName: string) => {
+    if (inspectorType === 'loadport') {
+      form.setValue('loadportInspector', inspectorName);
+    } else {
+      form.setValue('disportInspector', inspectorName);
     }
   };
 
@@ -247,23 +258,44 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Loadport Inspector</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select inspector" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {INSPECTOR_OPTIONS.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex space-x-2">
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select inspector" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingInspectors ? (
+                          <SelectItem value="loading" disabled>
+                            Loading inspectors...
+                          </SelectItem>
+                        ) : (
+                          <>
+                            {inspectors.map((inspector: Inspector) => (
+                              <SelectItem key={inspector.id} value={inspector.name}>
+                                {inspector.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="add-new" className="text-blue-600 font-medium">
+                              + Add new inspector
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setShowAddLoadportInspector(true)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -275,23 +307,50 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Disport Inspector</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select inspector" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {INSPECTOR_OPTIONS.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex space-x-2">
+                    <Select
+                      onValueChange={(value) => {
+                        if (value === 'add-new') {
+                          setShowAddDisportInspector(true);
+                        } else {
+                          field.onChange(value);
+                        }
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select inspector" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {loadingInspectors ? (
+                          <SelectItem value="loading" disabled>
+                            Loading inspectors...
+                          </SelectItem>
+                        ) : (
+                          <>
+                            {inspectors.map((inspector: Inspector) => (
+                              <SelectItem key={inspector.id} value={inspector.name}>
+                                {inspector.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="add-new" className="text-blue-600 font-medium">
+                              + Add new inspector
+                            </SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => setShowAddDisportInspector(true)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -301,25 +360,15 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
               control={form.control}
               name="cashFlow"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cash Flow</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select cash flow" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CASH_FLOW_OPTIONS.map(option => (
-                        <SelectItem key={option} value={option}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <FormItem className="flex flex-col">
+                  <FormLabel>Cash Flow Date</FormLabel>
+                  <FormControl>
+                    <DatePicker
+                      date={field.value}
+                      setDate={field.onChange}
+                      placeholder="Select cash flow date"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -430,6 +479,19 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           </DialogFooter>
         </form>
       </Form>
+
+      {/* Add Inspector Dialogs */}
+      <AddInspectorDialog 
+        open={showAddLoadportInspector} 
+        onOpenChange={setShowAddLoadportInspector}
+        onInspectorAdded={handleInspectorAdded('loadport')}
+      />
+      
+      <AddInspectorDialog 
+        open={showAddDisportInspector} 
+        onOpenChange={setShowAddDisportInspector}
+        onInspectorAdded={handleInspectorAdded('disport')}
+      />
     </DialogContent>
   );
 };

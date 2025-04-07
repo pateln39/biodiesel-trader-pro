@@ -65,7 +65,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
       actualQuantity: m.actual_quantity,
       nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
       nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
-      cashFlow: m.cash_flow,
+      cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
       bargeName: m.barge_name,
       loadport: m.loadport,
       loadportInspector: m.loadport_inspector,
@@ -202,9 +202,12 @@ const MovementsTable = () => {
             <TableHead>BL Quantity</TableHead>
             <TableHead>Actual Quantity</TableHead>
             <TableHead>Nomination ETA</TableHead>
+            <TableHead>Cash Flow Date</TableHead>
             <TableHead>Barge Name</TableHead>
             <TableHead>Loadport</TableHead>
+            <TableHead>Loadport Inspector</TableHead>
             <TableHead>Disport</TableHead>
+            <TableHead>Disport Inspector</TableHead>
             <TableHead>BL Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
@@ -213,7 +216,7 @@ const MovementsTable = () => {
         <TableBody>
           {movements.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={15} className="h-24 text-center">
+              <TableCell colSpan={18} className="h-24 text-center">
                 No movements found
               </TableCell>
             </TableRow>
@@ -233,9 +236,12 @@ const MovementsTable = () => {
                 <TableCell>{movement.blQuantity?.toLocaleString()} MT</TableCell>
                 <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
                 <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
+                <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.bargeName || '-'}</TableCell>
                 <TableCell>{movement.loadport || '-'}</TableCell>
+                <TableCell>{movement.loadportInspector || '-'}</TableCell>
                 <TableCell>{movement.disport || '-'}</TableCell>
+                <TableCell>{movement.disportInspector || '-'}</TableCell>
                 <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>
                   <Select
