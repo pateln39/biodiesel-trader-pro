@@ -35,7 +35,6 @@ interface PricingInstrument {
   display_name: string;
   instrument_code: string;
   is_active: boolean;
-}
 
 const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'];
 
@@ -106,7 +105,6 @@ const ExposurePage = () => {
     queryFn: async () => {
       console.log('Fetching exposure data...');
       
-      // Fetch physical trade legs with all needed fields
       const {
         data: physicalTradeLegs,
         error: physicalError
@@ -137,7 +135,6 @@ const ExposurePage = () => {
       
       console.log(`Fetched ${physicalTradeLegs?.length || 0} physical trade legs`);
       
-      // Get parent trade information to construct complete trade objects
       const parentTradeIds = [...new Set(physicalTradeLegs?.map(leg => leg.parent_trade_id) || [])];
       console.log(`Found ${parentTradeIds.length} unique parent trade IDs`);
       
@@ -156,7 +153,6 @@ const ExposurePage = () => {
       
       console.log(`Fetched ${parentTrades?.length || 0} parent trades`);
       
-      // Fetch paper trade legs for paper exposure
       const {
         data: paperTradeLegs,
         error: paperError
@@ -183,7 +179,6 @@ const ExposurePage = () => {
       
       console.log(`Fetched ${paperTradeLegs?.length || 0} paper trade legs`);
       
-      // Map trades to the format expected by calculateTradeExposures
       const mappedTrades = parentTrades?.map(parent => {
         const legs = physicalTradeLegs?.filter(leg => leg.parent_trade_id === parent.id) || [];
         
@@ -228,7 +223,6 @@ const ExposurePage = () => {
     const exposuresByMonth: Record<string, Record<string, ExposureData>> = {};
     const allProductsFound = new Set<string>();
     
-    // Initialize the month structure
     periods.forEach(month => {
       exposuresByMonth[month] = {};
       ALLOWED_PRODUCTS.forEach(product => {
@@ -242,12 +236,10 @@ const ExposurePage = () => {
     });
     
     if (tradeData) {
-      // Process physical trades using the improved calculateTradeExposures function
       if (tradeData.physicalTrades && tradeData.physicalTrades.length > 0) {
         console.log(`Using calculateTradeExposures for ${tradeData.physicalTrades.length} physical trades`);
         const physicalResult = calculateTradeExposures(tradeData.physicalTrades);
         
-        // Add monthly physical volumes to our structure
         Object.entries(physicalResult.monthlyPhysical).forEach(([month, products]) => {
           if (periods.includes(month)) {
             Object.entries(products).forEach(([product, volume]) => {
@@ -269,7 +261,6 @@ const ExposurePage = () => {
           }
         });
         
-        // Add monthly pricing volumes to our structure
         Object.entries(physicalResult.monthlyPricing).forEach(([month, products]) => {
           if (periods.includes(month)) {
             Object.entries(products).forEach(([product, volume]) => {
@@ -292,7 +283,6 @@ const ExposurePage = () => {
         });
       }
       
-      // Handle paper trades - using existing logic
       if (tradeData.paperTradeLegs && tradeData.paperTradeLegs.length > 0) {
         paperTradeLegs.forEach(leg => {
           const month = leg.period || leg.trading_period || '';
@@ -620,7 +610,6 @@ const ExposurePage = () => {
       }
     }
     
-    // Calculate net exposure for each product and month
     periods.forEach(month => {
       Object.entries(exposuresByMonth[month]).forEach(([product, exposure]) => {
         exposure.netExposure = calculateNetExposure(exposure.physical, exposure.pricing);
@@ -802,3 +791,14 @@ const ExposurePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Category Filters</label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+      </div>
+    </Layout>
+  );
+};
+
+export default ExposurePage;
