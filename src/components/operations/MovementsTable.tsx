@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -46,6 +47,7 @@ import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
+import TradeDetailsDialog from './TradeDetailsDialog';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -199,6 +201,9 @@ const MovementsTable = () => {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
   const [selectedMovementForComments, setSelectedMovementForComments] = useState<Movement | null>(null);
+  const [tradeDetailsOpen, setTradeDetailsOpen] = useState(false);
+  const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
+  const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
@@ -310,6 +315,12 @@ const MovementsTable = () => {
     setEditDialogOpen(false);
     setSelectedMovement(null);
     queryClient.invalidateQueries({ queryKey: ['movements'] });
+  };
+
+  const handleViewTradeDetails = (parentId: string, legId?: string) => {
+    setSelectedTradeId(parentId);
+    setSelectedLegId(legId);
+    setTradeDetailsOpen(true);
   };
 
   if (isLoading) {
@@ -490,6 +501,25 @@ const MovementsTable = () => {
                 </TableCell>
                 <TableCell className="text-center">
                   <div className="flex justify-center gap-1">
+                    {movement.parentTradeId && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleViewTradeDetails(movement.parentTradeId as string, movement.tradeLegId)}
+                            >
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View Trade Details</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon" 
@@ -557,6 +587,13 @@ const MovementsTable = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <TradeDetailsDialog
+        open={tradeDetailsOpen}
+        onOpenChange={setTradeDetailsOpen}
+        tradeId={selectedTradeId}
+        legId={selectedLegId}
+      />
     </div>
   );
 };
