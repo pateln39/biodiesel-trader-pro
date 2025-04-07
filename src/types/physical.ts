@@ -7,7 +7,7 @@ export type PhysicalTradeType = 'spot' | 'term';
 export type BuySell = 'buy' | 'sell';
 // Updated to align with Product type from index.ts
 export type Product = 'UCOME' | 'RME' | 'FAME0' | 'UCOME-5' | 'RME DC' | 'HVO' | string;
-export type IncoTerm = 'FOB' | 'CIF' | 'DES' | 'DAP' | 'FCA';
+export type IncoTerm = 'FOB' | 'CIF' | 'DES' | 'DAP' | 'FCA' | 'CFR';
 export type Unit = 'MT' | 'KG' | 'L';
 export type PaymentTerm = 'advance' | '30 days' | '60 days' | '90 days';
 export type CreditStatus = 'pending' | 'approved' | 'rejected';

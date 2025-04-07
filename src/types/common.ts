@@ -1,3 +1,4 @@
+
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -16,7 +17,7 @@ export type TradeType = 'physical' | 'paper';
 // Common types for trades
 export type BuySell = 'buy' | 'sell';
 export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "LSGO" | "HVO";
-export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
+export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA" | "CFR";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
 export type PaymentTerm = "advance" | "30 days" | "60 days" | "90 days";
@@ -38,6 +39,7 @@ export interface Trade extends ParentTrade {
   buySell: BuySell;
   product: string;
   legs: any[];
+  comments?: string;
 }
 
 // Add database interface mappings that were missing
@@ -139,8 +141,79 @@ export interface AuditLog {
   newValue: string;
 }
 
+// Define FormulaToken and other missing types
+export interface FormulaToken {
+  type: string;
+  value: string | number;
+  instrument?: string;
+  operator?: string;
+}
+
+export interface PricingFormula {
+  tokens: FormulaToken[];
+}
+
+export interface PriceDetail {
+  instrument: string;
+  date: Date;
+  price: number;
+}
+
+export interface MTMPriceDetail {
+  instrument: string;
+  month: string;
+  price: number;
+}
+
+export interface MonthlyDistribution {
+  month: string;
+  percentage: number;
+}
+
 // Define ExposureResult for formulaUtils.ts
 export interface ExposureResult {
   physical: Record<Instrument, number>;
   pricing: Record<Instrument, number>;
+  paper?: Record<Instrument, number>;
+}
+
+// Define OpenTrade interface for component compatibility
+export interface OpenTrade {
+  id: string;
+  tradeLegId?: string;
+  parentTradeId?: string;
+  tradeReference: string;
+  counterparty: string;
+  buySell: BuySell;
+  product: string;
+  sustainability?: string;
+  incoTerm?: IncoTerm;
+  quantity: number;
+  tolerance?: number;
+  loadingPeriodStart?: Date;
+  loadingPeriodEnd?: Date;
+  pricingPeriodStart?: Date;
+  pricingPeriodEnd?: Date;
+  scheduledQuantity?: number;
+  openQuantity?: number;
+  unit?: Unit;
+  paymentTerm?: PaymentTerm;
+  creditStatus?: CreditStatus;
+  customsStatus?: CustomsStatus;
+  pricingFormula?: any;
+  nominatedValue?: number;
+  balance?: number;
+  vesselName?: string;
+  loadport?: string;
+  disport?: string;
+  status?: string;
+  pricingType?: PricingType;
+  comments?: string;
+  contractStatus?: ContractStatus;
+  efpPremium?: number;
+  efpAgreedStatus?: boolean;
+  efpFixedValue?: number;
+  efpDesignatedMonth?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

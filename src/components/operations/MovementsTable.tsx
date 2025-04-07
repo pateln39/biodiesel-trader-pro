@@ -398,7 +398,7 @@ const MovementsTable = () => {
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell className="font-medium">
                   <Link 
-                    to={`/trades/entry?reference=${movement.tradeReference.split('-')[0]}&readOnly=true`}
+                    to={`/trades/entry?reference=${movement.tradeReference}&readOnly=true`}
                     className="text-white hover:text-white hover:underline"
                   >
                     {movement.tradeReference}
