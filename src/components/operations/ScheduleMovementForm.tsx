@@ -138,8 +138,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     },
     onError: (error: any) => {
       toast("Failed to " + (isEditMode ? "Update" : "Schedule") + " Movement", {
-        description: error.message,
-        status: "error"
+        description: error.message
       });
     }
   });
@@ -149,8 +148,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
 
     if (!isEditMode && blQuantity === undefined) {
       toast("Required Field Missing", {
-        description: "BL Quantity is required to schedule a movement.",
-        status: "error"
+        description: "BL Quantity is required to schedule a movement."
       });
       return;
     }
@@ -226,8 +224,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     e.preventDefault();
     const formElement = (e.target as HTMLButtonElement).closest('form');
     if (formElement) {
-      const event = new Event('submit', { bubbles: true, cancelable: true });
-      formElement.dispatchEvent(event);
+      formElement.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
   };
 

@@ -18,7 +18,7 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus, BuySell, Product, IncoTerm } from '@/types';
+import { ContractStatus, BuySell, Product, IncoTerm, Unit } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
@@ -39,7 +39,7 @@ interface TradeForSchedule {
   inco_term?: IncoTerm;
   quantity: number;
   tolerance?: number;
-  unit?: string;
+  unit?: Unit;
   payment_term?: string;
   credit_status?: string;
   customs_status?: string;
@@ -80,7 +80,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       inco_term: trade.inco_term as IncoTerm,
       quantity: trade.quantity,
       tolerance: trade.tolerance,
-      unit: trade.unit,
+      unit: trade.unit as Unit,
       payment_term: trade.payment_term,
       credit_status: trade.credit_status,
       customs_status: trade.customs_status,
