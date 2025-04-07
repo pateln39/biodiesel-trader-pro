@@ -124,6 +124,7 @@ const tokenizeFormula = (tokens: FormulaToken[]): FormulaToken[] => {
         (isValue(token) || isOpenBracket(token))) {
       // Add an implicit multiplication operator
       result.push({
+        id: 'implicit-' + i,
         type: 'operator',
         value: '*'
       });
@@ -519,24 +520,15 @@ export const calculateMonthlyPricingDistribution = (
   // Get business days distribution by month
   const businessDaysByMonth = getBusinessDaysByMonth(pricingPeriodStart, pricingPeriodEnd);
   
-  // Initialize result with required properties
-  const monthlyDistribution: MonthlyDistribution = {
-    month: formatMonthCode(pricingPeriodStart),
-    percentage: 100
-  };
+  // Initialize result
+  const monthlyDistribution: MonthlyDistribution = {};
   
   // For each instrument with non-zero exposure, distribute across months
   Object.entries(pricingExposure).forEach(([instrument, totalExposure]) => {
     if (totalExposure === 0) return;
     
-    const distributedValues = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
-    Object.entries(distributedValues).forEach(([month, value]) => {
-      monthlyDistribution[instrument] = value;
-    });
+    monthlyDistribution[instrument] = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
   });
   
   return monthlyDistribution;
 };
-
-// Ensure formatMonthCode is available
-import { formatMonthCode } from '@/utils/dateUtils';

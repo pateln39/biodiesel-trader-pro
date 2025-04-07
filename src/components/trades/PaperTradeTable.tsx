@@ -14,14 +14,9 @@ import { formatProductDisplay, formatMTMDisplay } from '@/utils/tradeUtils';
 interface PaperTradeTableProps {
   legs: any[];
   onLegsChange: (legs: any[]) => void;
-  readOnly?: boolean;
 }
 
-const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ 
-  legs, 
-  onLegsChange,
-  readOnly = false
-}) => {
+const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange }) => {
   const [productRelationships, setProductRelationships] = useState<ProductRelationship[]>([]);
   
   const availablePeriods = getNextMonths(13);
@@ -349,17 +344,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
           type="button" 
           variant="outline" 
           onClick={copyPreviousLeg}
-          disabled={legs.length === 0 || readOnly}
+          disabled={legs.length === 0}
         >
           <Copy className="h-4 w-4 mr-1" />
           Copy Previous Row
         </Button>
-        <Button 
-          type="button" 
-          variant="outline" 
-          onClick={addLeg}
-          disabled={readOnly}
-        >
+        <Button type="button" variant="outline" onClick={addLeg}>
           <Plus className="h-4 w-4 mr-1" />
           Add Row
         </Button>
@@ -400,7 +390,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                       variant="ghost" 
                       size="icon" 
                       onClick={() => removeLeg(index)}
-                      disabled={readOnly}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -410,7 +399,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                     <Select 
                       value={getRelationshipDisplayText(leg)}
                       onValueChange={(value) => handleProductSelect(index, value)}
-                      disabled={readOnly}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select product" />
@@ -440,14 +428,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                       value={leg.quantity || ''} 
                       onChange={(e) => updateLeftSide(index, 'quantity', Number(e.target.value))}
                       className="w-24"
-                      readOnly={readOnly}
                     />
                   </td>
                   <td className="px-4 py-3 text-white">
                     <Select 
                       value={leg.period || ''} 
                       onValueChange={(value) => updateLeftSide(index, 'period', value)}
-                      disabled={readOnly}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue placeholder="Select period" />
@@ -468,7 +454,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({
                       min="0"
                       onChange={(e) => updateLeftSide(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
                       className="w-24"
-                      readOnly={readOnly}
                     />
                   </td>
                   

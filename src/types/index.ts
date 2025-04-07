@@ -1,5 +1,4 @@
 
-
 // Export from type modules
 export * from './pricing';
 export * from './physical';
@@ -45,7 +44,7 @@ export interface Movement {
 }
 
 // Explicit re-exports to avoid name conflicts when importing
-import { PhysicalTrade, PhysicalTradeLeg, PhysicalTradeType } from './physical';
+import { PhysicalTrade } from './physical';
 import { 
   Trade, 
   BuySell, 
@@ -61,19 +60,13 @@ import {
   DbTradeLeg,
   TradeType,
   Instrument,
-  ExposureResult,
-  FormulaToken,
-  PriceDetail,
-  MTMPriceDetail,
-  MonthlyDistribution
+  ExposureResult
 } from './common';
 import { PricingFormula, PricingComponent } from './pricing';
 
 // Re-export specific types explicitly to avoid ambiguities
 export type {
   PhysicalTrade,
-  PhysicalTradeLeg,
-  PhysicalTradeType,
   Trade,
   TradeType,
   BuySell,
@@ -90,10 +83,5 @@ export type {
   DbParentTrade,
   DbTradeLeg,
   Instrument,
-  ExposureResult,
-  FormulaToken,
-  PriceDetail,
-  MTMPriceDetail,
-  MonthlyDistribution
+  ExposureResult
 };
-
