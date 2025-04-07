@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
-import { Loader2, ArrowUpDown, Ship } from 'lucide-react';
+import { Loader2, ArrowUpDown, Ship, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -19,6 +20,7 @@ import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
 import { ContractStatus } from '@/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -198,7 +200,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   className={`border-b border-white/5 hover:bg-brand-navy/80 ${isZeroBalance ? 'opacity-50' : ''}`}
                 >
                   <TableCell>
-                    {/* Removed link, just showing the reference */}
+                    {/* Just showing the reference without a link */}
                     <span className="font-medium">
                       {displayReference}
                     </span>
@@ -233,11 +235,35 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                     />
                   </TableCell>
                   <TableCell>
-                    <CommentsCellInput
-                      tradeId={trade.parent_trade_id}
-                      legId={trade.trade_leg_id}
-                      initialValue={trade.comments || ''}
-                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                                {trade.comments && (
+                                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0">
+                              <div className="p-4 pt-2">
+                                <p className="text-sm font-medium mb-2">Comments</p>
+                                <CommentsCellInput
+                                  tradeId={trade.parent_trade_id}
+                                  legId={trade.trade_leg_id}
+                                  initialValue={trade.comments || ''}
+                                />
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Add or view comments</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </TableCell>
                   <TableCell>
                     {trade.customs_status && (

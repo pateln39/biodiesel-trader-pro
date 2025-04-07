@@ -1,4 +1,3 @@
-
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
@@ -32,6 +31,19 @@ export const formatLegReference = (tradeReference: string, legReference: string)
   
   // Fallback: just return the trade reference
   return tradeReference;
+};
+
+// Generate a movement reference number with leg suffix
+export const generateMovementReference = (legReference: string, movementNumber: number): string => {
+  // Extract the leg suffix (a, b, c, etc.) from the leg reference
+  let legSuffix = '';
+  
+  if (legReference && legReference.includes('-')) {
+    legSuffix = legReference.split('-').pop() || '';
+  }
+  
+  // Format: LEG_SUFFIX-MOVEMENT_NUMBER (e.g., a-1, b-2)
+  return `${legSuffix}-${movementNumber}`;
 };
 
 // Format product display name based on relationship type (for Trades table UI)
@@ -136,4 +148,3 @@ export const isPricingInstrument = (product: string): boolean => {
   const pricingInstruments = ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel'];
   return pricingInstruments.includes(product);
 };
-
