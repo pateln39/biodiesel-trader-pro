@@ -408,7 +408,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
         {selectedTradeForMovements && (
           <TradeMovementsDialog 
             tradeLegId={selectedTradeForMovements.trade_leg_id}
-            tradeReference={displayReference || selectedTradeForMovements.trade_reference}
+            tradeReference={selectedTradeForMovements.trade_reference}
           />
         )}
       </Dialog>
