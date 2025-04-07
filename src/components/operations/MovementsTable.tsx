@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -397,7 +398,7 @@ const MovementsTable = () => {
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell className="font-medium">
                   <Link 
-                    to={`/trades/entry?reference=${movement.tradeReference}&readOnly=true`}
+                    to={`/trades/entry?reference=${movement.tradeReference.split('-')[0]}&readOnly=true`}
                     className="text-white hover:text-white hover:underline"
                   >
                     {movement.tradeReference}
