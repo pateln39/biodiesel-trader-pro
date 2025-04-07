@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +45,8 @@ import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import TradeDetailsDialog from './TradeDetailsDialog';
+import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
