@@ -18,7 +18,7 @@ import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay'
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { toast } from "sonner";
+import { useToast } from '@/hooks/use-toast';
 import { ContractStatus, CreditStatus, PaymentTerm, Unit, IncoTerm } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import TradeMovementsDialog from './TradeMovementsDialog';
@@ -40,6 +40,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = React.useState(false);
   const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const handleRefresh = () => {
     refetchOpenTrades();
@@ -55,7 +56,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     setIsDialogOpen(false);
     setSelectedTrade(null);
     handleRefresh();
-    toast.success("Movement scheduled successfully");
   };
 
   const handleCommentsClick = (trade: OpenTrade) => {
@@ -83,6 +83,18 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       setIsCommentsDialogOpen(false);
       setSelectedTradeForComments(null);
+      toast({
+        variant: "success",
+        title: "Comments updated",
+        description: "Trade comments have been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to update comments",
+        description: error.message || "An error occurred",
+      });
     }
   });
 

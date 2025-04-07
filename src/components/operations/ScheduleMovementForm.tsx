@@ -40,7 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { useInspectors } from '@/hooks/useInspectors';
 import AddInspectorDialog from './AddInspectorDialog';
 import { formatMovementReference } from '@/utils/tradeUtils';
@@ -91,6 +91,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   initialMovement
 }) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: inspectorsData } = useInspectors();
   const inspectors = inspectorsData || [];
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
@@ -233,17 +234,23 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
-      toast.success(isEditMode ? 'Movement updated' : 'Movement scheduled', {
+      // Show a single toast notification
+      toast({
+        variant: "success",
+        title: isEditMode ? 'Movement updated' : 'Movement scheduled',
         description: isEditMode 
           ? 'The movement has been updated successfully'
           : 'The movement has been scheduled successfully',
       });
       
+      // Call the onSuccess callback without showing another notification
       onSuccess();
     },
     onError: (error: any) => {
       console.error(isEditMode ? 'Error updating movement:' : 'Error scheduling movement:', error);
-      toast.error(isEditMode ? 'Failed to update movement' : 'Failed to schedule movement', {
+      toast({
+        variant: "destructive",
+        title: isEditMode ? 'Failed to update movement' : 'Failed to schedule movement',
         description: error.message || 'An error occurred',
       });
     },
