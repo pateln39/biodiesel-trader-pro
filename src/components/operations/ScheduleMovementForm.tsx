@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -77,7 +78,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   initialMovement
 }) => {
   const queryClient = useQueryClient();
-  const { data: inspectorsData, isLoading: loadingInspectors } = useInspectors();
+  const { data: inspectorsData } = useInspectors();
   const inspectors = inspectorsData || [];
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
   const [inspectorToAdd, setInspectorToAdd] = useState<'loadport' | 'disport'>('loadport');
@@ -145,8 +146,8 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
 
         if (error) throw error;
       } else {
-        // Create new movement
-        const { error } = await supabase.from('movements').insert({
+        // Create new movement - Fixed the JSON type issue and column names
+        const movementData = {
           trade_leg_id: trade.trade_leg_id,
           parent_trade_id: trade.parent_trade_id,
           reference_number: data.referenceNumber,
@@ -168,11 +169,16 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           disport_inspector: data.disportInspector,
           status: 'scheduled',
           pricing_type: trade.pricing_type,
-          pricing_formula: trade.pricing_formula,
+          // Convert pricing_formula to JSON string to fix type compatibility issue
+          pricing_formula: trade.pricing_formula ? JSON.parse(JSON.stringify(trade.pricing_formula)) : null,
           customs_status: trade.customs_status,
           credit_status: trade.credit_status,
           contract_status: trade.contract_status,
-        });
+        };
+
+        const { error } = await supabase
+          .from('movements')
+          .insert(movementData);
 
         if (error) throw error;
       }
@@ -361,6 +367,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -400,6 +407,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
