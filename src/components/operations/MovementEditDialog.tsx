@@ -56,7 +56,9 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
           pricing_period_start: data.pricing_period_start ? new Date(data.pricing_period_start) : undefined,
           pricing_period_end: data.pricing_period_end ? new Date(data.pricing_period_end) : undefined,
           created_at: new Date(data.created_at),
-          updated_at: new Date(data.updated_at)
+          updated_at: new Date(data.updated_at),
+          // Explicitly cast status to the required union type
+          status: (data.status || 'open') as 'open' | 'closed'
         };
       }
       
