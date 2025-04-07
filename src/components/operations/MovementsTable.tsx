@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
 import { Edit, Trash2, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -49,7 +50,6 @@ import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils'
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
-    // First fetch movements
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
@@ -59,31 +59,26 @@ const fetchMovements = async (): Promise<Movement[]> => {
       throw new Error(`Error fetching movements: ${error.message}`);
     }
 
-    // Get the complete array of trade_leg_ids to fetch data from open_trades
     const tradeLegsIds = movements
       .map((m: any) => m.trade_leg_id)
       .filter(Boolean);
     
-    // Fetch trade quantities for all associated legs in one query
     let tradeQuantities: Record<string, number> = {};
     let tradeFormulas: Record<string, any> = {};
     let tradePricingTypes: Record<string, string> = {};
     let tradeLegReferences: Record<string, { legRef: string, tradeRef: string }> = {};
     
     if (tradeLegsIds.length > 0) {
-      // First check if leg_reference column exists in open_trades table
       let openTradesQuery = supabase
         .from('open_trades')
         .select('trade_leg_id, quantity, pricing_formula, pricing_type, trade_reference')
         .in('trade_leg_id', tradeLegsIds);
       
-      // Execute the query
       const { data: openTrades, error: openTradesError } = await openTradesQuery;
         
       if (openTradesError) {
         console.error('[MOVEMENTS] Error fetching open trades data:', openTradesError);
       } else if (openTrades) {
-        // Create maps for quantity, pricing formula, and pricing type
         openTrades.forEach(trade => {
           tradeQuantities[trade.trade_leg_id] = trade.quantity;
           tradeFormulas[trade.trade_leg_id] = trade.pricing_formula;
@@ -91,7 +86,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
         });
       }
       
-      // Separately fetch leg references from trade_legs table
       const { data: legData, error: legError } = await supabase
         .from('trade_legs')
         .select('id, leg_reference, parent_trade_id')
@@ -100,7 +94,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
       if (legError) {
         console.error('[MOVEMENTS] Error fetching leg references:', legError);
       } else if (legData) {
-        // Get parent trade references for each leg
         const parentTradeIds = [...new Set(legData.map(leg => leg.parent_trade_id))].filter(Boolean);
         let parentTradeRefs: Record<string, string> = {};
         
@@ -118,7 +111,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
           }
         }
         
-        // Create map of leg_id to reference info
         legData.forEach(leg => {
           const tradeRef = parentTradeRefs[leg.parent_trade_id] || '';
           tradeLegReferences[leg.id] = {
@@ -130,7 +122,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
     }
 
     return (movements || []).map((m: any) => {
-      // Get the proper full reference for displaying
       let displayReference = m.trade_reference || 'Unknown';
       let legReference = '';
       
@@ -142,10 +133,8 @@ const fetchMovements = async (): Promise<Movement[]> => {
         }
       }
       
-      // Format movement reference number to include leg reference
       let movementReference = m.reference_number;
       if (displayReference && legReference && m.reference_number) {
-        // Check if reference_number already contains the leg suffix
         const legSuffix = legReference.split('-').pop();
         if (!m.reference_number.includes(`-${legSuffix}-`)) {
           movementReference = formatMovementReference(displayReference, legReference, m.reference_number.split('-').pop() || '1');
@@ -163,7 +152,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
         buySell: m.buy_sell,
         incoTerm: m.inco_term,
         sustainability: m.sustainability,
-        // Use the total trade quantity from the associated open trade
         quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
         scheduledQuantity: m.scheduled_quantity,
         blQuantity: m.bl_quantity,
@@ -178,11 +166,9 @@ const fetchMovements = async (): Promise<Movement[]> => {
         disportInspector: m.disport_inspector,
         blDate: m.bl_date ? new Date(m.bl_date) : undefined,
         codDate: m.cod_date ? new Date(m.cod_date) : undefined,
-        // Use pricing type from open_trades for consistency
         pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
           tradePricingTypes[m.trade_leg_id] as PricingType | undefined :
           m.pricing_type as PricingType | undefined,
-        // Use the pricing formula from open_trades instead of the movement's own formula
         pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
           validateAndParsePricingFormula(tradeFormulas[m.trade_leg_id]) : 
           validateAndParsePricingFormula(m.pricing_formula),
@@ -327,14 +313,6 @@ const MovementsTable = () => {
     queryClient.invalidateQueries({ queryKey: ['movements'] });
   };
 
-  if (isLoading) {
-    return <TableLoadingState />;
-  }
-
-  if (error) {
-    return <TableErrorState error={error as Error} onRetry={refetch} />;
-  }
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'completed':
@@ -348,6 +326,18 @@ const MovementsTable = () => {
     }
   };
 
+  const getBuySellBadgeVariant = (buySell: string) => {
+    return buySell === 'buy' ? "secondary" : "destructive";
+  };
+
+  if (isLoading) {
+    return <TableLoadingState />;
+  }
+
+  if (error) {
+    return <TableErrorState error={error as Error} onRetry={refetch} />;
+  }
+
   return (
     <div className="w-full overflow-auto">
       <Table>
@@ -355,6 +345,7 @@ const MovementsTable = () => {
           <TableRow className="border-b border-white/10">
             <TableHead>Reference Number</TableHead>
             <TableHead>Trade Reference</TableHead>
+            <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
             <TableHead>Quantity</TableHead>
             <TableHead>Sustainability</TableHead>
@@ -362,8 +353,6 @@ const MovementsTable = () => {
             <TableHead>Loading Start</TableHead>
             <TableHead>Loading End</TableHead>
             <TableHead>Counterparty</TableHead>
-            <TableHead>Pricing Type</TableHead>
-            <TableHead>Formula</TableHead>
             <TableHead>Comments</TableHead>
             <TableHead>Customs Status</TableHead>
             <TableHead>Credit Status</TableHead>
@@ -395,8 +384,17 @@ const MovementsTable = () => {
               <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                 <TableCell>{movement.referenceNumber}</TableCell>
                 <TableCell className="font-medium">
-                  {/* No link, just display the reference */}
-                  {movement.tradeReference}
+                  <Link 
+                    to={`/trades/entry?reference=${movement.tradeReference}&readonly=true`} 
+                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                  >
+                    {movement.tradeReference}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getBuySellBadgeVariant(movement.buySell || "")}>
+                    {movement.buySell?.toUpperCase() || '-'}
+                  </Badge>
                 </TableCell>
                 <TableCell>{movement.incoTerm}</TableCell>
                 <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
@@ -405,23 +403,6 @@ const MovementsTable = () => {
                 <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
                 <TableCell>{movement.counterpartyName}</TableCell>
-                <TableCell>
-                  <Badge variant={movement.pricingType === 'efp' ? "default" : "outline"}>
-                    {movement.pricingType || 'Standard'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {movement.tradeLegId && movement.pricingFormula ? (
-                    <FormulaCellDisplay
-                      tradeId={movement.parentTradeId ?? ''}
-                      legId={movement.tradeLegId}
-                      formula={movement.pricingFormula}
-                      pricingType={movement.pricingType}
-                    />
-                  ) : (
-                    <span className="text-muted-foreground italic">No formula</span>
-                  )}
-                </TableCell>
                 <TableCell>
                   <TooltipProvider>
                     <Tooltip>
