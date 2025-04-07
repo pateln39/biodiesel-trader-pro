@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus, BuySell, Product } from '@/types';
+import { ContractStatus, BuySell, Product, IncoTerm } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
@@ -37,7 +36,7 @@ interface TradeForSchedule {
   buy_sell: BuySell;
   product: Product;
   sustainability?: string;
-  inco_term?: string;
+  inco_term?: IncoTerm;
   quantity: number;
   tolerance?: number;
   unit?: string;
@@ -68,7 +67,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   };
 
   const handleScheduleMovement = (trade: OpenTrade) => {
-    // Convert OpenTrade to TradeForSchedule
     const scheduleableTrade: TradeForSchedule = {
       id: trade.id,
       trade_leg_id: trade.trade_leg_id,
@@ -79,7 +77,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
       buy_sell: trade.buy_sell as BuySell,
       product: trade.product as Product,
       sustainability: trade.sustainability,
-      inco_term: trade.inco_term,
+      inco_term: trade.inco_term as IncoTerm,
       quantity: trade.quantity,
       tolerance: trade.tolerance,
       unit: trade.unit,
@@ -244,10 +242,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableHeader>
           <TableBody>
             {sortedTrades.map((trade) => {
-              // Updated to handle null/undefined balance values
               const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
               
-              // Generate proper leg reference display
               const displayReference = trade.trade_leg_id ? 
                 formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
                 trade.trade_reference;
@@ -258,7 +254,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                   className={`border-b border-white/5 hover:bg-brand-navy/80 ${isZeroBalance ? 'opacity-50' : ''}`}
                 >
                   <TableCell>
-                    {/* Just showing the reference without a link */}
                     <span className="font-medium">
                       {displayReference}
                     </span>

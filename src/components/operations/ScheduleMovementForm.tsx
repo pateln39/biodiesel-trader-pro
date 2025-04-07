@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   DialogContent,
@@ -94,9 +93,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Only generate a new reference number if we're not in edit mode
     if (!isEditMode && !initialMovement) {
-      // Generate a movement reference number
       const movementNumber = Math.floor(1000 + Math.random() * 9000);
       const legReference = trade.leg_reference || '';
       const newReferenceNumber = generateMovementReference(legReference, movementNumber);
@@ -109,7 +106,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       let response;
       
       if (isEditMode && initialMovement) {
-        // Update existing movement
         const { data, error } = await supabase
           .from('movements')
           .update(movementData)
@@ -119,7 +115,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         if (error) throw error;
         response = data;
       } else {
-        // Create new movement
         const { data, error } = await supabase
           .from('movements')
           .insert(movementData)
@@ -137,14 +132,14 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       toast(isEditMode ? "Movement Updated" : "Movement Scheduled", {
         description: isEditMode 
           ? "Your movement has been updated successfully." 
-          : "Your movement has been scheduled successfully.",
+          : "Your movement has been scheduled successfully."
       });
       onSuccess();
     },
     onError: (error: any) => {
-      toast(isEditMode ? "Failed to Update Movement" : "Failed to Schedule Movement", {
+      toast("Failed to " + (isEditMode ? "Update" : "Schedule") + " Movement", {
         description: error.message,
-        variant: "destructive",
+        status: "error"
       });
     }
   });
@@ -152,11 +147,10 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Make sure blQuantity is defined for a new movement
     if (!isEditMode && blQuantity === undefined) {
       toast("Required Field Missing", {
         description: "BL Quantity is required to schedule a movement.",
-        variant: "destructive",
+        status: "error"
       });
       return;
     }
@@ -193,7 +187,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       status: initialMovement?.status || 'scheduled',
     };
 
-    // Convert to snake_case for Supabase
     const snakeCaseData = {
       reference_number: movementData.referenceNumber,
       trade_leg_id: movementData.tradeLegId,
@@ -214,7 +207,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       disport: movementData.disport,
       disport_inspector: movementData.disportInspector,
       bl_date: movementData.blDate,
-      bl_quantity: movementData.blQuantity || 0, // Ensure this is never null
+      bl_quantity: movementData.blQuantity || 0,
       actual_quantity: movementData.actualQuantity,
       cod_date: movementData.codDate,
       pricing_type: movementData.pricingType,
@@ -227,6 +220,15 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     };
 
     createMovementMutation.mutate(snakeCaseData);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const formElement = (e.target as HTMLButtonElement).closest('form');
+    if (formElement) {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      formElement.dispatchEvent(event);
+    }
   };
 
   return (
@@ -409,7 +411,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
             className="col-span-3"
           />
         </div>
-         <div className="grid grid-cols-4 items-center gap-4">
+        <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="blDate" className="text-right">
             BL Date
           </Label>
@@ -502,14 +504,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" onClick={(e) => {
-          e.preventDefault();
-          const formElement = (e.target as HTMLButtonElement).closest('form');
-          if (formElement) {
-            const event = new Event('submit', { bubbles: true, cancelable: true });
-            formElement.dispatchEvent(event);
-          }
-        }}>
+        <Button type="submit" onClick={handleButtonClick}>
           {isEditMode ? "Update" : "Schedule"}
         </Button>
       </DialogFooter>
