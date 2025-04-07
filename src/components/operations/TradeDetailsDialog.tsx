@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { File } from 'lucide-react';
@@ -132,6 +133,13 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     refetchOnWindowFocus: false,
   });
 
+  // Reset active tab when dialog opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab('details');
+    }
+  }, [open]);
+
   const formatFormula = (formula: any) => {
     if (!formula || !formula.tokens) return 'No formula defined';
     
@@ -187,20 +195,197 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     );
   }
 
+  // For spot trades, only show main details
+  if (trade.physicalType === 'spot') {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <File className="h-5 w-5" />
+              Spot Trade Details: {trade.tradeReference}
+            </DialogTitle>
+          </DialogHeader>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Trade Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Reference</p>
+                  <p>{trade.tradeReference}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Type</p>
+                  <p>{trade.physicalType}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Buy/Sell</p>
+                  <Badge variant={trade.buySell === 'buy' ? "default" : "outline"}>
+                    {trade.buySell}
+                  </Badge>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Counterparty</p>
+                  <p>{trade.counterparty}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Product</p>
+                  <p>{trade.product}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Sustainability</p>
+                  <p>{trade.sustainability || 'N/A'}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Quantity</p>
+                  <p>{trade.quantity?.toLocaleString()} {trade.unit}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Tolerance</p>
+                  <p>{trade.tolerance}%</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Incoterm</p>
+                  <p>{trade.incoTerm}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Loading Period</p>
+                  <p>
+                    {format(trade.loadingPeriodStart, 'dd MMM yyyy')} - {format(trade.loadingPeriodEnd, 'dd MMM yyyy')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Pricing Period</p>
+                  <p>
+                    {format(trade.pricingPeriodStart, 'dd MMM yyyy')} - {format(trade.pricingPeriodEnd, 'dd MMM yyyy')}
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Payment Term</p>
+                  <p>{trade.paymentTerm}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Credit Status</p>
+                  <Badge variant={
+                    trade.creditStatus === 'approved' ? "default" :
+                    trade.creditStatus === 'rejected' ? "destructive" :
+                    "outline"
+                  }>
+                    {trade.creditStatus || 'pending'}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Customs Status</p>
+                  <Badge variant={
+                    trade.customsStatus === 'approved' ? "default" :
+                    trade.customsStatus === 'rejected' ? "destructive" :
+                    "outline"
+                  }>
+                    {trade.customsStatus || 'pending'}
+                  </Badge>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Pricing Information</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Pricing Type</p>
+                    <p>{trade.pricingType === 'efp' ? 'EFP' : 'Standard'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Formula</p>
+                    <div className="p-2 bg-muted rounded-md">
+                      {formatFormula(trade.formula)}
+                    </div>
+                  </div>
+                  {trade.pricingType === 'efp' && (
+                    <>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">EFP Premium</p>
+                        <p>{trade.efpPremium}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">EFP Agreed</p>
+                        <p>{trade.efpAgreedStatus ? 'Yes' : 'No'}</p>
+                      </div>
+                      {trade.efpFixedValue && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">EFP Fixed Value</p>
+                          <p>{trade.efpFixedValue}</p>
+                        </div>
+                      )}
+                      {trade.efpDesignatedMonth && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">EFP Designated Month</p>
+                          <p>{trade.efpDesignatedMonth}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {trade.comments && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Comments</p>
+                    <p className="p-2 bg-muted rounded-md">{trade.comments}</p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // For term trades, show tabs for each leg with full details
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <File className="h-5 w-5" />
-            Trade Details: {trade.tradeReference}
+            Term Trade Details: {trade.tradeReference}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full md:w-[400px] grid-cols-2">
+          <TabsList className="grid w-full grid-cols-auto-fit gap-2">
             <TabsTrigger value="details">Main Details</TabsTrigger>
-            <TabsTrigger value="legs">Legs ({trade.legs.length})</TabsTrigger>
+            {trade.legs.map((leg, index) => (
+              <TabsTrigger key={leg.id} value={leg.id}>
+                Leg {index + 1}: {leg.legReference}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="details" className="space-y-4">
@@ -219,141 +404,41 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                     <p>{trade.physicalType}</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Buy/Sell</p>
-                    <Badge variant={trade.buySell === 'buy' ? "default" : "outline"}>
-                      {trade.buySell}
-                    </Badge>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Counterparty</p>
                     <p>{trade.counterparty}</p>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Product</p>
-                    <p>{trade.product}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Sustainability</p>
-                    <p>{trade.sustainability || 'N/A'}</p>
-                  </div>
                 </div>
 
                 <Separator />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Quantity</p>
-                    <p>{trade.quantity?.toLocaleString()} {trade.unit}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Tolerance</p>
-                    <p>{trade.tolerance}%</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Incoterm</p>
-                    <p>{trade.incoTerm}</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Loading Period</p>
-                    <p>
-                      {format(trade.loadingPeriodStart, 'dd MMM yyyy')} - {format(trade.loadingPeriodEnd, 'dd MMM yyyy')}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Pricing Period</p>
-                    <p>
-                      {format(trade.pricingPeriodStart, 'dd MMM yyyy')} - {format(trade.pricingPeriodEnd, 'dd MMM yyyy')}
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Payment Term</p>
-                    <p>{trade.paymentTerm}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Credit Status</p>
-                    <Badge variant={
-                      trade.creditStatus === 'approved' ? "default" :
-                      trade.creditStatus === 'rejected' ? "destructive" :
-                      "outline"
-                    }>
-                      {trade.creditStatus || 'pending'}
-                    </Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Customs Status</p>
-                    <Badge variant={
-                      trade.customsStatus === 'approved' ? "default" :
-                      trade.customsStatus === 'rejected' ? "destructive" :
-                      "outline"
-                    }>
-                      {trade.customsStatus || 'pending'}
-                    </Badge>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Pricing Information</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Pricing Type</p>
-                      <p>{trade.pricingType === 'efp' ? 'EFP' : 'Standard'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Legs Summary</p>
+                    <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground">
+                      <div>Leg Reference</div>
+                      <div>Buy/Sell</div>
+                      <div>Quantity</div>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Formula</p>
-                      <div className="p-2 bg-muted rounded-md">
-                        {formatFormula(trade.formula)}
+                    {trade.legs.map((leg) => (
+                      <div key={leg.id} className="grid grid-cols-3 gap-2">
+                        <div>{leg.legReference}</div>
+                        <div>
+                          <Badge variant={leg.buySell === 'buy' ? "default" : "outline"}>
+                            {leg.buySell}
+                          </Badge>
+                        </div>
+                        <div>{leg.quantity?.toLocaleString()} {leg.unit}</div>
                       </div>
-                    </div>
-                    {trade.pricingType === 'efp' && (
-                      <>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">EFP Premium</p>
-                          <p>{trade.efpPremium}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">EFP Agreed</p>
-                          <p>{trade.efpAgreedStatus ? 'Yes' : 'No'}</p>
-                        </div>
-                        {trade.efpFixedValue && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">EFP Fixed Value</p>
-                            <p>{trade.efpFixedValue}</p>
-                          </div>
-                        )}
-                        {trade.efpDesignatedMonth && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">EFP Designated Month</p>
-                            <p>{trade.efpDesignatedMonth}</p>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    ))}
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="legs" className="space-y-4">
-            {trade.legs.map((leg, index) => (
-              <Card key={leg.id} className={leg.id === legId ? "border-brand-lime/50" : ""}>
+          {trade.legs.map((leg) => (
+            <TabsContent key={leg.id} value={leg.id} className="space-y-4">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Leg: {leg.legReference}</span>
@@ -369,12 +454,35 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                       <p>{leg.product}</p>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-muted-foreground">Quantity</p>
-                      <p>{leg.quantity?.toLocaleString()} {leg.unit}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Sustainability</p>
+                      <p>{leg.sustainability || 'N/A'}</p>
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-muted-foreground">Incoterm</p>
                       <p>{leg.incoTerm}</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Quantity</p>
+                      <p>{leg.quantity?.toLocaleString()} {leg.unit}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Tolerance</p>
+                      <p>{leg.tolerance}%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Contract Status</p>
+                      <Badge variant={
+                        leg.contractStatus === 'confirmed' ? "default" :
+                        leg.contractStatus === 'cancelled' ? "destructive" :
+                        "outline"
+                      }>
+                        {leg.contractStatus || 'pending'}
+                      </Badge>
                     </div>
                   </div>
 
@@ -397,12 +505,42 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
 
                   <Separator />
 
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Payment Term</p>
+                      <p>{leg.paymentTerm}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Credit Status</p>
+                      <Badge variant={
+                        leg.creditStatus === 'approved' ? "default" :
+                        leg.creditStatus === 'rejected' ? "destructive" :
+                        "outline"
+                      }>
+                        {leg.creditStatus || 'pending'}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">Customs Status</p>
+                      <Badge variant={
+                        leg.customsStatus === 'approved' ? "default" :
+                        leg.customsStatus === 'rejected' ? "destructive" :
+                        "outline"
+                      }>
+                        {leg.customsStatus || 'pending'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <Separator />
+
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-muted-foreground">Pricing Information</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Pricing Type</p>
-                        <p>{leg.pricingType === 'efp' ? 'EFP' : 'Standard'}</p>
+                        <p>{leg.pricingType === 'efp' ? 'EFP' : 
+                           leg.pricingType === 'fixed' ? 'Fixed' : 'Standard'}</p>
                       </div>
                       <div className="space-y-2">
                         <p className="text-sm font-medium">Formula</p>
@@ -410,6 +548,46 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                           {formatFormula(leg.formula)}
                         </div>
                       </div>
+                      {leg.pricingType === 'efp' && (
+                        <>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">EFP Premium</p>
+                            <p>{leg.efpPremium}</p>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">EFP Agreed</p>
+                            <p>{leg.efpAgreedStatus ? 'Yes' : 'No'}</p>
+                          </div>
+                          {leg.efpFixedValue && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">EFP Fixed Value</p>
+                              <p>{leg.efpFixedValue}</p>
+                            </div>
+                          )}
+                          {leg.efpDesignatedMonth && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium">EFP Designated Month</p>
+                              <p>{leg.efpDesignatedMonth}</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      
+                      {leg.mtmFormula && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">MTM Formula</p>
+                          <div className="p-2 bg-muted rounded-md">
+                            {formatFormula(leg.mtmFormula)}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {leg.mtmFutureMonth && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">MTM Future Month</p>
+                          <p>{leg.mtmFutureMonth}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -424,8 +602,8 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                   )}
                 </CardContent>
               </Card>
-            ))}
-          </TabsContent>
+            </TabsContent>
+          ))}
         </Tabs>
       </DialogContent>
     </Dialog>
