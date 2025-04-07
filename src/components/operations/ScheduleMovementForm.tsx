@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateMovementReference } from '@/utils/tradeUtils';
 import { BuySell, ContractStatus, CreditStatus, CustomsStatus, IncoTerm, Movement, PaymentTerm, PricingType, Product, Unit } from '@/types';
+import { toast } from "sonner";
 
 // Define our own trade type for this component to avoid import issues
 interface Trade {
@@ -89,7 +90,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     initialMovement?.codDate ? new Date(initialMovement.codDate) : undefined
   );
   const [referenceNumber, setReferenceNumber] = useState(initialMovement?.referenceNumber || '');
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -133,8 +134,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
-      toast({
-        title: isEditMode ? "Movement Updated" : "Movement Scheduled",
+      toast(isEditMode ? "Movement Updated" : "Movement Scheduled", {
         description: isEditMode 
           ? "Your movement has been updated successfully." 
           : "Your movement has been scheduled successfully.",
@@ -142,23 +142,21 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       onSuccess();
     },
     onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: isEditMode ? "Failed to Update Movement" : "Failed to Schedule Movement",
+      toast(isEditMode ? "Failed to Update Movement" : "Failed to Schedule Movement", {
         description: error.message,
+        variant: "destructive",
       });
     }
   });
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // Make sure blQuantity is defined for a new movement
     if (!isEditMode && blQuantity === undefined) {
-      toast({
-        variant: "destructive",
-        title: "Required Field Missing",
+      toast("Required Field Missing", {
         description: "BL Quantity is required to schedule a movement.",
+        variant: "destructive",
       });
       return;
     }
@@ -504,7 +502,14 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="button" onClick={onSubmit}>
+        <Button type="submit" onClick={(e) => {
+          e.preventDefault();
+          const formElement = (e.target as HTMLButtonElement).closest('form');
+          if (formElement) {
+            const event = new Event('submit', { bubbles: true, cancelable: true });
+            formElement.dispatchEvent(event);
+          }
+        }}>
           {isEditMode ? "Update" : "Schedule"}
         </Button>
       </DialogFooter>

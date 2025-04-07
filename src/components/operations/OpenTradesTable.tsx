@@ -19,18 +19,47 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus } from '@/types';
+import { ContractStatus, BuySell, Product } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
 }
 
+// Define a type that matches what ScheduleMovementForm expects
+interface TradeForSchedule {
+  id: string;
+  trade_leg_id: string;
+  parent_trade_id: string;
+  trade_reference: string;
+  leg_reference?: string;
+  counterparty: string;
+  buy_sell: BuySell;
+  product: Product;
+  sustainability?: string;
+  inco_term?: string;
+  quantity: number;
+  tolerance?: number;
+  unit?: string;
+  payment_term?: string;
+  credit_status?: string;
+  customs_status?: string;
+  vessel_name?: string;
+  loadport?: string;
+  disport?: string;
+  scheduled_quantity: number;
+  open_quantity: number;
+  pricing_type?: string;
+  pricing_formula?: any;
+  comments?: string;
+  contract_status?: ContractStatus;
+}
+
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [selectedTrade, setSelectedTrade] = useState<OpenTrade | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<TradeForSchedule | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const handleRefresh = () => {
@@ -39,7 +68,36 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   };
 
   const handleScheduleMovement = (trade: OpenTrade) => {
-    setSelectedTrade(trade);
+    // Convert OpenTrade to TradeForSchedule
+    const scheduleableTrade: TradeForSchedule = {
+      id: trade.id,
+      trade_leg_id: trade.trade_leg_id,
+      parent_trade_id: trade.parent_trade_id,
+      trade_reference: trade.trade_reference,
+      leg_reference: trade.leg_reference,
+      counterparty: trade.counterparty,
+      buy_sell: trade.buy_sell as BuySell,
+      product: trade.product as Product,
+      sustainability: trade.sustainability,
+      inco_term: trade.inco_term,
+      quantity: trade.quantity,
+      tolerance: trade.tolerance,
+      unit: trade.unit,
+      payment_term: trade.payment_term,
+      credit_status: trade.credit_status,
+      customs_status: trade.customs_status,
+      vessel_name: trade.vessel_name,
+      loadport: trade.loadport,
+      disport: trade.disport,
+      scheduled_quantity: trade.scheduled_quantity,
+      open_quantity: trade.open_quantity,
+      pricing_type: trade.pricing_type,
+      pricing_formula: trade.pricing_formula,
+      comments: trade.comments,
+      contract_status: trade.contract_status as ContractStatus
+    };
+    
+    setSelectedTrade(scheduleableTrade);
     setIsDialogOpen(true);
   };
 
