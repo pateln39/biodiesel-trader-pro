@@ -1,6 +1,6 @@
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
-import { formatMonthCode } from '@/utils/dateUtils';
+import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];
@@ -269,43 +269,18 @@ export function calculateMonthlyPricingDistribution(
   const start = new Date(startDate);
   const end = new Date(endDate);
   
-  start.setDate(1);
-  end.setDate(1);
-  
-  let totalMonths = 0;
-  const currentDate = new Date(start);
-  const monthCodes: string[] = [];
-  
-  while (currentDate <= end) {
-    const formattedMonthCode = formatMonthCode(currentDate);
-    
-    monthCodes.push(formattedMonthCode);
-    
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    totalMonths++;
-  }
-  
-  if (totalMonths === 0) {
-    return distribution;
-  }
+  const businessDaysByMonth = getBusinessDaysByMonth(start, end);
   
   Object.keys(instrumentExposures).forEach(instrument => {
     if (!distribution[instrument]) {
       distribution[instrument] = {};
     }
     
-    monthCodes.forEach(monthCode => {
-      if (!distribution[instrument][monthCode]) {
-        distribution[instrument][monthCode] = 0;
-      }
-    });
-  });
-  
-  Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
-    const exposurePerMonth = totalExposure / totalMonths;
+    const totalExposure = instrumentExposures[instrument];
+    const monthlyValues = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
     
-    monthCodes.forEach(monthCode => {
-      distribution[instrument][monthCode] = exposurePerMonth;
+    Object.entries(monthlyValues).forEach(([monthCode, value]) => {
+      distribution[instrument][monthCode] = value;
     });
   });
   
