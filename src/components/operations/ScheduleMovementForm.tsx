@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,7 +49,6 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsTitle } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 
-// Form schema validation
 const formSchema = z.object({
   scheduledQuantity: z.coerce.number().positive("Quantity must be positive"),
   actualQuantity: z.coerce.number().positive("Quantity must be positive").optional(),
@@ -64,7 +62,6 @@ const formSchema = z.object({
   loadportInspector: z.string().optional(),
   disport: z.string().optional(),
   disportInspector: z.string().optional(),
-  // Add operator checklist fields
   bargeOrdersChecked: z.boolean().optional().default(false),
   nominationChecked: z.boolean().optional().default(false),
   loadPlanChecked: z.boolean().optional().default(false),
@@ -98,11 +95,9 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const [inspectorToAdd, setInspectorToAdd] = useState<'loadport' | 'disport'>('loadport');
   const [activeTab, setActiveTab] = useState('movement');
   
-  // Get existing number of movements for this trade leg to create sequential reference numbers
   const [existingMovementsCount, setExistingMovementsCount] = useState(0);
   
   useEffect(() => {
-    // Fetch number of existing movements for this trade leg to create sequential reference
     const fetchExistingMovements = async () => {
       try {
         const { count, error } = await supabase
@@ -123,7 +118,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     }
   }, [trade.trade_leg_id]);
   
-  // Form definition
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -139,20 +133,18 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       loadportInspector: initialMovement?.loadportInspector || '',
       disport: initialMovement?.disport || trade.disport || '',
       disportInspector: initialMovement?.disportInspector || '',
-      bargeOrdersChecked: false,
-      nominationChecked: false,
-      loadPlanChecked: false,
-      coaReceivedChecked: false,
-      coaSentChecked: false,
-      eadChecked: false,
+      bargeOrdersChecked: initialMovement?.bargeOrdersChecked || false,
+      nominationChecked: initialMovement?.nominationChecked || false,
+      loadPlanChecked: initialMovement?.loadPlanChecked || false,
+      coaReceivedChecked: initialMovement?.coaReceivedChecked || false,
+      coaSentChecked: initialMovement?.coaSentChecked || false,
+      eadChecked: initialMovement?.eadChecked || false,
     },
   });
 
-  // Create/update movement mutation
   const movementMutation = useMutation({
     mutationFn: async (data: FormValues & { referenceNumber: string }) => {
       if (isEditMode && initialMovement) {
-        // Update existing movement
         const { error } = await supabase
           .from('movements')
           .update({
@@ -168,7 +160,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
             loadport_inspector: data.loadportInspector,
             disport: data.disport,
             disport_inspector: data.disportInspector,
-            // Store operator checklist data as JSON in a metadata field or as separate columns
             barge_orders_checked: data.bargeOrdersChecked,
             nomination_checked: data.nominationChecked,
             load_plan_checked: data.loadPlanChecked,
@@ -180,7 +171,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
 
         if (error) throw error;
       } else {
-        // Create new movement - Fixed the JSON type issue and column names
         const movementData = {
           trade_leg_id: trade.trade_leg_id,
           parent_trade_id: trade.parent_trade_id,
@@ -193,7 +183,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           inco_term: trade.inco_term,
           scheduled_quantity: data.scheduledQuantity,
           actual_quantity: data.actualQuantity,
-          bl_quantity: data.scheduledQuantity, // Initially set BL quantity equal to scheduled
+          bl_quantity: data.scheduledQuantity,
           nomination_eta: data.nominationEta ? formatDateForStorage(data.nominationEta) : null,
           nomination_valid: data.nominationValid ? formatDateForStorage(data.nominationValid) : null,
           cash_flow: data.cashFlow ? formatDateForStorage(data.cashFlow) : null,
@@ -206,12 +196,10 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           disport_inspector: data.disportInspector,
           status: 'scheduled',
           pricing_type: trade.pricing_type,
-          // Convert pricing_formula to JSON string to fix type compatibility issue
           pricing_formula: trade.pricing_formula ? JSON.parse(JSON.stringify(trade.pricing_formula)) : null,
           customs_status: trade.customs_status,
           credit_status: trade.credit_status,
           contract_status: trade.contract_status,
-          // Store operator checklist data
           barge_orders_checked: data.bargeOrdersChecked,
           nomination_checked: data.nominationChecked,
           load_plan_checked: data.loadPlanChecked,
@@ -230,11 +218,9 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
       return data;
     },
     onSuccess: () => {
-      // Invalidate all related queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
-      // Show a single toast notification
       toast({
         variant: "success",
         title: isEditMode ? 'Movement updated' : 'Movement scheduled',
@@ -243,7 +229,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           : 'The movement has been scheduled successfully',
       });
       
-      // Call the onSuccess callback without showing another notification
       onSuccess();
     },
     onError: (error: any) => {
@@ -256,7 +241,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     },
   });
 
-  // Handle inspector selection
   const handleInspectorSelect = (value: string, type: 'loadport' | 'disport') => {
     if (value === 'other') {
       setInspectorToAdd(type);
@@ -266,15 +250,12 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     }
   };
 
-  // Submit handler
   const onSubmit = (values: FormValues) => {
-    // For new movements, create reference number with format: TRADEREF-LEG-N where N is sequential
     let referenceNumber = '';
     
     if (!isEditMode) {
       const newMovementCount = existingMovementsCount + 1;
       
-      // Generate a movement reference that includes the leg reference
       referenceNumber = formatMovementReference(
         trade.trade_reference, 
         trade.leg_reference || '', 
@@ -334,6 +315,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                           {...field} 
                           min={0}
                           max={!isEditMode ? (trade.balance || trade.quantity) : undefined}
+                          step="any"
                         />
                       </FormControl>
                       {!isEditMode && (
@@ -341,29 +323,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                           Available: {trade.balance || trade.quantity} MT
                         </FormDescription>
                       )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="actualQuantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Actual Quantity (MT)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field} 
-                          min={0}
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? undefined : Number(e.target.value);
-                            field.onChange(value);
-                          }}
-                        />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -425,38 +384,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                         date={field.value}
                         setDate={field.onChange}
                         placeholder="Select cash flow date"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="blDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>BL Date</FormLabel>
-                      <DatePicker
-                        date={field.value}
-                        setDate={field.onChange}
-                        placeholder="Select BL date"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="codDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>COD Date</FormLabel>
-                      <DatePicker
-                        date={field.value}
-                        setDate={field.onChange}
-                        placeholder="Select COD date"
                       />
                       <FormMessage />
                     </FormItem>
@@ -548,6 +475,62 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                           </SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="actualQuantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Actual Quantity (MT)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          min={0}
+                          step="any"
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? undefined : Number(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="blDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>BL Date</FormLabel>
+                      <DatePicker
+                        date={field.value}
+                        setDate={field.onChange}
+                        placeholder="Select BL date"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="codDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>COD Date</FormLabel>
+                      <DatePicker
+                        date={field.value}
+                        setDate={field.onChange}
+                        placeholder="Select COD date"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -687,7 +670,6 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
         open={isAddInspectorOpen}
         onOpenChange={setIsAddInspectorOpen}
         onInspectorAdded={(name) => {
-          // Set the newly created inspector to the form
           if (inspectorToAdd === 'loadport') {
             form.setValue('loadportInspector', name);
           } else {
