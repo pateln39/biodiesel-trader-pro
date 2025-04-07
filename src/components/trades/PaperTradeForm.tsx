@@ -1,320 +1,354 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import PaperTradeTable from './paper/PaperTradeTable';
-import PaperExposureTable from './paper/PaperExposureTable';
 import { generateLegReference } from '@/utils/tradeUtils';
+import PaperTradeTable from './PaperTradeTable';
+import { createEmptyFormula } from '@/utils/formulaUtils';
+import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { getNextMonths } from '@/utils/dateUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table';
 
-export interface PaperTradeFormProps {
+// Define BrokerOption interface
+interface BrokerOption {
+  id: string;
+  name: string;
+}
+
+interface PaperTradeFormProps {
   tradeReference: string;
-  onSubmit: (data: any) => void;
+  onSubmit: (trade: any) => void;
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: any;
   readOnly?: boolean;
 }
 
-interface Broker {
-  id: string;
-  name: string;
-}
+const ALL_PRODUCTS = [
+  'Argus UCOME', 
+  'Argus FAME0', 
+  'Argus RME', 
+  'Platts LSGO', 
+  'Argus HVO', 
+  'ICE GASOIL FUTURES'
+];
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
-  onCancel, 
+  onCancel,
   isEditMode = false,
-  initialData = null,
+  initialData,
   readOnly = false
 }) => {
-  // Base form state
-  const [formData, setFormData] = useState({
-    tradeReference,
-    comment: '',
-    broker: '',
-    legs: []
+  const [selectedBroker, setSelectedBroker] = useState('');
+  const [brokers, setBrokers] = useState<BrokerOption[]>([]);
+  const [isAddingBroker, setIsAddingBroker] = useState(false);
+  const [newBrokerName, setNewBrokerName] = useState('');
+  
+  const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
+    if (initialData && initialData.legs && initialData.legs.length > 0) {
+      return initialData.legs.map((leg: any) => ({
+        ...leg,
+        buySell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        period: leg.period,
+        price: leg.price,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationshipType: leg.relationshipType,
+        rightSide: leg.rightSide,
+        formula: leg.formula,
+        mtmFormula: leg.mtmFormula,
+        exposures: leg.exposures
+      }));
+    }
+    return [];
   });
-
-  // Fetch brokers
-  const { data: brokers = [], isLoading: loadingBrokers } = useQuery({
-    queryKey: ['brokers'],
-    queryFn: async () => {
+  
+  const availableMonths = useMemo(() => getNextMonths(13), []);
+  
+  const [exposureData, setExposureData] = useState<any[]>(() => {
+    return availableMonths.map(month => {
+      const entry: any = { month };
+      ALL_PRODUCTS.forEach(product => {
+        entry[product] = 0;
+      });
+      return entry;
+    });
+  });
+  
+  useEffect(() => {
+    if (initialData && initialData.broker) {
+      const fetchBrokerIdByName = async () => {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('id')
+          .eq('name', initialData.broker)
+          .single();
+          
+        if (data && !error) {
+          setSelectedBroker(data.id);
+        }
+      };
+      
+      fetchBrokerIdByName();
+    }
+  }, [initialData]);
+  
+  useEffect(() => {
+    const fetchBrokers = async () => {
       const { data, error } = await supabase
         .from('brokers')
         .select('*')
         .eq('is_active', true)
         .order('name');
         
-      if (error) throw error;
-      return data as Broker[];
-    }
-  });
-
-  // Initialize form with data if in edit mode
-  useEffect(() => {
-    if (isEditMode && initialData) {
-      setFormData({
-        tradeReference: initialData.tradeReference || tradeReference,
-        comment: initialData.comment || '',
-        broker: initialData.broker || '',
-        legs: initialData.legs || []
-      });
-    } else if (!isEditMode) {
-      // For new trades, always start with an empty leg
-      setFormData(prev => ({
-        ...prev,
-        legs: prev.legs.length === 0 ? [createEmptyLeg()] : prev.legs
-      }));
-    }
-  }, [isEditMode, initialData, tradeReference]);
-
-  // Create an empty trade leg
-  const createEmptyLeg = () => {
-    return {
-      id: null,
-      legReference: generateLegReference(),
-      leftSide: {
-        product: '',
-        quantity: '',
-        period: '',
-        price: ''
-      },
-      rightSide: {
-        product: '',
-        quantity: '',
-        period: '',
-        price: ''
-      },
-      mtm: {
-        formula: '',
-        period: ''
-      },
-      relationshipType: '',
-      exposures: {
-        physical: {},
-        pricing: {}
+      if (error) {
+        toast.error('Failed to load brokers', {
+          description: error.message
+        });
+        return;
+      }
+      
+      setBrokers(data || []);
+      if (data && data.length > 0 && !selectedBroker) {
+        setSelectedBroker(data[0].id);
       }
     };
-  };
-
-  // Handle legs changes
-  const handleLegsChange = (newLegs: any[]) => {
-    setFormData(prev => ({
-      ...prev,
-      legs: newLegs
-    }));
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
     
-    if (readOnly) {
-      toast.error("Cannot submit in read-only mode");
-      return;
-    }
-
-    // Validation
-    if (!formData.comment.trim()) {
-      toast.error("Please enter a comment");
-      return;
-    }
-
-    if (!formData.broker) {
-      toast.error("Please select a broker");
-      return;
-    }
-
-    if (formData.legs.length === 0) {
-      toast.error("Please add at least one trade");
-      return;
-    }
-
-    // Check each leg for required fields
-    const invalidLegs = formData.legs.filter(leg => {
-      const leftSide = leg.leftSide;
-      if (!leftSide.product || !leftSide.quantity || !leftSide.period) {
-        return true;
-      }
-      
-      // If right side product exists, it must have quantity and period too
-      if (leg.rightSide && leg.rightSide.product) {
-        return !leg.rightSide.quantity || !leg.rightSide.period;
-      }
-      
-      return false;
-    });
-
-    if (invalidLegs.length > 0) {
-      toast.error("Please complete all trade details", {
-        description: "Some trades have missing required fields"
-      });
-      return;
-    }
-
-    // Transform data for submission
-    const submitData = {
-      tradeReference: formData.tradeReference,
-      tradeType: 'paper',
-      comment: formData.comment,
-      broker: formData.broker,
-      legs: formData.legs.map(leg => ({
-        legReference: leg.legReference,
-        buySell: leg.leftSide.quantity.startsWith('-') ? 'sell' : 'buy',
-        product: leg.leftSide.product,
-        quantity: Math.abs(parseFloat(leg.leftSide.quantity)),
-        period: leg.leftSide.period,
-        price: parseFloat(leg.leftSide.price) || null,
-        rightSide: leg.rightSide && leg.rightSide.product ? {
-          product: leg.rightSide.product,
-          price: parseFloat(leg.rightSide.price) || null
-        } : null,
-        mtmFormula: leg.mtm.formula,
-        mtmPeriod: leg.mtm.period,
-        relationshipType: leg.relationshipType,
-        exposures: leg.exposures
-      }))
-    };
-
-    onSubmit(submitData);
-  };
-
-  // Calculate exposures from legs
-  const calculateExposures = (legs: any[]) => {
-    // This would calculate the exposure table data
-    // For now, just return mock data
-    return [];
-  };
-
-  // Add a new broker
+    fetchBrokers();
+  }, []);
+  
+  useEffect(() => {
+    calculateExposures(tradeLegs);
+  }, [tradeLegs]);
+  
   const handleAddBroker = async () => {
-    const brokerName = prompt("Enter new broker name:");
-    if (!brokerName) return;
+    if (!newBrokerName.trim()) {
+      toast.error('Broker name cannot be empty');
+      return;
+    }
     
     try {
       const { data, error } = await supabase
         .from('brokers')
-        .insert({ name: brokerName })
+        .insert({ name: newBrokerName.trim() })
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Error adding broker: ${error.message}`);
+      }
       
-      toast.success("Broker added", {
-        description: `${brokerName} has been added to the broker list`
+      setBrokers([...brokers, data]);
+      setSelectedBroker(data.id);
+      setNewBrokerName('');
+      setIsAddingBroker(false);
+      
+      toast.success('Broker added successfully');
+    } catch (error: any) {
+      toast.error('Failed to add broker', {
+        description: error.message
       });
-      
-      setFormData(prev => ({
-        ...prev,
-        broker: data.id
-      }));
-    } catch (error) {
-      console.error("Error adding broker:", error);
-      toast.error("Failed to add broker");
     }
   };
-
+  
+  const handleLegsChange = (newLegs: any[]) => {
+    setTradeLegs(newLegs);
+    calculateExposures(newLegs);
+  };
+  
+  const calculateExposures = (legs: any[]) => {
+    const exposures = availableMonths.map(month => {
+      const entry: any = { month };
+      ALL_PRODUCTS.forEach(product => {
+        entry[product] = 0;
+      });
+      return entry;
+    });
+    
+    if (legs.length > 0) {
+      legs.forEach(leg => {
+        if (!leg.period || !leg.product) return;
+        
+        const monthIndex = exposures.findIndex(e => e.month === leg.period);
+        if (monthIndex === -1) return;
+        
+        const canonicalProduct = mapProductToCanonical(leg.product);
+        
+        if (canonicalProduct && ALL_PRODUCTS.includes(canonicalProduct)) {
+          const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
+          exposures[monthIndex][canonicalProduct] += quantity || 0;
+        }
+        
+        if (leg.rightSide && leg.rightSide.product) {
+          const rightCanonicalProduct = mapProductToCanonical(leg.rightSide.product);
+          if (rightCanonicalProduct && ALL_PRODUCTS.includes(rightCanonicalProduct)) {
+            const rightQuantity = leg.rightSide.quantity || 0;
+            exposures[monthIndex][rightCanonicalProduct] += rightQuantity;
+          }
+        }
+      });
+    }
+    
+    setExposureData(exposures);
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Skip validation for read-only mode
+    if (readOnly) {
+      return;
+    }
+    
+    const broker = brokers.find(b => b.id === selectedBroker);
+    const brokerName = broker?.name || '';
+    
+    if (!validatePaperTradeForm(brokerName, tradeLegs)) {
+      return;
+    }
+    
+    const tradeData = {
+      tradeReference,
+      tradeType: 'paper',
+      broker: brokerName,
+      legs: tradeLegs.map((leg, index) => {
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                            generateLegReference(tradeReference, index);
+                            
+        return {
+          ...leg,
+          legReference,
+          broker: brokerName,
+          mtmFormula: leg.mtmFormula || createEmptyFormula(),
+          formula: leg.formula || createEmptyFormula(),
+        };
+      })
+    };
+    
+    onSubmit(tradeData);
+  };
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <Label htmlFor="tradeReference">Trade Reference:</Label>
-          <Input
-            id="tradeReference"
-            value={formData.tradeReference}
-            readOnly
-            className="bg-muted"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <Label htmlFor="comment">Comment:</Label>
-          <Input
-            id="comment"
-            value={formData.comment}
-            onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
-            placeholder="Enter trade comment"
-            disabled={readOnly}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="broker">Broker:</Label>
-          <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="broker">Broker</Label>
+          <div className="flex space-x-2">
             <Select 
-              value={formData.broker} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, broker: value }))}
-              disabled={readOnly}
+              value={selectedBroker} 
+              onValueChange={setSelectedBroker}
+              disabled={isAddingBroker || readOnly}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="broker" className="flex-grow">
                 <SelectValue placeholder="Select broker" />
               </SelectTrigger>
               <SelectContent>
-                {brokers.map(broker => (
+                {brokers.map((broker) => (
                   <SelectItem key={broker.id} value={broker.id}>
                     {broker.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
             {!readOnly && (
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={handleAddBroker}
+                onClick={() => setIsAddingBroker(!isAddingBroker)}
               >
-                + Add Broker
+                {isAddingBroker ? 'Cancel' : '+ Add Broker'}
               </Button>
             )}
           </div>
         </div>
+        
+        {isAddingBroker && !readOnly && (
+          <div className="space-y-2">
+            <Label htmlFor="new-broker">New Broker</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="new-broker"
+                value={newBrokerName}
+                onChange={(e) => setNewBrokerName(e.target.value)}
+                placeholder="Enter broker name"
+                className="flex-grow"
+              />
+              <Button 
+                type="button"
+                onClick={handleAddBroker}
+              >
+                Add
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
+      <Separator />
+      
       <div className="space-y-4">
-        <Label>Trade Details:</Label>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <PaperTradeTable 
-              legs={formData.legs} 
-              onLegsChange={handleLegsChange}
-              readOnly={readOnly}
-            />
-          </CardContent>
-        </Card>
+        <h3 className="text-lg font-semibold">Trade Table</h3>
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+          <PaperTradeTable
+            legs={tradeLegs}
+            onLegsChange={handleLegsChange}
+            readOnly={readOnly}
+          />
+        </div>
+      </div>
+      
+      <Separator />
+      
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Exposure Table</h3>
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 overflow-x-auto">
+          <Table className="min-w-full divide-y divide-gray-200">
+            <TableHeader className="bg-transparent">
+              <TableRow>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Month</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">UCOME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">FAME0</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">RME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">LSGO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">HVO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">GASOIL</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-transparent divide-y divide-gray-200">
+              {exposureData.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{row.month}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus UCOME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus FAME0'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus RME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Platts LSGO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus HVO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['ICE GASOIL FUTURES'] || 0}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        <Label>Exposure Summary:</Label>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <PaperExposureTable 
-              data={calculateExposures(formData.legs)} 
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <Separator />
 
       <div className="flex justify-end space-x-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-        >
-          Cancel
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {readOnly ? 'Back' : 'Cancel'}
         </Button>
-        
         {!readOnly && (
           <Button type="submit">
             {isEditMode ? 'Update Trade' : 'Create Trade'}

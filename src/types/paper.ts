@@ -1,57 +1,61 @@
 
+import { BuySell, Product } from './trade';
+import { PricingFormula } from './pricing';
+
+// Paper trade parent
+export interface PaperParentTrade {
+  id: string;
+  tradeReference: string;
+  tradeType: "paper";
+  createdAt: Date;
+  updatedAt: Date;
+  counterparty: string;
+  broker: string;
+}
+
+// Paper trade right side
+export interface PaperTradeRightSide {
+  product: Product;
+  quantity: number;
+  period?: string;
+  price?: number;
+}
+
+// Paper trade leg
 export interface PaperTradeLeg {
   id: string;
-  legReference: string;
   paperTradeId: string;
-  buySell: 'buy' | 'sell';
-  product: string;
+  legReference: string;
+  buySell: BuySell;
+  product: Product;
   quantity: number;
-  price?: number;
-  formula?: any;
-  mtmFormula?: any;
+  period: string;
+  price: number;
+  broker: string;
+  instrument: string;
+  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
+  rightSide?: PaperTradeRightSide;
+  // Using Record<string, any> for formula and mtmFormula to be compatible with JSON
+  formula?: Record<string, any>;
+  mtmFormula?: Record<string, any>;
+  // Typed exposures field for better type safety
   exposures?: {
     physical?: Record<string, number>;
     pricing?: Record<string, number>;
+    paper?: Record<string, number>;
   };
-  period?: string;
-  broker?: string;
-  instrument?: string;
-  relationshipType: 'FP' | 'DIFF' | 'SPREAD';
-  rightSide?: {
-    product: string;
-    price?: number;
-  };
-  tradingPeriod?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
+// Complete paper trade with parent and legs
 export interface PaperTrade {
   id: string;
   tradeReference: string;
-  broker?: string;
-  counterparty?: string;
-  comment?: string;
-  legs: PaperTradeLeg[];
+  tradeType: "paper";
+  broker: string;
+  counterparty: string;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface PaperMTMPosition {
-  legId: string;
-  tradeRef: string;
-  legReference: string;
-  buySell: string;
-  product: string;
-  quantity: number;
-  period: string;
-  relationshipType: string;
-  calculatedPrice: number;
-  mtmCalculatedPrice: number;
-  mtmValue: number;
-  periodType: 'past' | 'current' | 'future';
-  rightSide?: {
-    product: string;
-    price?: number;
-  };
+  buySell: BuySell;
+  product: Product;
+  legs: PaperTradeLeg[];
 }

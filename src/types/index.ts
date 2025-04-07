@@ -1,51 +1,29 @@
-export type TradeType = 'physical' | 'paper';
 
-export type BuySell = 'buy' | 'sell';
+// Export from type modules
+export * from './pricing';
+export * from './physical';
+export * from './paper';
+export * from './common';
 
-export type IncoTerm = 'FOB' | 'CIF' | 'CFR' | 'EXW' | 'FCA' | 'FAS' | 'DAP' | 'DPU' | 'DDP';
-
-export type Unit = 'MT' | 'KG' | 'LBS';
-
-export type PaymentTerm = 
-  '30 days' | 
-  '60 days' | 
-  '90 days' | 
-  'Cash against documents' | 
-  'Letter of credit';
-
-export type CreditStatus = 'approved' | 'pending' | 'rejected';
-
-export type CustomsStatus = 'approved' | 'pending' | 'rejected';
-
-export type Product = 
-  'UCOME' | 
-  'RME' | 
-  'FAME0' | 
-  'HVO' | 
-  'DIESEL' | 
-  'LSGO' | 
-  'EFP';
-
-export type PricingType = 'standard' | 'efp' | 'fixed';
-
+// Add or update the Movement interface
 export interface Movement {
   id: string;
-  referenceNumber: string;
+  referenceNumber?: string;
   tradeLegId?: string;
   parentTradeId?: string;
-  tradeReference: string;
-  counterpartyName: string;
-  product: string;
-  buySell: string;
+  tradeReference?: string;
+  counterpartyName?: string;
+  product?: string;
+  buySell?: string;
   incoTerm?: string;
   sustainability?: string;
-  quantity?: number;
+  quantity?: number; // Added this field to match the open trade's quantity
   scheduledQuantity?: number;
   blQuantity?: number;
   actualQuantity?: number;
   nominationEta?: Date;
   nominationValid?: Date;
-  cashFlow?: Date;
+  cashFlow?: Date; // Changed from string to Date
   bargeName?: string;
   loadport?: string;
   loadportInspector?: string;
@@ -65,35 +43,45 @@ export interface Movement {
   updatedAt: Date;
 }
 
-export interface PhysicalTrade {
-  id: string;
-  tradeReference: string;
-  tradeType: 'physical';
-  createdAt: Date;
-  updatedAt: Date;
-  physicalType: 'spot' | 'term';
-  counterparty: string;
-  buySell: BuySell;
-  product: Product;
-  sustainability?: string;
-  incoTerm: IncoTerm;
-  quantity: number;
-  tolerance?: number;
-  loadingPeriodStart: Date;
-  loadingPeriodEnd: Date;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  unit: Unit;
-  paymentTerm: PaymentTerm;
-  creditStatus: CreditStatus;
-  customsStatus?: CustomsStatus;
-  formula: any;
-  mtmFormula: any;
-  pricingType: PricingType;
-  mtmFutureMonth?: string;
-  efpPremium?: number;
-  efpAgreedStatus?: boolean;
-  efpFixedValue?: number;
-  efpDesignatedMonth?: string;
-  legs: any[];
-}
+// Explicit re-exports to avoid name conflicts when importing
+import { PhysicalTrade } from './physical';
+import { 
+  Trade, 
+  BuySell, 
+  Product, 
+  IncoTerm, 
+  Unit, 
+  PaymentTerm, 
+  CreditStatus, 
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  DbParentTrade,
+  DbTradeLeg,
+  TradeType,
+  Instrument,
+  ExposureResult
+} from './common';
+import { PricingFormula, PricingComponent } from './pricing';
+
+// Re-export specific types explicitly to avoid ambiguities
+export type {
+  PhysicalTrade,
+  Trade,
+  TradeType,
+  BuySell,
+  Product,
+  IncoTerm,
+  Unit,
+  PaymentTerm,
+  CreditStatus,
+  CustomsStatus,
+  PricingType,
+  ContractStatus,
+  PricingFormula,
+  PricingComponent,
+  DbParentTrade,
+  DbTradeLeg,
+  Instrument,
+  ExposureResult
+};
