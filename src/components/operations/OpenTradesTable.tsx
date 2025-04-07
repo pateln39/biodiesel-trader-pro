@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
-import { Loader2, ArrowUpDown, Ship } from 'lucide-react';
+import { Loader2, ArrowUpDown, Ship, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -16,9 +17,9 @@ import {
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog';
 import { toast } from "sonner";
-import { ContractStatus } from '@/types';
+import { ContractStatus, CreditStatus, PaymentTerm, Unit, IncoTerm } from '@/types';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -30,6 +31,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedTrade, setSelectedTrade] = useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
+  const [selectedTradeForComments, setSelectedTradeForComments] = useState<OpenTrade | null>(null);
   
   const handleRefresh = () => {
     refetchOpenTrades();
@@ -46,6 +49,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
     setSelectedTrade(null);
     handleRefresh();
     toast.success("Movement scheduled successfully");
+  };
+
+  const handleCommentsClick = (trade: OpenTrade) => {
+    setSelectedTradeForComments(trade);
+    setIsCommentsDialogOpen(true);
   };
 
   const handleSort = (field: string) => {
@@ -192,6 +200,13 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                 formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
                 trade.trade_reference;
               
+              // Get comment preview - first 15 chars + ellipsis if longer
+              const commentPreview = trade.comments 
+                ? (trade.comments.length > 15 
+                    ? `${trade.comments.substring(0, 15)}...` 
+                    : trade.comments)
+                : '';
+              
               return (
                 <TableRow 
                   key={trade.id} 
@@ -233,11 +248,16 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                     />
                   </TableCell>
                   <TableCell>
-                    <CommentsCellInput
-                      tradeId={trade.parent_trade_id}
-                      legId={trade.trade_leg_id}
-                      initialValue={trade.comments || ''}
-                    />
+                    {/* Comment cell with icon + preview and dialog */}
+                    <div 
+                      className="flex items-center gap-1 cursor-pointer hover:text-primary"
+                      onClick={() => handleCommentsClick(trade)}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="text-xs truncate max-w-[120px]">
+                        {commentPreview || 'Add comment...'}
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {trade.customs_status && (
@@ -293,7 +313,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                               </DialogTrigger>
                               {selectedTrade && (
                                 <ScheduleMovementForm 
-                                  trade={selectedTrade} 
+                                  trade={selectedTrade as any} 
                                   onSuccess={handleMovementScheduled}
                                   onCancel={() => setIsDialogOpen(false)}
                                 />
@@ -313,6 +333,25 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Comments Dialog */}
+      <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <div className="space-y-2">
+            <h3 className="text-lg font-medium">
+              Comments for Trade {selectedTradeForComments?.trade_reference}
+            </h3>
+            {selectedTradeForComments && (
+              <CommentsCellInput
+                tradeId={selectedTradeForComments.parent_trade_id}
+                legId={selectedTradeForComments.trade_leg_id}
+                initialValue={selectedTradeForComments.comments || ''}
+                isMovement={true}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
