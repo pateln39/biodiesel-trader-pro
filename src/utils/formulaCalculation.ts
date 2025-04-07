@@ -1,5 +1,6 @@
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
+import { formatMonthCode } from '@/utils/dateUtils';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];
@@ -249,8 +250,21 @@ export function calculateMonthlyPricingDistribution(
   buySell: 'buy' | 'sell',
   startDate: Date,
   endDate: Date
-): Record<string, number> {
-  const distribution: Record<string, number> = {};
+): Record<string, Record<string, Record<string, number>>> {
+  const distribution: Record<string, Record<string, Record<string, number>>> = {};
+  const instrumentExposures: Record<string, number> = {};
+  
+  const exposures = calculatePricingExposure(tokens, quantity, buySell);
+  
+  Object.entries(exposures).forEach(([instrument, value]) => {
+    if (value !== 0) {
+      instrumentExposures[instrument] = value;
+    }
+  });
+  
+  if (Object.keys(instrumentExposures).length === 0) {
+    return distribution;
+  }
   
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -260,10 +274,15 @@ export function calculateMonthlyPricingDistribution(
   
   let totalMonths = 0;
   const currentDate = new Date(start);
+  const monthCodes: string[] = [];
   
   while (currentDate <= end) {
-    const monthCode = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-    distribution[monthCode] = 0;
+    const formattedMonthCode = currentDate.toLocaleDateString('default', { 
+      month: 'short', 
+      year: '2-digit' 
+    });
+    
+    monthCodes.push(formattedMonthCode);
     
     currentDate.setMonth(currentDate.getMonth() + 1);
     totalMonths++;
@@ -273,13 +292,24 @@ export function calculateMonthlyPricingDistribution(
     return distribution;
   }
   
-  const exposures = calculatePricingExposure(tokens, quantity, buySell);
-  const totalExposure = Object.values(exposures).reduce((sum, value) => sum + Math.abs(value), 0);
+  Object.keys(instrumentExposures).forEach(instrument => {
+    if (!distribution[instrument]) {
+      distribution[instrument] = {};
+    }
+    
+    monthCodes.forEach(monthCode => {
+      if (!distribution[instrument][monthCode]) {
+        distribution[instrument][monthCode] = 0;
+      }
+    });
+  });
   
-  const exposurePerMonth = totalExposure / totalMonths;
-  
-  Object.keys(distribution).forEach(monthCode => {
-    distribution[monthCode] = Math.round(exposurePerMonth);
+  Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
+    const exposurePerMonth = Math.round(totalExposure / totalMonths);
+    
+    monthCodes.forEach(monthCode => {
+      distribution[instrument][monthCode] = exposurePerMonth;
+    });
   });
   
   return distribution;

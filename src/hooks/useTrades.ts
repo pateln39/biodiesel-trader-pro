@@ -15,13 +15,14 @@ import {
   CustomsStatus,
   PricingType,
   ContractStatus,
+  PhysicalTradeLeg,
   DbParentTrade,
   DbTradeLeg
 } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 
-const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
+const fetchTrades = async (): Promise<PhysicalTrade[]> => {
   try {
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
@@ -42,16 +43,23 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
       throw new Error(`Error fetching trade legs: ${tradeLegsError.message}`);
     }
 
-    const mappedTrades = parentTrades.map((parent: DbParentTrade) => {
+    const mappedTrades: PhysicalTrade[] = parentTrades.map((parent: DbParentTrade) => {
       const legs = tradeLegs.filter((leg: any) => leg.parent_trade_id === parent.id);
       
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
       if (parent.trade_type === 'physical' && firstLeg) {
+        const loadingPeriodStart = firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date();
+        const pricingPeriodStart = firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date();
+        
+        // Default end dates to start dates if they're missing
+        const loadingPeriodEnd = firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(loadingPeriodStart);
+        const pricingPeriodEnd = firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(pricingPeriodStart);
+        
         const physicalTrade: PhysicalTrade = {
           id: parent.id,
           tradeReference: parent.trade_reference,
-          tradeType: 'physical', 
+          tradeType: 'physical' as TradeType, 
           createdAt: new Date(parent.created_at),
           updatedAt: new Date(parent.updated_at),
           physicalType: (parent.physical_type || 'spot') as 'spot' | 'term',
@@ -62,10 +70,10 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
           incoTerm: (firstLeg.inco_term || 'FOB') as IncoTerm,
           quantity: firstLeg.quantity,
           tolerance: firstLeg.tolerance || 0,
-          loadingPeriodStart: firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
-          loadingPeriodEnd: firstLeg.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
-          pricingPeriodStart: firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
-          pricingPeriodEnd: firstLeg.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
+          loadingPeriodStart,
+          loadingPeriodEnd,
+          pricingPeriodStart,
+          pricingPeriodEnd,
           unit: (firstLeg.unit || 'MT') as Unit,
           paymentTerm: (firstLeg.payment_term || '30 days') as PaymentTerm,
           creditStatus: (firstLeg.credit_status || 'pending') as CreditStatus,
@@ -76,53 +84,68 @@ const fetchTrades = async (): Promise<(Trade | PhysicalTrade)[]> => {
           mtmFutureMonth: firstLeg.mtm_future_month,
           comments: firstLeg.comments,
           contractStatus: firstLeg.contract_status as ContractStatus,
-          legs: legs.map(leg => ({
-            id: leg.id,
-            parentTradeId: leg.parent_trade_id,
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell as BuySell,
-            product: leg.product as Product,
-            sustainability: leg.sustainability || '',
-            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-            quantity: leg.quantity,
-            tolerance: leg.tolerance || 0,
-            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-            unit: (leg.unit || 'MT') as Unit,
-            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-            customsStatus: leg.customs_status as CustomsStatus,
-            formula: validateAndParsePricingFormula(leg.pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-            pricingType: (leg.pricing_type || 'standard') as PricingType,
-            efpPremium: leg.efp_premium,
-            efpAgreedStatus: leg.efp_agreed_status,
-            efpFixedValue: leg.efp_fixed_value,
-            efpDesignatedMonth: leg.efp_designated_month,
-            mtmFutureMonth: leg.mtm_future_month,
-            comments: leg.comments,
-            contractStatus: leg.contract_status as ContractStatus
-          }))
+          legs: legs.map(leg => {
+            const legLoadingStart = leg.loading_period_start ? new Date(leg.loading_period_start) : new Date();
+            const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
+            
+            // Default end dates to start dates if they're missing for legs
+            const legLoadingEnd = leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(legLoadingStart);
+            const legPricingEnd = leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(legPricingStart);
+            
+            return {
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              sustainability: leg.sustainability || '',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: legLoadingStart,
+              loadingPeriodEnd: legLoadingEnd,
+              pricingPeriodStart: legPricingStart,
+              pricingPeriodEnd: legPricingEnd,
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+              customsStatus: leg.customs_status as CustomsStatus,
+              formula: validateAndParsePricingFormula(leg.pricing_formula),
+              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
+              pricingType: (leg.pricing_type || 'standard') as PricingType,
+              efpPremium: leg.efp_premium,
+              efpAgreedStatus: leg.efp_agreed_status,
+              efpFixedValue: leg.efp_fixed_value,
+              efpDesignatedMonth: leg.efp_designated_month,
+              mtmFutureMonth: leg.mtm_future_month,
+              comments: leg.comments,
+              contractStatus: leg.contract_status as ContractStatus
+            } as PhysicalTradeLeg;
+          })
         };
         return physicalTrade;
       } 
       
+      // This branch should never execute with our filter, but TypeScript needs it
       return {
         id: parent.id,
         tradeReference: parent.trade_reference,
-        tradeType: parent.trade_type as TradeType,
+        tradeType: 'physical' as TradeType,
         createdAt: new Date(parent.created_at),
         updatedAt: new Date(parent.updated_at),
         counterparty: parent.counterparty,
         buySell: 'buy' as BuySell,
         product: 'UCOME' as Product,
+        quantity: 0,
+        loadingPeriodStart: new Date(),
+        loadingPeriodEnd: new Date(),
+        pricingPeriodStart: new Date(),
+        pricingPeriodEnd: new Date(),
         legs: []
-      } as Trade;
+      } as PhysicalTrade;
     });
 
-    return mappedTrades;
+    return mappedTrades.filter(trade => trade.tradeType === 'physical');
   } catch (error: any) {
     console.error('[PHYSICAL] Error fetching trades:', error);
     throw new Error(error.message);

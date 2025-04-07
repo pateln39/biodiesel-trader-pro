@@ -86,16 +86,30 @@ export const calculateTradeExposures = (trades: PhysicalTrade[]): ExposureResult
             const canonicalInstrument = mapProductToCanonical(instrument);
             
             Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-              // Process each monthly distribution value regardless of the physical month's validity
-              if (!monthlyPricing[monthCode]) {
-                monthlyPricing[monthCode] = {};
+              // Make sure the monthCode is in the correct format (MMM-YY)
+              // Handle both the new format "Apr-24" and the legacy format "2024-04"
+              let formattedMonthCode = monthCode;
+              
+              // Check if the monthCode is in YYYY-MM format and convert it
+              if (monthCode.match(/^\d{4}-\d{2}$/)) {
+                const [year, month] = monthCode.split('-');
+                const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+                formattedMonthCode = date.toLocaleDateString('default', { 
+                  month: 'short', 
+                  year: '2-digit' 
+                });
               }
               
-              if (!monthlyPricing[monthCode][canonicalInstrument]) {
-                monthlyPricing[monthCode][canonicalInstrument] = 0;
+              // Process each monthly distribution value
+              if (!monthlyPricing[formattedMonthCode]) {
+                monthlyPricing[formattedMonthCode] = {};
               }
               
-              monthlyPricing[monthCode][canonicalInstrument] += value;
+              if (!monthlyPricing[formattedMonthCode][canonicalInstrument]) {
+                monthlyPricing[formattedMonthCode][canonicalInstrument] = 0;
+              }
+              
+              monthlyPricing[formattedMonthCode][canonicalInstrument] += value;
             });
           });
         } 
