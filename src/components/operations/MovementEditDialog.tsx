@@ -8,6 +8,7 @@ import ScheduleMovementForm from './ScheduleMovementForm';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import { toast } from '@/hooks/use-toast';
 import { BuySell, IncoTerm, CreditStatus, CustomsStatus, ContractStatus, Unit, PaymentTerm, Product, PricingType } from '@/types';
+import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 
 interface MovementEditDialogProps {
   open: boolean;
@@ -51,6 +52,8 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
           customs_status: data.customs_status as CustomsStatus,
           contract_status: data.contract_status as ContractStatus,
           pricing_type: data.pricing_type as PricingType,
+          // Properly parse and validate the pricing formula
+          pricing_formula: validateAndParsePricingFormula(data.pricing_formula),
           loading_period_start: data.loading_period_start ? new Date(data.loading_period_start) : undefined,
           loading_period_end: data.loading_period_end ? new Date(data.loading_period_end) : undefined,
           pricing_period_start: data.pricing_period_start ? new Date(data.pricing_period_start) : undefined,
