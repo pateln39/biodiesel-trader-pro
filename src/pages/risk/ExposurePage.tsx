@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -156,7 +155,7 @@ const ExposurePage = () => {
       console.log(`Fetched ${parentTrades?.length || 0} parent trades`);
       
       const {
-        data: paperTradeLegs,
+        data: paperTradeLegsData,
         error: paperError
       } = await supabase.from('paper_trade_legs').select(`
           id,
@@ -179,10 +178,12 @@ const ExposurePage = () => {
         throw paperError;
       }
       
-      console.log(`Fetched ${paperTradeLegs?.length || 0} paper trade legs`);
+      console.log(`Fetched ${paperTradeLegsData?.length || 0} paper trade legs`);
       
       const mappedTrades = parentTrades?.map(parent => {
         const legs = physicalTradeLegs?.filter(leg => leg.parent_trade_id === parent.id) || [];
+        
+        const firstLeg = legs[0];
         
         return {
           id: parent.id,
@@ -192,6 +193,13 @@ const ExposurePage = () => {
           updatedAt: new Date(parent.updated_at),
           physicalType: parent.physical_type as 'spot' | 'term',
           counterparty: parent.counterparty,
+          buySell: firstLeg?.buy_sell || 'buy',
+          product: firstLeg?.product || '',
+          quantity: firstLeg?.quantity || 0,
+          loadingPeriodStart: firstLeg?.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date(),
+          loadingPeriodEnd: firstLeg?.loading_period_end ? new Date(firstLeg.loading_period_end) : new Date(),
+          pricingPeriodStart: firstLeg?.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date(),
+          pricingPeriodEnd: firstLeg?.pricing_period_end ? new Date(firstLeg.pricing_period_end) : new Date(),
           legs: legs.map(leg => ({
             id: leg.id,
             parentTradeId: leg.parent_trade_id,
@@ -215,7 +223,7 @@ const ExposurePage = () => {
       return {
         physicalTrades: mappedTrades,
         physicalTradeLegs: physicalTradeLegs || [],
-        paperTradeLegs: paperTradeLegs || []
+        paperTradeLegs: paperTradeLegsData || []
       };
     }
   });
@@ -286,7 +294,7 @@ const ExposurePage = () => {
       }
       
       if (tradeData.paperTradeLegs && tradeData.paperTradeLegs.length > 0) {
-        paperTradeLegs.forEach(leg => {
+        tradeData.paperTradeLegs.forEach(leg => {
           const month = leg.period || leg.trading_period || '';
           if (!month || !periods.includes(month)) {
             return;
@@ -324,7 +332,8 @@ const ExposurePage = () => {
                 exposuresByMonth[month][oppositeProduct].paper += -quantity;
                 exposuresByMonth[month][oppositeProduct].pricing += -quantity;
               }
-            } else if (leg.exposures && typeof leg.exposures === 'object') {
+            }
+            if (leg.exposures && typeof leg.exposures === 'object') {
               const exposuresData = leg.exposures as Record<string, any>;
               if (exposuresData.physical && typeof exposuresData.physical === 'object') {
                 Object.entries(exposuresData.physical).forEach(([prodName, value]) => {
@@ -789,7 +798,7 @@ const ExposurePage = () => {
           </div>
         </div>
 
-        <Card className="mb-4">
+        <Card>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
@@ -798,7 +807,6 @@ const ExposurePage = () => {
             </div>
           </CardContent>
         </Card>
-        
       </div>
     </Layout>
   );
