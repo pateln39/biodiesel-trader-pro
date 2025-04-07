@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,10 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
-import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
 import TradeDetailsDialog from './TradeDetailsDialog';
 
 interface MovementsTableProps {
@@ -255,7 +251,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         <TableHeader>
           <TableRow className="border-b border-white/10">
             <TableHead>Reference Number</TableHead>
-            <TableHead>Trade Reference</TableHead>
             <TableHead>Buy/Sell</TableHead>
             <TableHead>Incoterm</TableHead>
             <TableHead>Quantity</TableHead>
@@ -264,9 +259,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             <TableHead>Loading Start</TableHead>
             <TableHead>Loading End</TableHead>
             <TableHead>Counterparty</TableHead>
-            <TableHead>Formula</TableHead>
             <TableHead>Comments</TableHead>
-            <TableHead>Customs Status</TableHead>
             <TableHead>Credit Status</TableHead>
             <TableHead>Scheduled Quantity</TableHead>
             <TableHead>Nomination ETA</TableHead>
@@ -288,9 +281,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           {filteredMovements.map((movement) => (
             <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
               <TableCell>{movement.referenceNumber}</TableCell>
-              <TableCell className="font-medium">
-                {movement.tradeReference}
-              </TableCell>
               <TableCell>
                 {movement.buySell && (
                   <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -309,18 +299,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
               <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
               <TableCell>{movement.counterpartyName}</TableCell>
-              <TableCell>
-                {movement.tradeLegId && movement.pricingFormula ? (
-                  <FormulaCellDisplay
-                    tradeId={movement.parentTradeId ?? ''}
-                    legId={movement.tradeLegId}
-                    formula={movement.pricingFormula}
-                    pricingType={movement.pricingType}
-                  />
-                ) : (
-                  <span className="text-muted-foreground italic">No formula</span>
-                )}
-              </TableCell>
               <TableCell>
                 <TooltipProvider>
                   <Tooltip>
@@ -342,17 +320,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </TableCell>
-              <TableCell>
-                {movement.customsStatus && (
-                  <Badge variant={
-                    movement.customsStatus === 'approved' ? "default" :
-                    movement.customsStatus === 'rejected' ? "destructive" :
-                    "outline"
-                  }>
-                    {movement.customsStatus}
-                  </Badge>
-                )}
               </TableCell>
               <TableCell>
                 {movement.creditStatus && (
