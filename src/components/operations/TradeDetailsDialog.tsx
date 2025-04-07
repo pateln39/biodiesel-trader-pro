@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { File } from 'lucide-react';
@@ -54,6 +53,13 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
 
       if (legsError) throw new Error(`Error fetching trade legs: ${legsError.message}`);
 
+      // Find the first leg or the specific leg if legId is provided
+      const selectedLeg = legId 
+        ? tradeLegs.find(leg => leg.id === legId)
+        : tradeLegs[0];
+
+      if (!selectedLeg) throw new Error('No trade leg found');
+
       // Map the data to our PhysicalTrade type
       const mappedTrade: PhysicalTrade = {
         id: parentTrade.id,
@@ -63,6 +69,32 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
         updatedAt: new Date(parentTrade.updated_at),
         physicalType: (parentTrade.physical_type || 'spot') as 'spot' | 'term',
         counterparty: parentTrade.counterparty,
+        // Add the required properties from the selected leg
+        buySell: selectedLeg.buy_sell as BuySell,
+        product: selectedLeg.product as Product,
+        sustainability: selectedLeg.sustainability || '',
+        incoTerm: selectedLeg.inco_term as IncoTerm,
+        quantity: selectedLeg.quantity,
+        tolerance: selectedLeg.tolerance || 0,
+        loadingPeriodStart: selectedLeg.loading_period_start ? new Date(selectedLeg.loading_period_start) : new Date(),
+        loadingPeriodEnd: selectedLeg.loading_period_end ? new Date(selectedLeg.loading_period_end) : new Date(),
+        pricingPeriodStart: selectedLeg.pricing_period_start ? new Date(selectedLeg.pricing_period_start) : new Date(),
+        pricingPeriodEnd: selectedLeg.pricing_period_end ? new Date(selectedLeg.pricing_period_end) : new Date(),
+        unit: selectedLeg.unit as Unit,
+        paymentTerm: selectedLeg.payment_term as PaymentTerm,
+        creditStatus: selectedLeg.credit_status as CreditStatus,
+        customsStatus: selectedLeg.customs_status as CustomsStatus,
+        formula: validateAndParsePricingFormula(selectedLeg.pricing_formula),
+        mtmFormula: validateAndParsePricingFormula(selectedLeg.mtm_formula),
+        pricingType: selectedLeg.pricing_type as PricingType,
+        efpPremium: selectedLeg.efp_premium,
+        efpAgreedStatus: selectedLeg.efp_agreed_status,
+        efpFixedValue: selectedLeg.efp_fixed_value,
+        efpDesignatedMonth: selectedLeg.efp_designated_month,
+        mtmFutureMonth: selectedLeg.mtm_future_month,
+        comments: selectedLeg.comments,
+        contractStatus: selectedLeg.contract_status as ContractStatus,
+        // Map all legs
         legs: tradeLegs.map(leg => ({
           id: leg.id,
           parentTradeId: leg.parent_trade_id,
@@ -93,50 +125,6 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
           contractStatus: leg.contract_status as ContractStatus
         }))
       };
-
-      // If a specific leg ID was provided, filter to just include that leg
-      if (legId) {
-        const selectedLeg = mappedTrade.legs.find(leg => leg.id === legId);
-        if (selectedLeg) {
-          mappedTrade.buySell = selectedLeg.buySell;
-          mappedTrade.product = selectedLeg.product;
-          mappedTrade.incoTerm = selectedLeg.incoTerm;
-          mappedTrade.quantity = selectedLeg.quantity;
-          mappedTrade.tolerance = selectedLeg.tolerance;
-          mappedTrade.loadingPeriodStart = selectedLeg.loadingPeriodStart;
-          mappedTrade.loadingPeriodEnd = selectedLeg.loadingPeriodEnd;
-          mappedTrade.pricingPeriodStart = selectedLeg.pricingPeriodStart;
-          mappedTrade.pricingPeriodEnd = selectedLeg.pricingPeriodEnd;
-          mappedTrade.unit = selectedLeg.unit;
-          mappedTrade.paymentTerm = selectedLeg.paymentTerm;
-          mappedTrade.creditStatus = selectedLeg.creditStatus;
-          mappedTrade.customsStatus = selectedLeg.customsStatus;
-          mappedTrade.formula = selectedLeg.formula;
-          mappedTrade.mtmFormula = selectedLeg.mtmFormula;
-          mappedTrade.pricingType = selectedLeg.pricingType;
-        }
-      } else {
-        // If no specific leg ID, use the first leg for main details
-        const firstLeg = mappedTrade.legs[0];
-        if (firstLeg) {
-          mappedTrade.buySell = firstLeg.buySell;
-          mappedTrade.product = firstLeg.product;
-          mappedTrade.incoTerm = firstLeg.incoTerm;
-          mappedTrade.quantity = firstLeg.quantity;
-          mappedTrade.tolerance = firstLeg.tolerance;
-          mappedTrade.loadingPeriodStart = firstLeg.loadingPeriodStart;
-          mappedTrade.loadingPeriodEnd = firstLeg.loadingPeriodEnd;
-          mappedTrade.pricingPeriodStart = firstLeg.pricingPeriodStart;
-          mappedTrade.pricingPeriodEnd = firstLeg.pricingPeriodEnd;
-          mappedTrade.unit = firstLeg.unit;
-          mappedTrade.paymentTerm = firstLeg.paymentTerm;
-          mappedTrade.creditStatus = firstLeg.creditStatus;
-          mappedTrade.customsStatus = firstLeg.customsStatus;
-          mappedTrade.formula = firstLeg.formula;
-          mappedTrade.mtmFormula = firstLeg.mtmFormula;
-          mappedTrade.pricingType = firstLeg.pricingType;
-        }
-      }
 
       return mappedTrade;
     },
