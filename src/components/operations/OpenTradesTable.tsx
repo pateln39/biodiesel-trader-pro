@@ -13,12 +13,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from '@/integrations/supabase/client';
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
-import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { toast } from "sonner";
 import { ContractStatus, CreditStatus, PaymentTerm, Unit, IncoTerm } from '@/types';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -32,6 +34,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
   const [selectedTradeForComments, setSelectedTradeForComments] = useState<OpenTrade | null>(null);
+  const queryClient = useQueryClient();
   
   const handleRefresh = () => {
     refetchOpenTrades();
@@ -53,6 +56,33 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const handleCommentsClick = (trade: OpenTrade) => {
     setSelectedTradeForComments(trade);
     setIsCommentsDialogOpen(true);
+  };
+
+  const updateOpenTradeCommentsMutation = useMutation({
+    mutationFn: async ({ id, comments }: { id: string, comments: string }) => {
+      const { data, error } = await supabase
+        .from('open_trades')
+        .update({ comments })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['openTrades'] });
+      setIsCommentsDialogOpen(false);
+      setSelectedTradeForComments(null);
+    }
+  });
+
+  const handleCommentsUpdate = (comments: string) => {
+    if (selectedTradeForComments) {
+      updateOpenTradeCommentsMutation.mutate({ 
+        id: selectedTradeForComments.id, 
+        comments 
+      });
+    }
   };
 
   const handleSort = (field: string) => {
@@ -248,6 +278,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                       onClick={() => handleCommentsClick(trade)}
                     >
                       <MessageSquare className="h-4 w-4" />
+                      {trade.comments && (
+                        <span className="text-xs text-muted-foreground">{commentPreview}</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -327,16 +360,17 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
 
       <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
-          <div className="space-y-2">
-            <h3 className="text-lg font-medium">
-              Comments for Trade {selectedTradeForComments?.trade_reference}
-            </h3>
+          <DialogTitle>
+            Comments for Trade {selectedTradeForComments?.trade_reference}
+          </DialogTitle>
+          <div className="space-y-2 py-4">
             {selectedTradeForComments && (
               <CommentsCellInput
-                tradeId={selectedTradeForComments.parent_trade_id}
-                legId={selectedTradeForComments.trade_leg_id}
+                tradeId={selectedTradeForComments.id}
                 initialValue={selectedTradeForComments.comments || ''}
-                isMovement={true}
+                onSave={handleCommentsUpdate}
+                showButtons={true}
+                onCancel={() => setIsCommentsDialogOpen(false)}
               />
             )}
           </div>

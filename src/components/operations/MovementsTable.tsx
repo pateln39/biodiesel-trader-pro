@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,10 +35,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
@@ -209,6 +212,8 @@ const MovementsTable = () => {
 
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
+  const [selectedMovementForComments, setSelectedMovementForComments] = useState<Movement | null>(null);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
@@ -249,6 +254,8 @@ const MovementsTable = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
+      setIsCommentsDialogOpen(false);
+      setSelectedMovementForComments(null);
       toast.success("Comments updated", {
         description: "Movement comments have been updated successfully."
       });
@@ -291,8 +298,18 @@ const MovementsTable = () => {
     updateStatusMutation.mutate({ id, status: newStatus });
   };
 
-  const handleCommentsChange = (id: string, comments: string) => {
-    updateCommentsMutation.mutate({ id, comments });
+  const handleCommentsClick = (movement: Movement) => {
+    setSelectedMovementForComments(movement);
+    setIsCommentsDialogOpen(true);
+  };
+
+  const handleCommentsUpdate = (comments: string) => {
+    if (selectedMovementForComments) {
+      updateCommentsMutation.mutate({ 
+        id: selectedMovementForComments.id, 
+        comments 
+      });
+    }
   };
 
   const handleDeleteMovement = (id: string) => {
@@ -409,27 +426,17 @@ const MovementsTable = () => {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                              {movement.comments && (
-                                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 p-0">
-                            <div className="p-4 pt-2">
-                              <p className="text-sm font-medium mb-2">Comments</p>
-                              <CommentsCellInput
-                                tradeId={movement.id}
-                                initialValue={movement.comments || ''}
-                                onSave={(comments) => handleCommentsChange(movement.id, comments)}
-                                isMovement={true}
-                              />
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8"
+                          onClick={() => handleCommentsClick(movement)}
+                        >
+                          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                          {movement.comments && (
+                            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
+                          )}
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Add or view comments</p>
@@ -541,6 +548,25 @@ const MovementsTable = () => {
           onSuccess={handleEditComplete}
         />
       )}
+      
+      <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogTitle>
+            Comments for Movement {selectedMovementForComments?.referenceNumber}
+          </DialogTitle>
+          <div className="space-y-2 py-4">
+            {selectedMovementForComments && (
+              <CommentsCellInput
+                tradeId={selectedMovementForComments.id}
+                initialValue={selectedMovementForComments.comments || ''}
+                onSave={handleCommentsUpdate}
+                showButtons={true}
+                onCancel={() => setIsCommentsDialogOpen(false)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

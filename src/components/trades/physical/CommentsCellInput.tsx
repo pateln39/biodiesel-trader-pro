@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { debounce } from 'lodash';
@@ -10,6 +12,8 @@ interface CommentsCellInputProps {
   initialValue?: string;
   onSave?: (comments: string) => void;
   isMovement?: boolean;
+  showButtons?: boolean;
+  onCancel?: () => void;
 }
 
 const CommentsCellInput: React.FC<CommentsCellInputProps> = ({ 
@@ -17,7 +21,9 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
   legId,
   initialValue = '',
   onSave,
-  isMovement = false
+  isMovement = false,
+  showButtons = false,
+  onCancel
 }) => {
   const [comments, setComments] = useState<string>(initialValue);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -64,19 +70,21 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
     }
   }, [legId, initialValue, onSave]);
 
-  // Set up auto-save timer
+  // Set up auto-save timer if not using explicit buttons
   useEffect(() => {
-    // Clear existing timer if there is one
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
+    if (!showButtons) {
+      // Clear existing timer if there is one
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
 
-    // Only start a new timer if the comments have changed
-    if (localComments !== initialValue && localComments !== comments) {
-      timerRef.current = setTimeout(() => {
-        setComments(localComments);
-        saveComments(localComments, false); // Auto-save without toast
-      }, 10000); // 10 seconds
+      // Only start a new timer if the comments have changed
+      if (localComments !== initialValue && localComments !== comments) {
+        timerRef.current = setTimeout(() => {
+          setComments(localComments);
+          saveComments(localComments, false); // Auto-save without toast
+        }, 10000); // 10 seconds
+      }
     }
 
     return () => {
@@ -84,7 +92,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
         clearTimeout(timerRef.current);
       }
     };
-  }, [localComments, comments, initialValue, saveComments]);
+  }, [localComments, comments, initialValue, saveComments, showButtons]);
 
   // Clear timer on unmount
   useEffect(() => {
@@ -100,10 +108,36 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
   };
 
   const handleBlur = () => {
-    // If there are unsaved changes, save them and show toast
-    if (localComments !== comments) {
-      setComments(localComments);
-      saveComments(localComments, true); // Save with toast notification
+    if (!showButtons) {
+      // If there are unsaved changes, save them and show toast
+      if (localComments !== comments) {
+        setComments(localComments);
+        saveComments(localComments, true); // Save with toast notification
+      }
+      
+      // Clear any pending auto-save
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  };
+  
+  const handleSave = () => {
+    setComments(localComments);
+    saveComments(localComments, true);
+    
+    // Clear any pending auto-save
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+  
+  const handleCancel = () => {
+    setLocalComments(initialValue);
+    if (onCancel) {
+      onCancel();
     }
     
     // Clear any pending auto-save
@@ -114,7 +148,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full space-y-2">
       <Textarea
         value={localComments}
         onChange={handleChange}
@@ -126,6 +160,26 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
       {isLoading && (
         <div className="absolute top-1 right-1">
           <div className="h-2 w-2 rounded-full bg-blue-500 opacity-70 animate-pulse"></div>
+        </div>
+      )}
+      
+      {showButtons && (
+        <div className="flex justify-end gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            size="sm" 
+            onClick={handleSave}
+            disabled={isLoading}
+          >
+            {isLoading ? "Saving..." : "Save"}
+          </Button>
         </div>
       )}
     </div>
