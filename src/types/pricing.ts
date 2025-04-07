@@ -1,4 +1,3 @@
-
 import { Instrument, OperatorType, ExposureResult } from './common';
 
 export interface FormulaNode {
@@ -15,9 +14,7 @@ export interface FormulaToken {
 }
 
 export interface MonthlyDistribution {
-  [instrument: string]: {
-    [monthCode: string]: number; // Month code format: "MMM-YY" (e.g., "Mar-24")
-  };
+  [monthCode: string]: number;
 }
 
 export interface PricingFormula {
