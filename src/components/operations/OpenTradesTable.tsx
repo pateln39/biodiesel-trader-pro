@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
-import { Loader2, ArrowUpDown, Ship, MessageSquare } from 'lucide-react';
+import { Loader2, ArrowUpDown, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -21,6 +22,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/
 import { toast } from "sonner";
 import { ContractStatus, CreditStatus, PaymentTerm, Unit, IncoTerm } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import TradeMovementsDialog from './TradeMovementsDialog';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -34,6 +36,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
   const [selectedTradeForComments, setSelectedTradeForComments] = useState<OpenTrade | null>(null);
+  const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
+  const [selectedTradeForMovements, setSelectedTradeForMovements] = useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
   
   const handleRefresh = () => {
@@ -56,6 +60,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
   const handleCommentsClick = (trade: OpenTrade) => {
     setSelectedTradeForComments(trade);
     setIsCommentsDialogOpen(true);
+  };
+
+  const handleViewMovements = (trade: OpenTrade) => {
+    setSelectedTradeForMovements(trade);
+    setIsMovementsDialogOpen(true);
   };
 
   const updateOpenTradeCommentsMutation = useMutation({
@@ -323,6 +332,24 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewMovements(trade)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>View Movements</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
                             <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
                               <DialogTrigger asChild>
                                 <Button 
@@ -375,6 +402,15 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
             )}
           </div>
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMovementsDialogOpen} onOpenChange={setIsMovementsDialogOpen}>
+        {selectedTradeForMovements && (
+          <TradeMovementsDialog 
+            tradeLegId={selectedTradeForMovements.trade_leg_id}
+            tradeReference={displayReference || selectedTradeForMovements.trade_reference}
+          />
+        )}
       </Dialog>
     </>
   );
