@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,6 +83,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
+      console.log('[DEBUG] Status mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       toast.success("Status updated", {
@@ -108,6 +110,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
+      console.log('[DEBUG] Comments mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       setIsCommentsDialogOpen(false);
       setSelectedMovementForComments(null);
@@ -134,6 +137,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return id;
     },
     onSuccess: () => {
+      console.log('[DEBUG] Delete mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
@@ -268,7 +272,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             <TableHead>Nomination ETA</TableHead>
             <TableHead>Nomination Valid</TableHead>
             <TableHead>Cash Flow Date</TableHead>
-            <TableHead>Barge Name</TableHead>
+            <TableHead className="bg-gray-700">Barge Name</TableHead>
             <TableHead>Loadport</TableHead>
             <TableHead>Loadport Inspector</TableHead>
             <TableHead>Disport</TableHead>
@@ -376,7 +380,10 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               <TableCell>
                 <Select
                   defaultValue={movement.status}
-                  onValueChange={(value) => handleStatusChange(movement.id, value)}
+                  onValueChange={(value) => {
+                    console.log(`[DEBUG] Status changing from ${movement.status} to ${value}`);
+                    handleStatusChange(movement.id, value);
+                  }}
                 >
                   <SelectTrigger className="w-[130px]">
                     <SelectValue>

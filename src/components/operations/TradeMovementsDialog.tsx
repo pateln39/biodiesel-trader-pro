@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -148,7 +149,7 @@ const TradeMovementsDialog: React.FC<TradeMovementsDialogProps> = ({
                 <TableHead>Reference Number</TableHead>
                 <TableHead>Quantity</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Barge Name</TableHead>
+                <TableHead className="bg-gray-700">Barge Name</TableHead>
                 <TableHead>Loadport</TableHead>
                 <TableHead>Disport</TableHead>
                 <TableHead>Nomination ETA</TableHead>
@@ -166,7 +167,7 @@ const TradeMovementsDialog: React.FC<TradeMovementsDialogProps> = ({
                       {movement.status.charAt(0).toUpperCase() + movement.status.slice(1)}
                     </Badge>
                   </TableCell>
-                  <TableCell>{movement.bargeName || '-'}</TableCell>
+                  <TableCell className="bg-gray-700">{movement.bargeName || '-'}</TableCell>
                   <TableCell>{movement.loadport || '-'}</TableCell>
                   <TableCell>{movement.disport || '-'}</TableCell>
                   <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
