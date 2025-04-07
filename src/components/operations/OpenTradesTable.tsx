@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
-import { Loader2, ArrowUpDown, CalendarDays, Ship } from 'lucide-react';
+import { formatLegReference } from '@/utils/tradeUtils';
+import { Loader2, ArrowUpDown, Ship } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   Tooltip,
@@ -187,15 +187,21 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ onRefresh }) => {
               // Updated to handle null/undefined balance values
               const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
               
+              // Generate proper leg reference display
+              const displayReference = trade.trade_leg_id ? 
+                formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
+                trade.trade_reference;
+              
               return (
                 <TableRow 
                   key={trade.id} 
                   className={`border-b border-white/5 hover:bg-brand-navy/80 ${isZeroBalance ? 'opacity-50' : ''}`}
                 >
                   <TableCell>
-                    <Link to={`/trades/${trade.parent_trade_id}`} className="hover:underline">
-                      {trade.trade_reference}
-                    </Link>
+                    {/* Removed link, just showing the reference */}
+                    <span className="font-medium">
+                      {displayReference}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>

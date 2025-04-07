@@ -10,6 +10,7 @@ export interface OpenTrade {
   trade_leg_id: string;
   parent_trade_id: string;
   trade_reference: string;
+  leg_reference?: string; // Added this field to store the leg reference
   counterparty: string;
   buy_sell: BuySell;
   product: Product;
@@ -50,11 +51,11 @@ export interface OpenTrade {
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
   try {
-    // Get all EFP related fields from the open_trades table
+    // Add leg_reference to the selected fields
     const { data, error } = await supabase
       .from('open_trades')
       .select(`
-        id, trade_leg_id, parent_trade_id, trade_reference, counterparty, 
+        id, trade_leg_id, parent_trade_id, trade_reference, leg_reference, counterparty, 
         buy_sell, product, sustainability, inco_term, quantity, tolerance,
         loading_period_start, loading_period_end, pricing_period_start, 
         pricing_period_end, unit, payment_term, credit_status, customs_status,
@@ -81,6 +82,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       trade_leg_id: item.trade_leg_id,
       parent_trade_id: item.parent_trade_id,
       trade_reference: item.trade_reference,
+      leg_reference: item.leg_reference,
       counterparty: item.counterparty,
       buy_sell: item.buy_sell as BuySell,
       product: item.product as Product,

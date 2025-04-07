@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +42,7 @@ import FormulaCellDisplay from '@/components/trades/physical/FormulaCellDisplay'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { formatLegReference } from '@/utils/tradeUtils';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -54,77 +56,95 @@ const fetchMovements = async (): Promise<Movement[]> => {
       throw new Error(`Error fetching movements: ${error.message}`);
     }
 
-    // Get the complete array of trade_leg_ids to fetch trade quantities
-    const tradeLegsIds = movements.map(m => m.trade_leg_id).filter(Boolean);
+    // Get the complete array of trade_leg_ids to fetch data from open_trades
+    const tradeLegsIds = movements
+      .map((m: any) => m.trade_leg_id)
+      .filter(Boolean);
     
     // Fetch trade quantities for all associated legs in one query
     let tradeQuantities = {};
     let tradeFormulas = {};
     let tradePricingTypes = {};
+    let tradeLegReferences = {};
     
     if (tradeLegsIds.length > 0) {
       // Get the latest information from open_trades instead of trade_legs
       // This ensures we get the most up-to-date info including formula changes
       const { data: openTrades, error: openTradesError } = await supabase
         .from('open_trades')
-        .select('trade_leg_id, quantity, pricing_formula, pricing_type')
+        .select('trade_leg_id, quantity, pricing_formula, pricing_type, leg_reference, trade_reference')
         .in('trade_leg_id', tradeLegsIds);
         
       if (openTradesError) {
         console.error('Error fetching open trades data:', openTradesError);
       } else if (openTrades) {
-        // Create maps for quantity, pricing formula, and pricing type
+        // Create maps for quantity, pricing formula, pricing type, and leg reference
         openTrades.forEach(trade => {
           tradeQuantities[trade.trade_leg_id] = trade.quantity;
           tradeFormulas[trade.trade_leg_id] = trade.pricing_formula;
           tradePricingTypes[trade.trade_leg_id] = trade.pricing_type;
+          tradeLegReferences[trade.trade_leg_id] = {
+            legRef: trade.leg_reference,
+            tradeRef: trade.trade_reference
+          };
         });
       }
     }
 
-    return (movements || []).map((m: any) => ({
-      id: m.id,
-      referenceNumber: m.reference_number,
-      tradeLegId: m.trade_leg_id,
-      parentTradeId: m.parent_trade_id,
-      tradeReference: m.trade_reference || 'Unknown',
-      counterpartyName: m.counterparty || 'Unknown',
-      product: m.product || 'Unknown',
-      buySell: m.buy_sell,
-      incoTerm: m.inco_term,
-      sustainability: m.sustainability,
-      // Use the total trade quantity from the associated open trade
-      quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
-      scheduledQuantity: m.scheduled_quantity,
-      blQuantity: m.bl_quantity,
-      actualQuantity: m.actual_quantity,
-      nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
-      nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
-      cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
-      bargeName: m.barge_name,
-      loadport: m.loadport,
-      loadportInspector: m.loadport_inspector,
-      disport: m.disport,
-      disportInspector: m.disport_inspector,
-      blDate: m.bl_date ? new Date(m.bl_date) : undefined,
-      codDate: m.cod_date ? new Date(m.cod_date) : undefined,
-      // Use pricing type from open_trades for consistency
-      pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
-        tradePricingTypes[m.trade_leg_id] as PricingType :
-        m.pricing_type as PricingType | undefined,
-      // Use the pricing formula from open_trades instead of the movement's own formula
-      pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
-        validateAndParsePricingFormula(tradeFormulas[m.trade_leg_id]) : 
-        validateAndParsePricingFormula(m.pricing_formula),
-      comments: m.comments,
-      customsStatus: m.customs_status,
-      creditStatus: m.credit_status,
-      contractStatus: m.contract_status,
-      status: m.status || 'scheduled',
-      date: new Date(m.created_at),
-      createdAt: new Date(m.created_at),
-      updatedAt: new Date(m.updated_at),
-    }));
+    return (movements || []).map((m: any) => {
+      // Get the proper full reference for displaying
+      let displayReference = m.trade_reference || 'Unknown';
+      if (m.trade_leg_id && tradeLegReferences[m.trade_leg_id]) {
+        const { legRef, tradeRef } = tradeLegReferences[m.trade_leg_id];
+        if (legRef && tradeRef) {
+          displayReference = formatLegReference(tradeRef, legRef);
+        }
+      }
+
+      return {
+        id: m.id,
+        referenceNumber: m.reference_number,
+        tradeLegId: m.trade_leg_id,
+        parentTradeId: m.parent_trade_id,
+        tradeReference: displayReference,
+        counterpartyName: m.counterparty || 'Unknown',
+        product: m.product || 'Unknown',
+        buySell: m.buy_sell,
+        incoTerm: m.inco_term,
+        sustainability: m.sustainability,
+        // Use the total trade quantity from the associated open trade
+        quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
+        scheduledQuantity: m.scheduled_quantity,
+        blQuantity: m.bl_quantity,
+        actualQuantity: m.actual_quantity,
+        nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
+        nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
+        cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
+        bargeName: m.barge_name,
+        loadport: m.loadport,
+        loadportInspector: m.loadport_inspector,
+        disport: m.disport,
+        disportInspector: m.disport_inspector,
+        blDate: m.bl_date ? new Date(m.bl_date) : undefined,
+        codDate: m.cod_date ? new Date(m.cod_date) : undefined,
+        // Use pricing type from open_trades for consistency
+        pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
+          tradePricingTypes[m.trade_leg_id] as PricingType :
+          m.pricing_type as PricingType | undefined,
+        // Use the pricing formula from open_trades instead of the movement's own formula
+        pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
+          validateAndParsePricingFormula(tradeFormulas[m.trade_leg_id]) : 
+          validateAndParsePricingFormula(m.pricing_formula),
+        comments: m.comments,
+        customsStatus: m.customs_status,
+        creditStatus: m.credit_status,
+        contractStatus: m.contract_status,
+        status: m.status || 'scheduled',
+        date: new Date(m.created_at),
+        createdAt: new Date(m.created_at),
+        updatedAt: new Date(m.updated_at),
+      };
+    });
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
     throw new Error(error.message);
@@ -267,7 +287,7 @@ const MovementsTable = () => {
     <div className="w-full overflow-auto">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-b border-white/10">
             <TableHead>Reference Number</TableHead>
             <TableHead>Trade Reference</TableHead>
             <TableHead>Incoterm</TableHead>
@@ -295,7 +315,7 @@ const MovementsTable = () => {
             <TableHead>Actual Quantity</TableHead>
             <TableHead>COD Date</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -307,9 +327,12 @@ const MovementsTable = () => {
             </TableRow>
           ) : (
             movements.map((movement) => (
-              <TableRow key={movement.id}>
+              <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
                 <TableCell>{movement.referenceNumber}</TableCell>
-                <TableCell>{movement.tradeReference}</TableCell>
+                <TableCell className="font-medium">
+                  {/* No link, just display the reference */}
+                  {movement.tradeReference}
+                </TableCell>
                 <TableCell>{movement.incoTerm}</TableCell>
                 <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
                 <TableCell>{movement.sustainability || '-'}</TableCell>
@@ -416,42 +439,45 @@ const MovementsTable = () => {
                       <SelectItem value="scheduled">Scheduled</SelectItem>
                       <SelectItem value="in progress">In Progress</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
-                <TableCell className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8" 
-                    onClick={() => handleEditMovement(movement)}
-                  >
-                    <Edit className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Movement</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this movement? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleDeleteMovement(movement.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <TableCell className="text-center">
+                  <div className="flex justify-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8" 
+                      onClick={() => handleEditMovement(movement)}
+                    >
+                      <Edit className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Movement</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this movement? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteMovement(movement.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
