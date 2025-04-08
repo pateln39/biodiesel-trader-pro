@@ -1,4 +1,3 @@
-
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -52,7 +51,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const queryClient = useQueryClient();
   const { toast: toastHook } = useToast();
   
-  // Wrapper function for handleReorder with toast notifications
   const onReorder = async (reorderedItems: OpenTrade[]) => {
     try {
       console.log('[OPEN_TRADES] Starting reorder operation');
@@ -60,10 +58,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         description: "Saving new order to database..."
       });
       
-      // Call the actual reorder function
       await handleReorder(reorderedItems);
       
-      // Show success message on completion
       toast.success("Order updated", {
         description: "Trade order has been saved successfully"
       });
@@ -116,17 +112,17 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       setIsCommentsDialogOpen(false);
       setSelectedTradeForComments(null);
-      toast({
-        variant: "success",
+      toastHook({
         title: "Comments updated",
         description: "Trade comments have been updated successfully",
+        variant: "default"
       });
     },
     onError: (error: any) => {
-      toast({
-        variant: "destructive",
+      toastHook({
         title: "Failed to update comments",
         description: error.message || "An error occurred",
+        variant: "destructive"
       });
     }
   });

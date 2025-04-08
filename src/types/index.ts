@@ -48,6 +48,7 @@ export interface Movement {
   coaReceivedChecked?: boolean;
   coaSentChecked?: boolean;
   eadChecked?: boolean;
+  sort_order?: number; // Added sort_order property
 }
 
 // Explicit re-exports to avoid name conflicts when importing
