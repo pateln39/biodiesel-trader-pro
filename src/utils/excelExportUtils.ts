@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { formatExposureTableProduct, getExposureProductBackgroundClass } from './productMapping';
 
@@ -749,5 +750,110 @@ export const exportExposureToExcel = (
       categoryProducts.forEach((product, index) => {
         const value = grandTotals.productTotals[product]?.physical || 0;
         totalRow.push(formatExcelValue(value));
+        colIndex++;
+      });
+    } else if (category === 'Pricing') {
+      categoryProducts.forEach((product, index) => {
+        const value = grandTotals.productTotals[product]?.pricing || 0;
+        totalRow.push(formatExcelValue(value));
+        colIndex++;
+      });
+    } else if (category === 'Paper') {
+      categoryProducts.forEach((product, index) => {
+        const value = grandTotals.productTotals[product]?.paper || 0;
+        totalRow.push(formatExcelValue(value));
+        colIndex++;
+      });
+    } else if (category === 'Exposure') {
+      const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
+      
+      categoryProducts.forEach((product, index) => {
+        const value = grandTotals.productTotals[product]?.netExposure || 0;
+        totalRow.push(formatExcelValue(value));
+        colIndex++;
         
-        // Apply cell style based on value
+        if (index === ucomeIndex) {
+          // Add total biodiesel total
+          const biodieselTotal = groupGrandTotals.biodiesel?.netExposure || 0;
+          totalRow.push(formatExcelValue(biodieselTotal));
+          colIndex++;
+        }
+      });
+      
+      // Add Total Pricing Instrument column
+      const pricingInstrumentTotal = groupGrandTotals.pricingInstrument?.netExposure || 0;
+      totalRow.push(formatExcelValue(pricingInstrumentTotal));
+      colIndex++;
+      
+      // Add Total Row column
+      const biodieselTotal = groupGrandTotals.biodiesel?.netExposure || 0;
+      const totalRowValue = biodieselTotal + pricingInstrumentTotal;
+      totalRow.push(formatExcelValue(totalRowValue));
+      colIndex++;
+    }
+  });
+  
+  // Add the total row to the worksheet
+  XLSX.utils.sheet_add_aoa(ws, [totalRow], { origin: `A${exposureData.length + 5}` });
+  
+  // Apply styles to total row
+  for (let i = 0; i < totalRow.length; i++) {
+    const cellRef = XLSX.utils.encode_cell({ r: exposureData.length + 4, c: i });
+    
+    if (i === 0) {
+      // "Total" label cell
+      if (!ws['!cells']) ws['!cells'] = {};
+      ws['!cells'][cellRef] = {
+        t: "s",
+        v: totalRow[i],
+        s: {
+          font: { bold: true, color: { rgb: "000000" } },
+          fill: { patternType: "solid", fgColor: { rgb: "D3D3D3" } },
+          alignment: { horizontal: "left" },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        }
+      };
+    } else {
+      // Value cells in total row
+      const value = totalRow[i];
+      const numValue = typeof value === 'string' && value !== '-' ? 
+        parseFloat(value.replace(/[+,]/g, '')) : 0;
+      
+      if (!ws['!cells']) ws['!cells'] = {};
+      ws['!cells'][cellRef] = {
+        t: "s",
+        v: value || "",
+        s: {
+          ...getExcelValueStyle(numValue),
+          font: { 
+            ...getExcelValueStyle(numValue).font, 
+            bold: true 
+          },
+          fill: { patternType: "solid", fgColor: { rgb: "D3D3D3" } },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        }
+      };
+    }
+  }
+  
+  // Generate filename with current date
+  const date = new Date();
+  const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
+  const filename = `Exposure_Report_${formattedDate}.xlsx`;
+  
+  // Add the worksheet to the workbook and write the file
+  XLSX.utils.book_append_sheet(wb, ws, "Exposure Report");
+  XLSX.writeFile(wb, filename);
+  
+  console.log(`Excel export complete for Exposure Report`);
+}
