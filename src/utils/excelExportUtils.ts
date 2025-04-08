@@ -1,9 +1,9 @@
 
 import * as XLSX from 'xlsx';
-import { formatExposureTableProduct, getExposureProductBackgroundClass, getValueColorClass } from './productMapping';
+import { formatExposureTableProduct, getExposureProductBackgroundClass } from './productMapping';
 
 // Helper function to get Excel cell style based on value
-const getExcelValueStyle = (value: number): Partial<XLSX.CellStyle> => {
+const getExcelValueStyle = (value: number): any => {
   if (value > 0) {
     return { font: { color: { rgb: "00A65A" } } }; // Green for positive values
   } else if (value < 0) {
@@ -19,20 +19,20 @@ const formatExcelValue = (value: number): string | null => {
 };
 
 // Create header cell style
-const headerStyle: Partial<XLSX.CellStyle> = {
+const headerStyle: any = {
   font: { bold: true, color: { rgb: "FFFFFF" } },
   fill: { fgColor: { rgb: "1A1F2C" } }, // Brand navy
   alignment: { horizontal: "right" }
 };
 
-const categoryHeaderStyle: Partial<XLSX.CellStyle> = {
+const categoryHeaderStyle: any = {
   font: { bold: true, color: { rgb: "FFFFFF" } },
   fill: { fgColor: { rgb: "1A1F2C" } }, // Brand navy
   alignment: { horizontal: "center" }
 };
 
 // Style for the title
-const titleStyle: Partial<XLSX.CellStyle> = {
+const titleStyle: any = {
   font: { bold: true, sz: 16, underline: true },
   alignment: { horizontal: "center" }
 };
@@ -49,6 +49,13 @@ export const exportExposureToExcel = (
   BIODIESEL_PRODUCTS: string[],
   PRICING_INSTRUMENT_PRODUCTS: string[]
 ) => {
+  // Define a function to get color classes based on value (similar to the one in UI)
+  const getValueColorClass = (value: number): string => {
+    if (value > 0) return 'text-green-400';
+    if (value < 0) return 'text-red-400';
+    return 'text-gray-500';
+  };
+
   // Create workbook and worksheet
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([]);
