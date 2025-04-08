@@ -1,4 +1,4 @@
-
+import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -115,7 +115,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     }
   };
 
-  // Function to determine if a trade is disabled (zero balance)
   const isTradeDisabled = (trade: OpenTrade): boolean => {
     return trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
   };
@@ -151,7 +150,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     );
   }
 
-  // Render header for the sortable table
   const renderHeader = () => (
     <>
       <TableHead>Trade Ref</TableHead>
@@ -175,7 +173,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     </>
   );
 
-  // Render row for the sortable table
   const renderRow = (trade: OpenTrade) => {
     const isZeroBalance = isTradeDisabled(trade);
     
@@ -371,8 +368,5 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     </>
   );
 };
-
-// Add this import at the top (already there, but making sure it's clear that we need it)
-// import { cn } from '@/lib/utils';
 
 export default OpenTradesTable;
