@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { File } from 'lucide-react';
@@ -151,16 +152,17 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     }).join('');
   };
 
-  const getEfpFormulaDisplay = (leg: PhysicalTradeLeg) => {
-    if (leg.pricingType !== 'efp') return null;
+  // Update the function to accept either PhysicalTrade or PhysicalTradeLeg
+  const getEfpFormulaDisplay = (item: PhysicalTrade | PhysicalTradeLeg) => {
+    if ('pricingType' in item && item.pricingType !== 'efp') return null;
     
-    if (leg.efpAgreedStatus) {
-      // For agreed EFP, show the fixed value + premium (or empty if requested)
+    if ('efpAgreedStatus' in item && item.efpAgreedStatus) {
+      // For agreed EFP, return empty as requested
       return '';
     } else {
       // For unagreed EFP, show "ICE GASOIL FUTURES (EFP) + premium"
-      const efpPremium = leg.efpPremium || 0;
-      const designatedMonth = leg.efpDesignatedMonth ? ` (${leg.efpDesignatedMonth})` : '';
+      const efpPremium = 'efpPremium' in item ? item.efpPremium || 0 : 0;
+      const designatedMonth = 'efpDesignatedMonth' in item && item.efpDesignatedMonth ? ` (${item.efpDesignatedMonth})` : '';
       return `ICE GASOIL FUTURES (EFP)${designatedMonth} + ${efpPremium}`;
     }
   };
