@@ -135,7 +135,7 @@ const TradesPage = () => {
           }
           
           let price = leg.price;
-          if (leg.relationshipType === 'spread' && leg.rightSide?.price) {
+          if (leg.relationshipType === 'SPREAD' && leg.rightSide?.price) {
             price = leg.price - leg.rightSide.price;
           }
           
