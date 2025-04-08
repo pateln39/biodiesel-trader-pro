@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { File } from 'lucide-react';
@@ -151,15 +152,16 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     }).join('');
   };
 
-  const getEfpFormulaDisplay = (leg: PhysicalTradeLeg) => {
-    if (leg.pricingType !== 'efp') return null;
+  // Modified to accept either a PhysicalTrade or PhysicalTradeLeg
+  const getEfpFormulaDisplay = (item: PhysicalTrade | PhysicalTradeLeg) => {
+    if (item.pricingType !== 'efp') return null;
     
-    if (leg.efpAgreedStatus) {
+    if (item.efpAgreedStatus) {
       // For agreed EFP, return an empty string
       return '';
     } else {
       // For unagreed EFP, show "ICE GASOIL FUTURES (EFP) + premium"
-      const efpPremium = leg.efpPremium || 0;
+      const efpPremium = item.efpPremium || 0;
       return `ICE GASOIL FUTURES (EFP) + ${efpPremium}`;
     }
   };
