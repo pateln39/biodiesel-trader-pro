@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Filter, Download } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,10 +13,6 @@ import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import MovementsFilter from '@/components/operations/MovementsFilter';
-import { exportOpenTradesToExcel, exportMovementsToExcel } from '@/utils/excelExportUtils';
-import { useOpenTrades } from '@/hooks/useOpenTrades';
-import { useSortableMovements } from '@/hooks/useSortableMovements';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -26,10 +22,6 @@ const OperationsPage = () => {
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   
-  // Get data for export functionality
-  const { openTrades } = useOpenTrades();
-  const { movements } = useSortableMovements();
-
   const { 
     counterparties,
     sustainabilityOptions,
@@ -75,34 +67,6 @@ const OperationsPage = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleExportOpenTrades = () => {
-    try {
-      exportOpenTradesToExcel(openTrades);
-      toast.success("Export successful", {
-        description: "Open trades have been exported to Excel"
-      });
-    } catch (error) {
-      console.error("Error exporting open trades:", error);
-      toast.error("Export failed", {
-        description: "There was an error exporting open trades"
-      });
-    }
-  };
-
-  const handleExportMovements = () => {
-    try {
-      exportMovementsToExcel(movements);
-      toast.success("Export successful", {
-        description: "Movements have been exported to Excel"
-      });
-    } catch (error) {
-      console.error("Error exporting movements:", error);
-      toast.error("Export failed", {
-        description: "There was an error exporting movements"
-      });
-    }
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -125,32 +89,13 @@ const OperationsPage = () => {
                 <CardTitle>Open Trades</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage open trade positions</span>
-                  <div className="flex items-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleExportOpenTrades}
-                          >
-                            <Download className="mr-2 h-4 w-4" /> Export
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Export to Excel</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsOpenTradesFilterOpen(true)}
-                    >
-                      <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsOpenTradesFilterOpen(true)}
+                  >
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -176,32 +121,13 @@ const OperationsPage = () => {
                 <CardTitle>Movements</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage product movements</span>
-                  <div className="flex items-center gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={handleExportMovements}
-                          >
-                            <Download className="mr-2 h-4 w-4" /> Export
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Export to Excel</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsMovementsFilterOpen(true)}
-                    >
-                      <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsMovementsFilterOpen(true)}
+                  >
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
