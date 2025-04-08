@@ -16,7 +16,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  useSortable,  // Import useSortable from @dnd-kit/sortable
+  useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
@@ -39,12 +39,17 @@ export interface SortableItem {
 // Props for the drag handle component
 interface DragHandleProps {
   className?: string;
+  disabled?: boolean;
 }
 
 // Drag handle component
-export const DragHandle = ({ className }: DragHandleProps) => {
+export const DragHandle = ({ className, disabled }: DragHandleProps) => {
   return (
-    <div className={cn("flex items-center justify-center cursor-grab", className)}>
+    <div className={cn(
+      "flex items-center justify-center", 
+      disabled ? "cursor-not-allowed opacity-50" : "cursor-grab", 
+      className
+    )}>
       <GripVertical className="h-4 w-4 text-muted-foreground" />
     </div>
   );
@@ -55,10 +60,11 @@ interface SortableRowProps {
   id: string;
   children: React.ReactNode;
   className?: string;
+  disabled?: boolean;
 }
 
 // Sortable row component using dnd-kit sortable hooks
-export const SortableRow = ({ id, children, className }: SortableRowProps) => {
+export const SortableRow = ({ id, children, className, disabled = false }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -66,12 +72,15 @@ export const SortableRow = ({ id, children, className }: SortableRowProps) => {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ 
+    id,
+    disabled 
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : disabled ? 0.5 : 1,
     zIndex: isDragging ? 1 : 0,
     position: 'relative' as const,
   };
@@ -83,13 +92,14 @@ export const SortableRow = ({ id, children, className }: SortableRowProps) => {
       className={cn(
         "transition-colors data-[state=selected]:bg-muted",
         isDragging ? "bg-accent" : "",
+        disabled ? "bg-muted text-muted-foreground" : "",
         className
       )}
       {...attributes}
     >
       <TableCell className="p-0 pl-2">
-        <div className="cursor-grab" {...listeners}>
-          <DragHandle />
+        <div className={disabled ? "cursor-not-allowed" : "cursor-grab"} {...(disabled ? {} : listeners)}>
+          <DragHandle disabled={disabled} />
         </div>
       </TableCell>
       {children}
@@ -103,6 +113,7 @@ interface SortableTableProps<T extends SortableItem> {
   onReorder: (items: T[]) => void;
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
+  isItemDisabled?: (item: T) => boolean;
   className?: string;
 }
 
@@ -112,6 +123,7 @@ export function SortableTable<T extends SortableItem>({
   onReorder,
   renderHeader,
   renderRow,
+  isItemDisabled,
   className,
 }: SortableTableProps<T>) {
   // State to track the currently dragged item
@@ -134,7 +146,15 @@ export function SortableTable<T extends SortableItem>({
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    // Don't allow drag start if the item is disabled
+    const itemId = event.active.id as string;
+    const item = items.find(item => item.id === itemId);
+    
+    if (item && isItemDisabled && isItemDisabled(item)) {
+      return;
+    }
+    
+    setActiveId(itemId);
   };
 
   // Handle drag end to reorder items
@@ -176,11 +196,18 @@ export function SortableTable<T extends SortableItem>({
             items={items.map(item => ({ id: item.id }))}
             strategy={verticalListSortingStrategy}
           >
-            {items.map((item, index) => (
-              <SortableRow key={item.id} id={item.id}>
-                {renderRow(item, index)}
-              </SortableRow>
-            ))}
+            {items.map((item, index) => {
+              const isDisabled = isItemDisabled ? isItemDisabled(item) : false;
+              return (
+                <SortableRow 
+                  key={item.id} 
+                  id={item.id} 
+                  disabled={isDisabled}
+                >
+                  {renderRow(item, index)}
+                </SortableRow>
+              );
+            })}
           </SortableContext>
         </TableBody>
       </Table>

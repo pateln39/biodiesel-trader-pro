@@ -115,6 +115,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     }
   };
 
+  // Function to determine if a trade is disabled (zero balance)
+  const isTradeDisabled = (trade: OpenTrade): boolean => {
+    return trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -172,7 +177,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
 
   // Render row for the sortable table
   const renderRow = (trade: OpenTrade) => {
-    const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
+    const isZeroBalance = isTradeDisabled(trade);
     
     const displayReference = trade.trade_leg_id ? 
       formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
@@ -222,8 +227,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         </TableCell>
         <TableCell>
           <div 
-            className="flex items-center gap-1 cursor-pointer hover:text-primary"
-            onClick={() => handleCommentsClick(trade)}
+            className={cn(
+              "flex items-center gap-1 cursor-pointer",
+              isZeroBalance ? "text-muted-foreground" : "hover:text-primary"
+            )}
+            onClick={() => !isZeroBalance && handleCommentsClick(trade)}
           >
             <MessageSquare className="h-4 w-4" />
             {trade.comments && (
@@ -303,7 +311,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
                     </DialogTrigger>
                     {selectedTrade && (
                       <ScheduleMovementForm 
-                        trade={selectedTrade as any} 
+                        trade={selectedTrade} 
                         onSuccess={handleMovementScheduled}
                         onCancel={() => setIsDialogOpen(false)}
                       />
@@ -329,6 +337,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           onReorder={handleReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
+          isItemDisabled={isTradeDisabled}
         />
       </div>
 
@@ -362,5 +371,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     </>
   );
 };
+
+// Add this import at the top (already there, but making sure it's clear that we need it)
+// import { cn } from '@/lib/utils';
 
 export default OpenTradesTable;
