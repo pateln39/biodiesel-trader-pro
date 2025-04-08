@@ -23,257 +23,342 @@ import { useToast } from '@/hooks/use-toast';
 import TradeMovementsDialog from './TradeMovementsDialog';
 import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
-import { cn } from '@/lib/utils';
 
-const OpenTradesTable: React.FC<{
+interface OpenTradesTableProps {
   onRefresh?: () => void;
   filterStatus?: 'all' | 'in-process' | 'completed';
-}> = ({ onRefresh, filterStatus = 'all' }) => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+}
+
+const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
+  onRefresh,
+  filterStatus = 'all'
+}) => {
   const { 
-    filteredTrades: openTrades, 
+    filteredTrades,
     loading, 
     error, 
-    handleReorder 
+    refetchOpenTrades,
+    handleReorder
   } = useSortableOpenTrades(filterStatus);
+  
+  const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isCommentsDialogOpen, setIsCommentsDialogOpen] = React.useState(false);
+  const [selectedTradeForComments, setSelectedTradeForComments] = React.useState<OpenTrade | null>(null);
+  const [isMovementsDialogOpen, setIsMovementsDialogOpen] = React.useState(false);
+  const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
+  const handleRefresh = () => {
+    refetchOpenTrades();
+    if (onRefresh) onRefresh();
+  };
 
-  const [isMovementDialogOpen, setIsMovementDialogOpen] = React.useState(false);
-  const [selectedTradeLegId, setSelectedTradeLegId] = React.useState<string | null>(null);
+  const handleScheduleMovement = (trade: OpenTrade) => {
+    setSelectedTrade(trade);
+    setIsDialogOpen(true);
+  };
 
-  const closeTradeMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const handleMovementScheduled = () => {
+    setIsDialogOpen(false);
+    setSelectedTrade(null);
+    handleRefresh();
+  };
+
+  const handleCommentsClick = (trade: OpenTrade) => {
+    setSelectedTradeForComments(trade);
+    setIsCommentsDialogOpen(true);
+  };
+
+  const handleViewMovements = (trade: OpenTrade) => {
+    setSelectedTradeForMovements(trade);
+    setIsMovementsDialogOpen(true);
+  };
+
+  const updateOpenTradeCommentsMutation = useMutation({
+    mutationFn: async ({ id, comments }: { id: string, comments: string }) => {
       const { data, error } = await supabase
         .from('open_trades')
-        .update({ status: 'closed' })
-        .eq('id', id);
-  
-      if (error) {
-        console.error('Error closing trade:', error);
-        throw new Error(error.message);
-      }
+        .update({ comments })
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
+      setIsCommentsDialogOpen(false);
+      setSelectedTradeForComments(null);
       toast({
-        title: 'Trade Closed',
-        description: 'The trade has been successfully closed.',
+        variant: "success",
+        title: "Comments updated",
+        description: "Trade comments have been updated successfully",
       });
-      if (onRefresh) {
-        onRefresh();
-      }
     },
     onError: (error: any) => {
       toast({
-        variant: 'destructive',
-        title: 'Error Closing Trade',
-        description: error.message || 'Failed to close the trade. Please try again.',
+        variant: "destructive",
+        title: "Failed to update comments",
+        description: error.message || "An error occurred",
       });
-    },
+    }
   });
 
-  const handleCloseTrade = (id: string) => {
-    closeTradeMutation.mutate(id);
-  };
-
-  const handleOpenMovementDialog = (tradeLegId: string) => {
-    setSelectedTradeLegId(tradeLegId);
-    setIsMovementDialogOpen(true);
-  };
-
-  const handleCloseMovementDialog = () => {
-    setSelectedTradeLegId(null);
-    setIsMovementDialogOpen(false);
+  const handleCommentsUpdate = (comments: string) => {
+    if (selectedTradeForComments) {
+      updateOpenTradeCommentsMutation.mutate({ 
+        id: selectedTradeForComments.id, 
+        comments 
+      });
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        <span>Loading trades...</span>
+      <div className="flex flex-col items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading open trades...</p>
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error.message}</div>;
+    return (
+      <div className="text-center py-10">
+        <p className="text-destructive mb-4">Error loading open trades</p>
+        <Button variant="outline" onClick={handleRefresh}>
+          Try Again
+        </Button>
+      </div>
+    );
   }
+
+  if (filteredTrades.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-muted-foreground mb-4">No trades match the selected filter</p>
+        <Button variant="outline" onClick={handleRefresh}>
+          Refresh
+        </Button>
+      </div>
+    );
+  }
+
+  // Render header for the sortable table
+  const renderHeader = () => (
+    <>
+      <TableHead>Trade Ref</TableHead>
+      <TableHead>Buy/Sell</TableHead>
+      <TableHead>Incoterm</TableHead>
+      <TableHead className="text-right">Quantity</TableHead>
+      <TableHead>Sustainability</TableHead>
+      <TableHead>Product</TableHead>
+      <TableHead>Loading Start</TableHead>
+      <TableHead>Loading End</TableHead>
+      <TableHead>Counterparty</TableHead>
+      <TableHead>Pricing Type</TableHead>
+      <TableHead>Formula</TableHead>
+      <TableHead>Comments</TableHead>
+      <TableHead>Customs Status</TableHead>
+      <TableHead>Credit Status</TableHead>
+      <TableHead>Contract Status</TableHead>
+      <TableHead className="text-right">Nominated Value</TableHead>
+      <TableHead className="text-right">Balance</TableHead>
+      <TableHead className="text-center">Actions</TableHead>
+    </>
+  );
+
+  // Render row for the sortable table
+  const renderRow = (trade: OpenTrade) => {
+    const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
+    
+    const displayReference = trade.trade_leg_id ? 
+      formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
+      trade.trade_reference;
+    
+    const commentPreview = trade.comments 
+      ? (trade.comments.length > 15 
+          ? `${trade.comments.substring(0, 15)}...` 
+          : trade.comments)
+      : '';
+    
+    return (
+      <>
+        <TableCell>
+          <span className="font-medium">
+            {displayReference}
+          </span>
+        </TableCell>
+        <TableCell>
+          <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>
+            {trade.buy_sell}
+          </Badge>
+        </TableCell>
+        <TableCell>{trade.inco_term}</TableCell>
+        <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
+        <TableCell>{trade.sustainability || 'N/A'}</TableCell>
+        <TableCell>{trade.product}</TableCell>
+        <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
+        <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
+        <TableCell>{trade.counterparty}</TableCell>
+        <TableCell>
+          <Badge variant="outline">
+            {trade.pricing_type === 'efp' ? 'EFP' : 'Standard'}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <FormulaCellDisplay
+            tradeId={trade.parent_trade_id}
+            legId={trade.trade_leg_id}
+            formula={trade.pricing_formula}
+            pricingType={trade.pricing_type}
+            efpPremium={trade.efp_premium}
+            efpDesignatedMonth={trade.efp_designated_month}
+            efpAgreedStatus={trade.efp_agreed_status}
+            efpFixedValue={trade.efp_fixed_value}
+          />
+        </TableCell>
+        <TableCell>
+          <div 
+            className="flex items-center gap-1 cursor-pointer hover:text-primary"
+            onClick={() => handleCommentsClick(trade)}
+          >
+            <MessageSquare className="h-4 w-4" />
+            {trade.comments && (
+              <span className="text-xs text-muted-foreground">{commentPreview}</span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>
+          {trade.customs_status && (
+            <Badge variant={
+              trade.customs_status === 'approved' ? "default" :
+              trade.customs_status === 'rejected' ? "destructive" :
+              "outline"
+            }>
+              {trade.customs_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          {trade.credit_status && (
+            <Badge variant={
+              trade.credit_status === 'approved' ? "default" :
+              trade.credit_status === 'rejected' ? "destructive" :
+              "outline"
+            }>
+              {trade.credit_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          {trade.contract_status && (
+            <Badge variant={
+              trade.contract_status === 'signed' ? "default" :
+              trade.contract_status === 'cancelled' ? "destructive" :
+              "outline"
+            }>
+              {trade.contract_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-right">{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
+        <TableCell className="text-right">{trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT</TableCell>
+        <TableCell className="text-center">
+          <div className="flex justify-center space-x-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    onClick={() => handleViewMovements(trade)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View Movements</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        disabled={isZeroBalance}
+                        onClick={() => handleScheduleMovement(trade)}
+                      >
+                        <Ship className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    {selectedTrade && (
+                      <ScheduleMovementForm 
+                        trade={selectedTrade as any} 
+                        onSuccess={handleMovementScheduled}
+                        onCancel={() => setIsDialogOpen(false)}
+                      />
+                    )}
+                  </Dialog>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Schedule Movement</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </TableCell>
+      </>
+    );
+  };
 
   return (
     <>
-      <SortableTable
-        items={openTrades}
-        onReorder={handleReorder}
-        renderHeader={() => (
-          <>
-            <TableHead>Trade Ref</TableHead>
-            <TableHead>Leg Ref</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Sustainability</TableHead>
-            <TableHead>Quantity</TableHead>
-            <TableHead>Unit</TableHead>
-            <TableHead>Tolerance</TableHead>
-            <TableHead>Loading Period</TableHead>
-            <TableHead>Pricing Period</TableHead>
-            <TableHead>Payment Term</TableHead>
-            <TableHead>Credit Status</TableHead>
-            <TableHead>Customs Status</TableHead>
-            <TableHead>Vessel</TableHead>
-            <TableHead>Loadport</TableHead>
-            <TableHead>Disport</TableHead>
-            <TableHead>Scheduled Qty</TableHead>
-            <TableHead>Open Qty</TableHead>
-            <TableHead>Pricing Type</TableHead>
-            <TableHead>Pricing Formula</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead>Actions</TableHead>
-          </>
-        )}
-        renderRow={(trade) => (
-          <>
-            <TableCell className="font-medium">{trade.trade_reference}</TableCell>
-            <TableCell>{formatLegReference(trade.leg_reference)}</TableCell>
-            <TableCell>{trade.counterparty}</TableCell>
-            <TableCell>{trade.buy_sell}</TableCell>
-            <TableCell>{trade.product}</TableCell>
-            <TableCell>{trade.sustainability}</TableCell>
-            <TableCell>{trade.quantity}</TableCell>
-            <TableCell>{trade.unit}</TableCell>
-            <TableCell>{trade.tolerance}</TableCell>
-            <TableCell>
-              {trade.loading_period_start && trade.loading_period_end
-                ? `${formatDate(trade.loading_period_start)} - ${formatDate(trade.loading_period_end)}`
-                : 'N/A'}
-            </TableCell>
-            <TableCell>
-              {trade.pricing_period_start && trade.pricing_period_end
-                ? `${formatDate(trade.pricing_period_start)} - ${formatDate(trade.pricing_period_end)}`
-                : 'N/A'}
-            </TableCell>
-            <TableCell>{trade.payment_term}</TableCell>
-            <TableCell>{trade.credit_status}</TableCell>
-            <TableCell>{trade.customs_status}</TableCell>
-            <TableCell>{trade.vessel_name}</TableCell>
-            <TableCell>{trade.loadport}</TableCell>
-            <TableCell>{trade.disport}</TableCell>
-            <TableCell>{trade.scheduled_quantity}</TableCell>
-            <TableCell>{trade.open_quantity}</TableCell>
-            <TableCell>{trade.pricing_type}</TableCell>
-            <TableCell>
-              {trade.pricing_formula && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge variant="outline">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Formula
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent className="w-80">
-                      <FormulaCellDisplay 
-                        tradeId={trade.id} 
-                        legId={trade.trade_leg_id} 
-                        formula={trade.pricing_formula}
-                        pricingType={trade.pricing_type}
-                        efpPremium={trade.efp_premium}
-                        efpAgreedStatus={trade.efp_agreed_status}
-                        efpFixedValue={trade.efp_fixed_value}
-                        efpDesignatedMonth={trade.efp_designated_month}
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </TableCell>
-            <TableCell>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Comments
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent className="w-80">
-                    <CommentsCellInput 
-                      tradeId={trade.id} 
-                      legId={trade.trade_leg_id}
-                      initialValue={trade.comments} 
-                      onSave={() => { if (onRefresh) onRefresh(); }}
-                    />
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </TableCell>
-            <TableCell>
-              <div className="space-x-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      disabled={trade.balance !== undefined && trade.balance !== null && trade.balance <= 0}
-                    >
-                      <Ship className="mr-2 h-4 w-4" />
-                      Schedule
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogTitle>Schedule Movement</DialogTitle>
-                    <ScheduleMovementForm 
-                      tradeLeg={trade.trade_leg_id} 
-                      onSuccess={() => {
-                        toast({
-                          title: 'Movement Scheduled',
-                          description: 'The movement has been scheduled successfully.',
-                        });
-                        handleCloseMovementDialog();
-                        if (onRefresh) {
-                          onRefresh();
-                        }
-                      }} 
-                    />
-                  </DialogContent>
-                </Dialog>
-                <Button size="sm" variant="secondary" onClick={() => handleOpenMovementDialog(trade.trade_leg_id)}>
-                  <Loader2 className="mr-2 h-4 w-4" />
-                  Movements
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="destructive" 
-                  onClick={() => handleCloseTrade(trade.id)}
-                  disabled={closeTradeMutation.isPending}
-                >
-                  {closeTradeMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Closing...
-                    </>
-                  ) : (
-                    'Close Trade'
-                  )}
-                </Button>
-              </div>
-            </TableCell>
-          </>
-        )}
-        getRowAttributes={(item) => ({
-          isZeroBalance: item.balance !== undefined && item.balance !== null && item.balance <= 0,
-          'data-state': item.balance !== undefined && item.balance !== null && item.balance <= 0 ? 'completed' : 'in-process',
-        })}
-      />
-
-      {selectedTradeLegId && (
-        <TradeMovementsDialog 
-          open={isMovementDialogOpen}
-          onOpenChange={setIsMovementDialogOpen}
-          tradeLeg={selectedTradeLegId}
+      <div className="data-table-container">
+        <SortableTable
+          items={filteredTrades}
+          onReorder={handleReorder}
+          renderHeader={renderHeader}
+          renderRow={renderRow}
         />
-      )}
+      </div>
+
+      <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogTitle>
+            Comments for Trade {selectedTradeForComments?.trade_reference}
+          </DialogTitle>
+          <div className="space-y-2 py-4">
+            {selectedTradeForComments && (
+              <CommentsCellInput
+                tradeId={selectedTradeForComments.id}
+                initialValue={selectedTradeForComments.comments || ''}
+                onSave={handleCommentsUpdate}
+                showButtons={true}
+                onCancel={() => setIsCommentsDialogOpen(false)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMovementsDialogOpen} onOpenChange={setIsMovementsDialogOpen}>
+        {selectedTradeForMovements && (
+          <TradeMovementsDialog 
+            tradeLegId={selectedTradeForMovements.trade_leg_id}
+            tradeReference={selectedTradeForMovements.trade_reference}
+          />
+        )}
+      </Dialog>
     </>
   );
 };

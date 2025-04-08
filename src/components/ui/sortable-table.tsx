@@ -55,18 +55,10 @@ interface SortableRowProps {
   id: string;
   children: React.ReactNode;
   className?: string;
-  isZeroBalance?: boolean;
-  'data-state'?: string;
 }
 
 // Sortable row component using dnd-kit sortable hooks
-export const SortableRow = ({ 
-  id, 
-  children, 
-  className,
-  isZeroBalance,
-  'data-state': dataState,
-}: SortableRowProps) => {
+export const SortableRow = ({ id, children, className }: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -91,14 +83,12 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted",
         isDragging ? "bg-accent" : "",
-        isZeroBalance ? "opacity-50 bg-muted/30" : "",
         className
       )}
-      data-state={dataState || (isZeroBalance ? "completed" : undefined)}
       {...attributes}
     >
       <TableCell className="p-0 pl-2">
-        <div className={cn("cursor-grab", isZeroBalance ? "cursor-not-allowed opacity-50" : "")} {...listeners}>
+        <div className="cursor-grab" {...listeners}>
           <DragHandle />
         </div>
       </TableCell>
@@ -114,11 +104,6 @@ interface SortableTableProps<T extends SortableItem> {
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
   className?: string;
-  getRowAttributes?: (item: T) => { 
-    className?: string; 
-    isZeroBalance?: boolean;
-    'data-state'?: string;
-  };
 }
 
 // Generic sortable table component
@@ -128,7 +113,6 @@ export function SortableTable<T extends SortableItem>({
   renderHeader,
   renderRow,
   className,
-  getRowAttributes,
 }: SortableTableProps<T>) {
   // State to track the currently dragged item
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -192,19 +176,11 @@ export function SortableTable<T extends SortableItem>({
             items={items.map(item => ({ id: item.id }))}
             strategy={verticalListSortingStrategy}
           >
-            {items.map((item, index) => {
-              const rowAttributes = getRowAttributes ? getRowAttributes(item) : {};
-              
-              return (
-                <SortableRow 
-                  key={item.id} 
-                  id={item.id}
-                  {...rowAttributes}
-                >
-                  {renderRow(item, index)}
-                </SortableRow>
-              );
-            })}
+            {items.map((item, index) => (
+              <SortableRow key={item.id} id={item.id}>
+                {renderRow(item, index)}
+              </SortableRow>
+            ))}
           </SortableContext>
         </TableBody>
       </Table>
