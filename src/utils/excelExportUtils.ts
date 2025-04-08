@@ -21,14 +21,26 @@ const formatExcelValue = (value: number): string | null => {
 // Create header cell style
 const headerStyle: any = {
   font: { bold: true, color: { rgb: "FFFFFF" } },
-  fill: { fgColor: { rgb: "1A1F2C" } }, // Brand navy
-  alignment: { horizontal: "right" }
+  fill: { patternType: "solid", fgColor: { rgb: "1A1F2C" } }, // Brand navy with patternType
+  alignment: { horizontal: "right" },
+  border: {
+    top: { style: "thin", color: { rgb: "000000" } },
+    bottom: { style: "thin", color: { rgb: "000000" } },
+    left: { style: "thin", color: { rgb: "000000" } },
+    right: { style: "thin", color: { rgb: "000000" } }
+  }
 };
 
 const categoryHeaderStyle: any = {
   font: { bold: true, color: { rgb: "FFFFFF" } },
-  fill: { fgColor: { rgb: "1A1F2C" } }, // Brand navy
-  alignment: { horizontal: "center" }
+  fill: { patternType: "solid", fgColor: { rgb: "1A1F2C" } }, // Brand navy with patternType
+  alignment: { horizontal: "center" },
+  border: {
+    top: { style: "thin", color: { rgb: "000000" } },
+    bottom: { style: "thin", color: { rgb: "000000" } },
+    left: { style: "thin", color: { rgb: "000000" } },
+    right: { style: "thin", color: { rgb: "000000" } }
+  }
 };
 
 // Style for the title
@@ -65,13 +77,6 @@ export const exportExposureToExcel = (
   BIODIESEL_PRODUCTS: string[],
   PRICING_INSTRUMENT_PRODUCTS: string[]
 ) => {
-  // Define a function to get color classes based on value (similar to the one in UI)
-  const getValueColorClass = (value: number): string => {
-    if (value > 0) return 'text-green-400';
-    if (value < 0) return 'text-red-400';
-    return 'text-gray-500';
-  };
-
   // Create workbook and worksheet
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([]);
@@ -181,7 +186,7 @@ export const exportExposureToExcel = (
         v: headerRow1[i],
         s: {
           font: { bold: true, color: { rgb: "000000" } },
-          fill: { fgColor: { rgb: "FFFFFF" } },
+          fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
           alignment: { horizontal: "left" },
           border: {
             top: { style: "thin", color: { rgb: "000000" } },
@@ -198,7 +203,7 @@ export const exportExposureToExcel = (
         v: headerRow1[i],
         s: {
           font: { bold: true, color: { rgb: "FFFFFF" } },
-          fill: { fgColor: { rgb: getCategoryBgColor(headerRow1[i]) } },
+          fill: { patternType: "solid", fgColor: { rgb: getCategoryBgColor(headerRow1[i]) } },
           alignment: { horizontal: "center" },
           border: {
             top: { style: "thin", color: { rgb: "000000" } },
@@ -239,7 +244,7 @@ export const exportExposureToExcel = (
           v: headerRow2[i],
           s: {
             font: { bold: true, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: getCategoryBgColor(category) } },
+            fill: { patternType: "solid", fgColor: { rgb: getCategoryBgColor(category) } },
             alignment: { horizontal: "right" },
             border: {
               top: { style: "thin", color: { rgb: "000000" } },
@@ -263,7 +268,7 @@ export const exportExposureToExcel = (
         v: headerRow2[i],
         s: {
           font: { bold: true, color: { rgb: "000000" } },
-          fill: { fgColor: { rgb: "FFFFFF" } },
+          fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
           alignment: { horizontal: "left" },
           border: {
             top: { style: "thin", color: { rgb: "000000" } },
@@ -652,7 +657,7 @@ export const exportExposureToExcel = (
     v: "Total",
     s: {
       font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "4B5563" } }, // Dark gray background
+      fill: { patternType: "solid", fgColor: { rgb: "4B5563" } }, // Dark gray background
       alignment: { horizontal: "left" },
       border: {
         top: { style: "thin", color: { rgb: "000000" } },
