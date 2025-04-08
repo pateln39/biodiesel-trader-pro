@@ -599,6 +599,12 @@ const fetchMovements = async (): Promise<Movement[]> => {
         date: new Date(m.created_at),
         createdAt: new Date(m.created_at),
         updatedAt: new Date(m.updated_at),
+        bargeOrdersChecked: m.barge_orders_checked || false,
+        nominationChecked: m.nomination_checked || false,
+        loadPlanChecked: m.load_plan_checked || false,
+        coaReceivedChecked: m.coa_received_checked || false,
+        coaSentChecked: m.coa_sent_checked || false,
+        eadChecked: m.ead_checked || false,
       };
     });
   } catch (error: any) {
