@@ -170,6 +170,17 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     </>
   );
 
+  // Get row attributes including zero-balance state
+  const getRowAttributes = (trade: OpenTrade) => {
+    const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
+    
+    return {
+      isZeroBalance,
+      className: isZeroBalance ? "opacity-50" : "",
+      'data-state': isZeroBalance ? "completed" : undefined
+    };
+  };
+
   // Render row for the sortable table
   const renderRow = (trade: OpenTrade) => {
     const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
@@ -294,9 +305,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 w-8 p-0"
+                        className={cn("h-8 w-8 p-0", isZeroBalance ? "opacity-50 cursor-not-allowed" : "")}
                         disabled={isZeroBalance}
-                        onClick={() => handleScheduleMovement(trade)}
+                        onClick={() => !isZeroBalance && handleScheduleMovement(trade)}
                       >
                         <Ship className="h-4 w-4" />
                       </Button>
@@ -329,6 +340,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           onReorder={handleReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
+          getRowAttributes={getRowAttributes}
         />
       </div>
 
