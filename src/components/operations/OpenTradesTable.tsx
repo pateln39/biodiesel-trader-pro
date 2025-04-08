@@ -1,5 +1,6 @@
+
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -28,11 +29,13 @@ import { toast } from 'sonner';
 interface OpenTradesTableProps {
   onRefresh?: () => void;
   filterStatus?: 'all' | 'in-process' | 'completed';
+  onDataChange?: (data: any[]) => void;
 }
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
   onRefresh,
-  filterStatus = 'all'
+  filterStatus = 'all',
+  onDataChange
 }) => {
   const { 
     filteredTrades,
@@ -50,6 +53,47 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
   const { toast: toastHook } = useToast();
+
+  // Prepare data for export
+  useEffect(() => {
+    if (filteredTrades.length > 0 && onDataChange) {
+      const exportData = filteredTrades.map(trade => {
+        // Format formula for display in export
+        let formulaDisplay = '';
+        if (trade.pricing_formula) {
+          try {
+            formulaDisplay = JSON.stringify(trade.pricing_formula);
+          } catch (e) {
+            formulaDisplay = 'Complex Formula';
+          }
+        }
+
+        // Create a new object with formatted fields for export
+        return {
+          tradeReference: trade.trade_leg_id ? 
+            formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
+            trade.trade_reference,
+          buySell: trade.buy_sell,
+          incoTerm: trade.inco_term,
+          quantity: `${trade.quantity} ${trade.unit || 'MT'}`,
+          sustainability: trade.sustainability || 'N/A',
+          product: trade.product,
+          loadingStart: trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A',
+          loadingEnd: trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A',
+          counterparty: trade.counterparty,
+          pricingType: trade.pricing_type === 'efp' ? 'EFP' : 'Standard',
+          formula: formulaDisplay,
+          comments: trade.comments || '',
+          customsStatus: trade.customs_status || '',
+          creditStatus: trade.credit_status || '',
+          contractStatus: trade.contract_status || '',
+          nominatedValue: `${trade.nominated_value?.toLocaleString() || '0'} MT`,
+          balance: `${trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT`
+        };
+      });
+      onDataChange(exportData);
+    }
+  }, [filteredTrades, onDataChange]);
   
   const onReorder = async (reorderedItems: OpenTrade[]) => {
     try {
