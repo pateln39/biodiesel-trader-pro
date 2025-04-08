@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -227,13 +226,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   };
 
-  // Render header for the sortable table
   const renderHeader = () => (
     <>
       <TableHead>Movement Reference Number</TableHead>
       <TableHead>Buy/Sell</TableHead>
       <TableHead>Incoterm</TableHead>
-      <TableHead>Quantity</TableHead>
       <TableHead>Sustainability</TableHead>
       <TableHead>Product</TableHead>
       <TableHead>Loading Start</TableHead>
@@ -258,7 +255,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     </>
   );
 
-  // Render row for the sortable table
   const renderRow = (movement: Movement) => (
     <>
       <TableCell>{movement.referenceNumber}</TableCell>
@@ -274,7 +270,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         )}
       </TableCell>
       <TableCell>{movement.incoTerm}</TableCell>
-      <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
       <TableCell>{movement.sustainability || '-'}</TableCell>
       <TableCell>{movement.product}</TableCell>
       <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
