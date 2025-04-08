@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types';
@@ -31,7 +30,6 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
   const [activeTab, setActiveTab] = React.useState("details");
   const [movementsDialogOpen, setMovementsDialogOpen] = React.useState(false);
 
-  // Fetch the trade details
   const { data: trade, isLoading, error } = useQuery({
     queryKey: ['tradeDetails', tradeId],
     queryFn: async () => {
@@ -125,15 +123,12 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     enabled: open && !!tradeId,
   });
 
-  // Update the function to accept either PhysicalTrade or PhysicalTradeLeg
   const getEfpFormulaDisplay = (item: PhysicalTrade | PhysicalTradeLeg) => {
     if ('pricingType' in item && item.pricingType !== 'efp') return null;
     
     if ('efpAgreedStatus' in item && item.efpAgreedStatus) {
-      // For agreed EFP, return empty as requested
       return '';
     } else {
-      // For unagreed EFP, show "ICE GASOIL FUTURES (EFP) + premium"
       const efpPremium = 'efpPremium' in item ? item.efpPremium || 0 : 0;
       return `ICE GASOIL FUTURES (EFP) + ${efpPremium}`;
     }
