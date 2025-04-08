@@ -14,6 +14,8 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Checkbox } from "@/components/ui/checkbox";
 import { mapProductToCanonical, parsePaperInstrument, formatExposureTableProduct, isPricingInstrument, shouldUseSpecialBackground, getExposureProductBackgroundClass } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
+import { toast } from 'sonner';
+import { exportExposureToExcel } from '@/utils/excelExportUtils';
 
 interface ExposureData {
   physical: number;
@@ -756,6 +758,28 @@ const ExposurePage = () => {
 
   const isLoadingData = isLoading || instrumentsLoading;
 
+  const handleExportExcel = () => {
+    try {
+      exportExposureToExcel(
+        exposureData,
+        orderedVisibleCategories,
+        filteredProducts,
+        grandTotals,
+        groupGrandTotals,
+        BIODIESEL_PRODUCTS,
+        PRICING_INSTRUMENT_PRODUCTS
+      );
+      toast.success("Export successful", {
+        description: "Exposure report has been downloaded"
+      });
+    } catch (error) {
+      console.error('[EXPOSURE] Export error:', error);
+      toast.error("Export failed", {
+        description: "There was an error exporting the exposure report"
+      });
+    }
+  };
+
   return <Layout>
       <Helmet>
         <title>Exposure Reporting</title>
@@ -765,7 +789,7 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <Button variant="outline" size="sm" onClick={handleExportExcel}>
               <Download className="mr-2 h-3 w-3" /> Export
             </Button>
           </div>
