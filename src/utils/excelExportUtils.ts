@@ -33,8 +33,24 @@ const categoryHeaderStyle: any = {
 
 // Style for the title
 const titleStyle: any = {
-  font: { bold: true, sz: 16, underline: true },
+  font: { bold: true, sz: 24, underline: true },
   alignment: { horizontal: "center" }
+};
+
+// Define category background colors
+const getCategoryBgColor = (category: string): string => {
+  switch (category) {
+    case 'Physical':
+      return "8B4513"; // Dark brown
+    case 'Pricing':
+      return "2E8B57"; // Green
+    case 'Paper':
+      return "1E5391"; // Blue
+    case 'Exposure':
+      return "3CB371"; // Green
+    default:
+      return "1A1F2C"; // Default navy
+  }
 };
 
 /**
@@ -68,7 +84,7 @@ export const exportExposureToExcel = (
   ws['!cols'] = wscols;
   
   // Add title
-  const title = [["Exposure Reporting"]];
+  const title = [["EXPOSURE REPORTING"]];
   XLSX.utils.sheet_add_aoa(ws, title, { origin: "A1" });
   
   // Apply title style
@@ -95,7 +111,7 @@ export const exportExposureToExcel = (
   
   // Apply title style
   if (!ws['!cells']) ws['!cells'] = {};
-  ws['!cells']["A1"] = { t: "s", v: "Exposure Reporting", s: titleStyle };
+  ws['!cells']["A1"] = { t: "s", v: "EXPOSURE REPORTING", s: titleStyle };
   
   // Start building the data rows (starting at row 3 to leave space after title)
   const headerRow1 = ["Month"];
@@ -152,25 +168,112 @@ export const exportExposureToExcel = (
   XLSX.utils.sheet_add_aoa(ws, [headerRow1], { origin: "A3" });
   XLSX.utils.sheet_add_aoa(ws, [headerRow2], { origin: "A4" });
   
-  // Apply styles to header rows
+  // Apply styles to category header rows (first row)
   for (let i = 0; i < headerRow1.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: 2, c: i });
     if (!ws['!cells']) ws['!cells'] = {};
-    ws['!cells'][cellRef] = {
-      t: "s",
-      v: headerRow1[i],
-      s: categoryHeaderStyle
-    };
+    
+    // Apply different styles depending on whether it's the Month cell or a category cell
+    if (i === 0) {
+      // Month header cell
+      ws['!cells'][cellRef] = {
+        t: "s",
+        v: headerRow1[i],
+        s: {
+          font: { bold: true, color: { rgb: "000000" } },
+          fill: { fgColor: { rgb: "FFFFFF" } },
+          alignment: { horizontal: "left" },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        }
+      };
+    } else {
+      // Category header cells
+      ws['!cells'][cellRef] = {
+        t: "s",
+        v: headerRow1[i],
+        s: {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: getCategoryBgColor(headerRow1[i]) } },
+          alignment: { horizontal: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        }
+      };
+    }
   }
   
+  // Apply styles to product header row (second row)
   for (let i = 0; i < headerRow2.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: 3, c: i });
     if (!ws['!cells']) ws['!cells'] = {};
-    ws['!cells'][cellRef] = {
-      t: "s",
-      v: headerRow2[i],
-      s: headerStyle
-    };
+    
+    // Determine which category this product belongs to
+    let categoryIndex = 0;
+    let runningColCount = 1; // Start at 1 to account for the Month column
+    
+    while (categoryIndex < orderedVisibleCategories.length) {
+      const category = orderedVisibleCategories[categoryIndex];
+      const categoryProducts = filteredProducts.filter(product => 
+        !(category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) &&
+        !(category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP'))
+      );
+      
+      let colSpan = categoryProducts.length;
+      if (category === 'Exposure') {
+        colSpan += 3; // Add columns for Total Biodiesel, Total Pricing Instrument, and Total Row
+      }
+      
+      if (i >= runningColCount && i < runningColCount + colSpan) {
+        // This cell belongs to the current category
+        ws['!cells'][cellRef] = {
+          t: "s",
+          v: headerRow2[i],
+          s: {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: getCategoryBgColor(category) } },
+            alignment: { horizontal: "right" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          }
+        };
+        break;
+      }
+      
+      runningColCount += colSpan;
+      categoryIndex++;
+    }
+    
+    // For the Month cell (first cell in second row)
+    if (i === 0) {
+      ws['!cells'][cellRef] = {
+        t: "s",
+        v: headerRow2[i],
+        s: {
+          font: { bold: true, color: { rgb: "000000" } },
+          fill: { fgColor: { rgb: "FFFFFF" } },
+          alignment: { horizontal: "left" },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        }
+      };
+    }
   }
   
   // Add data rows
@@ -198,7 +301,15 @@ export const exportExposureToExcel = (
           ws['!cells'][cellRef] = {
             t: "s",
             v: formatExcelValue(value) || "",
-            s: getExcelValueStyle(value)
+            s: {
+              ...getExcelValueStyle(value),
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            }
           };
           colIndex++;
         });
@@ -213,7 +324,15 @@ export const exportExposureToExcel = (
           ws['!cells'][cellRef] = {
             t: "s",
             v: formatExcelValue(value) || "",
-            s: getExcelValueStyle(value)
+            s: {
+              ...getExcelValueStyle(value),
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            }
           };
           colIndex++;
         });
@@ -228,7 +347,15 @@ export const exportExposureToExcel = (
           ws['!cells'][cellRef] = {
             t: "s",
             v: formatExcelValue(value) || "",
-            s: getExcelValueStyle(value)
+            s: {
+              ...getExcelValueStyle(value),
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            }
           };
           colIndex++;
         });
@@ -245,7 +372,15 @@ export const exportExposureToExcel = (
           ws['!cells'][cellRef] = {
             t: "s",
             v: formatExcelValue(value) || "",
-            s: getExcelValueStyle(value)
+            s: {
+              ...getExcelValueStyle(value),
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
+            }
           };
           colIndex++;
           
@@ -260,7 +395,15 @@ export const exportExposureToExcel = (
             ws['!cells'][cellRef] = {
               t: "s",
               v: formatExcelValue(biodieselTotal) || "",
-              s: getExcelValueStyle(biodieselTotal)
+              s: {
+                ...getExcelValueStyle(biodieselTotal),
+                border: {
+                  top: { style: "thin", color: { rgb: "000000" } },
+                  bottom: { style: "thin", color: { rgb: "000000" } },
+                  left: { style: "thin", color: { rgb: "000000" } },
+                  right: { style: "thin", color: { rgb: "000000" } }
+                }
+              }
             };
             colIndex++;
           }
@@ -276,7 +419,15 @@ export const exportExposureToExcel = (
         ws['!cells'][cellRef1] = {
           t: "s",
           v: formatExcelValue(pricingInstrumentTotal) || "",
-          s: getExcelValueStyle(pricingInstrumentTotal)
+          s: {
+            ...getExcelValueStyle(pricingInstrumentTotal),
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          }
         };
         colIndex++;
         
@@ -291,7 +442,15 @@ export const exportExposureToExcel = (
         ws['!cells'][cellRef2] = {
           t: "s",
           v: formatExcelValue(totalRow) || "",
-          s: getExcelValueStyle(totalRow)
+          s: {
+            ...getExcelValueStyle(totalRow),
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          }
         };
         colIndex++;
       }
@@ -314,7 +473,7 @@ export const exportExposureToExcel = (
     );
     
     if (category === 'Physical') {
-      categoryProducts.forEach(product => {
+      categoryProducts.forEach((product, index) => {
         const value = grandTotals.productTotals[product]?.physical || 0;
         totalRow.push(formatExcelValue(value));
         
@@ -326,13 +485,19 @@ export const exportExposureToExcel = (
           v: formatExcelValue(value) || "",
           s: {
             ...getExcelValueStyle(value),
-            font: { bold: true, color: getExcelValueStyle(value).font?.color }
+            font: { bold: true, color: getExcelValueStyle(value).font?.color },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
           }
         };
         colIndex++;
       });
     } else if (category === 'Pricing') {
-      categoryProducts.forEach(product => {
+      categoryProducts.forEach((product, index) => {
         const value = grandTotals.productTotals[product]?.pricing || 0;
         totalRow.push(formatExcelValue(value));
         
@@ -344,13 +509,19 @@ export const exportExposureToExcel = (
           v: formatExcelValue(value) || "",
           s: {
             ...getExcelValueStyle(value),
-            font: { bold: true, color: getExcelValueStyle(value).font?.color }
+            font: { bold: true, color: getExcelValueStyle(value).font?.color },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
           }
         };
         colIndex++;
       });
     } else if (category === 'Paper') {
-      categoryProducts.forEach(product => {
+      categoryProducts.forEach((product, index) => {
         const value = grandTotals.productTotals[product]?.paper || 0;
         totalRow.push(formatExcelValue(value));
         
@@ -362,7 +533,13 @@ export const exportExposureToExcel = (
           v: formatExcelValue(value) || "",
           s: {
             ...getExcelValueStyle(value),
-            font: { bold: true, color: getExcelValueStyle(value).font?.color }
+            font: { bold: true, color: getExcelValueStyle(value).font?.color },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
           }
         };
         colIndex++;
@@ -382,7 +559,13 @@ export const exportExposureToExcel = (
           v: formatExcelValue(value) || "",
           s: {
             ...getExcelValueStyle(value),
-            font: { bold: true, color: getExcelValueStyle(value).font?.color }
+            font: { bold: true, color: getExcelValueStyle(value).font?.color },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
           }
         };
         colIndex++;
@@ -399,7 +582,13 @@ export const exportExposureToExcel = (
             v: formatExcelValue(groupGrandTotals.biodieselTotal) || "",
             s: {
               ...getExcelValueStyle(groupGrandTotals.biodieselTotal),
-              font: { bold: true, color: getExcelValueStyle(groupGrandTotals.biodieselTotal).font?.color }
+              font: { bold: true, color: getExcelValueStyle(groupGrandTotals.biodieselTotal).font?.color },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } }
+              }
             }
           };
           colIndex++;
@@ -417,7 +606,13 @@ export const exportExposureToExcel = (
         v: formatExcelValue(groupGrandTotals.pricingInstrumentTotal) || "",
         s: {
           ...getExcelValueStyle(groupGrandTotals.pricingInstrumentTotal),
-          font: { bold: true, color: getExcelValueStyle(groupGrandTotals.pricingInstrumentTotal).font?.color }
+          font: { bold: true, color: getExcelValueStyle(groupGrandTotals.pricingInstrumentTotal).font?.color },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
         }
       };
       colIndex++;
@@ -433,7 +628,13 @@ export const exportExposureToExcel = (
         v: formatExcelValue(groupGrandTotals.totalRow) || "",
         s: {
           ...getExcelValueStyle(groupGrandTotals.totalRow),
-          font: { bold: true, color: getExcelValueStyle(groupGrandTotals.totalRow).font?.color }
+          font: { bold: true, color: getExcelValueStyle(groupGrandTotals.totalRow).font?.color },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
         }
       };
       colIndex++;
@@ -442,6 +643,25 @@ export const exportExposureToExcel = (
   
   // Add Total row to the worksheet
   XLSX.utils.sheet_add_aoa(ws, [totalRow], { origin: `A${exposureData.length + 5}` });
+  
+  // Apply special styling to the Total row's first cell
+  const totalLabelCellRef = XLSX.utils.encode_cell({ r: exposureData.length + 4, c: 0 });
+  if (!ws['!cells']) ws['!cells'] = {};
+  ws['!cells'][totalLabelCellRef] = {
+    t: "s",
+    v: "Total",
+    s: {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4B5563" } }, // Dark gray background
+      alignment: { horizontal: "left" },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } }
+      }
+    }
+  };
   
   // Add the worksheet to the workbook
   XLSX.utils.book_append_sheet(wb, ws, "Exposure Report");
