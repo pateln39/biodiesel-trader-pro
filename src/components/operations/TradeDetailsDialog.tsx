@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import { PhysicalTrade, PhysicalTradeLeg, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types';
+import { PhysicalTrade, PhysicalTradeLeg, BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types/physical';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -155,13 +155,12 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
     if (leg.pricingType !== 'efp') return null;
     
     if (leg.efpAgreedStatus) {
-      // For agreed EFP, show the fixed value + premium (or empty if requested)
+      // For agreed EFP, return an empty string
       return '';
     } else {
       // For unagreed EFP, show "ICE GASOIL FUTURES (EFP) + premium"
       const efpPremium = leg.efpPremium || 0;
-      const designatedMonth = leg.efpDesignatedMonth ? ` (${leg.efpDesignatedMonth})` : '';
-      return `ICE GASOIL FUTURES (EFP)${designatedMonth} + ${efpPremium}`;
+      return `ICE GASOIL FUTURES (EFP) + ${efpPremium}`;
     }
   };
 
@@ -355,12 +354,6 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                         <div className="space-y-2">
                           <p className="text-sm font-medium">EFP Fixed Value</p>
                           <p>{trade.efpFixedValue}</p>
-                        </div>
-                      )}
-                      {trade.efpDesignatedMonth && (
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">EFP Designated Month</p>
-                          <p>{trade.efpDesignatedMonth}</p>
                         </div>
                       )}
                     </>
@@ -584,12 +577,6 @@ const TradeDetailsDialog: React.FC<TradeDetailsDialogProps> = ({
                               <div className="space-y-2">
                                 <p className="text-sm font-medium">EFP Fixed Value</p>
                                 <p>{leg.efpFixedValue}</p>
-                              </div>
-                            )}
-                            {leg.efpDesignatedMonth && (
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium">EFP Designated Month</p>
-                                <p>{leg.efpDesignatedMonth}</p>
                               </div>
                             )}
                           </>
