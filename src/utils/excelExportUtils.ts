@@ -21,7 +21,7 @@ const formatExcelValue = (value: number): string | null => {
 const headerStyle: any = {
   font: { bold: true, color: { rgb: "FFFFFF" } },
   fill: { patternType: "solid", fgColor: { rgb: "1A1F2C" } },
-  alignment: { horizontal: "center" },
+  alignment: { horizontal: "right" },
   border: {
     top: { style: "thin", color: { rgb: "000000" } },
     bottom: { style: "thin", color: { rgb: "000000" } },
@@ -106,35 +106,26 @@ export const exportExposureToExcel = (
   if (!ws['!merges']) ws['!merges'] = [];
   
   // Calculate total columns for title merge
-  let totalColumns = 1; // Start with 1 for Month column
-  let productCountPerCategory: Record<string, number> = {};
-  
-  // Pre-calculate how many products are in each category for correct column spans
-  orderedVisibleCategories.forEach(category => {
-    const categoryProducts = filteredProducts.filter(product => 
+  const totalColumns = orderedVisibleCategories.reduce((total, category) => {
+    let colCount = filteredProducts.filter(product => 
       !(category === 'Physical' && ['ICE GASOIL FUTURES (EFP)', 'ICE GASOIL FUTURES', 'EFP'].includes(product)) &&
       !(category === 'Paper' && ['ICE GASOIL FUTURES (EFP)', 'EFP'].includes(product))
-    );
+    ).length;
     
-    let colCount = categoryProducts.length;
     if (category === 'Exposure') {
       colCount += 3; // Add columns for Total Biodiesel, Total Pricing Instrument, and Total Row
     }
     
-    productCountPerCategory[category] = colCount;
-    totalColumns += colCount;
-  });
+    return total + colCount;
+  }, 0) + 1; // +1 for the Month column
   
-  console.log("Total columns calculated:", totalColumns);
-  console.log("Products per category:", productCountPerCategory);
-  
-  // Merge cells for title across all columns
+  // Merge cells for title across columns
   ws['!merges'].push({ 
     s: { r: 0, c: 0 }, 
     e: { r: 0, c: totalColumns > 1 ? totalColumns - 1 : 10 } 
   });
   
-  // Apply title style explicitly to ensure it's visible
+  // Apply title style explicitly
   if (!ws['!cells']) ws['!cells'] = {};
   ws['!cells']["A1"] = { 
     t: "s", 
@@ -142,34 +133,41 @@ export const exportExposureToExcel = (
     s: titleStyle 
   };
   
-  // NEW APPROACH: Build header rows WITHOUT merging for categories
-  // This ensures all category headers remain visible
+  // Start building the data rows (starting at row 3 to leave space after title)
+  const headerRow1 = ["Month"];
+  let headerRow2: any[] = [""];
+  let currentColIndex = 1;
   
-  // Generate header rows
-  const headerRow1: string[] = ["Month"];
-  let headerRow2: string[] = [""];
-  
-  // Fill first header row with category names repeated for each product
-  orderedVisibleCategories.forEach(category => {
+  // Build header rows with proper category headers and spans
+  orderedVisibleCategories.forEach((category, catIndex) => {
     const categoryProducts = filteredProducts.filter(product => 
       !(category === 'Physical' && ['ICE GASOIL FUTURES (EFP)', 'ICE GASOIL FUTURES', 'EFP'].includes(product)) &&
       !(category === 'Paper' && ['ICE GASOIL FUTURES (EFP)', 'EFP'].includes(product))
     );
     
-    // Add category name for each product column (instead of merging)
-    categoryProducts.forEach(() => {
-      headerRow1.push(category);
-    });
-    
-    // Add extra columns for Exposure category
+    let colSpan = categoryProducts.length;
     if (category === 'Exposure') {
-      // Add for Total Biodiesel, Total Pricing Instrument, and Total Row
-      headerRow1.push(category);
-      headerRow1.push(category);
-      headerRow1.push(category);
+      colSpan += 3; // Add columns for Total Biodiesel, Total Pricing Instrument, and Total Row
     }
     
-    // Add product names to the second header row
+    // Add to header row 1 (category names)
+    headerRow1.push(category);
+    
+    // Set column span for category - ensure merges are properly defined
+    if (colSpan > 1) {
+      if (!ws['!merges']) ws['!merges'] = [];
+      // Store the start column index for debugging
+      const startCol = currentColIndex;
+      const endCol = currentColIndex + colSpan - 1;
+      console.log(`Merging category ${category} from column ${startCol} to ${endCol}`);
+      
+      ws['!merges'].push({ 
+        s: { r: 2, c: currentColIndex }, 
+        e: { r: 2, c: endCol } 
+      });
+    }
+    
+    // Add to header row 2 (product names)
     if (category === 'Exposure') {
       const ucomeIndex = categoryProducts.findIndex(p => p === 'Argus UCOME');
       
@@ -187,6 +185,8 @@ export const exportExposureToExcel = (
         headerRow2.push(formatExposureTableProduct(product));
       });
     }
+    
+    currentColIndex += colSpan;
   });
   
   console.log("Header row 1:", headerRow1);
@@ -196,12 +196,12 @@ export const exportExposureToExcel = (
   XLSX.utils.sheet_add_aoa(ws, [headerRow1], { origin: "A3" });
   XLSX.utils.sheet_add_aoa(ws, [headerRow2], { origin: "A4" });
   
-  // Apply styles to each cell in header rows with appropriate background colors
-  // First header row (categories)
+  // Apply styles to category header rows with explicit styling for each cell
   for (let i = 0; i < headerRow1.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: 2, c: i });
     if (!ws['!cells']) ws['!cells'] = {};
     
+    // Apply different styles depending on whether it's the Month cell or a category cell
     if (i === 0) {
       // Month header cell
       ws['!cells'][cellRef] = {
@@ -219,10 +219,13 @@ export const exportExposureToExcel = (
           }
         }
       };
+      
+      // Debug log the style
+      debugCellStyle(ws['!cells'][cellRef].s);
     } else {
       // Category header cells with proper background color
-      const category = headerRow1[i];
-      const bgColor = getCategoryBgColor(category);
+      const bgColor = getCategoryBgColor(headerRow1[i]);
+      console.log(`Setting background color for ${headerRow1[i]}: ${bgColor}`);
       
       ws['!cells'][cellRef] = {
         t: "s",
@@ -239,22 +242,62 @@ export const exportExposureToExcel = (
           }
         }
       };
+      
+      // Debug log the style
+      debugCellStyle(ws['!cells'][cellRef].s);
     }
   }
   
-  // Apply styles to product header row (second header row)
+  // Apply styles to product header row with proper category background colors
   for (let i = 0; i < headerRow2.length; i++) {
     const cellRef = XLSX.utils.encode_cell({ r: 3, c: i });
     if (!ws['!cells']) ws['!cells'] = {};
     
-    // Find which category this product belongs to
-    let categoryForColumn = '';
-    if (i > 0) {
-      categoryForColumn = headerRow1[i]; // Use the category from the first header row
+    // Determine which category this product belongs to
+    let categoryIndex = 0;
+    let runningColCount = 1; // Start at 1 to account for the Month column
+    
+    while (categoryIndex < orderedVisibleCategories.length) {
+      const category = orderedVisibleCategories[categoryIndex];
+      const categoryProducts = filteredProducts.filter(product => 
+        !(category === 'Physical' && ['ICE GASOIL FUTURES (EFP)', 'ICE GASOIL FUTURES', 'EFP'].includes(product)) &&
+        !(category === 'Paper' && ['ICE GASOIL FUTURES (EFP)', 'EFP'].includes(product))
+      );
+      
+      let colSpan = categoryProducts.length;
+      if (category === 'Exposure') {
+        colSpan += 3; // Add columns for Total Biodiesel, Total Pricing Instrument, and Total Row
+      }
+      
+      if (i >= runningColCount && i < runningColCount + colSpan) {
+        // This cell belongs to the current category
+        // Get appropriate background color
+        const bgColor = getCategoryBgColor(category);
+        
+        ws['!cells'][cellRef] = {
+          t: "s",
+          v: headerRow2[i],
+          s: {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { patternType: "solid", fgColor: { rgb: bgColor } },
+            alignment: { horizontal: "right" },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } }
+            }
+          }
+        };
+        break;
+      }
+      
+      runningColCount += colSpan;
+      categoryIndex++;
     }
     
+    // For the Month cell (first cell in second row)
     if (i === 0) {
-      // First cell (blank in second row)
       ws['!cells'][cellRef] = {
         t: "s",
         v: headerRow2[i],
@@ -262,41 +305,6 @@ export const exportExposureToExcel = (
           font: { bold: true, color: { rgb: "000000" } },
           fill: { patternType: "solid", fgColor: { rgb: "FFFFFF" } },
           alignment: { horizontal: "left" },
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } }
-          }
-        }
-      };
-    } else {
-      // Product header cells with category background color
-      const bgColor = getCategoryBgColor(categoryForColumn);
-      
-      // For special headers in Exposure category
-      let specialBackground = bgColor;
-      if (categoryForColumn === 'Exposure' && 
-          (headerRow2[i] === "Total Biodiesel" || 
-           headerRow2[i] === "Total Pricing Instrument" || 
-           headerRow2[i] === "Total Row")) {
-        // Use slightly different colors for special headers
-        if (headerRow2[i] === "Total Biodiesel") {
-          specialBackground = "2E8B57"; // Green for biodiesel
-        } else if (headerRow2[i] === "Total Pricing Instrument") {
-          specialBackground = "1E5391"; // Blue for pricing instruments
-        } else if (headerRow2[i] === "Total Row") {
-          specialBackground = "4B5563"; // Dark gray for totals
-        }
-      }
-      
-      ws['!cells'][cellRef] = {
-        t: "s",
-        v: headerRow2[i],
-        s: {
-          font: { bold: true, color: { rgb: "FFFFFF" } },
-          fill: { patternType: "solid", fgColor: { rgb: specialBackground } },
-          alignment: { horizontal: "right" },
           border: {
             top: { style: "thin", color: { rgb: "000000" } },
             bottom: { style: "thin", color: { rgb: "000000" } },
@@ -684,7 +692,7 @@ export const exportExposureToExcel = (
     v: "Total",
     s: {
       font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { patternType: "solid", fgColor: { rgb: "4B5563" } },
+      fill: { patternType: "solid", fgColor: { rgb: "4B5563" } }, // Dark gray background
       alignment: { horizontal: "left" },
       border: {
         top: { style: "thin", color: { rgb: "000000" } },
