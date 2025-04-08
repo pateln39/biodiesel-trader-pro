@@ -71,6 +71,26 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
 
+  const onReorder = async (reorderedItems: Movement[]) => {
+    try {
+      console.log('[MOVEMENTS] Starting reorder operation');
+      toast.info("Reordering movements", {
+        description: "Saving new order to database..."
+      });
+      
+      await handleReorder(reorderedItems);
+      
+      toast.success("Order updated", {
+        description: "Movement order has been saved successfully"
+      });
+    } catch (error) {
+      console.error('[MOVEMENTS] Reordering error:', error);
+      toast.error("Reordering failed", {
+        description: "There was an error saving the movement order"
+      });
+    }
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
       const { data, error } = await supabase
@@ -406,7 +426,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <div className="w-full overflow-auto">
         <SortableTable
           items={filteredMovements}
-          onReorder={handleReorder}
+          onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
         />

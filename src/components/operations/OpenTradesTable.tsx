@@ -1,3 +1,4 @@
+
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import TradeMovementsDialog from './TradeMovementsDialog';
 import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
+import { toast } from 'sonner';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -48,7 +50,30 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = React.useState(false);
   const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { toast: toastHook } = useToast();
+  
+  // Wrapper function for handleReorder with toast notifications
+  const onReorder = async (reorderedItems: OpenTrade[]) => {
+    try {
+      console.log('[OPEN_TRADES] Starting reorder operation');
+      toast.info("Reordering trades", {
+        description: "Saving new order to database..."
+      });
+      
+      // Call the actual reorder function
+      await handleReorder(reorderedItems);
+      
+      // Show success message on completion
+      toast.success("Order updated", {
+        description: "Trade order has been saved successfully"
+      });
+    } catch (error) {
+      console.error('[OPEN_TRADES] Reordering error:', error);
+      toast.error("Reordering failed", {
+        description: "There was an error saving the trade order"
+      });
+    }
+  };
   
   const handleRefresh = () => {
     refetchOpenTrades();
@@ -331,7 +356,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       <div className="data-table-container">
         <SortableTable
           items={filteredTrades}
-          onReorder={handleReorder}
+          onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
           isItemDisabled={isTradeDisabled}

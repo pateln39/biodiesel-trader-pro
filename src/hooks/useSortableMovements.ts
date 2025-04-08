@@ -7,16 +7,20 @@ import { Movement } from '@/types';
 // Function to fetch all movements with ordering by sort_order
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
+    console.log('[MOVEMENTS] Fetching movements with sort_order ordering');
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
-      .order('sort_order', { ascending: true })
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('[MOVEMENTS] Error fetching movements:', error);
       throw new Error(`Error fetching movements: ${error.message}`);
     }
 
+    console.log(`[MOVEMENTS] Successfully fetched ${movements?.length || 0} movements`);
+    
     // Transform the data to match the Movement type
     return (movements || []).map((m: any) => ({
       id: m.id,
@@ -75,6 +79,9 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
   // Update local state when movements change from the API
   useEffect(() => {
     if (movements?.length) {
+      console.log('[MOVEMENTS] Updating local movements state with', movements.length, 'items');
+      console.log('[MOVEMENTS] First few sort_order values:', 
+        movements.slice(0, 5).map(m => m.sort_order).join(', '));
       setLocalMovements(movements);
     }
   }, [movements]);
@@ -99,6 +106,8 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
       id: string;
       newSortOrder: number;
     }) => {
+      console.log(`[MOVEMENTS] Updating sort_order for item ${id} to ${newSortOrder}`);
+      
       // Call the update_sort_order database function
       const { data, error } = await supabase.rpc('update_sort_order', {
         p_table_name: 'movements',
@@ -106,18 +115,29 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
         p_new_sort_order: newSortOrder,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[MOVEMENTS] Error updating sort_order:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully updated sort_order for item ${id}`);
       return data;
     },
     onSuccess: () => {
       // Invalidate and refetch
+      console.log('[MOVEMENTS] Sort order update successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
     },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in updateSortOrderMutation:', error);
+    }
   });
 
   // Function to handle reordering
   const handleReorder = useCallback(
     async (reorderedItems: Movement[]) => {
+      console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
+      
       // Update local state immediately for a responsive UI
       setLocalMovements(reorderedItems);
 
@@ -126,6 +146,9 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
         id: item.id,
         sort_order: index + 1,
       }));
+
+      console.log('[MOVEMENTS] Prepared sort_order updates:', 
+        updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
 
       // Update each item's sort order in the database
       try {
@@ -138,9 +161,11 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
             })
           )
         );
+        console.log('[MOVEMENTS] All sort_order updates completed successfully');
       } catch (error) {
-        console.error('Error updating sort order:', error);
+        console.error('[MOVEMENTS] Error updating sort order:', error);
         // Revert to the original order
+        console.log('[MOVEMENTS] Reverting to original order');
         refetch();
       }
     },

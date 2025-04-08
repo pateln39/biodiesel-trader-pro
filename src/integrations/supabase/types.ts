@@ -1069,6 +1069,10 @@ export type Database = {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
       }
+      initialize_sort_order: {
+        Args: { p_table_name: string }
+        Returns: undefined
+      }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
         Returns: undefined

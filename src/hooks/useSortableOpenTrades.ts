@@ -12,6 +12,7 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
   // Update local state when open trades change from the API
   useEffect(() => {
     if (openTrades?.length) {
+      console.log('[OPEN_TRADES] Updating local trades state with', openTrades.length, 'items');
       // Sort by sort_order if it exists, otherwise by created_at
       const sortedTrades = [...openTrades].sort((a, b) => {
         if (a.sort_order !== undefined && b.sort_order !== undefined) {
@@ -19,6 +20,8 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
         }
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       });
+      console.log('[OPEN_TRADES] First few sort_order values:', 
+        sortedTrades.slice(0, 5).map(t => t.sort_order).join(', '));
       setLocalTrades(sortedTrades);
     }
   }, [openTrades]);
@@ -55,6 +58,8 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
       id: string;
       newSortOrder: number;
     }) => {
+      console.log(`[OPEN_TRADES] Updating sort_order for item ${id} to ${newSortOrder}`);
+      
       // Call the update_sort_order database function
       const { data, error } = await supabase.rpc('update_sort_order', {
         p_table_name: 'open_trades',
@@ -62,18 +67,29 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
         p_new_sort_order: newSortOrder,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[OPEN_TRADES] Error updating sort_order:', error);
+        throw error;
+      }
+      
+      console.log(`[OPEN_TRADES] Successfully updated sort_order for item ${id}`);
       return data;
     },
     onSuccess: () => {
       // Invalidate and refetch
+      console.log('[OPEN_TRADES] Sort order update successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
     },
+    onError: (error) => {
+      console.error('[OPEN_TRADES] Error in updateSortOrderMutation:', error);
+    }
   });
 
   // Function to handle reordering
   const handleReorder = useCallback(
     async (reorderedItems: OpenTrade[]) => {
+      console.log('[OPEN_TRADES] Starting reordering process for', reorderedItems.length, 'items');
+      
       // Update local state immediately for a responsive UI
       setLocalTrades(reorderedItems);
 
@@ -82,6 +98,9 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
         id: item.id,
         sort_order: index + 1,
       }));
+
+      console.log('[OPEN_TRADES] Prepared sort_order updates:', 
+        updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
 
       // Update each item's sort order in the database
       try {
@@ -94,9 +113,11 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
             })
           )
         );
+        console.log('[OPEN_TRADES] All sort_order updates completed successfully');
       } catch (error) {
-        console.error('Error updating sort order:', error);
+        console.error('[OPEN_TRADES] Error updating sort order:', error);
         // Revert to the original order
+        console.log('[OPEN_TRADES] Reverting to original order');
         refetchOpenTrades();
       }
     },
