@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -40,7 +41,7 @@ const OpenTradesTable: React.FC<{
   const [isMovementDialogOpen, setIsMovementDialogOpen] = React.useState(false);
   const [selectedTradeLegId, setSelectedTradeLegId] = React.useState<string | null>(null);
 
-  const { mutate: closeTradeMutation, isLoading: isClosingTrade } = useMutation({
+  const closeTradeMutation = useMutation({
     mutationFn: async (id: string) => {
       const { data, error } = await supabase
         .from('open_trades')
@@ -73,7 +74,7 @@ const OpenTradesTable: React.FC<{
   });
 
   const handleCloseTrade = (id: string) => {
-    closeTradeMutation(id);
+    closeTradeMutation.mutate(id);
   };
 
   const handleOpenMovementDialog = (tradeLegId: string) => {
@@ -172,7 +173,16 @@ const OpenTradesTable: React.FC<{
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent className="w-80">
-                      <FormulaCellDisplay trade={trade} />
+                      <FormulaCellDisplay 
+                        tradeId={trade.id} 
+                        legId={trade.trade_leg_id} 
+                        formula={trade.pricing_formula}
+                        pricingType={trade.pricing_type}
+                        efpPremium={trade.efp_premium}
+                        efpAgreedStatus={trade.efp_agreed_status}
+                        efpFixedValue={trade.efp_fixed_value}
+                        efpDesignatedMonth={trade.efp_designated_month}
+                      />
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -188,7 +198,12 @@ const OpenTradesTable: React.FC<{
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent className="w-80">
-                    <CommentsCellInput tradeId={trade.id} initialComments={trade.comments} onRefresh={onRefresh} />
+                    <CommentsCellInput 
+                      tradeId={trade.id} 
+                      legId={trade.trade_leg_id}
+                      initialValue={trade.comments} 
+                      onSave={() => { if (onRefresh) onRefresh(); }}
+                    />
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -197,23 +212,30 @@ const OpenTradesTable: React.FC<{
               <div className="space-x-2">
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      disabled={trade.balance !== undefined && trade.balance !== null && trade.balance <= 0}
+                    >
                       <Ship className="mr-2 h-4 w-4" />
                       Schedule
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogTitle>Schedule Movement</DialogTitle>
-                    <ScheduleMovementForm tradeLegId={trade.trade_leg_id} onSchedule={() => {
-                      toast({
-                        title: 'Movement Scheduled',
-                        description: 'The movement has been scheduled successfully.',
-                      });
-                      handleCloseMovementDialog();
-                      if (onRefresh) {
-                        onRefresh();
-                      }
-                    }} />
+                    <ScheduleMovementForm 
+                      tradeLeg={trade.trade_leg_id} 
+                      onSuccess={() => {
+                        toast({
+                          title: 'Movement Scheduled',
+                          description: 'The movement has been scheduled successfully.',
+                        });
+                        handleCloseMovementDialog();
+                        if (onRefresh) {
+                          onRefresh();
+                        }
+                      }} 
+                    />
                   </DialogContent>
                 </Dialog>
                 <Button size="sm" variant="secondary" onClick={() => handleOpenMovementDialog(trade.trade_leg_id)}>
@@ -224,9 +246,9 @@ const OpenTradesTable: React.FC<{
                   size="sm" 
                   variant="destructive" 
                   onClick={() => handleCloseTrade(trade.id)}
-                  disabled={isClosingTrade}
+                  disabled={closeTradeMutation.isPending}
                 >
-                  {isClosingTrade ? (
+                  {closeTradeMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Closing...
@@ -245,11 +267,13 @@ const OpenTradesTable: React.FC<{
         })}
       />
 
-      <TradeMovementsDialog 
-        isOpen={isMovementDialogOpen}
-        onClose={handleCloseMovementDialog}
-        tradeLegId={selectedTradeLegId}
-      />
+      {selectedTradeLegId && (
+        <TradeMovementsDialog 
+          open={isMovementDialogOpen}
+          onOpenChange={setIsMovementDialogOpen}
+          tradeLeg={selectedTradeLegId}
+        />
+      )}
     </>
   );
 };
