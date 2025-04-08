@@ -336,6 +336,7 @@ export type Database = {
           product: string | null
           reference_number: string | null
           scheduled_quantity: number | null
+          sort_order: number | null
           status: string | null
           sustainability: string | null
           trade_leg_id: string | null
@@ -376,6 +377,7 @@ export type Database = {
           product?: string | null
           reference_number?: string | null
           scheduled_quantity?: number | null
+          sort_order?: number | null
           status?: string | null
           sustainability?: string | null
           trade_leg_id?: string | null
@@ -416,6 +418,7 @@ export type Database = {
           product?: string | null
           reference_number?: string | null
           scheduled_quantity?: number | null
+          sort_order?: number | null
           status?: string | null
           sustainability?: string | null
           trade_leg_id?: string | null
@@ -463,6 +466,7 @@ export type Database = {
           product: string
           quantity: number
           scheduled_quantity: number | null
+          sort_order: number | null
           status: string | null
           sustainability: string | null
           tolerance: number | null
@@ -502,6 +506,7 @@ export type Database = {
           product: string
           quantity: number
           scheduled_quantity?: number | null
+          sort_order?: number | null
           status?: string | null
           sustainability?: string | null
           tolerance?: number | null
@@ -541,6 +546,7 @@ export type Database = {
           product?: string
           quantity?: number
           scheduled_quantity?: number | null
+          sort_order?: number | null
           status?: string | null
           sustainability?: string | null
           tolerance?: number | null
@@ -1062,6 +1068,10 @@ export type Database = {
       generate_movement_reference: {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
+      }
+      update_sort_order: {
+        Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
+        Returns: undefined
       }
     }
     Enums: {

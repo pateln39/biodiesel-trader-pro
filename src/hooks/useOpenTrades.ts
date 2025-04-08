@@ -47,6 +47,8 @@ export interface OpenTrade {
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;
   efp_designated_month?: string;
+  // Sort order for drag and drop
+  sort_order?: number;
 }
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
@@ -63,9 +65,11 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
         vessel_name, loadport, disport, scheduled_quantity, open_quantity, 
         status, created_at, updated_at, pricing_type, pricing_formula, 
         comments, contract_status, nominated_value, balance,
-        efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month
+        efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month,
+        sort_order
       `)
       .eq('status', 'open')
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -145,7 +149,9 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       efp_premium: item.efp_premium,
       efp_agreed_status: item.efp_agreed_status,
       efp_fixed_value: item.efp_fixed_value,
-      efp_designated_month: item.efp_designated_month
+      efp_designated_month: item.efp_designated_month,
+      // Add sort_order field
+      sort_order: item.sort_order
     }));
   } catch (error: any) {
     console.error('[OPEN TRADES] Error fetching open trades:', error);

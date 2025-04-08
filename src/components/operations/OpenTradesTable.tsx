@@ -1,8 +1,9 @@
+
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useOpenTrades, OpenTrade } from '@/hooks/useOpenTrades';
+import { OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { formatLegReference } from '@/utils/tradeUtils';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
@@ -19,9 +20,9 @@ import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { ContractStatus, CreditStatus, PaymentTerm, Unit, IncoTerm } from '@/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import TradeMovementsDialog from './TradeMovementsDialog';
+import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
+import { SortableTable } from '@/components/ui/sortable-table';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -32,7 +33,14 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   onRefresh,
   filterStatus = 'all'
 }) => {
-  const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
+  const { 
+    filteredTrades,
+    loading, 
+    error, 
+    refetchOpenTrades,
+    handleReorder
+  } = useSortableOpenTrades(filterStatus);
+  
   const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = React.useState(false);
@@ -107,28 +115,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     }
   };
 
-  const filteredTrades = React.useMemo(() => {
-    if (!openTrades) return [];
-    
-    if (filterStatus === 'all') {
-      return openTrades;
-    } else if (filterStatus === 'in-process') {
-      return openTrades.filter(trade => 
-        trade.balance === undefined || 
-        trade.balance === null || 
-        trade.balance > 0
-      );
-    } else if (filterStatus === 'completed') {
-      return openTrades.filter(trade => 
-        trade.balance !== undefined && 
-        trade.balance !== null && 
-        trade.balance <= 0
-      );
-    }
-    
-    return openTrades;
-  }, [openTrades, filterStatus]);
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -149,17 +135,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     );
   }
 
-  if (openTrades.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <p className="text-muted-foreground mb-4">No open trades found</p>
-        <Button variant="outline" onClick={handleRefresh}>
-          Refresh
-        </Button>
-      </div>
-    );
-  }
-
   if (filteredTrades.length === 0) {
     return (
       <div className="text-center py-10">
@@ -171,187 +146,190 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     );
   }
 
+  // Render header for the sortable table
+  const renderHeader = () => (
+    <>
+      <TableHead>Trade Ref</TableHead>
+      <TableHead>Buy/Sell</TableHead>
+      <TableHead>Incoterm</TableHead>
+      <TableHead className="text-right">Quantity</TableHead>
+      <TableHead>Sustainability</TableHead>
+      <TableHead>Product</TableHead>
+      <TableHead>Loading Start</TableHead>
+      <TableHead>Loading End</TableHead>
+      <TableHead>Counterparty</TableHead>
+      <TableHead>Pricing Type</TableHead>
+      <TableHead>Formula</TableHead>
+      <TableHead>Comments</TableHead>
+      <TableHead>Customs Status</TableHead>
+      <TableHead>Credit Status</TableHead>
+      <TableHead>Contract Status</TableHead>
+      <TableHead className="text-right">Nominated Value</TableHead>
+      <TableHead className="text-right">Balance</TableHead>
+      <TableHead className="text-center">Actions</TableHead>
+    </>
+  );
+
+  // Render row for the sortable table
+  const renderRow = (trade: OpenTrade) => {
+    const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
+    
+    const displayReference = trade.trade_leg_id ? 
+      formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
+      trade.trade_reference;
+    
+    const commentPreview = trade.comments 
+      ? (trade.comments.length > 15 
+          ? `${trade.comments.substring(0, 15)}...` 
+          : trade.comments)
+      : '';
+    
+    return (
+      <>
+        <TableCell>
+          <span className="font-medium">
+            {displayReference}
+          </span>
+        </TableCell>
+        <TableCell>
+          <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>
+            {trade.buy_sell}
+          </Badge>
+        </TableCell>
+        <TableCell>{trade.inco_term}</TableCell>
+        <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
+        <TableCell>{trade.sustainability || 'N/A'}</TableCell>
+        <TableCell>{trade.product}</TableCell>
+        <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
+        <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
+        <TableCell>{trade.counterparty}</TableCell>
+        <TableCell>
+          <Badge variant="outline">
+            {trade.pricing_type === 'efp' ? 'EFP' : 'Standard'}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <FormulaCellDisplay
+            tradeId={trade.parent_trade_id}
+            legId={trade.trade_leg_id}
+            formula={trade.pricing_formula}
+            pricingType={trade.pricing_type}
+            efpPremium={trade.efp_premium}
+            efpDesignatedMonth={trade.efp_designated_month}
+            efpAgreedStatus={trade.efp_agreed_status}
+            efpFixedValue={trade.efp_fixed_value}
+          />
+        </TableCell>
+        <TableCell>
+          <div 
+            className="flex items-center gap-1 cursor-pointer hover:text-primary"
+            onClick={() => handleCommentsClick(trade)}
+          >
+            <MessageSquare className="h-4 w-4" />
+            {trade.comments && (
+              <span className="text-xs text-muted-foreground">{commentPreview}</span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>
+          {trade.customs_status && (
+            <Badge variant={
+              trade.customs_status === 'approved' ? "default" :
+              trade.customs_status === 'rejected' ? "destructive" :
+              "outline"
+            }>
+              {trade.customs_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          {trade.credit_status && (
+            <Badge variant={
+              trade.credit_status === 'approved' ? "default" :
+              trade.credit_status === 'rejected' ? "destructive" :
+              "outline"
+            }>
+              {trade.credit_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell>
+          {trade.contract_status && (
+            <Badge variant={
+              trade.contract_status === 'signed' ? "default" :
+              trade.contract_status === 'cancelled' ? "destructive" :
+              "outline"
+            }>
+              {trade.contract_status}
+            </Badge>
+          )}
+        </TableCell>
+        <TableCell className="text-right">{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
+        <TableCell className="text-right">{trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT</TableCell>
+        <TableCell className="text-center">
+          <div className="flex justify-center space-x-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0"
+                    onClick={() => handleViewMovements(trade)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View Movements</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        disabled={isZeroBalance}
+                        onClick={() => handleScheduleMovement(trade)}
+                      >
+                        <Ship className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    {selectedTrade && (
+                      <ScheduleMovementForm 
+                        trade={selectedTrade as any} 
+                        onSuccess={handleMovementScheduled}
+                        onCancel={() => setIsDialogOpen(false)}
+                      />
+                    )}
+                  </Dialog>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Schedule Movement</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </TableCell>
+      </>
+    );
+  };
+
   return (
     <>
       <div className="data-table-container">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b border-white/10">
-              <TableHead>Trade Ref</TableHead>
-              <TableHead>Buy/Sell</TableHead>
-              <TableHead>Incoterm</TableHead>
-              <TableHead className="text-right">Quantity</TableHead>
-              <TableHead>Sustainability</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Loading Start</TableHead>
-              <TableHead>Loading End</TableHead>
-              <TableHead>Counterparty</TableHead>
-              <TableHead>Pricing Type</TableHead>
-              <TableHead>Formula</TableHead>
-              <TableHead>Comments</TableHead>
-              <TableHead>Customs Status</TableHead>
-              <TableHead>Credit Status</TableHead>
-              <TableHead>Contract Status</TableHead>
-              <TableHead className="text-right">Nominated Value</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-              <TableHead className="text-center">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTrades.map((trade) => {
-              const isZeroBalance = trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
-              
-              const displayReference = trade.trade_leg_id ? 
-                formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
-                trade.trade_reference;
-              
-              const commentPreview = trade.comments 
-                ? (trade.comments.length > 15 
-                    ? `${trade.comments.substring(0, 15)}...` 
-                    : trade.comments)
-                : '';
-              
-              return (
-                <TableRow 
-                  key={trade.id} 
-                  className={`border-b border-white/5 hover:bg-brand-navy/80 ${isZeroBalance ? 'opacity-50' : ''}`}
-                >
-                  <TableCell>
-                    <span className="font-medium">
-                      {displayReference}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>
-                      {trade.buy_sell}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{trade.inco_term}</TableCell>
-                  <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
-                  <TableCell>{trade.sustainability || 'N/A'}</TableCell>
-                  <TableCell>{trade.product}</TableCell>
-                  <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
-                  <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
-                  <TableCell>{trade.counterparty}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {trade.pricing_type === 'efp' ? 'EFP' : 'Standard'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <FormulaCellDisplay
-                      tradeId={trade.parent_trade_id}
-                      legId={trade.trade_leg_id}
-                      formula={trade.pricing_formula}
-                      pricingType={trade.pricing_type}
-                      efpPremium={trade.efp_premium}
-                      efpDesignatedMonth={trade.efp_designated_month}
-                      efpAgreedStatus={trade.efp_agreed_status}
-                      efpFixedValue={trade.efp_fixed_value}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div 
-                      className="flex items-center gap-1 cursor-pointer hover:text-primary"
-                      onClick={() => handleCommentsClick(trade)}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      {trade.comments && (
-                        <span className="text-xs text-muted-foreground">{commentPreview}</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {trade.customs_status && (
-                      <Badge variant={
-                        trade.customs_status === 'approved' ? "default" :
-                        trade.customs_status === 'rejected' ? "destructive" :
-                        "outline"
-                      }>
-                        {trade.customs_status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {trade.credit_status && (
-                      <Badge variant={
-                        trade.credit_status === 'approved' ? "default" :
-                        trade.credit_status === 'rejected' ? "destructive" :
-                        "outline"
-                      }>
-                        {trade.credit_status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {trade.contract_status && (
-                      <Badge variant={
-                        trade.contract_status === 'signed' ? "default" :
-                        trade.contract_status === 'cancelled' ? "destructive" :
-                        "outline"
-                      }>
-                        {trade.contract_status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
-                  <TableCell className="text-right">{trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center space-x-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleViewMovements(trade)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>View Movements</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
-                              <DialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-8 w-8 p-0"
-                                  disabled={isZeroBalance}
-                                  onClick={() => handleScheduleMovement(trade)}
-                                >
-                                  <Ship className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              {selectedTrade && (
-                                <ScheduleMovementForm 
-                                  trade={selectedTrade as any} 
-                                  onSuccess={handleMovementScheduled}
-                                  onCancel={() => setIsDialogOpen(false)}
-                                />
-                              )}
-                            </Dialog>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Schedule Movement</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <SortableTable
+          items={filteredTrades}
+          onReorder={handleReorder}
+          renderHeader={renderHeader}
+          renderRow={renderRow}
+        />
       </div>
 
       <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>

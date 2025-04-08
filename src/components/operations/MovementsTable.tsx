@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
@@ -44,8 +45,8 @@ import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import TradeDetailsDialog from './TradeDetailsDialog';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { formatLegReference, formatMovementReference } from '@/utils/tradeUtils';
+import { useSortableMovements } from '@/hooks/useSortableMovements';
+import { SortableTable } from '@/components/ui/sortable-table';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -55,11 +56,13 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   filterStatuses = [] 
 }) => {
   const queryClient = useQueryClient();
-  const { data: movements = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['movements'],
-    queryFn: fetchMovements,
-    refetchOnWindowFocus: false,
-  });
+  const { 
+    filteredMovements, 
+    isLoading, 
+    error, 
+    refetch,
+    handleReorder
+  } = useSortableMovements(filterStatuses);
 
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
@@ -190,35 +193,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     setTradeDetailsOpen(true);
   };
 
-  const filteredMovements = React.useMemo(() => {
-    if (filterStatuses.length === 0) {
-      return movements;
-    }
-    
-    return movements.filter(movement => 
-      filterStatuses.includes(movement.status)
-    );
-  }, [movements, filterStatuses]);
-
   if (isLoading) {
     return <TableLoadingState />;
   }
 
   if (error) {
     return <TableErrorState error={error as Error} onRetry={refetch} />;
-  }
-
-  if (movements.length === 0) {
-    return (
-      <div className="w-full">
-        <div className="text-center py-10">
-          <p className="text-muted-foreground mb-4">No movements found</p>
-          <Button variant="outline" onClick={() => refetch()}>
-            Refresh
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   if (filteredMovements.length === 0) {
@@ -247,187 +227,195 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   };
 
-  return (
-    <div className="w-full overflow-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-white/10">
-            <TableHead>Movement Reference Number</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>Incoterm</TableHead>
-            <TableHead>Quantity</TableHead>
-            <TableHead>Sustainability</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Loading Start</TableHead>
-            <TableHead>Loading End</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead>Credit Status</TableHead>
-            <TableHead>Scheduled Quantity</TableHead>
-            <TableHead>Nomination ETA</TableHead>
-            <TableHead>Nomination Valid</TableHead>
-            <TableHead>Cash Flow Date</TableHead>
-            <TableHead className="bg-gray-700">Barge Name</TableHead>
-            <TableHead>Loadport</TableHead>
-            <TableHead>Loadport Inspector</TableHead>
-            <TableHead>Disport</TableHead>
-            <TableHead>Disport Inspector</TableHead>
-            <TableHead>BL Date</TableHead>
-            <TableHead>Actual Quantity</TableHead>
-            <TableHead>COD Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredMovements.map((movement) => (
-            <TableRow key={movement.id} className="border-b border-white/5 hover:bg-brand-navy/80">
-              <TableCell>{movement.referenceNumber}</TableCell>
-              <TableCell>
-                {movement.buySell && (
-                  <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    movement.buySell === 'buy' 
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-300' 
-                      : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
-                  }`}>
-                    {movement.buySell === 'buy' ? 'BUY' : 'SELL'}
-                  </div>
+  // Render header for the sortable table
+  const renderHeader = () => (
+    <>
+      <TableHead>Movement Reference Number</TableHead>
+      <TableHead>Buy/Sell</TableHead>
+      <TableHead>Incoterm</TableHead>
+      <TableHead>Quantity</TableHead>
+      <TableHead>Sustainability</TableHead>
+      <TableHead>Product</TableHead>
+      <TableHead>Loading Start</TableHead>
+      <TableHead>Loading End</TableHead>
+      <TableHead>Counterparty</TableHead>
+      <TableHead>Comments</TableHead>
+      <TableHead>Credit Status</TableHead>
+      <TableHead>Scheduled Quantity</TableHead>
+      <TableHead>Nomination ETA</TableHead>
+      <TableHead>Nomination Valid</TableHead>
+      <TableHead>Cash Flow Date</TableHead>
+      <TableHead className="bg-gray-700">Barge Name</TableHead>
+      <TableHead>Loadport</TableHead>
+      <TableHead>Loadport Inspector</TableHead>
+      <TableHead>Disport</TableHead>
+      <TableHead>Disport Inspector</TableHead>
+      <TableHead>BL Date</TableHead>
+      <TableHead>Actual Quantity</TableHead>
+      <TableHead>COD Date</TableHead>
+      <TableHead>Status</TableHead>
+      <TableHead className="text-center">Actions</TableHead>
+    </>
+  );
+
+  // Render row for the sortable table
+  const renderRow = (movement: Movement) => (
+    <>
+      <TableCell>{movement.referenceNumber}</TableCell>
+      <TableCell>
+        {movement.buySell && (
+          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            movement.buySell === 'buy' 
+              ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-300' 
+              : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+          }`}>
+            {movement.buySell === 'buy' ? 'BUY' : 'SELL'}
+          </div>
+        )}
+      </TableCell>
+      <TableCell>{movement.incoTerm}</TableCell>
+      <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
+      <TableCell>{movement.sustainability || '-'}</TableCell>
+      <TableCell>{movement.product}</TableCell>
+      <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.counterpartyName}</TableCell>
+      <TableCell>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8"
+                onClick={() => handleCommentsClick(movement)}
+              >
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                {movement.comments && (
+                  <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
                 )}
-              </TableCell>
-              <TableCell>{movement.incoTerm}</TableCell>
-              <TableCell>{movement.quantity?.toLocaleString()} MT</TableCell>
-              <TableCell>{movement.sustainability || '-'}</TableCell>
-              <TableCell>{movement.product}</TableCell>
-              <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>{movement.counterpartyName}</TableCell>
-              <TableCell>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => handleCommentsClick(movement)}
-                      >
-                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                        {movement.comments && (
-                          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Add or view comments</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </TableCell>
-              <TableCell>
-                {movement.creditStatus && (
-                  <Badge variant={
-                    movement.creditStatus === 'approved' ? "default" :
-                    movement.creditStatus === 'rejected' ? "destructive" :
-                    "outline"
-                  }>
-                    {movement.creditStatus}
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell>{movement.scheduledQuantity?.toLocaleString()} MT</TableCell>
-              <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell className="bg-gray-700">{movement.bargeName || '-'}</TableCell>
-              <TableCell>{movement.loadport || '-'}</TableCell>
-              <TableCell>{movement.loadportInspector || '-'}</TableCell>
-              <TableCell>{movement.disport || '-'}</TableCell>
-              <TableCell>{movement.disportInspector || '-'}</TableCell>
-              <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
-              <TableCell>{movement.codDate ? format(movement.codDate, 'dd MMM yyyy') : '-'}</TableCell>
-              <TableCell>
-                <Select
-                  defaultValue={movement.status}
-                  onValueChange={(value) => {
-                    console.log(`[DEBUG] Status changing from ${movement.status} to ${value}`);
-                    handleStatusChange(movement.id, value);
-                  }}
-                >
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue>
-                      <Badge variant={getStatusBadgeVariant(movement.status)}>
-                        {movement.status.charAt(0).toUpperCase() + movement.status.slice(1)}
-                      </Badge>
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="in progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </TableCell>
-              <TableCell className="text-center">
-                <div className="flex justify-center gap-1">
-                  {movement.parentTradeId && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => handleViewTradeDetails(movement.parentTradeId as string, movement.tradeLegId)}
-                          >
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>View Trade Details</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Add or view comments</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </TableCell>
+      <TableCell>
+        {movement.creditStatus && (
+          <Badge variant={
+            movement.creditStatus === 'approved' ? "default" :
+            movement.creditStatus === 'rejected' ? "destructive" :
+            "outline"
+          }>
+            {movement.creditStatus}
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell>{movement.scheduledQuantity?.toLocaleString()} MT</TableCell>
+      <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell className="bg-gray-700">{movement.bargeName || '-'}</TableCell>
+      <TableCell>{movement.loadport || '-'}</TableCell>
+      <TableCell>{movement.loadportInspector || '-'}</TableCell>
+      <TableCell>{movement.disport || '-'}</TableCell>
+      <TableCell>{movement.disportInspector || '-'}</TableCell>
+      <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
+      <TableCell>{movement.codDate ? format(movement.codDate, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>
+        <Select
+          defaultValue={movement.status}
+          onValueChange={(value) => {
+            console.log(`[DEBUG] Status changing from ${movement.status} to ${value}`);
+            handleStatusChange(movement.id, value);
+          }}
+        >
+          <SelectTrigger className="w-[130px]">
+            <SelectValue>
+              <Badge variant={getStatusBadgeVariant(movement.status)}>
+                {movement.status.charAt(0).toUpperCase() + movement.status.slice(1)}
+              </Badge>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="scheduled">Scheduled</SelectItem>
+            <SelectItem value="in progress">In Progress</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell className="text-center">
+        <div className="flex justify-center gap-1">
+          {movement.parentTradeId && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8" 
-                    onClick={() => handleEditMovement(movement)}
+                    className="h-8 w-8"
+                    onClick={() => handleViewTradeDetails(movement.parentTradeId as string, movement.tradeLegId)}
                   >
-                    <Edit className="h-4 w-4 text-muted-foreground" />
+                    <FileText className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Movement</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this movement? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleDeleteMovement(movement.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View Trade Details</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={() => handleEditMovement(movement)}
+          >
+            <Edit className="h-4 w-4 text-muted-foreground" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Movement</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this movement? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => handleDeleteMovement(movement.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </TableCell>
+    </>
+  );
+
+  return (
+    <>
+      <div className="w-full overflow-auto">
+        <SortableTable
+          items={filteredMovements}
+          onReorder={handleReorder}
+          renderHeader={renderHeader}
+          renderRow={renderRow}
+        />
+      </div>
       
       {selectedMovement && (
         <MovementEditDialog 
@@ -463,154 +451,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         tradeId={selectedTradeId}
         legId={selectedLegId}
       />
-    </div>
+    </>
   );
-};
-
-const fetchMovements = async (): Promise<Movement[]> => {
-  try {
-    const { data: movements, error } = await supabase
-      .from('movements')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Error fetching movements: ${error.message}`);
-    }
-
-    const tradeLegsIds = movements
-      .map((m: any) => m.trade_leg_id)
-      .filter(Boolean);
-    
-    let tradeQuantities: Record<string, number> = {};
-    let tradeFormulas: Record<string, any> = {};
-    let tradePricingTypes: Record<string, string> = {};
-    let tradeLegReferences: Record<string, { legRef: string, tradeRef: string }> = {};
-    
-    if (tradeLegsIds.length > 0) {
-      const openTradesQuery = supabase
-        .from('open_trades')
-        .select('trade_leg_id, quantity, pricing_formula, pricing_type, trade_reference')
-        .in('trade_leg_id', tradeLegsIds);
-      
-      const { data: openTrades, error: openTradesError } = await openTradesQuery;
-        
-      if (openTradesError) {
-        console.error('[MOVEMENTS] Error fetching open trades data:', openTradesError);
-      } else if (openTrades) {
-        openTrades.forEach(trade => {
-          tradeQuantities[trade.trade_leg_id] = trade.quantity;
-          tradeFormulas[trade.trade_leg_id] = trade.pricing_formula;
-          tradePricingTypes[trade.trade_leg_id] = trade.pricing_type;
-        });
-      }
-      
-      const { data: legData, error: legError } = await supabase
-        .from('trade_legs')
-        .select('id, leg_reference, parent_trade_id')
-        .in('id', tradeLegsIds);
-      
-      if (legError) {
-        console.error('[MOVEMENTS] Error fetching leg references:', legError);
-      } else if (legData) {
-        const parentTradeIds = [...new Set(legData.map(leg => leg.parent_trade_id))].filter(Boolean);
-        let parentTradeRefs: Record<string, string> = {};
-        
-        if (parentTradeIds.length > 0) {
-          const { data: parentData, error: parentError } = await supabase
-            .from('parent_trades')
-            .select('id, trade_reference')
-            .in('id', parentTradeIds);
-          
-          if (!parentError && parentData) {
-            parentTradeRefs = parentData.reduce((map, parent) => {
-              map[parent.id] = parent.trade_reference;
-              return map;
-            }, {} as Record<string, string>);
-          }
-        }
-        
-        legData.forEach(leg => {
-          const tradeRef = parentTradeRefs[leg.parent_trade_id] || '';
-          tradeLegReferences[leg.id] = {
-            legRef: leg.leg_reference,
-            tradeRef: tradeRef
-          };
-        });
-      }
-    }
-
-    return (movements || []).map((m: any) => {
-      let displayReference = m.trade_reference || 'Unknown';
-      let legReference = '';
-      
-      if (m.trade_leg_id && tradeLegReferences[m.trade_leg_id]) {
-        const { legRef, tradeRef } = tradeLegReferences[m.trade_leg_id];
-        legReference = legRef;
-        if (legRef && tradeRef) {
-          displayReference = formatLegReference(tradeRef, legRef);
-        }
-      }
-      
-      let movementReference = m.reference_number;
-      if (displayReference && legReference && m.reference_number) {
-        const legSuffix = legReference.split('-').pop();
-        if (!m.reference_number.includes(`-${legSuffix}-`)) {
-          movementReference = formatMovementReference(displayReference, legReference, m.reference_number.split('-').pop() || '1');
-        }
-      }
-
-      return {
-        id: m.id,
-        referenceNumber: movementReference || m.reference_number,
-        tradeLegId: m.trade_leg_id,
-        parentTradeId: m.parent_trade_id,
-        tradeReference: displayReference,
-        counterpartyName: m.counterparty || 'Unknown',
-        product: m.product || 'Unknown',
-        buySell: m.buy_sell,
-        incoTerm: m.inco_term,
-        sustainability: m.sustainability,
-        quantity: m.trade_leg_id && tradeQuantities[m.trade_leg_id] ? tradeQuantities[m.trade_leg_id] : null,
-        scheduledQuantity: m.scheduled_quantity,
-        blQuantity: m.bl_quantity,
-        actualQuantity: m.actual_quantity,
-        nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
-        nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
-        cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
-        bargeName: m.barge_name,
-        loadport: m.loadport,
-        loadportInspector: m.loadport_inspector,
-        disport: m.disport,
-        disportInspector: m.disport_inspector,
-        blDate: m.bl_date ? new Date(m.bl_date) : undefined,
-        codDate: m.cod_date ? new Date(m.cod_date) : undefined,
-        pricingType: (m.trade_leg_id && tradePricingTypes[m.trade_leg_id]) ? 
-          tradePricingTypes[m.trade_leg_id] as PricingType | undefined :
-          m.pricing_type as PricingType | undefined,
-        pricingFormula: (m.trade_leg_id && tradeFormulas[m.trade_leg_id]) ? 
-          validateAndParsePricingFormula(tradeFormulas[m.trade_leg_id]) : 
-          validateAndParsePricingFormula(m.pricing_formula),
-        comments: m.comments,
-        customsStatus: m.customs_status,
-        creditStatus: m.credit_status,
-        contractStatus: m.contract_status,
-        status: m.status || 'scheduled',
-        date: new Date(m.created_at),
-        createdAt: new Date(m.created_at),
-        updatedAt: new Date(m.updated_at),
-        bargeOrdersChecked: m.barge_orders_checked || false,
-        nominationChecked: m.nomination_checked || false,
-        loadPlanChecked: m.load_plan_checked || false,
-        coaReceivedChecked: m.coa_received_checked || false,
-        coaSentChecked: m.coa_sent_checked || false,
-        eadChecked: m.ead_checked || false,
-      };
-    });
-  } catch (error: any) {
-    console.error('[MOVEMENTS] Error fetching movements:', error);
-    throw new Error(error.message);
-  }
 };
 
 export default MovementsTable;
