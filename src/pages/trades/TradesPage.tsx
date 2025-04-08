@@ -142,7 +142,7 @@ const TradesPage = () => {
           return {
             reference: displayReference,
             broker: leg.broker || trade.broker,
-            products: productDisplay,
+            products: productDisplay, // Using products (string) instead of product (Product type)
             period: leg.period,
             quantity: leg.quantity,
             price: price
