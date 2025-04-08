@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { PhysicalTrade } from '@/types';
@@ -15,72 +15,16 @@ import { Button } from '@/components/ui/button';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
-import { formatDate } from '@/utils/dateUtils';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
   loading: boolean;
   error: Error | null;
   refetchTrades: () => void;
-  onDataChange?: (data: any[]) => void;
 }
 
-const PhysicalTradeTable = ({ 
-  trades, 
-  loading, 
-  error, 
-  refetchTrades,
-  onDataChange
-}: PhysicalTradeTableProps) => {
+const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
-
-  // Prepare data for export
-  useEffect(() => {
-    if (trades.length > 0 && onDataChange) {
-      const exportData: any[] = [];
-      
-      trades.forEach(trade => {
-        const sortedLegs = [...trade.legs].sort((a, b) => {
-          if (a.legReference === trade.tradeReference) return -1;
-          if (b.legReference === trade.tradeReference) return 1;
-          return a.legReference.localeCompare(b.legReference);
-        });
-        
-        sortedLegs.forEach(leg => {
-          // Format formula for display in export
-          let formulaDisplay = '';
-          if (leg.formula) {
-            try {
-              formulaDisplay = JSON.stringify(leg.formula);
-            } catch (e) {
-              formulaDisplay = 'Complex Formula';
-            }
-          }
-          
-          exportData.push({
-            reference: leg.legReference === trade.tradeReference ? 
-              trade.tradeReference : 
-              `${trade.tradeReference}-${leg.legReference.split('-').pop()}`,
-            buySell: leg.buySell,
-            incoTerm: leg.incoTerm || '',
-            quantity: `${leg.quantity} ${leg.unit || 'MT'}`,
-            sustainability: leg.sustainability || '',
-            product: leg.product,
-            loadingStart: leg.loadingPeriodStart ? formatDate(leg.loadingPeriodStart) : '',
-            loadingEnd: leg.loadingPeriodEnd ? formatDate(leg.loadingPeriodEnd) : '',
-            counterparty: trade.counterparty,
-            pricingType: leg.pricingType === 'efp' ? 'EFP' : 'Standard',
-            formula: formulaDisplay,
-            comments: leg.comments || '',
-            customsStatus: leg.customsStatus || '',
-            contractStatus: leg.contractStatus || ''
-          });
-        });
-      });
-      
-      onDataChange(exportData);
-    }
-  }, [trades, onDataChange]);
 
   if (loading) {
     return <TableLoadingState />;

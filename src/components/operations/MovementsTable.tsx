@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
@@ -49,12 +49,10 @@ import { SortableTable } from '@/components/ui/sortable-table';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
-  onDataChange?: (data: any[]) => void;
 }
 
 const MovementsTable: React.FC<MovementsTableProps> = ({ 
-  filterStatuses = [],
-  onDataChange
+  filterStatuses = [] 
 }) => {
   const queryClient = useQueryClient();
   const { 
@@ -72,39 +70,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [tradeDetailsOpen, setTradeDetailsOpen] = useState(false);
   const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (filteredMovements.length > 0 && onDataChange) {
-      const exportData = filteredMovements.map(movement => {
-        return {
-          referenceNumber: movement.referenceNumber,
-          buySell: movement.buySell,
-          incoTerm: movement.incoTerm,
-          sustainability: movement.sustainability || '-',
-          product: movement.product,
-          loadingStart: movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-',
-          loadingEnd: movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-',
-          counterpartyName: movement.counterpartyName,
-          comments: movement.comments || '',
-          creditStatus: movement.creditStatus || '',
-          scheduledQuantity: `${movement.scheduledQuantity?.toLocaleString() || '0'} MT`,
-          nominationEta: movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-',
-          nominationValid: movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-',
-          cashFlow: movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-',
-          bargeName: movement.bargeName || '-',
-          loadport: movement.loadport || '-',
-          loadportInspector: movement.loadportInspector || '-',
-          disport: movement.disport || '-',
-          disportInspector: movement.disportInspector || '-',
-          blDate: movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-',
-          actualQuantity: `${movement.actualQuantity?.toLocaleString() || '0'} MT`,
-          codDate: movement.codDate ? format(movement.codDate, 'dd MMM yyyy') : '-',
-          status: movement.status
-        };
-      });
-      onDataChange(exportData);
-    }
-  }, [filteredMovements, onDataChange]);
 
   const onReorder = async (reorderedItems: Movement[]) => {
     try {

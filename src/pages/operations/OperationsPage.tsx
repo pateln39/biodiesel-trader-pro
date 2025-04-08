@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Filter, FileDown } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,7 +13,6 @@ import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import MovementsFilter from '@/components/operations/MovementsFilter';
-import { exportTableToExcel, getFormattedDate } from '@/utils/tableExportUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -22,8 +21,6 @@ const OperationsPage = () => {
   const [movementsFilterStatus, setMovementsFilterStatus] = useState<string[]>([]);
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
-  const [openTradesData, setOpenTradesData] = useState<any[]>([]);
-  const [movementsData, setMovementsData] = useState<any[]>([]);
   
   const { 
     counterparties,
@@ -70,52 +67,6 @@ const OperationsPage = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleExportOpenTrades = () => {
-    if (openTradesData.length === 0) {
-      toast.error("No data to export", {
-        description: "There are no open trades to export"
-      });
-      return;
-    }
-
-    const formattedDate = getFormattedDate();
-    const fileName = `Open_Trades_${formattedDate}.xlsx`;
-    
-    exportTableToExcel(
-      openTradesData,
-      fileName,
-      "OPEN TRADES",
-      ['actions']
-    );
-    
-    toast.success("Export complete", {
-      description: `Exported ${openTradesData.length} open trades to ${fileName}`
-    });
-  };
-
-  const handleExportMovements = () => {
-    if (movementsData.length === 0) {
-      toast.error("No data to export", {
-        description: "There are no movements to export"
-      });
-      return;
-    }
-
-    const formattedDate = getFormattedDate();
-    const fileName = `Scheduled_Movements_${formattedDate}.xlsx`;
-    
-    exportTableToExcel(
-      movementsData,
-      fileName,
-      "SCHEDULED MOVEMENTS",
-      ['actions']
-    );
-    
-    toast.success("Export complete", {
-      description: `Exported ${movementsData.length} movements to ${fileName}`
-    });
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -138,22 +89,13 @@ const OperationsPage = () => {
                 <CardTitle>Open Trades</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage open trade positions</span>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="export" 
-                      size="sm"
-                      onClick={handleExportOpenTrades}
-                    >
-                      <FileDown className="mr-2 h-4 w-4" /> Export
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsOpenTradesFilterOpen(true)}
-                    >
-                      <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsOpenTradesFilterOpen(true)}
+                  >
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -161,7 +103,6 @@ const OperationsPage = () => {
                   onRefresh={handleRefreshTables} 
                   key={`open-trades-${refreshTrigger}`} 
                   filterStatus={openTradesFilterStatus}
-                  onDataChange={setOpenTradesData}
                 />
               </CardContent>
             </Card>
@@ -180,29 +121,19 @@ const OperationsPage = () => {
                 <CardTitle>Movements</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage product movements</span>
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="export" 
-                      size="sm"
-                      onClick={handleExportMovements}
-                    >
-                      <FileDown className="mr-2 h-4 w-4" /> Export
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsMovementsFilterOpen(true)}
-                    >
-                      <Filter className="mr-2 h-4 w-4" /> Filter
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsMovementsFilterOpen(true)}
+                  >
+                    <Filter className="mr-2 h-4 w-4" /> Filter
+                  </Button>
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <MovementsTable 
                   key={`movements-${refreshTrigger}`} 
                   filterStatuses={movementsFilterStatus}
-                  onDataChange={setMovementsData}
                 />
               </CardContent>
             </Card>
