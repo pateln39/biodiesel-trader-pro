@@ -20,6 +20,8 @@ const fetchMovements = async (): Promise<Movement[]> => {
     }
 
     console.log(`[MOVEMENTS] Successfully fetched ${movements?.length || 0} movements`);
+    console.log('[MOVEMENTS] First few sort_order values:', 
+      movements?.slice(0, 5).map(m => m.sort_order).join(', '));
     
     // Transform the data to match the Movement type
     return (movements || []).map((m: any) => ({
@@ -65,9 +67,42 @@ const fetchMovements = async (): Promise<Movement[]> => {
   }
 };
 
+// Initialize sort_order for all null values
+const initializeMovementSortOrder = async (): Promise<void> => {
+  try {
+    console.log('[MOVEMENTS] Initializing sort_order for all null values');
+    const { data, error } = await supabase.rpc('initialize_sort_order', {
+      p_table_name: 'movements'
+    });
+    
+    if (error) {
+      console.error('[MOVEMENTS] Error initializing sort_order:', error);
+      throw error;
+    }
+    
+    console.log('[MOVEMENTS] Successfully initialized sort_order values');
+    return data;
+  } catch (error) {
+    console.error('[MOVEMENTS] Error in initializeMovementSortOrder:', error);
+    throw error;
+  }
+};
+
 export const useSortableMovements = (filterStatuses: string[] = []) => {
   const queryClient = useQueryClient();
   const [localMovements, setLocalMovements] = useState<Movement[]>([]);
+  
+  // Mutation to initialize sort_order values if needed
+  const initSortOrderMutation = useMutation({
+    mutationFn: initializeMovementSortOrder,
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Sort order initialization successful - refetching data');
+      refetch();
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in initSortOrderMutation:', error);
+    }
+  });
   
   // Query to get the movements
   const { data: movements = [], isLoading, error, refetch } = useQuery({
@@ -75,6 +110,17 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
     queryFn: fetchMovements,
     refetchOnWindowFocus: false,
   });
+
+  // Check if any movements have null sort_order and initialize them if needed
+  useEffect(() => {
+    if (movements?.length) {
+      const hasNullSortOrder = movements.some(m => m.sort_order === null || m.sort_order === undefined);
+      if (hasNullSortOrder) {
+        console.log('[MOVEMENTS] Detected null sort_order values, initializing...');
+        initSortOrderMutation.mutate();
+      }
+    }
+  }, [movements, initSortOrderMutation]);
 
   // Update local state when movements change from the API
   useEffect(() => {

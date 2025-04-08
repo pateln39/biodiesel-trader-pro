@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useReferenceData } from '@/hooks/useReferenceData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
@@ -26,6 +28,40 @@ const OperationsPage = () => {
     creditStatusOptions,
     customsStatusOptions
   } = useReferenceData();
+
+  // Initialize sort_order for all tables when component mounts
+  useEffect(() => {
+    const initializeSortOrder = async () => {
+      try {
+        // Initialize sort_order for open_trades
+        const { error: openTradesError } = await supabase.rpc('initialize_sort_order', {
+          p_table_name: 'open_trades'
+        });
+        
+        if (openTradesError) {
+          console.error('[OPERATIONS] Error initializing open_trades sort_order:', openTradesError);
+        }
+        
+        // Initialize sort_order for movements
+        const { error: movementsError } = await supabase.rpc('initialize_sort_order', {
+          p_table_name: 'movements'
+        });
+        
+        if (movementsError) {
+          console.error('[OPERATIONS] Error initializing movements sort_order:', movementsError);
+          toast.error("Error initializing movement order", {
+            description: "There was an error setting up movement sorting order"
+          });
+        } else {
+          console.log('[OPERATIONS] Successfully initialized sort_order for all tables');
+        }
+      } catch (error) {
+        console.error('[OPERATIONS] Error initializing sort_order:', error);
+      }
+    };
+    
+    initializeSortOrder();
+  }, []);
 
   const handleRefreshTables = () => {
     setRefreshTrigger(prev => prev + 1);
