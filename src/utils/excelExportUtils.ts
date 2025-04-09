@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -102,7 +101,7 @@ export const exportMovementsToExcel = async (): Promise<string> => {
   }
 };
 
-// Function to export exposure data to Excel
+// Function to export exposure data to Excel with hierarchical headers
 export const exportExposureToExcel = (
   exposureData: any[],
   visibleCategories: string[],
@@ -118,13 +117,17 @@ export const exportExposureToExcel = (
     // Create a new workbook
     const workbook = XLSX.utils.book_new();
     
-    // Format the data for Excel
-    const formattedData: any[] = [];
+    // Prepare data for Excel with hierarchical headers
+    // First, create the category row
+    const categoryRow: any[] = [{ v: "", t: 's' }]; // First cell is empty (for Month column)
     
-    // Add headers
-    const headers: any = { 'Month': '' };
+    // Then create the product row (headers)
+    const productRow: any[] = [{ v: "Month", t: 's' }];
     
-    // Add category headers
+    // Track column spans for each category
+    const categorySpans: number[] = [];
+    
+    // Process each category and its products to build header rows
     visibleCategories.forEach(category => {
       const categoryProducts = filteredProducts.filter(product => {
         if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
@@ -136,20 +139,44 @@ export const exportExposureToExcel = (
         return true;
       });
       
+      // Add category cell
+      categoryRow.push({ v: category, t: 's' });
+      
+      // Add span for this category (number of products under it)
+      let spanCount = categoryProducts.length;
+      
+      // Add special columns for Exposure category
+      if (category === 'Exposure') {
+        spanCount += 3; // Add columns for Biodiesel Total, Pricing Instrument Total, and Total Row
+      }
+      
+      // Keep track of this category's span
+      categorySpans.push(spanCount);
+      
+      // Fill empty cells for this category's span (minus the first cell that holds the category name)
+      for (let i = 1; i < spanCount; i++) {
+        categoryRow.push({ v: "", t: 's' });
+      }
+      
+      // Add product headers under this category
       categoryProducts.forEach(product => {
-        headers[`${category} - ${product}`] = '';
+        productRow.push({ v: product, t: 's' });
       });
       
+      // Add special column headers for Exposure category
       if (category === 'Exposure') {
-        headers['Biodiesel Total'] = '';
-        headers['Pricing Instrument Total'] = '';
-        headers['Total Row'] = '';
+        productRow.push({ v: "Biodiesel Total", t: 's' });
+        productRow.push({ v: "Pricing Instrument Total", t: 's' });
+        productRow.push({ v: "Total Row", t: 's' });
       }
     });
     
-    // Add data rows for each month
+    // Now prepare the data rows
+    const dataRows: any[][] = [];
+    
+    // Process each month's data
     exposureData.forEach(monthData => {
-      const row: any = { 'Month': monthData.month };
+      const dataRow: any[] = [{ v: monthData.month, t: 's' }];
       
       visibleCategories.forEach(category => {
         const categoryProducts = filteredProducts.filter(product => {
@@ -171,7 +198,7 @@ export const exportExposureToExcel = (
           else if (category === 'Paper') value = productData.paper;
           else if (category === 'Exposure') value = productData.netExposure;
           
-          row[`${category} - ${product}`] = value;
+          dataRow.push({ v: value, t: 'n' });
         });
         
         if (category === 'Exposure') {
@@ -190,17 +217,17 @@ export const exportExposureToExcel = (
             return total;
           }, 0);
           
-          row['Biodiesel Total'] = biodieselTotal;
-          row['Pricing Instrument Total'] = pricingInstrumentTotal;
-          row['Total Row'] = biodieselTotal + pricingInstrumentTotal;
+          dataRow.push({ v: biodieselTotal, t: 'n' });
+          dataRow.push({ v: pricingInstrumentTotal, t: 'n' });
+          dataRow.push({ v: biodieselTotal + pricingInstrumentTotal, t: 'n' });
         }
       });
       
-      formattedData.push(row);
+      dataRows.push(dataRow);
     });
     
     // Add totals row
-    const totalsRow: any = { 'Month': 'Total' };
+    const totalsRow: any[] = [{ v: "Total", t: 's' }];
     
     visibleCategories.forEach(category => {
       const categoryProducts = filteredProducts.filter(product => {
@@ -222,20 +249,44 @@ export const exportExposureToExcel = (
           else if (category === 'Exposure') value = grandTotals.productTotals[product].netExposure;
         }
         
-        totalsRow[`${category} - ${product}`] = value;
+        totalsRow.push({ v: value, t: 'n' });
       });
       
       if (category === 'Exposure') {
-        totalsRow['Biodiesel Total'] = groupGrandTotals.biodieselTotal;
-        totalsRow['Pricing Instrument Total'] = groupGrandTotals.pricingInstrumentTotal;
-        totalsRow['Total Row'] = groupGrandTotals.totalRow;
+        totalsRow.push({ v: groupGrandTotals.biodieselTotal, t: 'n' });
+        totalsRow.push({ v: groupGrandTotals.pricingInstrumentTotal, t: 'n' });
+        totalsRow.push({ v: groupGrandTotals.totalRow, t: 'n' });
       }
     });
     
-    formattedData.push(totalsRow);
+    dataRows.push(totalsRow);
     
-    // Create worksheet and add to workbook
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    // Create worksheet with combined rows
+    const allRows = [categoryRow, productRow, ...dataRows];
+    const worksheet = XLSX.utils.aoa_to_sheet(allRows);
+    
+    // Apply category spans for merging cells
+    let startCol = 1; // Start from column B (after Month column)
+    categorySpans.forEach((span, index) => {
+      const cellRef = XLSX.utils.encode_cell({ r: 0, c: startCol });
+      const mergeRef = XLSX.utils.encode_range({
+        s: { r: 0, c: startCol },
+        e: { r: 0, c: startCol + span - 1 }
+      });
+      
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      worksheet['!merges'].push(XLSX.utils.decode_range(mergeRef));
+      
+      startCol += span;
+    });
+    
+    // Apply styling to the headers
+    const headerStyle = {
+      font: { bold: true },
+      alignment: { horizontal: 'center' }
+    };
+    
+    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Exposure');
     
     // Generate filename with current date
