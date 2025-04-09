@@ -2,12 +2,10 @@ import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
-// Function to export movements to Excel
 export const exportMovementsToExcel = async (): Promise<string> => {
   try {
     console.log('[EXPORT] Starting movements export');
     
-    // Fetch movements data directly from the database
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
@@ -25,7 +23,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     
     console.log(`[EXPORT] Processing ${movements.length} movements for export`);
     
-    // Format the data for Excel
     const formattedData = movements.map(movement => {
       const scheduledQuantity = movement.scheduled_quantity 
         ? parseFloat(String(movement.scheduled_quantity)).toLocaleString() 
@@ -39,7 +36,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
         ? parseFloat(String(movement.actual_quantity)).toLocaleString() 
         : '';
       
-      // Format dates
       const formatDateStr = (dateStr: string | null) => {
         if (!dateStr) return '';
         try {
@@ -78,18 +74,14 @@ export const exportMovementsToExcel = async (): Promise<string> => {
       };
     });
     
-    // Create workbook and worksheet
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     
-    // Add the worksheet to the workbook
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Movements');
     
-    // Generate filename with current date
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const fileName = `Movements_${dateStr}.xlsx`;
     
-    // Write to file and trigger download
     XLSX.writeFile(workbook, fileName);
     
     console.log(`[EXPORT] Successfully exported to ${fileName}`);
@@ -101,7 +93,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
   }
 };
 
-// Function to export exposure data to Excel with hierarchical headers
 export const exportExposureToExcel = (
   exposureData: any[],
   visibleCategories: string[],
@@ -114,20 +105,12 @@ export const exportExposureToExcel = (
   try {
     console.log('[EXPORT] Starting exposure data export');
     
-    // Create a new workbook
     const workbook = XLSX.utils.book_new();
     
-    // Prepare data for Excel with hierarchical headers
-    // First, create the category row
-    const categoryRow: any[] = [{ v: "", t: 's' }]; // First cell is empty (for Month column)
-    
-    // Then create the product row (headers)
+    const categoryRow: any[] = [{ v: "", t: 's' }];
     const productRow: any[] = [{ v: "Month", t: 's' }];
-    
-    // Track column spans for each category
     const categorySpans: number[] = [];
     
-    // Process each category and its products to build header rows
     visibleCategories.forEach(category => {
       const categoryProducts = filteredProducts.filter(product => {
         if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
@@ -139,31 +122,34 @@ export const exportExposureToExcel = (
         return true;
       });
       
-      // Add category cell
-      categoryRow.push({ v: category, t: 's' });
+      categoryRow.push({ 
+        v: category, 
+        t: 's',
+        s: { 
+          alignment: { 
+            horizontal: 'center', 
+            vertical: 'center' 
+          },
+          font: { bold: true }
+        }
+      });
       
-      // Add span for this category (number of products under it)
       let spanCount = categoryProducts.length;
       
-      // Add special columns for Exposure category
       if (category === 'Exposure') {
-        spanCount += 3; // Add columns for Biodiesel Total, Pricing Instrument Total, and Total Row
+        spanCount += 3;
       }
       
-      // Keep track of this category's span
       categorySpans.push(spanCount);
       
-      // Fill empty cells for this category's span (minus the first cell that holds the category name)
       for (let i = 1; i < spanCount; i++) {
         categoryRow.push({ v: "", t: 's' });
       }
       
-      // Add product headers under this category
       categoryProducts.forEach(product => {
         productRow.push({ v: product, t: 's' });
       });
       
-      // Add special column headers for Exposure category
       if (category === 'Exposure') {
         productRow.push({ v: "Biodiesel Total", t: 's' });
         productRow.push({ v: "Pricing Instrument Total", t: 's' });
@@ -171,10 +157,8 @@ export const exportExposureToExcel = (
       }
     });
     
-    // Now prepare the data rows
     const dataRows: any[][] = [];
     
-    // Process each month's data
     exposureData.forEach(monthData => {
       const dataRow: any[] = [{ v: monthData.month, t: 's' }];
       
@@ -202,7 +186,6 @@ export const exportExposureToExcel = (
         });
         
         if (category === 'Exposure') {
-          // Calculate group totals
           const biodieselTotal = biodieselProducts.reduce((total, product) => {
             if (monthData.products[product]) {
               return total + monthData.products[product].netExposure;
@@ -226,7 +209,6 @@ export const exportExposureToExcel = (
       dataRows.push(dataRow);
     });
     
-    // Add totals row
     const totalsRow: any[] = [{ v: "Total", t: 's' }];
     
     visibleCategories.forEach(category => {
@@ -261,12 +243,10 @@ export const exportExposureToExcel = (
     
     dataRows.push(totalsRow);
     
-    // Create worksheet with combined rows
     const allRows = [categoryRow, productRow, ...dataRows];
     const worksheet = XLSX.utils.aoa_to_sheet(allRows);
     
-    // Apply category spans for merging cells
-    let startCol = 1; // Start from column B (after Month column)
+    let startCol = 1;
     categorySpans.forEach((span, index) => {
       const cellRef = XLSX.utils.encode_cell({ r: 0, c: startCol });
       const mergeRef = XLSX.utils.encode_range({
@@ -280,20 +260,27 @@ export const exportExposureToExcel = (
       startCol += span;
     });
     
-    // Apply styling to the headers
     const headerStyle = {
       font: { bold: true },
-      alignment: { horizontal: 'center' }
+      alignment: { 
+        horizontal: 'center', 
+        vertical: 'center' 
+      },
+      border: {
+        top: { style: 'thick', color: { rgb: "000000" } },
+        bottom: { style: 'thick', color: { rgb: "000000" } },
+        left: { style: 'thick', color: { rgb: "000000" } },
+        right: { style: 'thick', color: { rgb: "000000" } }
+      }
     };
     
-    // Add worksheet to workbook
+    worksheet['!cols'] = new Array(allRows[1].length).fill({ wch: 15 });
+    
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Exposure');
     
-    // Generate filename with current date
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const fileName = `Exposure_${dateStr}.xlsx`;
     
-    // Write to file and trigger download
     XLSX.writeFile(workbook, fileName);
     
     console.log(`[EXPORT] Successfully exported exposure data to ${fileName}`);
