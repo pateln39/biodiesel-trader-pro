@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -479,6 +478,7 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
         loading_period_end,
         pricing_type,
         pricing_formula,
+        mtm_formula,
         efp_premium,
         efp_agreed_status,
         efp_fixed_value,
@@ -547,6 +547,57 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
         }
       }
       
+      // Format physical exposures from mtm_formula (as requested)
+      let physicalExposures = '';
+      if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+        const mtmFormula = leg.mtm_formula as any;
+        if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+          const physicalExp = mtmFormula.exposures.physical;
+          physicalExposures = Object.entries(physicalExp)
+            // Filter out products with zero exposure
+            .filter(([_, value]) => value !== 0)
+            .map(([product, value]) => `${product}: ${value}`)
+            .join(', ');
+        }
+      }
+      
+      // Format pricing exposures from pricing_formula
+      let pricingExposures = '';
+      if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+        const pricingFormula = leg.pricing_formula as any;
+        if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          const pricingExp = pricingFormula.exposures.pricing;
+          pricingExposures = Object.entries(pricingExp)
+            // Filter out products with zero exposure
+            .filter(([_, value]) => value !== 0)
+            .map(([product, value]) => `${product}: ${value}`)
+            .join(', ');
+        }
+      }
+      
+      // Format monthly distribution
+      let monthlyDistribution = '';
+      if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+        const pricingFormula = leg.pricing_formula as any;
+        if (pricingFormula.monthlyDistribution) {
+          const monthlyDist = pricingFormula.monthlyDistribution;
+          const formattedMonthly: string[] = [];
+          
+          Object.entries(monthlyDist).forEach(([instrument, monthValues]) => {
+            if (typeof monthValues === 'object') {
+              const monthEntries = Object.entries(monthValues)
+                // Don't filter monthly values as they might be important even if zero
+                .map(([month, value]) => `${month}: ${value}`)
+                .join(', ');
+              
+              formattedMonthly.push(`${instrument}: { ${monthEntries} }`);
+            }
+          });
+          
+          monthlyDistribution = formattedMonthly.join(' | ');
+        }
+      }
+      
       const displayReference = leg.leg_reference || parentTrade?.trade_reference || '';
       
       return {
@@ -564,14 +615,23 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
         'COMMENTS': leg.comments || '',
         'CUSTOMS STATUS': leg.customs_status || '',
         'CREDIT STATUS': leg.credit_status || '',
-        'CONTRACT STATUS': leg.contract_status || ''
+        'CONTRACT STATUS': leg.contract_status || '',
+        'PHYSICAL EXPOSURES': physicalExposures || 'None',
+        'PRICING EXPOSURES': pricingExposures || 'None',
+        'MONTHLY DISTRIBUTION': monthlyDistribution || 'None'
       };
     });
     
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     
-    worksheet['!cols'] = Object.keys(formattedData[0]).map(() => ({ wch: 20 }));
+    worksheet['!cols'] = Object.keys(formattedData[0]).map((key) => {
+      // Set wider column width for exposure and distribution columns
+      if (key === 'PHYSICAL EXPOSURES' || key === 'PRICING EXPOSURES' || key === 'MONTHLY DISTRIBUTION') {
+        return { wch: 35 };
+      }
+      return { wch: 20 };
+    });
     
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     const border = {
@@ -581,12 +641,43 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
       right: { style: 'thick', color: { auto: 1 } }
     };
     
-    for (let R = range.s.r; R <= range.e.r; ++R) {
+    // Apply styles to header row
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!worksheet[headerCell]) worksheet[headerCell] = { t: 's', v: '' };
+      if (!worksheet[headerCell].s) worksheet[headerCell].s = {};
+      
+      worksheet[headerCell].s = {
+        fill: { patternType: 'solid', fgColor: { rgb: "4F81BD" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border
+      };
+    }
+    
+    // Apply styles to data cells
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
         if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
         if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        
+        // Add borders to all cells
         worksheet[cell_ref].s.border = border;
+        
+        // Apply row banding for better readability
+        if (R % 2 === 0) {
+          worksheet[cell_ref].s.fill = {
+            patternType: 'solid',
+            fgColor: { rgb: "E9EFF7" }
+          };
+        }
+        
+        // Special formatting for exposure columns
+        const columnHeader = Object.keys(formattedData[0])[C];
+        if (columnHeader === 'PHYSICAL EXPOSURES' || columnHeader === 'PRICING EXPOSURES' || columnHeader === 'MONTHLY DISTRIBUTION') {
+          worksheet[cell_ref].s.font = { color: { rgb: "000080" } };
+        }
       }
     }
     
@@ -624,6 +715,7 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
         broker,
         instrument,
         mtm_formula,
+        exposures,
         paper_trades(
           trade_reference
         )
@@ -673,20 +765,68 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
         rightSide?.price
       );
       
+      // Filter out zero exposures for physical exposures
+      let physicalExposures = '';
+      if (leg.exposures && typeof leg.exposures === 'object') {
+        const exposuresData = leg.exposures as Record<string, any>;
+        if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+          physicalExposures = Object.entries(exposuresData.physical)
+            .filter(([_, value]) => value !== 0) // Filter out zero exposures
+            .map(([product, value]) => `${product}: ${value}`)
+            .join(', ');
+        }
+      }
+      
+      // Filter out zero exposures for paper exposures
+      let paperExposures = '';
+      if (leg.exposures && typeof leg.exposures === 'object') {
+        const exposuresData = leg.exposures as Record<string, any>;
+        if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+          paperExposures = Object.entries(exposuresData.paper)
+            .filter(([_, value]) => value !== 0) // Filter out zero exposures
+            .map(([product, value]) => `${product}: ${value}`)
+            .join(', ');
+        } else if (exposuresData.physical) {
+          // If paper exposures aren't explicitly defined, use physical as a fallback
+          paperExposures = physicalExposures;
+        }
+      }
+      
+      // Filter out zero exposures for pricing exposures
+      let pricingExposures = '';
+      if (leg.exposures && typeof leg.exposures === 'object') {
+        const exposuresData = leg.exposures as Record<string, any>;
+        if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+          pricingExposures = Object.entries(exposuresData.pricing)
+            .filter(([_, value]) => value !== 0) // Filter out zero exposures
+            .map(([product, value]) => `${product}: ${value}`)
+            .join(', ');
+        }
+      }
+      
       return {
         'TRADE REF': leg.leg_reference || '',
         'BROKER': leg.broker || '',
         'PRODUCTS': productDisplay,
         'PERIOD': leg.period || '',
         'QUANTITY': quantity,
-        'PRICE': displayPrice.toLocaleString()
+        'PRICE': displayPrice.toLocaleString(),
+        'PHYSICAL EXPOSURES': physicalExposures || 'None',
+        'PAPER EXPOSURES': paperExposures || 'None',
+        'PRICING EXPOSURES': pricingExposures || 'None'
       };
     });
     
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     
-    worksheet['!cols'] = Object.keys(formattedData[0]).map(() => ({ wch: 20 }));
+    worksheet['!cols'] = Object.keys(formattedData[0]).map((key) => {
+      // Set wider column width for exposure columns
+      if (key === 'PHYSICAL EXPOSURES' || key === 'PAPER EXPOSURES' || key === 'PRICING EXPOSURES') {
+        return { wch: 35 };
+      }
+      return { wch: 20 };
+    });
     
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     const border = {
@@ -696,12 +836,43 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
       right: { style: 'thick', color: { auto: 1 } }
     };
     
-    for (let R = range.s.r; R <= range.e.r; ++R) {
+    // Apply styles to header row
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!worksheet[headerCell]) worksheet[headerCell] = { t: 's', v: '' };
+      if (!worksheet[headerCell].s) worksheet[headerCell].s = {};
+      
+      worksheet[headerCell].s = {
+        fill: { patternType: 'solid', fgColor: { rgb: "4F81BD" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border
+      };
+    }
+    
+    // Apply styles to data cells
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
       for (let C = range.s.c; C <= range.e.c; ++C) {
         const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
         if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
         if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        
+        // Add borders to all cells
         worksheet[cell_ref].s.border = border;
+        
+        // Apply row banding for better readability
+        if (R % 2 === 0) {
+          worksheet[cell_ref].s.fill = {
+            patternType: 'solid',
+            fgColor: { rgb: "E9EFF7" }
+          };
+        }
+        
+        // Special formatting for exposure columns
+        const columnHeader = Object.keys(formattedData[0])[C];
+        if (columnHeader === 'PHYSICAL EXPOSURES' || columnHeader === 'PAPER EXPOSURES' || columnHeader === 'PRICING EXPOSURES') {
+          worksheet[cell_ref].s.font = { color: { rgb: "000080" } };
+        }
       }
     }
     
@@ -743,6 +914,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         loading_period_end,
         pricing_type,
         pricing_formula,
+        mtm_formula,
         efp_premium,
         efp_agreed_status,
         efp_fixed_value,
@@ -839,32 +1011,37 @@ export const exportExposureByTrade = async (): Promise<string> => {
           }
         }
         
-        // Format exposure data in a more readable way
+        // Format physical exposures from mtm_formula
         let physicalExposures = '';
-        let pricingExposures = '';
-        let monthlyDistribution = '';
+        if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+          const mtmFormula = leg.mtm_formula as any;
+          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+            const physicalExp = mtmFormula.exposures.physical;
+            physicalExposures = Object.entries(physicalExp)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+        }
         
+        // Format pricing exposures
+        let pricingExposures = '';
         if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
           const pricingFormula = leg.pricing_formula as any;
-          
-          // Extract physical exposures
-          if (pricingFormula && pricingFormula.exposures && pricingFormula.exposures.physical) {
-            const physicalExp = pricingFormula.exposures.physical;
-            physicalExposures = Object.entries(physicalExp)
-              .map(([product, value]) => `${product}: ${value}`)
-              .join(', ');
-          }
-          
-          // Extract pricing exposures
-          if (pricingFormula && pricingFormula.exposures && pricingFormula.exposures.pricing) {
+          if (pricingFormula.exposures && pricingFormula.exposures.pricing) {
             const pricingExp = pricingFormula.exposures.pricing;
             pricingExposures = Object.entries(pricingExp)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
               .map(([product, value]) => `${product}: ${value}`)
               .join(', ');
           }
-          
-          // Extract monthly distribution
-          if (pricingFormula && pricingFormula.monthlyDistribution) {
+        }
+        
+        // Format monthly distribution
+        let monthlyDistribution = '';
+        if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+          const pricingFormula = leg.pricing_formula as any;
+          if (pricingFormula.monthlyDistribution) {
             const monthlyDist = pricingFormula.monthlyDistribution;
             const formattedMonthly: string[] = [];
             
@@ -1014,57 +1191,58 @@ export const exportExposureByTrade = async (): Promise<string> => {
           rightSide?.price
         );
         
-        // Format exposure data in a more readable way
+        // Format physical exposures
         let physicalExposures = '';
-        let paperExposures = '';
-        let pricingExposures = '';
-        
         if (leg.exposures && typeof leg.exposures === 'object') {
           const exposuresData = leg.exposures as Record<string, any>;
-          
-          // Extract physical exposures
           if (exposuresData.physical && typeof exposuresData.physical === 'object') {
             physicalExposures = Object.entries(exposuresData.physical)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
               .map(([product, value]) => `${product}: ${value}`)
               .join(', ');
           }
-          
-          // Extract paper exposures - this is a new field that wasn't in the original
+        } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+          const mtmFormula = leg.mtm_formula as any;
+          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
+            physicalExposures = Object.entries(mtmFormula.exposures.physical)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+        }
+        
+        // Format paper exposures
+        let paperExposures = '';
+        if (leg.exposures && typeof leg.exposures === 'object') {
+          const exposuresData = leg.exposures as Record<string, any>;
           if (exposuresData.paper && typeof exposuresData.paper === 'object') {
             paperExposures = Object.entries(exposuresData.paper)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
               .map(([product, value]) => `${product}: ${value}`)
               .join(', ');
           } else {
             // If paper exposures aren't explicitly defined, use physical as a fallback
             paperExposures = physicalExposures;
           }
-          
-          // Extract pricing exposures
+        }
+        
+        // Format pricing exposures
+        let pricingExposures = '';
+        if (leg.exposures && typeof leg.exposures === 'object') {
+          const exposuresData = leg.exposures as Record<string, any>;
           if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
             pricingExposures = Object.entries(exposuresData.pricing)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
               .map(([product, value]) => `${product}: ${value}`)
               .join(', ');
           }
         } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
           const mtmFormula = leg.mtm_formula as any;
-          
-          if (mtmFormula.exposures) {
-            // Extract physical exposures
-            if (mtmFormula.exposures.physical && typeof mtmFormula.exposures.physical === 'object') {
-              physicalExposures = Object.entries(mtmFormula.exposures.physical)
-                .map(([product, value]) => `${product}: ${value}`)
-                .join(', ');
-            }
-            
-            // Use physical exposures for paper exposures too
-            paperExposures = physicalExposures;
-            
-            // Extract pricing exposures
-            if (mtmFormula.exposures.pricing && typeof mtmFormula.exposures.pricing === 'object') {
-              pricingExposures = Object.entries(mtmFormula.exposures.pricing)
-                .map(([product, value]) => `${product}: ${value}`)
-                .join(', ');
-            }
+          if (mtmFormula.exposures && mtmFormula.exposures.pricing) {
+            pricingExposures = Object.entries(mtmFormula.exposures.pricing)
+              .filter(([_, value]) => value !== 0) // Filter out zero exposures
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
           }
         }
         
@@ -1160,4 +1338,3 @@ export const exportExposureByTrade = async (): Promise<string> => {
     throw error;
   }
 };
-
