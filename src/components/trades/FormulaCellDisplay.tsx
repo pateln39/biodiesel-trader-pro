@@ -16,9 +16,9 @@ const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ trade }) => {
         <div className="max-w-[300px] overflow-hidden">
           <span 
             className="text-sm font-mono hover:bg-muted px-1 py-0.5 rounded" 
-            title={trade.efpFormulaDisplay}
+            title={String(trade.efpFormulaDisplay)}
           >
-            {trade.efpFormulaDisplay}
+            {String(trade.efpFormulaDisplay)}
           </span>
         </div>
       );

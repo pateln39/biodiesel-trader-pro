@@ -154,7 +154,16 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
       let formulaDisplay = '';
       if (trade.pricing_type === 'efp' && trade.efp_formula_display) {
         formulaDisplay = trade.efp_formula_display;
-      } else if (trade.pricing_formula && 
+      } 
+      else if (trade.pricing_type === 'efp') {
+        if (trade.efp_agreed_status) {
+          formulaDisplay = ((trade.efp_fixed_value || 0) + (trade.efp_premium || 0)).toString();
+        } else {
+          const designatedMonth = trade.efp_designated_month ? ` (${trade.efp_designated_month})` : '';
+          formulaDisplay = `ICE GASOIL FUTURES${designatedMonth} + ${trade.efp_premium || 0}`;
+        }
+      }
+      else if (trade.pricing_formula && 
           typeof trade.pricing_formula === 'object' && 
           'tokens' in trade.pricing_formula && 
           Array.isArray(trade.pricing_formula.tokens)) {
