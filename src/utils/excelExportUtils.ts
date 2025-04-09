@@ -29,15 +29,15 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     // Format the data for Excel
     const formattedData = movements.map(movement => {
       const scheduledQuantity = movement.scheduled_quantity 
-        ? parseFloat(movement.scheduled_quantity).toLocaleString() 
+        ? parseFloat(String(movement.scheduled_quantity)).toLocaleString() 
         : '';
         
       const blQuantity = movement.bl_quantity 
-        ? parseFloat(movement.bl_quantity).toLocaleString() 
+        ? parseFloat(String(movement.bl_quantity)).toLocaleString() 
         : '';
         
       const actualQuantity = movement.actual_quantity 
-        ? parseFloat(movement.actual_quantity).toLocaleString() 
+        ? parseFloat(String(movement.actual_quantity)).toLocaleString() 
         : '';
       
       // Format dates
@@ -95,6 +95,157 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     
     console.log(`[EXPORT] Successfully exported to ${fileName}`);
     return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
+
+// Function to export exposure data to Excel
+export const exportExposureToExcel = (
+  exposureData: any[],
+  visibleCategories: string[],
+  filteredProducts: string[],
+  grandTotals: any,
+  groupGrandTotals: any,
+  biodieselProducts: string[],
+  pricingInstrumentProducts: string[]
+): void => {
+  try {
+    console.log('[EXPORT] Starting exposure data export');
+    
+    // Create a new workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Format the data for Excel
+    const formattedData: any[] = [];
+    
+    // Add headers
+    const headers: any = { 'Month': '' };
+    
+    // Add category headers
+    visibleCategories.forEach(category => {
+      const categoryProducts = filteredProducts.filter(product => {
+        if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
+          return false;
+        }
+        if (category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
+          return false;
+        }
+        return true;
+      });
+      
+      categoryProducts.forEach(product => {
+        headers[`${category} - ${product}`] = '';
+      });
+      
+      if (category === 'Exposure') {
+        headers['Biodiesel Total'] = '';
+        headers['Pricing Instrument Total'] = '';
+        headers['Total Row'] = '';
+      }
+    });
+    
+    // Add data rows for each month
+    exposureData.forEach(monthData => {
+      const row: any = { 'Month': monthData.month };
+      
+      visibleCategories.forEach(category => {
+        const categoryProducts = filteredProducts.filter(product => {
+          if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
+            return false;
+          }
+          if (category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
+            return false;
+          }
+          return true;
+        });
+        
+        categoryProducts.forEach(product => {
+          const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+          
+          let value = 0;
+          if (category === 'Physical') value = productData.physical;
+          else if (category === 'Pricing') value = productData.pricing;
+          else if (category === 'Paper') value = productData.paper;
+          else if (category === 'Exposure') value = productData.netExposure;
+          
+          row[`${category} - ${product}`] = value;
+        });
+        
+        if (category === 'Exposure') {
+          // Calculate group totals
+          const biodieselTotal = biodieselProducts.reduce((total, product) => {
+            if (monthData.products[product]) {
+              return total + monthData.products[product].netExposure;
+            }
+            return total;
+          }, 0);
+          
+          const pricingInstrumentTotal = pricingInstrumentProducts.reduce((total, product) => {
+            if (monthData.products[product]) {
+              return total + monthData.products[product].netExposure;
+            }
+            return total;
+          }, 0);
+          
+          row['Biodiesel Total'] = biodieselTotal;
+          row['Pricing Instrument Total'] = pricingInstrumentTotal;
+          row['Total Row'] = biodieselTotal + pricingInstrumentTotal;
+        }
+      });
+      
+      formattedData.push(row);
+    });
+    
+    // Add totals row
+    const totalsRow: any = { 'Month': 'Total' };
+    
+    visibleCategories.forEach(category => {
+      const categoryProducts = filteredProducts.filter(product => {
+        if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
+          return false;
+        }
+        if (category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
+          return false;
+        }
+        return true;
+      });
+      
+      categoryProducts.forEach(product => {
+        let value = 0;
+        if (grandTotals.productTotals[product]) {
+          if (category === 'Physical') value = grandTotals.productTotals[product].physical;
+          else if (category === 'Pricing') value = grandTotals.productTotals[product].pricing;
+          else if (category === 'Paper') value = grandTotals.productTotals[product].paper;
+          else if (category === 'Exposure') value = grandTotals.productTotals[product].netExposure;
+        }
+        
+        totalsRow[`${category} - ${product}`] = value;
+      });
+      
+      if (category === 'Exposure') {
+        totalsRow['Biodiesel Total'] = groupGrandTotals.biodieselTotal;
+        totalsRow['Pricing Instrument Total'] = groupGrandTotals.pricingInstrumentTotal;
+        totalsRow['Total Row'] = groupGrandTotals.totalRow;
+      }
+    });
+    
+    formattedData.push(totalsRow);
+    
+    // Create worksheet and add to workbook
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Exposure');
+    
+    // Generate filename with current date
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Exposure_${dateStr}.xlsx`;
+    
+    // Write to file and trigger download
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported exposure data to ${fileName}`);
     
   } catch (error) {
     console.error('[EXPORT] Export error:', error);
