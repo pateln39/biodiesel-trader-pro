@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -28,10 +29,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
         ? parseFloat(String(movement.scheduled_quantity)).toLocaleString() 
         : '';
         
-      const blQuantity = movement.bl_quantity 
-        ? parseFloat(String(movement.bl_quantity)).toLocaleString() 
-        : '';
-        
       const actualQuantity = movement.actual_quantity 
         ? parseFloat(String(movement.actual_quantity)).toLocaleString() 
         : '';
@@ -47,35 +44,62 @@ export const exportMovementsToExcel = async (): Promise<string> => {
       
       return {
         'MOVEMENT REFERENCE': movement.reference_number || '',
-        'TRADE REFERENCE': movement.trade_reference || '',
         'BUY/SELL': (movement.buy_sell || '').toUpperCase(),
-        'COUNTERPARTY': movement.counterparty || '',
-        'PRODUCT': movement.product || '',
         'INCOTERM': movement.inco_term || '',
         'SUSTAINABILITY': movement.sustainability || '',
+        'PRODUCT': movement.product || '',
+        'LOADING START': formatDateStr(movement.loading_period_start),
+        'LOADING END': formatDateStr(movement.loading_period_end),
+        'COUNTERPARTY': movement.counterparty || '',
+        'COMMENTS': movement.comments || '',
+        'CREDIT STATUS': movement.credit_status || '',
         'SCHEDULED QTY (MT)': scheduledQuantity,
-        'BL QTY (MT)': blQuantity,
-        'ACTUAL QTY (MT)': actualQuantity,
         'NOMINATION ETA': formatDateStr(movement.nomination_eta),
         'NOMINATION VALID': formatDateStr(movement.nomination_valid),
         'CASH FLOW DATE': formatDateStr(movement.cash_flow),
-        'BL DATE': formatDateStr(movement.bl_date),
-        'COD DATE': formatDateStr(movement.cod_date),
         'BARGE NAME': movement.barge_name || '',
         'LOADPORT': movement.loadport || '',
         'LOADPORT INSPECTOR': movement.loadport_inspector || '',
         'DISPORT': movement.disport || '',
         'DISPORT INSPECTOR': movement.disport_inspector || '',
-        'CREDIT STATUS': movement.credit_status || '',
-        'CUSTOMS STATUS': movement.customs_status || '',
-        'CONTRACT STATUS': movement.contract_status || '',
-        'STATUS': (movement.status || '').toUpperCase(),
-        'COMMENTS': movement.comments || ''
+        'BL DATE': formatDateStr(movement.bl_date),
+        'ACTUAL QTY (MT)': actualQuantity,
+        'COD DATE': formatDateStr(movement.cod_date),
+        'STATUS': (movement.status || '').toUpperCase()
       };
     });
     
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    
+    // Auto-size columns
+    const colWidths = [];
+    formattedData.forEach(row => {
+      Object.keys(row).forEach((key, i) => {
+        const cellValue = String(row[key]);
+        colWidths[i] = Math.max(colWidths[i] || 0, Math.min(key.length, cellValue.length, 50));
+      });
+    });
+    
+    worksheet['!cols'] = colWidths.map(width => ({ wch: width + 2 }));
+    
+    // Apply thick border to the table
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const border = {
+      top: { style: 'thick', color: { auto: 1 } },
+      bottom: { style: 'thick', color: { auto: 1 } },
+      left: { style: 'thick', color: { auto: 1 } },
+      right: { style: 'thick', color: { auto: 1 } }
+    };
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+        if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        worksheet[cell_ref].s.border = border;
+      }
+    }
     
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Movements');
     
