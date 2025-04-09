@@ -706,3 +706,116 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
     throw error;
   }
 };
+
+export const exportExposureByTrade = async (): Promise<string> => {
+  try {
+    console.log('[EXPORT] Starting exposure by trade export');
+    const workbook = XLSX.utils.book_new();
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Exposure_by_trade_${dateStr}.xlsx`;
+    
+    // Get Physical Trades data
+    const { data: physicalTradeLegs, error: physicalError } = await supabase
+      .from('trade_legs')
+      .select(`
+        id,
+        parent_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        sustainability,
+        inco_term,
+        quantity,
+        loading_period_start,
+        loading_period_end,
+        pricing_type,
+        pricing_formula,
+        efp_premium,
+        efp_agreed_status,
+        efp_fixed_value,
+        efp_designated_month,
+        comments,
+        customs_status,
+        contract_status,
+        credit_status,
+        parent_trades(
+          trade_reference,
+          counterparty
+        )
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (physicalError) {
+      console.error('[EXPORT] Error fetching physical trade legs:', physicalError);
+      throw new Error('Failed to fetch physical trade data');
+    }
+    
+    // Get Paper Trades data
+    const { data: paperTradeLegs, error: paperError } = await supabase
+      .from('paper_trade_legs')
+      .select(`
+        id,
+        paper_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        period,
+        quantity,
+        price,
+        exposures,
+        mtm_formula,
+        broker,
+        instrument
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (paperError) {
+      console.error('[EXPORT] Error fetching paper trade legs:', paperError);
+      throw new Error('Failed to fetch paper trade data');
+    }
+    
+    // Format Physical Trades data
+    if (physicalTradeLegs && physicalTradeLegs.length > 0) {
+      const formattedPhysicalData = physicalTradeLegs.map(leg => {
+        const parentTrade = leg.parent_trades as any;
+        const quantity = leg.quantity 
+          ? parseFloat(String(leg.quantity)).toLocaleString() 
+          : '';
+        
+        const formatDateStr = (dateStr: string | null) => {
+          if (!dateStr) return '';
+          try {
+            return format(new Date(dateStr), 'dd MMM yyyy');
+          } catch (e) {
+            return '';
+          }
+        };
+        
+        // Format the formula display similar to UI
+        let formulaDisplay = '';
+        
+        if (leg.pricing_type === 'efp') {
+          if (leg.efp_agreed_status) {
+            const fixedValue = leg.efp_fixed_value || 0;
+            const premium = leg.efp_premium || 0;
+            formulaDisplay = `${fixedValue + premium}`;
+          } else {
+            const designatedMonth = leg.efp_designated_month ? ` (${leg.efp_designated_month})` : '';
+            formulaDisplay = `ICE GASOIL FUTURES${designatedMonth} + ${leg.efp_premium}`;
+          }
+        } else if (leg.pricing_formula && 
+            typeof leg.pricing_formula === 'object' && 
+            'tokens' in leg.pricing_formula && 
+            Array.isArray(leg.pricing_formula.tokens)) {
+          const tokensAny = leg.pricing_formula.tokens as any[];
+          const tokens: FormulaToken[] = tokensAny.map(token => ({
+            id: token.id?.toString() || '',
+            type: token.type as "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable",
+            value: token.value
+          }));
+          formulaDisplay = formulaToDisplayString(tokens);
+        }
+        
+        // Extract exposure information
+        let exposureData = {};
+        if (leg
