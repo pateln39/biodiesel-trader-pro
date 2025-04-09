@@ -363,11 +363,11 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                   name="nominationValid"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Nomination Valid Until</FormLabel>
+                      <FormLabel>Nomination Valid From</FormLabel>
                       <DatePicker
                         date={field.value}
                         setDate={field.onChange}
-                        placeholder="Select valid until date"
+                        placeholder="Select valid from date"
                       />
                       <FormMessage />
                     </FormItem>

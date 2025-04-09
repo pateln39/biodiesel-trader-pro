@@ -629,7 +629,6 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
     console.log(`[EXPORT] Processing ${paperTradeLegs.length} paper trades for export`);
     
     const formattedData = paperTradeLegs.map(leg => {
-      const paperTrade = leg.paper_trades as any;
       const quantity = leg.quantity 
         ? parseFloat(String(leg.quantity)).toLocaleString() 
         : '';
@@ -661,7 +660,7 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
       );
       
       return {
-        'TRADE REF': paperTrade?.trade_reference || leg.leg_reference || '',
+        'TRADE REF': leg.leg_reference || '',
         'BROKER': leg.broker || '',
         'PRODUCTS': productDisplay,
         'PERIOD': leg.period || '',
