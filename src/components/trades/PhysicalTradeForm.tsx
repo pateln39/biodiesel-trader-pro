@@ -55,6 +55,7 @@ interface LegFormState {
   efpFixedValue: number | null;
   efpDesignatedMonth: string;
   mtmFutureMonth: string;
+  efpFormulaDisplay?: string;
 }
 
 const createDefaultLeg = (): LegFormState => ({

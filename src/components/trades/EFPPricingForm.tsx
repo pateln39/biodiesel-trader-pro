@@ -14,7 +14,7 @@ interface EFPPricingFormProps {
     efpFixedValue: number | null;
     efpDesignatedMonth: string;
   };
-  onChange: (field: string, value: any) => void;
+  onChange: <K extends keyof typeof values>(field: K, value: any) => void;
 }
 
 const EFPPricingForm: React.FC<EFPPricingFormProps> = ({
@@ -32,7 +32,7 @@ const EFPPricingForm: React.FC<EFPPricingFormProps> = ({
       values.efpDesignatedMonth
     );
     
-    onChange('efpFormulaDisplay', formulaDisplay);
+    onChange('efpFormulaDisplay' as any, formulaDisplay);
   }, [values.efpPremium, values.efpAgreedStatus, values.efpFixedValue, values.efpDesignatedMonth]);
 
   return (
