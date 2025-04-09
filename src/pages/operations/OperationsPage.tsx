@@ -13,7 +13,7 @@ import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import MovementsFilter from '@/components/operations/MovementsFilter';
-import { exportMovementsToExcel } from '@/utils/excelExportUtils';
+import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -91,6 +91,28 @@ const OperationsPage = () => {
     }
   };
 
+  const handleExportOpenTrades = async () => {
+    try {
+      setIsExporting(true);
+      toast.info("Preparing export", {
+        description: "Gathering open trades data for export..."
+      });
+      
+      const fileName = await exportOpenTradesToExcel();
+      
+      toast.success("Export complete", {
+        description: `Open trades exported to ${fileName}`
+      });
+    } catch (error) {
+      console.error('[OPERATIONS] Export error:', error);
+      toast.error("Export failed", {
+        description: "There was an error exporting open trades data"
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -113,13 +135,23 @@ const OperationsPage = () => {
                 <CardTitle>Open Trades</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage open trade positions</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsOpenTradesFilterOpen(true)}
-                  >
-                    <Filter className="mr-2 h-4 w-4" /> Filter
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleExportOpenTrades}
+                      disabled={isExporting}
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Export
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsOpenTradesFilterOpen(true)}
+                    >
+                      <Filter className="mr-2 h-4 w-4" /> Filter
+                    </Button>
+                  </div>
                 </CardDescription>
               </CardHeader>
               <CardContent>

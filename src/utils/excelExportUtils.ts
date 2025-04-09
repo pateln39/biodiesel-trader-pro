@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
+import { formulaToDisplayString } from './formulaUtils';
 
 export const exportMovementsToExcel = async (): Promise<string> => {
   try {
@@ -94,6 +95,130 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const fileName = `Movements_${dateStr}.xlsx`;
+    
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported to ${fileName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
+
+export const exportOpenTradesToExcel = async (): Promise<string> => {
+  try {
+    console.log('[EXPORT] Starting open trades export');
+    
+    const { data: openTrades, error } = await supabase
+      .from('open_trades')
+      .select('*')
+      .order('sort_order', { ascending: true });
+      
+    if (error) {
+      console.error('[EXPORT] Error fetching open trades:', error);
+      throw new Error('Failed to fetch open trades data');
+    }
+    
+    if (!openTrades || openTrades.length === 0) {
+      console.warn('[EXPORT] No open trades data to export');
+      throw new Error('No open trades data to export');
+    }
+    
+    console.log(`[EXPORT] Processing ${openTrades.length} open trades for export`);
+    
+    const formattedData = openTrades.map(trade => {
+      const quantity = trade.quantity 
+        ? parseFloat(String(trade.quantity)).toLocaleString() 
+        : '';
+      
+      const nominatedValue = trade.nominated_value 
+        ? parseFloat(String(trade.nominated_value)).toLocaleString() 
+        : '';
+        
+      const balance = trade.balance 
+        ? parseFloat(String(trade.balance)).toLocaleString() 
+        : '';
+      
+      const formatDateStr = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        try {
+          return format(new Date(dateStr), 'dd MMM yyyy');
+        } catch (e) {
+          return '';
+        }
+      };
+      
+      let formulaDisplay = '';
+      if (trade.pricing_formula && trade.pricing_formula.tokens) {
+        formulaDisplay = formulaToDisplayString(trade.pricing_formula.tokens);
+      }
+      
+      return {
+        'TRADE REF': trade.trade_reference || '',
+        'BUY/SELL': (trade.buy_sell || '').toUpperCase(),
+        'INCOTERM': trade.inco_term || '',
+        'QUANTITY': quantity,
+        'SUSTAINABILITY': trade.sustainability || '',
+        'PRODUCT': trade.product || '',
+        'LOADING START': formatDateStr(trade.loading_period_start as string | null),
+        'LOADING END': formatDateStr(trade.loading_period_end as string | null),
+        'COUNTERPARTY': trade.counterparty || '',
+        'PRICING TYPE': trade.pricing_type || '',
+        'FORMULA': formulaDisplay,
+        'COMMENTS': trade.comments || '',
+        'CUSTOMS STATUS': trade.customs_status || '',
+        'CREDIT STATUS': trade.credit_status || '',
+        'CONTRACT STATUS': trade.contract_status || '',
+        'NOMINATED VALUE': nominatedValue,
+        'BALANCE': balance,
+        '_isZeroBalance': trade.balance === 0 || trade.balance === null || trade.balance === undefined
+      };
+    });
+    
+    const workbook = XLSX.utils.book_new();
+    
+    const exportData = formattedData.map(row => {
+      const { _isZeroBalance, ...dataRow } = row;
+      return dataRow;
+    });
+    
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    worksheet['!cols'] = Object.keys(exportData[0]).map(() => ({ wch: 20 }));
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const border = {
+      top: { style: 'thick', color: { auto: 1 } },
+      bottom: { style: 'thick', color: { auto: 1 } },
+      left: { style: 'thick', color: { auto: 1 } },
+      right: { style: 'thick', color: { auto: 1 } }
+    };
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const rowData = formattedData[R - 1];
+      
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+        if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        
+        worksheet[cell_ref].s.border = border;
+        
+        if (R > 0 && rowData && rowData._isZeroBalance) {
+          worksheet[cell_ref].s.fill = {
+            patternType: 'solid',
+            fgColor: { rgb: "DDDDDD" }
+          };
+        }
+      }
+    }
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Open Trades');
+    
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Open_Trades_${dateStr}.xlsx`;
     
     XLSX.writeFile(workbook, fileName);
     
