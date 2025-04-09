@@ -153,6 +153,14 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
+        // Generate the efp_formula_display for EFP trades
+        let efpFormulaDisplay = undefined;
+        if (leg.pricingType === 'efp') {
+          efpFormulaDisplay = leg.efpAgreedStatus 
+            ? `${(leg.efpFixedValue || 0) + (leg.efpPremium || 0)}`
+            : `ICE GASOIL FUTURES${leg.efpDesignatedMonth ? ` (${leg.efpDesignatedMonth})` : ''} + ${leg.efpPremium || 0}`;
+        }
+
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -182,6 +190,7 @@ const TradeEditPage = () => {
             efp_agreed_status: leg.efpAgreedStatus,
             efp_fixed_value: leg.efpFixedValue,
             efp_designated_month: leg.efpDesignatedMonth,
+            efp_formula_display: efpFormulaDisplay
           });
         }
 

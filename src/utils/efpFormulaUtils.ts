@@ -1,72 +1,54 @@
+
 import { PricingFormula } from '@/types/pricing';
-import { BuySell } from '@/types';
+import { BuySell } from '@/types/physical';
 import { createEmptyExposureResult } from './formulaCalculation';
 
 /**
- * Create a formula object specifically for EFP trades
- * This is needed because EFP trades don't use the traditional formula builder
- * but still need to maintain proper exposure tracking
+ * Creates an EFP formula object for the given parameters
  */
 export const createEfpFormula = (
   quantity: number,
   buySell: BuySell,
   isAgreed: boolean,
-  designatedMonth: string
+  designatedMonth?: string
 ): PricingFormula => {
-  // Create base formula structure
-  const formula: PricingFormula = {
-    tokens: [], // EFP trades don't use formula tokens
-    exposures: createEmptyExposureResult(),
-    // We don't create monthlyDistribution for EFP because it's handled directly in exposureUtils.ts
+  // For EFP trades, we're not actually using a dynamic formula with tokens
+  // So we just return an empty formula structure with the proper exposure type
+  return {
+    tokens: [],
+    exposures: createEmptyExposureResult()
   };
-  
-  // Set the appropriate exposure only for unagreed EFPs
-  // For EFP, we track exposure in ICE GASOIL FUTURES (EFP) only
-  if (!isAgreed) {
-    // The exposure direction is opposite of the physical trade
-    // Buy physical = sell futures = negative pricing exposure
-    // Sell physical = buy futures = positive pricing exposure
-    const exposureDirection = buySell === 'buy' ? -1 : 1;
-    const exposureValue = quantity * exposureDirection;
-    
-    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
-    formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
-  }
-  
-  return formula;
 };
 
 /**
- * Update an existing formula with EFP-specific exposure
+ * Generates display text for EFP formulas based on the parameters
+ */
+export const generateEfpFormulaDisplay = (
+  efpAgreedStatus: boolean,
+  efpFixedValue: number | null | undefined,
+  efpPremium: number | null | undefined,
+  efpDesignatedMonth?: string
+): string => {
+  if (efpAgreedStatus) {
+    // For agreed EFP trades, show the calculated total value
+    const fixedValue = efpFixedValue || 0;
+    const premium = efpPremium || 0;
+    return `${fixedValue + premium}`;
+  } else {
+    // For unagreed EFP trades, show "ICE GASOIL FUTURES (month) + premium"
+    const designatedMonth = efpDesignatedMonth ? ` (${efpDesignatedMonth})` : '';
+    return `ICE GASOIL FUTURES${designatedMonth} + ${efpPremium || 0}`;
+  }
+};
+
+/**
+ * Updates a formula with EFP exposure calculations
  */
 export const updateFormulaWithEfpExposure = (
-  formula: PricingFormula | undefined,
+  formula: PricingFormula,
   quantity: number,
-  buySell: BuySell,
-  isAgreed: boolean
+  buySell: BuySell
 ): PricingFormula => {
-  if (!formula) {
-    return createEfpFormula(quantity, buySell, isAgreed, '');
-  }
-  
-  // Reset existing EFP exposures
-  const updatedFormula = { ...formula };
-  updatedFormula.exposures = { ...updatedFormula.exposures };
-  updatedFormula.exposures.pricing = { ...updatedFormula.exposures.pricing };
-  
-  // Reset both EFP instruments to avoid contamination
-  updatedFormula.exposures.pricing['ICE GASOIL FUTURES'] = 0;
-  updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
-  
-  // Only set exposure for unagreed EFPs
-  if (!isAgreed) {
-    // The exposure direction is opposite of the physical trade
-    const exposureDirection = buySell === 'buy' ? -1 : 1;
-    const exposureValue = quantity * exposureDirection;
-    
-    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
-    updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
-  }
-  
-  return updatedFormula;
+  // Future implementation for EFP exposure calculations
+  return formula;
 };
