@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -825,7 +826,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         } else if (leg.pricing_formula && 
             typeof leg.pricing_formula === 'object') {
           const pricingFormula = leg.pricing_formula as any;
-          if (pricingFormula.tokens && Array.isArray(pricingFormula.tokens)) {
+          if (pricingFormula && pricingFormula.tokens && Array.isArray(pricingFormula.tokens)) {
             const tokensAny = pricingFormula.tokens;
             const tokens: FormulaToken[] = tokensAny.map(token => ({
               id: token.id?.toString() || '',
@@ -841,8 +842,12 @@ export const exportExposureByTrade = async (): Promise<string> => {
         // Format exposure data - extract everything after tokens
         let exposureData = '';
         if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
-          const { tokens, ...exposures } = leg.pricing_formula;
-          exposureData = JSON.stringify(exposures);
+          const pricingFormula = leg.pricing_formula as any;
+          // Create a copy without the tokens field
+          if (pricingFormula) {
+            const { tokens, ...exposures } = pricingFormula;
+            exposureData = JSON.stringify(exposures);
+          }
         }
         
         return {
@@ -983,3 +988,4 @@ export const exportExposureByTrade = async (): Promise<string> => {
     throw error;
   }
 };
+
