@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -21,6 +21,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
+  const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
   
@@ -32,10 +33,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return location.pathname.startsWith('/risk');
   };
 
+  const isOperationsSection = () => {
+    return location.pathname.startsWith('/operations');
+  };
+
   const menuItems = [
     { path: '/', label: 'Dashboard', icon: <PieChart className="h-5 w-5" /> },
     { path: '/trades', label: 'Trade Entry', icon: <FileText className="h-5 w-5" /> },
-    { path: '/operations', label: 'Operations', icon: <Package className="h-5 w-5" /> },
+    { 
+      label: 'Operations', 
+      icon: <Package className="h-5 w-5" />,
+      submenu: [
+        { path: '/operations/open-trades', label: 'Open Trades', icon: <Ship className="h-4 w-4" /> },
+        { path: '/operations/movements', label: 'Movements', icon: <Layers className="h-4 w-4" /> },
+        { path: '/operations/inventory', label: 'Inventory', icon: <Warehouse className="h-4 w-4" /> },
+      ],
+    },
     { 
       label: 'Risk', 
       icon: <LineChart className="h-5 w-5" />,
@@ -51,6 +64,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
+  const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
 
   // Handle double click outside sidebar to close it
   useEffect(() => {
@@ -135,8 +149,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               item.submenu ? (
                 <div key={index} className="space-y-1">
                   <Collapsible
-                    open={riskSubmenuOpen}
-                    onOpenChange={toggleRiskSubmenu}
+                    open={
+                      (item.label === 'Risk' && riskSubmenuOpen) || 
+                      (item.label === 'Operations' && operationsSubmenuOpen)
+                    }
+                    onOpenChange={
+                      item.label === 'Risk' 
+                        ? toggleRiskSubmenu 
+                        : toggleOperationsSubmenu
+                    }
                     className="rounded-md transition-colors"
                   >
                     <CollapsibleTrigger asChild>
@@ -145,7 +166,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                           {item.icon}
                           <span>{item.label}</span>
                         </div>
-                        {riskSubmenuOpen ? 
+                        {(item.label === 'Risk' && riskSubmenuOpen) || 
+                         (item.label === 'Operations' && operationsSubmenuOpen) ? 
                           <ChevronDown className="h-4 w-4" /> : 
                           <ChevronRight className="h-4 w-4" />
                         }

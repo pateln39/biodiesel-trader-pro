@@ -13,7 +13,10 @@ import TradeEditPage from "./pages/trades/TradeEditPage";
 import TradeDeletePage from "./pages/trades/TradeDeletePage";
 import PaperTradeEditPage from "./pages/trades/PaperTradeEditPage";
 import PaperTradeDeletePage from "./pages/trades/PaperTradeDeletePage";
-import OperationsPage from "./pages/operations/OperationsPage";
+import OperationsRedirect from "./pages/operations/OperationsRedirect";
+import OpenTradesPage from "./pages/operations/OpenTradesPage";
+import MovementsPage from "./pages/operations/MovementsPage";
+import InventoryPage from "./pages/operations/InventoryPage";
 import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -50,8 +53,10 @@ const App = () => (
             <Route path="/trades/paper/delete/:id/leg/:legId" element={<PaperTradeDeletePage />} />
             
             {/* Operations Routes */}
-            <Route path="/operations" element={<OperationsPage />} />
-            <Route path="/operations/:id" element={<NotFound />} />
+            <Route path="/operations" element={<OperationsRedirect />} />
+            <Route path="/operations/open-trades" element={<OpenTradesPage />} />
+            <Route path="/operations/movements" element={<MovementsPage />} />
+            <Route path="/operations/inventory" element={<InventoryPage />} />
             
             {/* Risk Routes */}
             <Route path="/risk/mtm" element={<MTMPage />} />
