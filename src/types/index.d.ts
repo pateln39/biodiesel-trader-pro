@@ -1,4 +1,3 @@
-
 import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from './physical';
 import { PricingFormula } from './pricing';
 
@@ -110,8 +109,7 @@ declare module '@/hooks/useOpenTrades' {
     efp_agreed_status?: boolean;
     efp_fixed_value?: number;
     efp_designated_month?: string;
-    efp_formula_display?: string; // Add this field
-    sort_order?: number;
+    sort_order?: number; // Add sort_order field
   }
 }
 

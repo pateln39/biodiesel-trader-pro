@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,6 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
-import { generateEfpFormulaDisplay } from '@/utils/efpFormulaUtils';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -49,17 +49,6 @@ const TradeEntryPage = () => {
       
       // For physical trades, insert all legs
       const legs = tradeData.legs.map((leg: any) => {
-        // Generate the formula display string for EFP trades
-        let efpFormulaDisplay = undefined;
-        if (leg.pricingType === 'efp') {
-          efpFormulaDisplay = generateEfpFormulaDisplay(
-            leg.efpAgreedStatus,
-            leg.efpFixedValue,
-            leg.efpPremium,
-            leg.efpDesignatedMonth
-          );
-        }
-        
         // Base leg data
         const legData = {
           leg_reference: leg.legReference,
@@ -77,7 +66,7 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          customs_status: leg.customsStatus, 
+          customs_status: leg.customsStatus, // Updated: correctly map to customs_status column
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
@@ -85,13 +74,12 @@ const TradeEntryPage = () => {
         };
 
         // Add EFP fields if they exist
-        if (leg.pricingType === 'efp') {
+        if (leg.efpPremium !== undefined) {
           Object.assign(legData, {
             efp_premium: leg.efpPremium,
             efp_agreed_status: leg.efpAgreedStatus,
             efp_fixed_value: leg.efpFixedValue,
             efp_designated_month: leg.efpDesignatedMonth,
-            efp_formula_display: efpFormulaDisplay
           });
         }
         

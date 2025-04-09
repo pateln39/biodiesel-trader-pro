@@ -46,7 +46,6 @@ export interface PhysicalTradeLeg {
   mtmFutureMonth?: string;
   comments?: string;
   contractStatus?: ContractStatus;
-  efpFormulaDisplay?: string; // Add this property
 }
 
 export interface PhysicalTrade extends ParentTrade {
@@ -75,6 +74,5 @@ export interface PhysicalTrade extends ParentTrade {
   mtmFutureMonth?: string;
   comments?: string;
   contractStatus?: ContractStatus;
-  efpFormulaDisplay?: string; // Add this property
   legs: PhysicalTradeLeg[];
 }

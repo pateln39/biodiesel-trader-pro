@@ -45,8 +45,6 @@ export interface OpenTrade {
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;
   efp_designated_month?: string;
-  // Pre-rendered formula display
-  efp_formula_display?: string;
   // Sort order for drag and drop
   sort_order?: number;
 }
@@ -65,7 +63,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
         status, created_at, updated_at, pricing_type, pricing_formula, 
         comments, contract_status, nominated_value, balance,
         efp_premium, efp_agreed_status, efp_fixed_value, efp_designated_month,
-        efp_formula_display, sort_order
+        sort_order
       `)
       .eq('status', 'open')
       .order('sort_order', { ascending: true, nullsFirst: false })
@@ -146,8 +144,6 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       efp_agreed_status: item.efp_agreed_status,
       efp_fixed_value: item.efp_fixed_value,
       efp_designated_month: item.efp_designated_month,
-      // Add the pre-rendered formula display field
-      efp_formula_display: item.efp_formula_display,
       // Add sort_order field
       sort_order: item.sort_order
     }));
