@@ -22,6 +22,7 @@ import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
 import { createEfpFormula, updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
+import EFPPricingForm from './EFPPricingForm';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -31,7 +32,7 @@ interface PhysicalTradeFormProps {
   initialData?: PhysicalTrade;
 }
 
-interface LegFormState {
+export interface LegFormState {
   buySell: BuySell;
   product: Product;
   sustainability: string;
@@ -54,6 +55,7 @@ interface LegFormState {
   efpFixedValue: number | null;
   efpDesignatedMonth: string;
   mtmFutureMonth: string;
+  efpFormulaDisplay?: string;
 }
 
 const createDefaultLeg = (): LegFormState => ({
@@ -79,6 +81,7 @@ const createDefaultLeg = (): LegFormState => ({
   efpFixedValue: null,
   efpDesignatedMonth: getAvailableEfpMonths()[0],
   mtmFutureMonth: "",
+  efpFormulaDisplay: "",
 });
 
 const EFPPricingForm = ({
@@ -173,6 +176,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     efpFixedValue: leg.efpFixedValue || null,
     efpDesignatedMonth: leg.efpDesignatedMonth || getAvailableEfpMonths()[0],
     mtmFutureMonth: leg.mtmFutureMonth || "",
+    efpFormulaDisplay: "",
   })) || [createDefaultLeg()]);
 
   const handleFormulaChange = (formula: PricingFormula, legIndex: number) => {
@@ -243,7 +247,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       };
     }
     
-    if (['pricingType', 'buySell', 'quantity', 'efpAgreedStatus', 'efpDesignatedMonth'].includes(field)) {
+    if (['pricingType', 'buySell', 'quantity', 'efpAgreedStatus', 'efpDesignatedMonth', 'efpPremium', 'efpFixedValue'].includes(field as string)) {
       const leg = newLegs[index];
       
       if (leg.pricingType === 'efp') {
@@ -253,6 +257,16 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           leg.efpAgreedStatus,
           leg.efpDesignatedMonth
         );
+        
+        if (leg.efpAgreedStatus) {
+          const fixedValue = leg.efpFixedValue || 0;
+          leg.efpFormulaDisplay = `${fixedValue}`;
+        } else {
+          const premium = leg.efpPremium || 0;
+          leg.efpFormulaDisplay = `ICE GASOIL FUTURES (EFP) + ${premium}`;
+        }
+      } else {
+        leg.efpFormulaDisplay = "";
       }
     }
     

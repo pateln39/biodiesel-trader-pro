@@ -12,7 +12,10 @@ const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ trade }) => {
   if ((trade as PhysicalTradeLeg).pricingType === 'efp' && 'efpPremium' in trade && trade.efpPremium !== undefined) {
     let displayText = '';
     
-    if (trade.efpAgreedStatus) {
+    // First check if there's a pre-generated efpFormulaDisplay field
+    if ('efpFormulaDisplay' in trade && trade.efpFormulaDisplay) {
+      displayText = trade.efpFormulaDisplay;
+    } else if (trade.efpAgreedStatus) {
       // For agreed EFP trades, show the calculated total value
       const fixedValue = trade.efpFixedValue || 0;
       const premium = trade.efpPremium || 0;

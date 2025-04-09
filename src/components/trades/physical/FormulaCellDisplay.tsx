@@ -12,6 +12,7 @@ interface FormulaCellDisplayProps {
   efpDesignatedMonth?: string;
   efpAgreedStatus?: boolean;
   efpFixedValue?: number;
+  efpFormulaDisplay?: string;
 }
 
 const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({ 
@@ -22,20 +23,23 @@ const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({
   efpPremium,
   efpAgreedStatus,
   efpFixedValue,
-  efpDesignatedMonth
+  efpDesignatedMonth,
+  efpFormulaDisplay
 }) => {
   // For EFP trades, show a special formula representation
   if (pricingType === 'efp') {
     let displayText = '';
     
-    if (efpAgreedStatus) {
+    // First check if there's a pre-generated efpFormulaDisplay field
+    if (efpFormulaDisplay) {
+      displayText = efpFormulaDisplay;
+    } else if (efpAgreedStatus) {
       // For agreed EFP trades, show the calculated total value
       const fixedValue = efpFixedValue || 0;
       const premium = efpPremium || 0;
       displayText = `${fixedValue + premium}`;
     } else {
       // For unagreed EFP trades, show "ICE GASOIL FUTURES (EFP) + premium"
-      // Note: We no longer include the designated month in the display
       displayText = `ICE GASOIL FUTURES (EFP) + ${efpPremium || 0}`;
     }
     
