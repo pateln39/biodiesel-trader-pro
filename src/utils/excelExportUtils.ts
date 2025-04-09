@@ -332,6 +332,11 @@ export const exportExposureToExcel = (
         });
         
         categoryProducts.forEach(product => {
+          if (!monthData.products || typeof monthData.products !== 'object') {
+            dataRow.push({ v: 0, t: 'n' });
+            return;
+          }
+          
           const productData = monthData.products[product] || { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
           
           let value = 0;
@@ -344,19 +349,24 @@ export const exportExposureToExcel = (
         });
         
         if (category === 'Exposure') {
-          const biodieselTotal = biodieselProducts.reduce((total, product) => {
-            if (monthData.products[product]) {
-              return total + monthData.products[product].netExposure;
-            }
-            return total;
-          }, 0);
+          let biodieselTotal = 0;
+          let pricingInstrumentTotal = 0;
           
-          const pricingInstrumentTotal = pricingInstrumentProducts.reduce((total, product) => {
-            if (monthData.products[product]) {
-              return total + monthData.products[product].netExposure;
-            }
-            return total;
-          }, 0);
+          if (monthData.products && typeof monthData.products === 'object') {
+            biodieselTotal = biodieselProducts.reduce((total, product) => {
+              if (monthData.products[product]) {
+                return total + monthData.products[product].netExposure;
+              }
+              return total;
+            }, 0);
+            
+            pricingInstrumentTotal = pricingInstrumentProducts.reduce((total, product) => {
+              if (monthData.products[product]) {
+                return total + monthData.products[product].netExposure;
+              }
+              return total;
+            }, 0);
+          }
           
           dataRow.push({ v: biodieselTotal, t: 'n' });
           dataRow.push({ v: pricingInstrumentTotal, t: 'n' });
@@ -695,6 +705,267 @@ export const exportPaperTradesToExcel = async (): Promise<string> => {
     
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const fileName = `Paper_Trades_${dateStr}.xlsx`;
+    
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported to ${fileName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Export exposure data by trade to Excel
+ * Creates a file with two sheets: Physical Trades and Paper Trades
+ */
+export const exportExposureByTrade = async (): Promise<string> => {
+  try {
+    console.log('[EXPORT] Starting exposure by trade export');
+    
+    // Fetch physical trade legs
+    const { data: tradeLegs, error: physicalError } = await supabase
+      .from('trade_legs')
+      .select(`
+        id,
+        leg_reference,
+        buy_sell,
+        product,
+        inco_term,
+        quantity,
+        loading_period_start,
+        loading_period_end,
+        pricing_type,
+        pricing_formula,
+        efp_premium,
+        efp_agreed_status,
+        efp_fixed_value,
+        efp_designated_month,
+        comments,
+        customs_status,
+        contract_status,
+        sustainability,
+        parent_trades(
+          trade_reference,
+          counterparty
+        )
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (physicalError) {
+      console.error('[EXPORT] Error fetching physical trade legs:', physicalError);
+      throw new Error('Failed to fetch physical trade data');
+    }
+    
+    // Fetch paper trade legs
+    const { data: paperTradeLegs, error: paperError } = await supabase
+      .from('paper_trade_legs')
+      .select(`
+        id,
+        leg_reference,
+        buy_sell,
+        product,
+        period,
+        quantity,
+        price,
+        broker,
+        instrument,
+        mtm_formula,
+        exposures
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (paperError) {
+      console.error('[EXPORT] Error fetching paper trade legs:', paperError);
+      throw new Error('Failed to fetch paper trade data');
+    }
+    
+    if ((!tradeLegs || tradeLegs.length === 0) && (!paperTradeLegs || paperTradeLegs.length === 0)) {
+      console.warn('[EXPORT] No trade data to export');
+      throw new Error('No trade data to export');
+    }
+    
+    console.log(`[EXPORT] Processing ${tradeLegs?.length || 0} physical trades and ${paperTradeLegs?.length || 0} paper trades for export`);
+    
+    const workbook = XLSX.utils.book_new();
+    
+    // Format physical trade data
+    if (tradeLegs && tradeLegs.length > 0) {
+      const formattedPhysicalData = tradeLegs.map(leg => {
+        const parentTrade = leg.parent_trades as any;
+        const quantity = leg.quantity 
+          ? parseFloat(String(leg.quantity)).toLocaleString() 
+          : '';
+        
+        const formatDateStr = (dateStr: string | null) => {
+          if (!dateStr) return '';
+          try {
+            return format(new Date(dateStr), 'dd MMM yyyy');
+          } catch (e) {
+            return '';
+          }
+        };
+        
+        // Format formula for display - similar to UI display
+        let formulaDisplay = '';
+        
+        if (leg.pricing_type === 'efp') {
+          if (leg.efp_agreed_status) {
+            const fixedValue = leg.efp_fixed_value || 0;
+            const premium = leg.efp_premium || 0;
+            formulaDisplay = `${fixedValue + premium}`;
+          } else {
+            formulaDisplay = `ICE GASOIL FUTURES (EFP) + ${leg.efp_premium || 0}`;
+          }
+        } else if (leg.pricing_formula && 
+            typeof leg.pricing_formula === 'object' && 
+            'tokens' in leg.pricing_formula && 
+            Array.isArray(leg.pricing_formula.tokens)) {
+          const tokensAny = leg.pricing_formula.tokens as any[];
+          const tokens: FormulaToken[] = tokensAny.map(token => ({
+            id: token.id?.toString() || '',
+            type: token.type as "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable",
+            value: token.value
+          }));
+          formulaDisplay = formulaToDisplayString(tokens);
+        }
+        
+        // Format exposure data - extract everything after tokens
+        let exposureData = '';
+        if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+          const { tokens, ...exposures } = leg.pricing_formula;
+          exposureData = JSON.stringify(exposures);
+        }
+        
+        return {
+          'REFERENCE': leg.leg_reference || parentTrade?.trade_reference || '',
+          'BUY/SELL': (leg.buy_sell || '').toUpperCase(),
+          'INCOTERM': leg.inco_term || '',
+          'QUANTITY': quantity,
+          'SUSTAINABILITY': leg.sustainability || '',
+          'PRODUCT': leg.product || '',
+          'LOADING START': formatDateStr(leg.loading_period_start as string | null),
+          'LOADING END': formatDateStr(leg.loading_period_end as string | null),
+          'COUNTERPARTY': parentTrade?.counterparty || '',
+          'PRICING TYPE': leg.pricing_type === 'efp' ? 'EFP' : (leg.pricing_type || ''),
+          'FORMULA': formulaDisplay || 'No formula',
+          'COMMENTS': leg.comments || '',
+          'CUSTOMS STATUS': leg.customs_status || '',
+          'CONTRACT STATUS': leg.contract_status || '',
+          'EXPOSURE': exposureData
+        };
+      });
+      
+      const physicalWorksheet = XLSX.utils.json_to_sheet(formattedPhysicalData);
+      
+      // Set column widths
+      physicalWorksheet['!cols'] = Object.keys(formattedPhysicalData[0]).map(() => ({ wch: 20 }));
+      
+      // Add border styles
+      const physicalRange = XLSX.utils.decode_range(physicalWorksheet['!ref'] || 'A1');
+      const border = {
+        top: { style: 'thick', color: { auto: 1 } },
+        bottom: { style: 'thick', color: { auto: 1 } },
+        left: { style: 'thick', color: { auto: 1 } },
+        right: { style: 'thick', color: { auto: 1 } }
+      };
+      
+      for (let R = physicalRange.s.r; R <= physicalRange.e.r; ++R) {
+        for (let C = physicalRange.s.c; C <= physicalRange.e.c; ++C) {
+          const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!physicalWorksheet[cell_ref]) physicalWorksheet[cell_ref] = { t: 's', v: '' };
+          if (!physicalWorksheet[cell_ref].s) physicalWorksheet[cell_ref].s = {};
+          physicalWorksheet[cell_ref].s.border = border;
+        }
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, physicalWorksheet, 'Physical Trades');
+    }
+    
+    // Format paper trade data
+    if (paperTradeLegs && paperTradeLegs.length > 0) {
+      const formattedPaperData = paperTradeLegs.map(leg => {
+        const quantity = leg.quantity 
+          ? parseFloat(String(leg.quantity)).toLocaleString() 
+          : '';
+        
+        // Determine the relationship type from instrument
+        let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+        if (leg.instrument) {
+          if (leg.instrument.includes('DIFF')) {
+            relationshipType = 'DIFF';
+          } else if (leg.instrument.includes('SPREAD')) {
+            relationshipType = 'SPREAD';
+          }
+        }
+        
+        // Extract right side product and price from mtm_formula if available
+        let rightSide = undefined;
+        if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'rightSide' in leg.mtm_formula) {
+          rightSide = leg.mtm_formula.rightSide;
+        }
+        
+        // Format product display using the same function as UI
+        const productDisplay = formatProductDisplay(
+          leg.product,
+          relationshipType,
+          rightSide?.product
+        );
+        
+        // Calculate display price using the same function as UI
+        const displayPrice = calculateDisplayPrice(
+          relationshipType,
+          leg.price || 0,
+          rightSide?.price
+        );
+        
+        // Format exposure data from the exposures column
+        let exposureData = '';
+        if (leg.exposures && typeof leg.exposures === 'object') {
+          exposureData = JSON.stringify(leg.exposures);
+        }
+        
+        return {
+          'TRADE REF': leg.leg_reference || '',
+          'BROKER': leg.broker || '',
+          'PRODUCTS': productDisplay,
+          'PERIOD': leg.period || '',
+          'QUANTITY': quantity,
+          'PRICE': displayPrice.toLocaleString(),
+          'EXPOSURE': exposureData
+        };
+      });
+      
+      const paperWorksheet = XLSX.utils.json_to_sheet(formattedPaperData);
+      
+      // Set column widths
+      paperWorksheet['!cols'] = Object.keys(formattedPaperData[0]).map(() => ({ wch: 20 }));
+      
+      // Add border styles
+      const paperRange = XLSX.utils.decode_range(paperWorksheet['!ref'] || 'A1');
+      const border = {
+        top: { style: 'thick', color: { auto: 1 } },
+        bottom: { style: 'thick', color: { auto: 1 } },
+        left: { style: 'thick', color: { auto: 1 } },
+        right: { style: 'thick', color: { auto: 1 } }
+      };
+      
+      for (let R = paperRange.s.r; R <= paperRange.e.r; ++R) {
+        for (let C = paperRange.s.c; C <= paperRange.e.c; ++C) {
+          const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!paperWorksheet[cell_ref]) paperWorksheet[cell_ref] = { t: 's', v: '' };
+          if (!paperWorksheet[cell_ref].s) paperWorksheet[cell_ref].s = {};
+          paperWorksheet[cell_ref].s.border = border;
+        }
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, paperWorksheet, 'Paper Trades');
+    }
+    
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Exposure_by_trade_${dateStr}.xlsx`;
     
     XLSX.writeFile(workbook, fileName);
     

@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -15,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { mapProductToCanonical, parsePaperInstrument, formatExposureTableProduct, isPricingInstrument, shouldUseSpecialBackground, getExposureProductBackgroundClass } from '@/utils/productMapping';
 import { calculateNetExposure } from '@/utils/tradeUtils';
 import { toast } from 'sonner';
-import { exportExposureToExcel } from '@/utils/excelExportUtils';
+import { exportExposureToExcel, exportExposureByTrade } from '@/utils/excelExportUtils';
 
 interface ExposureData {
   physical: number;
@@ -780,6 +781,20 @@ const ExposurePage = () => {
     }
   };
 
+  const handleExportByTrade = async () => {
+    try {
+      await exportExposureByTrade();
+      toast.success("Export successful", {
+        description: "Exposure by trade report has been downloaded"
+      });
+    } catch (error) {
+      console.error('[EXPOSURE] Export by trade error:', error);
+      toast.error("Export failed", {
+        description: "There was an error exporting the exposure by trade report"
+      });
+    }
+  };
+
   return <Layout>
       <Helmet>
         <title>Exposure Reporting</title>
@@ -789,6 +804,9 @@ const ExposurePage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
           <div className="flex space-x-2">
+            <Button variant="outline" size="sm" onClick={handleExportByTrade}>
+              <Download className="mr-2 h-3 w-3" /> Export by Trade
+            </Button>
             <Button variant="outline" size="sm" onClick={handleExportExcel}>
               <Download className="mr-2 h-3 w-3" /> Export
             </Button>
