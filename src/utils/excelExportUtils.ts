@@ -71,15 +71,7 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     
-    const colWidths = [];
-    formattedData.forEach(row => {
-      Object.keys(row).forEach((key, i) => {
-        const cellValue = String(row[key]);
-        colWidths[i] = Math.max(colWidths[i] || 0, Math.min(key.length, cellValue.length, 50));
-      });
-    });
-    
-    worksheet['!cols'] = colWidths.map(width => ({ wch: width + 2 }));
+    worksheet['!cols'] = Object.keys(formattedData[0]).map(() => ({ wch: 20 }));
     
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     const border = {
