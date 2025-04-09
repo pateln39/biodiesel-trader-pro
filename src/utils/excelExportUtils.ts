@@ -531,16 +531,19 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
           formulaDisplay = `ICE GASOIL FUTURES (EFP) + ${leg.efp_premium || 0}`;
         }
       } else if (leg.pricing_formula && 
-          typeof leg.pricing_formula === 'object' && 
-          'tokens' in leg.pricing_formula && 
-          Array.isArray(leg.pricing_formula.tokens)) {
-        const tokensAny = leg.pricing_formula.tokens as any[];
-        const tokens: FormulaToken[] = tokensAny.map(token => ({
-          id: token.id?.toString() || '',
-          type: token.type as "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable",
-          value: token.value
-        }));
-        formulaDisplay = formulaToDisplayString(tokens);
+          typeof leg.pricing_formula === 'object') {
+        const pricingFormula = leg.pricing_formula as any;
+        if (pricingFormula.tokens && Array.isArray(pricingFormula.tokens)) {
+          const tokensAny = pricingFormula.tokens;
+          const tokens: FormulaToken[] = tokensAny.map(token => ({
+            id: token.id?.toString() || '',
+            type: token.type as any,
+            value: token.value
+          }));
+          formulaDisplay = formulaToDisplayString(tokens);
+        } else {
+          formulaDisplay = 'No formula';
+        }
       }
       
       const displayReference = leg.leg_reference || parentTrade?.trade_reference || '';
@@ -820,16 +823,19 @@ export const exportExposureByTrade = async (): Promise<string> => {
             formulaDisplay = `ICE GASOIL FUTURES (EFP) + ${leg.efp_premium || 0}`;
           }
         } else if (leg.pricing_formula && 
-            typeof leg.pricing_formula === 'object' && 
-            'tokens' in leg.pricing_formula && 
-            Array.isArray(leg.pricing_formula.tokens)) {
-          const tokensAny = leg.pricing_formula.tokens as any[];
-          const tokens: FormulaToken[] = tokensAny.map(token => ({
-            id: token.id?.toString() || '',
-            type: token.type as "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable",
-            value: token.value
-          }));
-          formulaDisplay = formulaToDisplayString(tokens);
+            typeof leg.pricing_formula === 'object') {
+          const pricingFormula = leg.pricing_formula as any;
+          if (pricingFormula.tokens && Array.isArray(pricingFormula.tokens)) {
+            const tokensAny = pricingFormula.tokens;
+            const tokens: FormulaToken[] = tokensAny.map(token => ({
+              id: token.id?.toString() || '',
+              type: token.type as any,
+              value: token.value
+            }));
+            formulaDisplay = formulaToDisplayString(tokens);
+          } else {
+            formulaDisplay = 'No formula';
+          }
         }
         
         // Format exposure data - extract everything after tokens
