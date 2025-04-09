@@ -152,7 +152,9 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
       };
       
       let formulaDisplay = '';
-      if (trade.pricing_formula && 
+      if (trade.pricing_type === 'efp' && trade.efp_formula_display) {
+        formulaDisplay = trade.efp_formula_display;
+      } else if (trade.pricing_formula && 
           typeof trade.pricing_formula === 'object' && 
           'tokens' in trade.pricing_formula && 
           Array.isArray(trade.pricing_formula.tokens)) {
