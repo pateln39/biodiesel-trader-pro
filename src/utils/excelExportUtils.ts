@@ -152,7 +152,16 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
       };
       
       let formulaDisplay = '';
-      if (trade.pricing_formula && 
+      
+      if (trade.pricing_type === 'efp') {
+        if (trade.efp_agreed_status) {
+          const fixedValue = trade.efp_fixed_value || 0;
+          const premium = trade.efp_premium || 0;
+          formulaDisplay = `${fixedValue + premium}`;
+        } else {
+          formulaDisplay = `ICE GASOIL FUTURES (EFP) + ${trade.efp_premium || 0}`;
+        }
+      } else if (trade.pricing_formula && 
           typeof trade.pricing_formula === 'object' && 
           'tokens' in trade.pricing_formula && 
           Array.isArray(trade.pricing_formula.tokens)) {
@@ -176,7 +185,7 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
         'LOADING END': formatDateStr(trade.loading_period_end as string | null),
         'COUNTERPARTY': trade.counterparty || '',
         'PRICING TYPE': trade.pricing_type || '',
-        'FORMULA': formulaDisplay,
+        'FORMULA': formulaDisplay || 'No formula',
         'COMMENTS': trade.comments || '',
         'CUSTOMS STATUS': trade.customs_status || '',
         'CREDIT STATUS': trade.credit_status || '',
