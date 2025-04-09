@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, FileDown } from 'lucide-react';
 import { PhysicalTrade } from '@/types';
 import {
   Table,
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { exportPhysicalTradesToExcel } from '@/utils/excelExportUtils';
+import { toast } from 'sonner';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -25,6 +27,19 @@ interface PhysicalTradeTableProps {
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
   const navigate = useNavigate();
+
+  const handleExport = async () => {
+    try {
+      toast.info("Exporting trades", { description: "Preparing Excel file..." });
+      const fileName = await exportPhysicalTradesToExcel();
+      toast.success("Export complete", { description: `Saved as ${fileName}` });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred" 
+      });
+    }
+  };
 
   if (loading) {
     return <TableLoadingState />;
@@ -75,6 +90,11 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
 
   return (
     <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
+      <div className="flex justify-end p-2 bg-muted/30 border-b border-white/10">
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <FileDown className="mr-2 h-4 w-4" /> Export to Excel
+        </Button>
+      </div>
       <Table>
         <TableHeader>
           <TableRow className="border-b border-white/10">

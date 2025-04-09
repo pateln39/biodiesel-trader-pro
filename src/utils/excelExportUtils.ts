@@ -447,3 +447,146 @@ export const exportExposureToExcel = (
     throw error;
   }
 };
+
+export const exportPhysicalTradesToExcel = async (): Promise<string> => {
+  try {
+    console.log('[EXPORT] Starting physical trades export');
+    
+    const { data: tradeLegs, error } = await supabase
+      .from('trade_legs')
+      .select(`
+        id,
+        parent_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        sustainability,
+        inco_term,
+        quantity,
+        loading_period_start,
+        loading_period_end,
+        pricing_type,
+        pricing_formula,
+        efp_premium,
+        efp_agreed_status,
+        efp_fixed_value,
+        efp_designated_month,
+        comments,
+        customs_status,
+        credit_status,
+        contract_status,
+        parent_trades(
+          trade_reference,
+          counterparty
+        )
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('[EXPORT] Error fetching trade legs:', error);
+      throw new Error('Failed to fetch physical trade data');
+    }
+    
+    if (!tradeLegs || tradeLegs.length === 0) {
+      console.warn('[EXPORT] No physical trade data to export');
+      throw new Error('No physical trade data to export');
+    }
+    
+    console.log(`[EXPORT] Processing ${tradeLegs.length} physical trades for export`);
+    
+    const formattedData = tradeLegs.map(leg => {
+      const parentTrade = leg.parent_trades as any;
+      const quantity = leg.quantity 
+        ? parseFloat(String(leg.quantity)).toLocaleString() 
+        : '';
+      
+      const formatDateStr = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        try {
+          return format(new Date(dateStr), 'dd MMM yyyy');
+        } catch (e) {
+          return '';
+        }
+      };
+      
+      let formulaDisplay = '';
+      
+      if (leg.pricing_type === 'efp') {
+        if (leg.efp_agreed_status) {
+          const fixedValue = leg.efp_fixed_value || 0;
+          const premium = leg.efp_premium || 0;
+          formulaDisplay = `${fixedValue + premium}`;
+        } else {
+          formulaDisplay = `ICE GASOIL FUTURES (EFP) + ${leg.efp_premium || 0}`;
+        }
+      } else if (leg.pricing_formula && 
+          typeof leg.pricing_formula === 'object' && 
+          'tokens' in leg.pricing_formula && 
+          Array.isArray(leg.pricing_formula.tokens)) {
+        const tokensAny = leg.pricing_formula.tokens as any[];
+        const tokens: FormulaToken[] = tokensAny.map(token => ({
+          id: token.id?.toString() || '',
+          type: token.type as "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable",
+          value: token.value
+        }));
+        formulaDisplay = formulaToDisplayString(tokens);
+      }
+      
+      const displayReference = leg.leg_reference || parentTrade?.trade_reference || '';
+      
+      return {
+        'TRADE REF': displayReference,
+        'BUY/SELL': (leg.buy_sell || '').toUpperCase(),
+        'INCOTERM': leg.inco_term || '',
+        'QUANTITY': quantity,
+        'SUSTAINABILITY': leg.sustainability || '',
+        'PRODUCT': leg.product || '',
+        'LOADING START': formatDateStr(leg.loading_period_start as string | null),
+        'LOADING END': formatDateStr(leg.loading_period_end as string | null),
+        'COUNTERPARTY': parentTrade?.counterparty || '',
+        'PRICING TYPE': leg.pricing_type === 'efp' ? 'EFP' : (leg.pricing_type || ''),
+        'FORMULA': formulaDisplay || 'No formula',
+        'COMMENTS': leg.comments || '',
+        'CUSTOMS STATUS': leg.customs_status || '',
+        'CREDIT STATUS': leg.credit_status || '',
+        'CONTRACT STATUS': leg.contract_status || ''
+      };
+    });
+    
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    
+    worksheet['!cols'] = Object.keys(formattedData[0]).map(() => ({ wch: 20 }));
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const border = {
+      top: { style: 'thick', color: { auto: 1 } },
+      bottom: { style: 'thick', color: { auto: 1 } },
+      left: { style: 'thick', color: { auto: 1 } },
+      right: { style: 'thick', color: { auto: 1 } }
+    };
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+        if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        worksheet[cell_ref].s.border = border;
+      }
+    }
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Physical Trades');
+    
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Physical_Trades_${dateStr}.xlsx`;
+    
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported to ${fileName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
