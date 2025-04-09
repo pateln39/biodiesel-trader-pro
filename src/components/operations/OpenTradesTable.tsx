@@ -1,3 +1,4 @@
+
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -5,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
-import { formatLegReference } from '@/utils/tradeUtils';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -197,9 +197,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const renderRow = (trade: OpenTrade) => {
     const isZeroBalance = isTradeDisabled(trade);
     
-    const displayReference = trade.trade_leg_id ? 
-      formatLegReference(trade.trade_reference, trade.leg_reference || '') : 
-      trade.trade_reference;
+    // Display the trade reference directly from the open_trades table
+    // Now it should already include the leg suffix from the database
+    const displayReference = trade.trade_reference;
     
     const commentPreview = trade.comments 
       ? (trade.comments.length > 15 

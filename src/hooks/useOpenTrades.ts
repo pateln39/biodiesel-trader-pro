@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
@@ -10,7 +9,7 @@ export interface OpenTrade {
   trade_leg_id: string;
   parent_trade_id: string;
   trade_reference: string;
-  leg_reference?: string; // Added this field to store the leg reference
+  leg_reference?: string; // We still keep this field for reference
   counterparty: string;
   buy_sell: BuySell;
   product: Product;
@@ -34,7 +33,6 @@ export interface OpenTrade {
   status: 'open' | 'closed';
   created_at: Date;
   updated_at: Date;
-  // Previously added fields
   pricing_type?: PricingType;
   pricing_formula?: PricingFormula;
   comments?: string; // Independent from trade_legs.comments
@@ -53,8 +51,7 @@ export interface OpenTrade {
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
   try {
-    // First fetch all open trades without the leg_reference field
-    // This ensures we have valid data even if the leg_reference column doesn't exist
+    // Fetch open trades - now the trade_reference should already include the leg_suffix
     const { data, error } = await supabase
       .from('open_trades')
       .select(`
@@ -82,12 +79,11 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       return [];
     }
     
-    // Collect all trade_leg_ids to fetch their references
+    // We still fetch leg references for compatibility with other parts of the code
     const legIds = data
       .map(item => item.trade_leg_id)
       .filter(Boolean);
     
-    // Create a map of leg_id to leg_reference
     let legReferenceMap: Record<string, string> = {};
     
     if (legIds.length > 0) {
@@ -97,7 +93,6 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
         .in('id', legIds);
         
       if (!legError && legData) {
-        // Create a map of leg_id to leg_reference
         legReferenceMap = legData.reduce((map, leg) => {
           map[leg.id] = leg.leg_reference;
           return map;
@@ -111,9 +106,8 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       id: item.id,
       trade_leg_id: item.trade_leg_id,
       parent_trade_id: item.parent_trade_id,
-      trade_reference: item.trade_reference,
-      // Use leg_reference from our map
-      leg_reference: legReferenceMap[item.trade_leg_id] || '',
+      trade_reference: item.trade_reference, // This should now include the leg suffix
+      leg_reference: legReferenceMap[item.trade_leg_id] || '', // Keep this for compatibility
       counterparty: item.counterparty,
       buy_sell: item.buy_sell as BuySell,
       product: item.product as Product,
