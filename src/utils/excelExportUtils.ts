@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -817,5 +818,145 @@ export const exportExposureByTrade = async (): Promise<string> => {
         }
         
         // Extract exposure information
-        let exposureData = {};
-        if (leg
+        let exposureData = '';
+        if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+          const formulaObj = leg.pricing_formula as any;
+          if (formulaObj.exposures) {
+            exposureData = JSON.stringify(formulaObj.exposures);
+          }
+          if (formulaObj.monthlyDistribution) {
+            exposureData += ' MonthlyDistribution: ' + JSON.stringify(formulaObj.monthlyDistribution);
+          }
+        }
+        
+        return {
+          'REFERENCE': leg.leg_reference || parentTrade?.trade_reference || '',
+          'BUY/SELL': (leg.buy_sell || '').toUpperCase(),
+          'INCOTERM': leg.inco_term || '',
+          'QUANTITY': quantity,
+          'SUSTAINABILITY': leg.sustainability || '',
+          'PRODUCT': leg.product || '',
+          'LOADING START': formatDateStr(leg.loading_period_start as string | null),
+          'LOADING END': formatDateStr(leg.loading_period_end as string | null),
+          'COUNTERPARTY': parentTrade?.counterparty || '',
+          'PRICING TYPE': leg.pricing_type === 'efp' ? 'EFP' : (leg.pricing_type || ''),
+          'FORMULA': formulaDisplay || 'No formula',
+          'COMMENTS': leg.comments || '',
+          'CUSTOMS STATUS': leg.customs_status || '',
+          'CONTRACT STATUS': leg.contract_status || '',
+          'EXPOSURE': exposureData
+        };
+      });
+      
+      const physicalWorksheet = XLSX.utils.json_to_sheet(formattedPhysicalData);
+      
+      // Set column widths
+      physicalWorksheet['!cols'] = Object.keys(formattedPhysicalData[0]).map(() => ({ wch: 20 }));
+      
+      // Add borders to all cells
+      const physicalRange = XLSX.utils.decode_range(physicalWorksheet['!ref'] || 'A1');
+      const border = {
+        top: { style: 'thick', color: { auto: 1 } },
+        bottom: { style: 'thick', color: { auto: 1 } },
+        left: { style: 'thick', color: { auto: 1 } },
+        right: { style: 'thick', color: { auto: 1 } }
+      };
+      
+      for (let R = physicalRange.s.r; R <= physicalRange.e.r; ++R) {
+        for (let C = physicalRange.s.c; C <= physicalRange.e.c; ++C) {
+          const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!physicalWorksheet[cell_ref]) physicalWorksheet[cell_ref] = { t: 's', v: '' };
+          if (!physicalWorksheet[cell_ref].s) physicalWorksheet[cell_ref].s = {};
+          physicalWorksheet[cell_ref].s.border = border;
+        }
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, physicalWorksheet, 'Physical Trades');
+    }
+    
+    // Format Paper Trades data
+    if (paperTradeLegs && paperTradeLegs.length > 0) {
+      const formattedPaperData = paperTradeLegs.map(leg => {
+        const quantity = leg.quantity 
+          ? parseFloat(String(leg.quantity)).toLocaleString() 
+          : '';
+        
+        let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+        if (leg.instrument) {
+          if (leg.instrument.includes('DIFF')) {
+            relationshipType = 'DIFF';
+          } else if (leg.instrument.includes('SPREAD')) {
+            relationshipType = 'SPREAD';
+          }
+        }
+        
+        let rightSide = undefined;
+        if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'rightSide' in leg.mtm_formula) {
+          rightSide = leg.mtm_formula.rightSide;
+        }
+        
+        const productDisplay = formatProductDisplay(
+          leg.product,
+          relationshipType,
+          rightSide?.product
+        );
+        
+        const displayPrice = calculateDisplayPrice(
+          relationshipType,
+          leg.price || 0,
+          rightSide?.price
+        );
+        
+        // Extract exposure information
+        let exposureData = '';
+        if (leg.exposures) {
+          exposureData = JSON.stringify(leg.exposures);
+        }
+        
+        return {
+          'TRADE REFERENCE': leg.leg_reference || '',
+          'BROKER': leg.broker || '',
+          'PRODUCTS': productDisplay,
+          'PERIOD': leg.period || '',
+          'QUANTITY': quantity,
+          'PRICE': displayPrice.toLocaleString(),
+          'EXPOSURE': exposureData
+        };
+      });
+      
+      const paperWorksheet = XLSX.utils.json_to_sheet(formattedPaperData);
+      
+      // Set column widths
+      paperWorksheet['!cols'] = Object.keys(formattedPaperData[0]).map(() => ({ wch: 20 }));
+      
+      // Add borders to all cells
+      const paperRange = XLSX.utils.decode_range(paperWorksheet['!ref'] || 'A1');
+      const border = {
+        top: { style: 'thick', color: { auto: 1 } },
+        bottom: { style: 'thick', color: { auto: 1 } },
+        left: { style: 'thick', color: { auto: 1 } },
+        right: { style: 'thick', color: { auto: 1 } }
+      };
+      
+      for (let R = paperRange.s.r; R <= paperRange.e.r; ++R) {
+        for (let C = paperRange.s.c; C <= paperRange.e.c; ++C) {
+          const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!paperWorksheet[cell_ref]) paperWorksheet[cell_ref] = { t: 's', v: '' };
+          if (!paperWorksheet[cell_ref].s) paperWorksheet[cell_ref].s = {};
+          paperWorksheet[cell_ref].s.border = border;
+        }
+      }
+      
+      XLSX.utils.book_append_sheet(workbook, paperWorksheet, 'Paper Trades');
+    }
+    
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported exposure by trade data to ${fileName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
