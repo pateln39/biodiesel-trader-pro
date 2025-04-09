@@ -2,6 +2,7 @@ import { PhysicalTrade } from '@/types';
 import { mapProductToCanonical } from './productMapping';
 import { parseForwardMonth } from './dateParsingUtils';
 import { formatMonthCode } from './dateUtils';
+import { formatProductDisplay } from './tradeUtils';
 
 // Type definitions for exposure calculations
 export interface MonthlyProductVolume {
@@ -13,6 +14,24 @@ export interface MonthlyProductVolume {
 export interface ExposureResult {
   monthlyPhysical: MonthlyProductVolume;
   monthlyPricing: MonthlyProductVolume;
+}
+
+// Type definitions for exposure data
+export interface ProductExposure {
+  physical: number;
+  pricing: number;
+  paper: number;
+  netExposure: number;
+}
+
+export interface MonthData {
+  products: {
+    [product: string]: ProductExposure;
+  };
+}
+
+export interface ExposureData {
+  [month: string]: MonthData;
 }
 
 /**
@@ -204,4 +223,301 @@ export const extractInstrumentsFromFormula = (formula: any): string[] => {
   }
   
   return Array.from(instruments);
+};
+
+/**
+ * Create initial exposure data structure with empty values
+ */
+export const createInitialExposureData = (): ExposureData => {
+  const months = [];
+  const currentDate = new Date();
+  
+  // Generate the next 12 months
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+    const monthCode = formatMonthCode(date);
+    months.push(monthCode);
+  }
+  
+  const initialData: ExposureData = {};
+  
+  // Initialize each month with empty products
+  months.forEach(month => {
+    initialData[month] = {
+      products: {}
+    };
+  });
+  
+  return initialData;
+};
+
+/**
+ * Update exposure data with trades data
+ */
+export const updateExposureData = (
+  exposureData: ExposureData,
+  trades: any[],
+  tradeType: 'openTrades' | 'paperTrades'
+): ExposureData => {
+  if (!trades || trades.length === 0) {
+    return exposureData;
+  }
+  
+  const updatedData = { ...exposureData };
+  
+  trades.forEach(trade => {
+    if (tradeType === 'openTrades') {
+      // Handle physical trades
+      const month = trade.loading_period_start ? formatMonthCode(new Date(trade.loading_period_start)) : null;
+      const pricingMonth = trade.pricing_period_start ? formatMonthCode(new Date(trade.pricing_period_start)) : month;
+      const product = mapProductToCanonical(trade.product);
+      const buySellFactor = trade.buy_sell === 'buy' ? 1 : -1;
+      const quantity = trade.quantity * (trade.tolerance ? (1 + trade.tolerance / 100) : 1);
+      
+      // Add physical exposure
+      if (month && month in updatedData) {
+        if (!updatedData[month].products[product]) {
+          updatedData[month].products[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+        }
+        updatedData[month].products[product].physical += quantity * buySellFactor;
+        updatedData[month].products[product].netExposure = 
+          updatedData[month].products[product].physical +
+          updatedData[month].products[product].pricing +
+          updatedData[month].products[product].paper;
+      }
+      
+      // Add pricing exposure if formula exists
+      if (pricingMonth && pricingMonth in updatedData && trade.pricing_formula) {
+        // Handle EFP trades differently
+        if (trade.pricing_type === 'efp') {
+          const efpMonth = trade.efp_designated_month || pricingMonth;
+          const efpProduct = 'ICE GASOIL FUTURES (EFP)';
+          
+          if (!updatedData[efpMonth].products[efpProduct]) {
+            updatedData[efpMonth].products[efpProduct] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+          }
+          
+          // Only add exposure for unagreed EFPs
+          if (!trade.efp_agreed_status) {
+            updatedData[efpMonth].products[efpProduct].pricing += quantity * buySellFactor * -1;
+            updatedData[efpMonth].products[efpProduct].netExposure = 
+              updatedData[efpMonth].products[efpProduct].physical +
+              updatedData[efpMonth].products[efpProduct].pricing +
+              updatedData[efpMonth].products[efpProduct].paper;
+          }
+        } 
+        // Handle regular pricing formula
+        else if (trade.pricing_formula.tokens) {
+          const instruments = extractInstrumentsFromFormula(trade.pricing_formula);
+          
+          instruments.forEach(instrument => {
+            if (!updatedData[pricingMonth].products[instrument]) {
+              updatedData[pricingMonth].products[instrument] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+            }
+            
+            updatedData[pricingMonth].products[instrument].pricing += quantity * buySellFactor * -1;
+            updatedData[pricingMonth].products[instrument].netExposure = 
+              updatedData[pricingMonth].products[instrument].physical +
+              updatedData[pricingMonth].products[instrument].pricing +
+              updatedData[pricingMonth].products[instrument].paper;
+          });
+        }
+      }
+    } else if (tradeType === 'paperTrades') {
+      // Handle paper trades
+      trade.legs.forEach((leg: any) => {
+        // Extract the trading period from the leg
+        const month = leg.period ? parseForwardMonth(leg.period) : null;
+        if (!month || !(formatMonthCode(month) in updatedData)) {
+          return;
+        }
+        
+        const formattedMonth = formatMonthCode(month);
+        const buySellFactor = leg.buySell === 'buy' ? 1 : -1;
+        
+        // Format product name based on relationship type and right side product
+        const displayProduct = formatProductDisplay(
+          leg.product,
+          leg.relationshipType || 'FP',
+          leg.rightSide?.product
+        );
+        
+        if (!updatedData[formattedMonth].products[displayProduct]) {
+          updatedData[formattedMonth].products[displayProduct] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+        }
+        
+        updatedData[formattedMonth].products[displayProduct].paper += leg.quantity * buySellFactor;
+        updatedData[formattedMonth].products[displayProduct].netExposure = 
+          updatedData[formattedMonth].products[displayProduct].physical +
+          updatedData[formattedMonth].products[displayProduct].pricing +
+          updatedData[formattedMonth].products[displayProduct].paper;
+      });
+    }
+  });
+  
+  return updatedData;
+};
+
+/**
+ * Generate a list of filtered products that have non-zero exposure
+ */
+export const generateFilteredProducts = (exposureData: ExposureData): string[] => {
+  const productSet = new Set<string>();
+  
+  // Collect all products with non-zero exposure
+  Object.values(exposureData).forEach(monthData => {
+    Object.entries(monthData.products).forEach(([product, data]) => {
+      if (data.physical !== 0 || data.pricing !== 0 || data.paper !== 0) {
+        productSet.add(product);
+      }
+    });
+  });
+  
+  // Group products by category
+  const biodieselProducts = Array.from(productSet).filter(product => 
+    ['FAME0', 'RME', 'UCOME', 'UCOME-5', 'HVO'].some(p => product.includes(p)) &&
+    !product.includes('ICE')
+  );
+  
+  const pricingInstrumentProducts = Array.from(productSet).filter(product => 
+    ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel', 'ICE GASOIL FUTURES (EFP)'].some(p => product.includes(p))
+  );
+  
+  // Combine and sort products by category
+  return [...biodieselProducts.sort(), ...pricingInstrumentProducts.sort()];
+};
+
+/**
+ * Filter products by category
+ */
+export const filterProductsByCategory = (products: string[], category: 'Biodiesel' | 'Pricing Instrument'): string[] => {
+  if (category === 'Biodiesel') {
+    return products.filter(product => 
+      ['FAME0', 'RME', 'UCOME', 'UCOME-5', 'HVO'].some(p => product.includes(p)) &&
+      !product.includes('ICE')
+    );
+  } else if (category === 'Pricing Instrument') {
+    return products.filter(product => 
+      ['ICE GASOIL FUTURES', 'Platts LSGO', 'Platts Diesel', 'ICE GASOIL FUTURES (EFP)'].some(p => product.includes(p))
+    );
+  }
+  return [];
+};
+
+/**
+ * Calculate product totals across all months
+ */
+export const calculateProductTotals = (exposureData: ExposureData, products: string[]): Record<string, ProductExposure> => {
+  const productTotals: Record<string, ProductExposure> = {};
+  
+  products.forEach(product => {
+    productTotals[product] = { physical: 0, pricing: 0, paper: 0, netExposure: 0 };
+    
+    Object.values(exposureData).forEach(monthData => {
+      if (monthData.products[product]) {
+        productTotals[product].physical += monthData.products[product].physical;
+        productTotals[product].pricing += monthData.products[product].pricing;
+        productTotals[product].paper += monthData.products[product].paper;
+      }
+    });
+    
+    productTotals[product].netExposure = 
+      productTotals[product].physical + 
+      productTotals[product].pricing + 
+      productTotals[product].paper;
+  });
+  
+  return productTotals;
+};
+
+/**
+ * Calculate category totals across all months
+ */
+export const calculateCategoryTotals = (exposureData: ExposureData, products: string[]): Record<string, ProductExposure> => {
+  const categoryTotals: Record<string, ProductExposure> = {
+    Biodiesel: { physical: 0, pricing: 0, paper: 0, netExposure: 0 },
+    PricingInstrument: { physical: 0, pricing: 0, paper: 0, netExposure: 0 }
+  };
+  
+  const biodieselProducts = filterProductsByCategory(products, 'Biodiesel');
+  const pricingInstrumentProducts = filterProductsByCategory(products, 'Pricing Instrument');
+  
+  Object.values(exposureData).forEach(monthData => {
+    // Calculate Biodiesel totals
+    biodieselProducts.forEach(product => {
+      if (monthData.products[product]) {
+        categoryTotals.Biodiesel.physical += monthData.products[product].physical;
+        categoryTotals.Biodiesel.pricing += monthData.products[product].pricing;
+        categoryTotals.Biodiesel.paper += monthData.products[product].paper;
+      }
+    });
+    
+    // Calculate Pricing Instrument totals
+    pricingInstrumentProducts.forEach(product => {
+      if (monthData.products[product]) {
+        categoryTotals.PricingInstrument.physical += monthData.products[product].physical;
+        categoryTotals.PricingInstrument.pricing += monthData.products[product].pricing;
+        categoryTotals.PricingInstrument.paper += monthData.products[product].paper;
+      }
+    });
+  });
+  
+  categoryTotals.Biodiesel.netExposure = 
+    categoryTotals.Biodiesel.physical + 
+    categoryTotals.Biodiesel.pricing + 
+    categoryTotals.Biodiesel.paper;
+  
+  categoryTotals.PricingInstrument.netExposure = 
+    categoryTotals.PricingInstrument.physical + 
+    categoryTotals.PricingInstrument.pricing + 
+    categoryTotals.PricingInstrument.paper;
+  
+  return categoryTotals;
+};
+
+/**
+ * Calculate grand totals for products and categories
+ */
+export const calculateGrandTotals = (
+  productTotals: Record<string, ProductExposure>,
+  categoryTotals: Record<string, ProductExposure>
+) => {
+  return {
+    productTotals,
+    categoryTotals
+  };
+};
+
+/**
+ * Calculate group grand totals for biodiesel and pricing instruments
+ */
+export const calculateGroupGrandTotals = (
+  exposureData: ExposureData,
+  biodieselProducts: string[],
+  pricingInstrumentProducts: string[]
+) => {
+  let biodieselTotal = 0;
+  let pricingInstrumentTotal = 0;
+  
+  Object.values(exposureData).forEach(monthData => {
+    // Sum up all biodiesel exposure
+    biodieselProducts.forEach(product => {
+      if (monthData.products[product]) {
+        biodieselTotal += monthData.products[product].netExposure;
+      }
+    });
+    
+    // Sum up all pricing instrument exposure
+    pricingInstrumentProducts.forEach(product => {
+      if (monthData.products[product]) {
+        pricingInstrumentTotal += monthData.products[product].netExposure;
+      }
+    });
+  });
+  
+  return {
+    biodieselTotal,
+    pricingInstrumentTotal,
+    totalRow: biodieselTotal + pricingInstrumentTotal
+  };
 };

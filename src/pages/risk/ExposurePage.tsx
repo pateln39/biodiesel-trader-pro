@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useOpenTrades } from '@/hooks/useOpenTrades';
@@ -19,7 +20,7 @@ import {
 
 const ExposurePage = () => {
   const { openTrades, loading: openTradesLoading, error: openTradesError } = useOpenTrades();
-  const { paperTrades, loading: paperTradesLoading, error: paperTradesError } = usePaperTrades();
+  const { paperTrades, isLoading: paperTradesLoading, error: paperTradesError } = usePaperTrades();
 
   const [exposureData, setExposureData] = useState(() => createInitialExposureData());
   const [visibleCategories, setVisibleCategories] = useState(['Physical', 'Pricing', 'Paper', 'Exposure']);
@@ -48,7 +49,7 @@ const ExposurePage = () => {
     updatedExposureData = updateExposureData(updatedExposureData, paperTrades, 'paperTrades');
 
     setExposureData(updatedExposureData);
-  }, [openTrades, paperTrades, openTradesLoading, paperTradesError, paperTradesLoading, paperTradesError]);
+  }, [openTrades, paperTrades, openTradesLoading, openTradesError, paperTradesLoading, paperTradesError]);
 
   useEffect(() => {
     const newFilteredProducts = generateFilteredProducts(exposureData);
@@ -101,7 +102,7 @@ const ExposurePage = () => {
 
   const handleExportByTradeExcel = async () => {
     try {
-      const fileName = await exportExposureByTrade();
+      const fileName = await exportExposureByTrade(openTrades, paperTrades);
       toast.success(`Successfully exported to ${fileName}`);
     } catch (error) {
       console.error('Error exporting by trade to Excel:', error);
