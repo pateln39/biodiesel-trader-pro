@@ -839,14 +839,46 @@ export const exportExposureByTrade = async (): Promise<string> => {
           }
         }
         
-        // Format exposure data - extract everything after tokens
-        let exposureData = '';
+        // Format exposure data in a more readable way
+        let physicalExposures = '';
+        let pricingExposures = '';
+        let monthlyDistribution = '';
+        
         if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
           const pricingFormula = leg.pricing_formula as any;
-          // Create a copy without the tokens field
-          if (pricingFormula) {
-            const { tokens, ...exposures } = pricingFormula;
-            exposureData = JSON.stringify(exposures);
+          
+          // Extract physical exposures
+          if (pricingFormula && pricingFormula.exposures && pricingFormula.exposures.physical) {
+            const physicalExp = pricingFormula.exposures.physical;
+            physicalExposures = Object.entries(physicalExp)
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+          
+          // Extract pricing exposures
+          if (pricingFormula && pricingFormula.exposures && pricingFormula.exposures.pricing) {
+            const pricingExp = pricingFormula.exposures.pricing;
+            pricingExposures = Object.entries(pricingExp)
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+          
+          // Extract monthly distribution
+          if (pricingFormula && pricingFormula.monthlyDistribution) {
+            const monthlyDist = pricingFormula.monthlyDistribution;
+            const formattedMonthly: string[] = [];
+            
+            Object.entries(monthlyDist).forEach(([instrument, monthValues]) => {
+              if (typeof monthValues === 'object') {
+                const monthEntries = Object.entries(monthValues)
+                  .map(([month, value]) => `${month}: ${value}`)
+                  .join(', ');
+                
+                formattedMonthly.push(`${instrument}: { ${monthEntries} }`);
+              }
+            });
+            
+            monthlyDistribution = formattedMonthly.join(' | ');
           }
         }
         
@@ -865,16 +897,36 @@ export const exportExposureByTrade = async (): Promise<string> => {
           'COMMENTS': leg.comments || '',
           'CUSTOMS STATUS': leg.customs_status || '',
           'CONTRACT STATUS': leg.contract_status || '',
-          'EXPOSURE': exposureData
+          'PHYSICAL EXPOSURES': physicalExposures || 'None',
+          'PRICING EXPOSURES': pricingExposures || 'None',
+          'MONTHLY DISTRIBUTION': monthlyDistribution || 'None'
         };
       });
       
       const physicalWorksheet = XLSX.utils.json_to_sheet(formattedPhysicalData);
       
       // Set column widths
-      physicalWorksheet['!cols'] = Object.keys(formattedPhysicalData[0]).map(() => ({ wch: 20 }));
+      physicalWorksheet['!cols'] = [
+        { wch: 15 }, // REFERENCE
+        { wch: 10 }, // BUY/SELL
+        { wch: 10 }, // INCOTERM
+        { wch: 10 }, // QUANTITY
+        { wch: 15 }, // SUSTAINABILITY
+        { wch: 15 }, // PRODUCT
+        { wch: 15 }, // LOADING START
+        { wch: 15 }, // LOADING END
+        { wch: 20 }, // COUNTERPARTY
+        { wch: 15 }, // PRICING TYPE
+        { wch: 25 }, // FORMULA
+        { wch: 20 }, // COMMENTS
+        { wch: 15 }, // CUSTOMS STATUS
+        { wch: 15 }, // CONTRACT STATUS
+        { wch: 30 }, // PHYSICAL EXPOSURES
+        { wch: 30 }, // PRICING EXPOSURES
+        { wch: 40 }  // MONTHLY DISTRIBUTION
+      ];
       
-      // Add border styles
+      // Add border styles and conditional formatting
       const physicalRange = XLSX.utils.decode_range(physicalWorksheet['!ref'] || 'A1');
       const border = {
         top: { style: 'thick', color: { auto: 1 } },
@@ -883,12 +935,42 @@ export const exportExposureByTrade = async (): Promise<string> => {
         right: { style: 'thick', color: { auto: 1 } }
       };
       
-      for (let R = physicalRange.s.r; R <= physicalRange.e.r; ++R) {
+      // Apply styles to header row
+      for (let C = physicalRange.s.c; C <= physicalRange.e.c; ++C) {
+        const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!physicalWorksheet[headerCell]) physicalWorksheet[headerCell] = { t: 's', v: '' };
+        if (!physicalWorksheet[headerCell].s) physicalWorksheet[headerCell].s = {};
+        
+        physicalWorksheet[headerCell].s = {
+          fill: { patternType: 'solid', fgColor: { rgb: "4F81BD" } },
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border
+        };
+      }
+      
+      // Apply styles to data cells
+      for (let R = physicalRange.s.r + 1; R <= physicalRange.e.r; ++R) {
         for (let C = physicalRange.s.c; C <= physicalRange.e.c; ++C) {
           const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
           if (!physicalWorksheet[cell_ref]) physicalWorksheet[cell_ref] = { t: 's', v: '' };
           if (!physicalWorksheet[cell_ref].s) physicalWorksheet[cell_ref].s = {};
+          
+          // Add borders to all cells
           physicalWorksheet[cell_ref].s.border = border;
+          
+          // Apply row banding
+          if (R % 2 === 0) {
+            physicalWorksheet[cell_ref].s.fill = {
+              patternType: 'solid',
+              fgColor: { rgb: "E9EFF7" }
+            };
+          }
+          
+          // Special formatting for exposure columns
+          if (C >= 14 && C <= 16) { // PHYSICAL_EXPOSURES, PRICING_EXPOSURES, MONTHLY_DISTRIBUTION
+            physicalWorksheet[cell_ref].s.font = { color: { rgb: "000080" } };
+          }
         }
       }
       
@@ -932,10 +1014,58 @@ export const exportExposureByTrade = async (): Promise<string> => {
           rightSide?.price
         );
         
-        // Format exposure data from the exposures column
-        let exposureData = '';
+        // Format exposure data in a more readable way
+        let physicalExposures = '';
+        let paperExposures = '';
+        let pricingExposures = '';
+        
         if (leg.exposures && typeof leg.exposures === 'object') {
-          exposureData = JSON.stringify(leg.exposures);
+          const exposuresData = leg.exposures as Record<string, any>;
+          
+          // Extract physical exposures
+          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+            physicalExposures = Object.entries(exposuresData.physical)
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+          
+          // Extract paper exposures - this is a new field that wasn't in the original
+          if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+            paperExposures = Object.entries(exposuresData.paper)
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          } else {
+            // If paper exposures aren't explicitly defined, use physical as a fallback
+            paperExposures = physicalExposures;
+          }
+          
+          // Extract pricing exposures
+          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+            pricingExposures = Object.entries(exposuresData.pricing)
+              .map(([product, value]) => `${product}: ${value}`)
+              .join(', ');
+          }
+        } else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+          const mtmFormula = leg.mtm_formula as any;
+          
+          if (mtmFormula.exposures) {
+            // Extract physical exposures
+            if (mtmFormula.exposures.physical && typeof mtmFormula.exposures.physical === 'object') {
+              physicalExposures = Object.entries(mtmFormula.exposures.physical)
+                .map(([product, value]) => `${product}: ${value}`)
+                .join(', ');
+            }
+            
+            // Use physical exposures for paper exposures too
+            paperExposures = physicalExposures;
+            
+            // Extract pricing exposures
+            if (mtmFormula.exposures.pricing && typeof mtmFormula.exposures.pricing === 'object') {
+              pricingExposures = Object.entries(mtmFormula.exposures.pricing)
+                .map(([product, value]) => `${product}: ${value}`)
+                .join(', ');
+            }
+          }
         }
         
         return {
@@ -945,16 +1075,28 @@ export const exportExposureByTrade = async (): Promise<string> => {
           'PERIOD': leg.period || '',
           'QUANTITY': quantity,
           'PRICE': displayPrice.toLocaleString(),
-          'EXPOSURE': exposureData
+          'PHYSICAL EXPOSURES': physicalExposures || 'None',
+          'PAPER EXPOSURES': paperExposures || 'None',
+          'PRICING EXPOSURES': pricingExposures || 'None'
         };
       });
       
       const paperWorksheet = XLSX.utils.json_to_sheet(formattedPaperData);
       
       // Set column widths
-      paperWorksheet['!cols'] = Object.keys(formattedPaperData[0]).map(() => ({ wch: 20 }));
+      paperWorksheet['!cols'] = [
+        { wch: 15 }, // TRADE REF
+        { wch: 15 }, // BROKER
+        { wch: 25 }, // PRODUCTS
+        { wch: 10 }, // PERIOD
+        { wch: 10 }, // QUANTITY
+        { wch: 15 }, // PRICE
+        { wch: 30 }, // PHYSICAL EXPOSURES
+        { wch: 30 }, // PAPER EXPOSURES
+        { wch: 30 }  // PRICING EXPOSURES
+      ];
       
-      // Add border styles
+      // Add border styles and conditional formatting
       const paperRange = XLSX.utils.decode_range(paperWorksheet['!ref'] || 'A1');
       const border = {
         top: { style: 'thick', color: { auto: 1 } },
@@ -963,12 +1105,42 @@ export const exportExposureByTrade = async (): Promise<string> => {
         right: { style: 'thick', color: { auto: 1 } }
       };
       
-      for (let R = paperRange.s.r; R <= paperRange.e.r; ++R) {
+      // Apply styles to header row
+      for (let C = paperRange.s.c; C <= paperRange.e.c; ++C) {
+        const headerCell = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!paperWorksheet[headerCell]) paperWorksheet[headerCell] = { t: 's', v: '' };
+        if (!paperWorksheet[headerCell].s) paperWorksheet[headerCell].s = {};
+        
+        paperWorksheet[headerCell].s = {
+          fill: { patternType: 'solid', fgColor: { rgb: "4F81BD" } },
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border
+        };
+      }
+      
+      // Apply styles to data cells
+      for (let R = paperRange.s.r + 1; R <= paperRange.e.r; ++R) {
         for (let C = paperRange.s.c; C <= paperRange.e.c; ++C) {
           const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
           if (!paperWorksheet[cell_ref]) paperWorksheet[cell_ref] = { t: 's', v: '' };
           if (!paperWorksheet[cell_ref].s) paperWorksheet[cell_ref].s = {};
+          
+          // Add borders to all cells
           paperWorksheet[cell_ref].s.border = border;
+          
+          // Apply row banding
+          if (R % 2 === 0) {
+            paperWorksheet[cell_ref].s.fill = {
+              patternType: 'solid',
+              fgColor: { rgb: "E9EFF7" }
+            };
+          }
+          
+          // Special formatting for exposure columns
+          if (C >= 6 && C <= 8) { // PHYSICAL_EXPOSURES, PAPER_EXPOSURES, PRICING_EXPOSURES
+            paperWorksheet[cell_ref].s.font = { color: { rgb: "000080" } };
+          }
         }
       }
       
