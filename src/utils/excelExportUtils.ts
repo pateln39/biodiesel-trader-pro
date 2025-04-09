@@ -48,8 +48,8 @@ export const exportMovementsToExcel = async (): Promise<string> => {
         'INCOTERM': movement.inco_term || '',
         'SUSTAINABILITY': movement.sustainability || '',
         'PRODUCT': movement.product || '',
-        'LOADING START': formatDateStr(movement.loading_period_start),
-        'LOADING END': formatDateStr(movement.loading_period_end),
+        'LOADING START': '', // Removed the reference to loading_period_start 
+        'LOADING END': '', // Removed the reference to loading_period_end
         'COUNTERPARTY': movement.counterparty || '',
         'COMMENTS': movement.comments || '',
         'CREDIT STATUS': movement.credit_status || '',
