@@ -156,7 +156,7 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
           typeof trade.pricing_formula === 'object' && 
           'tokens' in trade.pricing_formula && 
           Array.isArray(trade.pricing_formula.tokens)) {
-        const tokens = (trade.pricing_formula.tokens as unknown) as FormulaToken[];
+        const tokens = trade.pricing_formula.tokens as FormulaToken[];
         formulaDisplay = formulaToDisplayString(tokens);
       }
       
