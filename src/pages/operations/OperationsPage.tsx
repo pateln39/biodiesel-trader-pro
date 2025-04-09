@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Filter } from 'lucide-react';
+import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import MovementsFilter from '@/components/operations/MovementsFilter';
+import { exportMovementsToExcel } from '@/utils/excelExportUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -21,6 +22,7 @@ const OperationsPage = () => {
   const [movementsFilterStatus, setMovementsFilterStatus] = useState<string[]>([]);
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   const { 
     counterparties,
@@ -65,6 +67,28 @@ const OperationsPage = () => {
 
   const handleRefreshTables = () => {
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleExportMovements = async () => {
+    try {
+      setIsExporting(true);
+      toast.info("Preparing export", {
+        description: "Gathering movements data for export..."
+      });
+      
+      const fileName = await exportMovementsToExcel();
+      
+      toast.success("Export complete", {
+        description: `Movements exported to ${fileName}`
+      });
+    } catch (error) {
+      console.error('[OPERATIONS] Export error:', error);
+      toast.error("Export failed", {
+        description: "There was an error exporting movements data"
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -121,13 +145,23 @@ const OperationsPage = () => {
                 <CardTitle>Movements</CardTitle>
                 <CardDescription className="flex justify-between items-center">
                   <span>View and manage product movements</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsMovementsFilterOpen(true)}
-                  >
-                    <Filter className="mr-2 h-4 w-4" /> Filter
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleExportMovements}
+                      disabled={isExporting}
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Export
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsMovementsFilterOpen(true)}
+                    >
+                      <Filter className="mr-2 h-4 w-4" /> Filter
+                    </Button>
+                  </div>
                 </CardDescription>
               </CardHeader>
               <CardContent>

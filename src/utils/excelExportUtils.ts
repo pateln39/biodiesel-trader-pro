@@ -1,5 +1,8 @@
 import * as XLSX from 'xlsx';
 import { formatExposureTableProduct, getExposureProductBackgroundClass } from './productMapping';
+import { supabase } from '@/integrations/supabase/client';
+import { Movement } from '@/types';
+import { format } from 'date-fns';
 
 // Helper function to get Excel cell style based on value
 const getExcelValueStyle = (value: number): any => {
@@ -726,4 +729,116 @@ const calculateProductGroupTotal = (
     }
     return total;
   }, 0);
+};
+
+/**
+ * Exports movement data to Excel with proper formatting
+ */
+export const exportMovementsToExcel = async () => {
+  try {
+    // Fetch movements data directly from Supabase
+    const { data: movements, error } = await supabase
+      .from('movements')
+      .select('*')
+      .order('sort_order', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('[EXPORT] Error fetching movements:', error);
+      throw new Error(`Error fetching movements: ${error.message}`);
+    }
+    
+    if (!movements || movements.length === 0) {
+      console.warn('[EXPORT] No movements data to export');
+      return;
+    }
+    
+    console.log(`[EXPORT] Successfully fetched ${movements.length} movements for export`);
+    
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    
+    // Define column headers with uppercase formatting
+    const headers = [
+      'MOVEMENT REFERENCE NUMBER',
+      'BUY/SELL',
+      'INCOTERM',
+      'SUSTAINABILITY',
+      'PRODUCT',
+      'LOADING START',
+      'LOADING END',
+      'COUNTERPARTY',
+      'COMMENTS',
+      'CREDIT STATUS',
+      'SCHEDULED QUANTITY',
+      'NOMINATION ETA',
+      'NOMINATION VALID',
+      'CASH FLOW DATE',
+      'BARGE NAME',
+      'LOADPORT',
+      'LOADPORT INSPECTOR',
+      'DISPORT',
+      'DISPORT INSPECTOR',
+      'BL DATE',
+      'ACTUAL QUANTITY',
+      'COD DATE',
+      'STATUS'
+    ];
+    
+    // Prepare data rows
+    const rows = movements.map(movement => {
+      return [
+        movement.reference_number || '',
+        movement.buy_sell || '',
+        movement.inco_term || '',
+        movement.sustainability || '',
+        movement.product || '',
+        movement.nomination_eta ? format(new Date(movement.nomination_eta), 'dd MMM yyyy') : '',
+        movement.nomination_valid ? format(new Date(movement.nomination_valid), 'dd MMM yyyy') : '',
+        movement.counterparty || '',
+        movement.comments || '',
+        movement.credit_status || '',
+        movement.scheduled_quantity ? movement.scheduled_quantity.toString() : '',
+        movement.nomination_eta ? format(new Date(movement.nomination_eta), 'dd MMM yyyy') : '',
+        movement.nomination_valid ? format(new Date(movement.nomination_valid), 'dd MMM yyyy') : '',
+        movement.cash_flow ? format(new Date(movement.cash_flow), 'dd MMM yyyy') : '',
+        movement.barge_name || '',
+        movement.loadport || '',
+        movement.loadport_inspector || '',
+        movement.disport || '',
+        movement.disport_inspector || '',
+        movement.bl_date ? format(new Date(movement.bl_date), 'dd MMM yyyy') : '',
+        movement.actual_quantity ? movement.actual_quantity.toString() : '',
+        movement.cod_date ? format(new Date(movement.cod_date), 'dd MMM yyyy') : '',
+        movement.status || ''
+      ];
+    });
+    
+    // Add headers to the data
+    const data = [headers, ...rows];
+    
+    // Create the worksheet and add data
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Set column widths
+    const wscols = headers.map(() => ({ wch: 18 })); // Set a standard width for all columns
+    ws['!cols'] = wscols;
+    
+    // Add the worksheet to the workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Movements");
+    
+    // Generate the Excel file name with the current date
+    const date = new Date();
+    const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const fileName = `Movements_${formattedDate}.xlsx`;
+    
+    // Write and download the Excel file
+    XLSX.writeFile(wb, fileName);
+    
+    console.log(`[EXPORT] Successfully exported movements to ${fileName}`);
+    return fileName;
+  } catch (error) {
+    console.error('[EXPORT] Error exporting movements to Excel:', error);
+    throw error;
+  }
 };
