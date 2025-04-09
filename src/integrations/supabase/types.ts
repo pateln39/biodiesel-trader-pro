@@ -325,6 +325,8 @@ export type Database = {
           id: string
           inco_term: string | null
           load_plan_checked: boolean | null
+          loading_period_end: string | null
+          loading_period_start: string | null
           loadport: string | null
           loadport_inspector: string | null
           nomination_checked: boolean | null
@@ -366,6 +368,8 @@ export type Database = {
           id?: string
           inco_term?: string | null
           load_plan_checked?: boolean | null
+          loading_period_end?: string | null
+          loading_period_start?: string | null
           loadport?: string | null
           loadport_inspector?: string | null
           nomination_checked?: boolean | null
@@ -407,6 +411,8 @@ export type Database = {
           id?: string
           inco_term?: string | null
           load_plan_checked?: boolean | null
+          loading_period_end?: string | null
+          loading_period_start?: string | null
           loadport?: string | null
           loadport_inspector?: string | null
           nomination_checked?: boolean | null
@@ -1071,6 +1077,10 @@ export type Database = {
       }
       initialize_sort_order: {
         Args: { p_table_name: string }
+        Returns: undefined
+      }
+      populate_movement_loading_periods: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       update_sort_order: {

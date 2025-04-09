@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
@@ -48,8 +47,8 @@ export const exportMovementsToExcel = async (): Promise<string> => {
         'INCOTERM': movement.inco_term || '',
         'SUSTAINABILITY': movement.sustainability || '',
         'PRODUCT': movement.product || '',
-        'LOADING START': '', // Removed the reference to loading_period_start 
-        'LOADING END': '', // Removed the reference to loading_period_end
+        'LOADING START': formatDateStr(movement.loading_period_start),
+        'LOADING END': formatDateStr(movement.loading_period_end),
         'COUNTERPARTY': movement.counterparty || '',
         'COMMENTS': movement.comments || '',
         'CREDIT STATUS': movement.credit_status || '',
@@ -72,7 +71,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     
-    // Auto-size columns
     const colWidths = [];
     formattedData.forEach(row => {
       Object.keys(row).forEach((key, i) => {
@@ -83,7 +81,6 @@ export const exportMovementsToExcel = async (): Promise<string> => {
     
     worksheet['!cols'] = colWidths.map(width => ({ wch: width + 2 }));
     
-    // Apply thick border to the table
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     const border = {
       top: { style: 'thick', color: { auto: 1 } },
