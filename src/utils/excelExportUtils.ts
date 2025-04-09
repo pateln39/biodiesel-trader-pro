@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { formulaToDisplayString } from './formulaUtils';
+import { PricingFormula } from '@/types/pricing';
 
 export const exportMovementsToExcel = async (): Promise<string> => {
   try {
@@ -151,7 +152,10 @@ export const exportOpenTradesToExcel = async (): Promise<string> => {
       };
       
       let formulaDisplay = '';
-      if (trade.pricing_formula && trade.pricing_formula.tokens) {
+      if (trade.pricing_formula && 
+          typeof trade.pricing_formula === 'object' && 
+          'tokens' in trade.pricing_formula && 
+          Array.isArray(trade.pricing_formula.tokens)) {
         formulaDisplay = formulaToDisplayString(trade.pricing_formula.tokens);
       }
       
