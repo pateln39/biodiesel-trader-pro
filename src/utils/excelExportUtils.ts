@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { formulaToDisplayString } from './formulaUtils';
 import { PricingFormula, FormulaToken } from '@/types/pricing';
+import { formatProductDisplay, calculateDisplayPrice } from './productMapping';
 
 export const exportMovementsToExcel = async (): Promise<string> => {
   try {
@@ -579,6 +580,122 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
     
     const dateStr = format(new Date(), 'yyyy-MM-dd');
     const fileName = `Physical_Trades_${dateStr}.xlsx`;
+    
+    XLSX.writeFile(workbook, fileName);
+    
+    console.log(`[EXPORT] Successfully exported to ${fileName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('[EXPORT] Export error:', error);
+    throw error;
+  }
+};
+
+export const exportPaperTradesToExcel = async (): Promise<string> => {
+  try {
+    console.log('[EXPORT] Starting paper trades export');
+    
+    const { data: paperTradeLegs, error } = await supabase
+      .from('paper_trade_legs')
+      .select(`
+        id,
+        paper_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        period,
+        quantity,
+        price,
+        broker,
+        instrument,
+        mtm_formula,
+        paper_trades(
+          trade_reference
+        )
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error('[EXPORT] Error fetching paper trade legs:', error);
+      throw new Error('Failed to fetch paper trade data');
+    }
+    
+    if (!paperTradeLegs || paperTradeLegs.length === 0) {
+      console.warn('[EXPORT] No paper trade data to export');
+      throw new Error('No paper trade data to export');
+    }
+    
+    console.log(`[EXPORT] Processing ${paperTradeLegs.length} paper trades for export`);
+    
+    const formattedData = paperTradeLegs.map(leg => {
+      const paperTrade = leg.paper_trades as any;
+      const quantity = leg.quantity 
+        ? parseFloat(String(leg.quantity)).toLocaleString() 
+        : '';
+      
+      let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+      if (leg.instrument) {
+        if (leg.instrument.includes('DIFF')) {
+          relationshipType = 'DIFF';
+        } else if (leg.instrument.includes('SPREAD')) {
+          relationshipType = 'SPREAD';
+        }
+      }
+      
+      let rightSide = undefined;
+      if (leg.mtm_formula && typeof leg.mtm_formula === 'object' && 'rightSide' in leg.mtm_formula) {
+        rightSide = leg.mtm_formula.rightSide;
+      }
+      
+      const productDisplay = formatProductDisplay(
+        leg.product,
+        relationshipType,
+        rightSide?.product
+      );
+      
+      const displayPrice = calculateDisplayPrice(
+        relationshipType,
+        leg.price || 0,
+        rightSide?.price
+      );
+      
+      return {
+        'TRADE REF': paperTrade?.trade_reference || leg.leg_reference || '',
+        'BROKER': leg.broker || '',
+        'PRODUCTS': productDisplay,
+        'PERIOD': leg.period || '',
+        'QUANTITY': quantity,
+        'PRICE': displayPrice.toLocaleString()
+      };
+    });
+    
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    
+    worksheet['!cols'] = Object.keys(formattedData[0]).map(() => ({ wch: 20 }));
+    
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const border = {
+      top: { style: 'thick', color: { auto: 1 } },
+      bottom: { style: 'thick', color: { auto: 1 } },
+      left: { style: 'thick', color: { auto: 1 } },
+      right: { style: 'thick', color: { auto: 1 } }
+    };
+    
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cell_ref]) worksheet[cell_ref] = { t: 's', v: '' };
+        if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+        worksheet[cell_ref].s.border = border;
+      }
+    }
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Paper Trades');
+    
+    const dateStr = format(new Date(), 'yyyy-MM-dd');
+    const fileName = `Paper_Trades_${dateStr}.xlsx`;
     
     XLSX.writeFile(workbook, fileName);
     
