@@ -213,10 +213,10 @@ const InventoryPage = () => {
                     <TableHead className="w-[100px]">Qty. (MT)</TableHead>
                     
                     {/* Tank columns - each with Movement and Balance subcolumns */}
-                    {products.map((product) => (
-                      <React.Fragment key={product}>
+                    {products.map((productName) => (
+                      <React.Fragment key={productName}>
                         <TableHead colSpan={2} className="text-center border-l border-gray-300">
-                          {product}
+                          {productName}
                         </TableHead>
                       </React.Fragment>
                     ))}
@@ -227,8 +227,8 @@ const InventoryPage = () => {
                   {/* Subheader for tank columns */}
                   <TableRow className="bg-muted/30">
                     <TableHead colSpan={8}></TableHead>
-                    {products.map(() => (
-                      <React.Fragment key={`${product}-subheaders`}>
+                    {products.map((productName) => (
+                      <React.Fragment key={`${productName}-subheaders`}>
                         <TableHead className="text-center text-xs">Mvmt</TableHead>
                         <TableHead className="text-center text-xs bg-gray-100">Balance</TableHead>
                       </React.Fragment>
@@ -270,23 +270,23 @@ const InventoryPage = () => {
                       </TableCell>
                       
                       {/* Tank movement and balance columns */}
-                      {products.map((product) => (
-                        <React.Fragment key={`${movement.id}-${product}`}>
+                      {products.map((productName) => (
+                        <React.Fragment key={`${movement.id}-${productName}`}>
                           <TableCell 
                             className={cn(
                               "text-center",
-                              movement.tanks[product].quantity > 0 ? "text-green-600" :
-                              movement.tanks[product].quantity < 0 ? "text-red-600" : "text-muted-foreground"
+                              movement.tanks[productName].quantity > 0 ? "text-green-600" :
+                              movement.tanks[productName].quantity < 0 ? "text-red-600" : "text-muted-foreground"
                             )}
                           >
-                            {movement.tanks[product].quantity !== 0 
-                              ? (movement.tanks[product].quantity > 0 
-                                ? `+${movement.tanks[product].quantity}` 
-                                : movement.tanks[product].quantity) 
+                            {movement.tanks[productName].quantity !== 0 
+                              ? (movement.tanks[productName].quantity > 0 
+                                ? `+${movement.tanks[productName].quantity}` 
+                                : movement.tanks[productName].quantity) 
                               : "-"}
                           </TableCell>
                           <TableCell className="text-center bg-gray-100">
-                            {movement.tanks[product].balance}
+                            {movement.tanks[productName].balance}
                           </TableCell>
                         </React.Fragment>
                       ))}
@@ -307,3 +307,4 @@ const InventoryPage = () => {
 };
 
 export default InventoryPage;
+
