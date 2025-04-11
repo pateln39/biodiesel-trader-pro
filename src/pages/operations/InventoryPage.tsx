@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +21,7 @@ const mockInventoryMovements = [
     comments: "Regular delivery",
     buySell: "buy",
     scheduledQuantity: 1000,
-    product: "UCOME", // Added product
+    product: "UCOME",
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
@@ -44,7 +43,7 @@ const mockInventoryMovements = [
     comments: "Priority shipment",
     buySell: "buy",
     scheduledQuantity: 750,
-    product: "FAME0", // Added product
+    product: "FAME0",
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -66,7 +65,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "sell",
     scheduledQuantity: 500,
-    product: "HVO", // Added product
+    product: "HVO",
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -88,7 +87,7 @@ const mockInventoryMovements = [
     comments: "Special handling required",
     buySell: "sell",
     scheduledQuantity: 600,
-    product: "RME DC", // Added product
+    product: "RME DC",
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
@@ -110,7 +109,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "buy",
     scheduledQuantity: 1200,
-    product: "UCOME-5", // Added product
+    product: "UCOME-5",
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
       "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
@@ -315,7 +314,7 @@ const InventoryPage = () => {
               
               {/* Scrollable tank columns - Right side */}
               <div className="inventory-scrollable-columns flex-1 bg-white/5 rounded-r-md">
-                <ScrollArea className="w-full" orientation="horizontal">
+                <ScrollArea className="w-full">
                   <div className="min-w-[1200px]">
                     <Table>
                       {/* Tank Info Headers */}
@@ -513,7 +512,8 @@ const InventoryPage = () => {
       </div>
       
       {/* CSS to ensure proper layout */}
-      <style jsx global>{`
+      <style>
+        {`
         .inventory-table-container {
           display: flex;
           width: 100%;
@@ -534,7 +534,8 @@ const InventoryPage = () => {
           flex-grow: 1;
           overflow: hidden;
         }
-      `}</style>
+        `}
+      </style>
     </Layout>
   );
 };
