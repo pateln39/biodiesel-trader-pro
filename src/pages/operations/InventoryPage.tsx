@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -196,7 +197,7 @@ const InventoryPage = () => {
           <CardContent className="p-0">
             <div className="flex">
               {/* Left fixed table with trade details */}
-              <div className="flex-none w-[750px]">
+              <div className="flex-none w-[750px] mt-[5 * 3rem]">
                 <Table className="text-xs border-r border-white/30">
                   <TableHeader>
                     <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
@@ -449,3 +450,4 @@ const InventoryPage = () => {
 };
 
 export default InventoryPage;
+
