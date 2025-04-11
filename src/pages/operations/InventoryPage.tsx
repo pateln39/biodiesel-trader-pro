@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,8 +5,8 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Product } from '@/types';
 import { Database, Filter, Thermometer } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Mock data for inventory movements
 const mockInventoryMovements = [
   {
     id: "1",
@@ -21,7 +20,7 @@ const mockInventoryMovements = [
     comments: "Regular delivery",
     buySell: "buy",
     scheduledQuantity: 1000,
-    product: "UCOME", // Added product
+    product: "UCOME",
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
@@ -43,7 +42,7 @@ const mockInventoryMovements = [
     comments: "Priority shipment",
     buySell: "buy",
     scheduledQuantity: 750,
-    product: "FAME0", // Added product
+    product: "FAME0",
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -65,7 +64,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "sell",
     scheduledQuantity: 500,
-    product: "HVO", // Added product
+    product: "HVO",
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -87,7 +86,7 @@ const mockInventoryMovements = [
     comments: "Special handling required",
     buySell: "sell",
     scheduledQuantity: 600,
-    product: "RME DC", // Added product
+    product: "RME DC",
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
@@ -109,7 +108,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "buy",
     scheduledQuantity: 1200,
-    product: "UCOME-5", // Added product
+    product: "UCOME-5",
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
       "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
@@ -121,7 +120,6 @@ const mockInventoryMovements = [
   }
 ];
 
-// Initial tank capacities and details
 const tankDetails = {
   "UCOME": {
     capacity: 5000,
@@ -168,7 +166,6 @@ const tankDetails = {
 };
 
 const InventoryPage = () => {
-  // Products array to match the types defined in the system
   const products: Product[] = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
   
   return (
@@ -182,7 +179,6 @@ const InventoryPage = () => {
           </div>
         </div>
         
-        {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle>Inventory Movements</CardTitle>
@@ -190,238 +186,188 @@ const InventoryPage = () => {
               All product movements affecting tank levels
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                {/* Tank Details and Column Headers */}
-                <TableHeader>
-                  {/* Tank Info Headers */}
-                  <TableRow className="bg-muted/50 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+          <CardContent className="p-0">
+            <div className="overflow-hidden">
+              <div className="px-2 pt-2">
+                <ScrollArea className="w-full" type="always">
+                  <div className="flex">
+                    <div className="min-w-[680px]"></div>
+                    
                     {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-header`}
-                        colSpan={3} 
-                        className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold"
-                      >
-                        {productName}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Tank Numbers */}
-                  <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
-                    {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-tank-number`}
-                        colSpan={3} 
-                        className="text-center text-xs border-r border-white/30"
-                      >
-                        Tank {tankDetails[productName].tankNumber}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Capacity MT */}
-                  <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
-                    {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-capacity`}
-                        colSpan={3} 
-                        className="text-xs border-r border-white/30"
-                      >
-                        <div className="flex justify-between items-center px-2">
-                          <span>Capacity: {tankDetails[productName].capacity} MT</span>
-                          <Database className="h-4 w-4 text-brand-lime/70" />
+                      <div key={`tank-${productName}`} className="min-w-[225px] px-2 border-r border-white/30">
+                        <div className="text-center py-2 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold">
+                          {productName}
                         </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                          <div 
-                            className="bg-brand-lime h-2 rounded-full" 
-                            style={{ 
-                              width: `${Math.min(
-                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
-                                100
-                              )}%` 
-                            }}
-                          ></div>
+                        
+                        <div className="text-center text-xs py-1">
+                          Tank {tankDetails[productName].tankNumber}
                         </div>
-                        <div className="flex justify-between px-2 mt-1">
-                          <span className="text-xs text-muted-foreground">
-                            {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {Math.round(
-                              (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
-                            )}%
-                          </span>
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Capacity M³ */}
-                  <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
-                    {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-capacity-m3`}
-                        colSpan={3} 
-                        className="text-xs border-r border-white/30"
-                      >
-                        <div className="flex justify-between items-center px-2">
-                          <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                          <div 
-                            className="bg-brand-blue h-2 rounded-full" 
-                            style={{ 
-                              width: `${Math.min(
-                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
-                                100
-                              )}%` 
-                            }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between px-2 mt-1">
-                          <span className="text-xs text-muted-foreground">
-                            {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {Math.round(
-                              (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
-                            )}%
-                          </span>
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Spec */}
-                  <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
-                    {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-spec`}
-                        colSpan={3} 
-                        className="text-xs border-r border-white/30"
-                      >
-                        <div className="flex justify-between px-2">
-                          <span className="text-muted-foreground">Spec:</span>
-                          <span>{tankDetails[productName].spec}</span>
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                  
-                  {/* Heating */}
-                  <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
-                    {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-heating`}
-                        colSpan={3} 
-                        className="text-xs border-r border-white/30"
-                      >
-                        <div className="flex justify-between px-2">
-                          <span className="text-muted-foreground">Heating:</span>
-                          <div className="flex items-center">
-                            <Thermometer className="h-3 w-3 mr-1 text-red-400" />
-                            <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
+                        
+                        <div className="text-xs py-1">
+                          <div className="flex justify-between items-center px-2">
+                            <span>Capacity: {tankDetails[productName].capacity} MT</span>
+                            <Database className="h-4 w-4 text-brand-lime/70" />
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                            <div 
+                              className="bg-brand-lime h-2 rounded-full" 
+                              style={{ 
+                                width: `${Math.min(
+                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
+                                  100
+                                )}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between px-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(
+                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
+                              )}%
+                            </span>
                           </div>
                         </div>
-                      </TableHead>
+                        
+                        <div className="text-xs py-1">
+                          <div className="flex justify-between items-center px-2">
+                            <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                            <div 
+                              className="bg-brand-blue h-2 rounded-full" 
+                              style={{ 
+                                width: `${Math.min(
+                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
+                                  100
+                                )}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between px-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(
+                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
+                              )}%
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs py-1">
+                          <div className="flex justify-between px-2">
+                            <span className="text-muted-foreground">Spec:</span>
+                            <span>{tankDetails[productName].spec}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs py-1 mb-2">
+                          <div className="flex justify-between px-2">
+                            <span className="text-muted-foreground">Heating:</span>
+                            <div className="flex items-center">
+                              <Thermometer className="h-3 w-3 mr-1 text-red-400" />
+                              <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </TableRow>
-                  
-                  {/* Main data columns */}
-                  <TableRow className="bg-muted/50 border-b border-white/10">
-                    <TableHead className="w-[150px]">Counterparty</TableHead>
-                    <TableHead className="w-[120px]">Trade Ref.</TableHead>
-                    <TableHead className="w-[120px]">Barge Name</TableHead>
-                    <TableHead className="w-[100px]">Movement Date</TableHead>
-                    <TableHead className="w-[100px]">Nomination Valid From</TableHead>
-                    <TableHead className="w-[100px]">Customs</TableHead>
-                    <TableHead className="w-[120px]">Sustainability</TableHead>
-                    <TableHead className="w-[120px]">Comments</TableHead>
-                    <TableHead className="w-[100px]">Product</TableHead>
-                    <TableHead className="w-[100px] border-r border-white/30">Qty. (MT)</TableHead>
-                    
-                    {/* Tank columns - each with Movement and Balance subcolumns */}
-                    {products.map((productName) => (
-                      <React.Fragment key={productName}>
-                        <TableHead className="text-center text-xs">Movement (MT)</TableHead>
-                        <TableHead className="text-center text-xs">Movement (M³)</TableHead>
-                        <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30">Balance</TableHead>
-                      </React.Fragment>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                
-                <TableBody>
-                  {mockInventoryMovements.map((movement) => (
-                    <TableRow key={movement.id} className={cn(
-                      "hover:bg-brand-navy/80 border-b border-white/5",
-                      movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
-                    )}>
-                      <TableCell className="font-medium">{movement.counterpartyName}</TableCell>
-                      <TableCell>{movement.tradeReference}</TableCell>
-                      <TableCell>{movement.bargeName}</TableCell>
-                      <TableCell>{movement.movementDate.toLocaleDateString()}</TableCell>
-                      <TableCell>{movement.nominationValid.toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <span className={cn(
-                          "px-2 py-1 rounded-full text-xs font-medium",
-                          movement.customsStatus === "cleared" 
-                            ? "bg-green-900/60 text-green-200" 
-                            : movement.customsStatus === "pending"
-                              ? "bg-yellow-900/60 text-yellow-200"
-                              : "bg-blue-900/60 text-blue-200"
-                        )}>
-                          {movement.customsStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell>{movement.sustainability}</TableCell>
-                      <TableCell>{movement.comments || "-"}</TableCell>
-                      <TableCell className="font-medium">{movement.product}</TableCell>
-                      <TableCell className={cn(
-                        "font-semibold border-r border-white/30",
-                        movement.buySell === "buy" ? "text-green-400" : "text-red-400"
-                      )}>
-                        {movement.buySell === "buy" 
-                          ? `+${movement.scheduledQuantity}` 
-                          : `-${movement.scheduledQuantity}`}
-                      </TableCell>
+                  </div>
+                </ScrollArea>
+              </div>
+              
+              <ScrollArea className="w-full" type="always">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 border-b border-white/10">
+                      <TableHead className="w-[150px]">Counterparty</TableHead>
+                      <TableHead className="w-[120px]">Trade Ref.</TableHead>
+                      <TableHead className="w-[120px]">Barge Name</TableHead>
+                      <TableHead className="w-[100px]">Movement Date</TableHead>
+                      <TableHead className="w-[100px]">Nomination Valid From</TableHead>
+                      <TableHead className="w-[100px]">Customs</TableHead>
+                      <TableHead className="w-[120px]">Sustainability</TableHead>
+                      <TableHead className="w-[120px]">Comments</TableHead>
+                      <TableHead className="w-[100px]">Product</TableHead>
+                      <TableHead className="w-[100px] border-r border-white/30">Qty. (MT)</TableHead>
                       
-                      {/* Tank movement and balance columns */}
                       {products.map((productName) => (
-                        <React.Fragment key={`${movement.id}-${productName}`}>
-                          <TableCell 
-                            className={cn(
-                              "text-center",
-                              movement.tanks[productName].quantity > 0 ? "text-green-400" :
-                              movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
-                            )}
-                          >
-                            {movement.tanks[productName].quantity !== 0 
-                              ? (movement.tanks[productName].quantity > 0 
-                                ? `+${movement.tanks[productName].quantity}` 
-                                : movement.tanks[productName].quantity) 
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="text-center text-muted-foreground">
-                            {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
-                          </TableCell>
-                          <TableCell className="text-center bg-brand-navy border-r border-white/30">
-                            {movement.tanks[productName].balance}
-                          </TableCell>
+                        <React.Fragment key={`header-${productName}`}>
+                          <TableHead className="text-center text-xs w-[75px]">Movement (MT)</TableHead>
+                          <TableHead className="text-center text-xs w-[75px]">Movement (M³)</TableHead>
+                          <TableHead className="text-center text-xs bg-brand-navy w-[75px] border-r border-white/30">Balance</TableHead>
                         </React.Fragment>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  
+                  <TableBody>
+                    {mockInventoryMovements.map((movement) => (
+                      <TableRow key={movement.id} className={cn(
+                        "hover:bg-brand-navy/80 border-b border-white/5",
+                        movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
+                      )}>
+                        <TableCell className="font-medium">{movement.counterpartyName}</TableCell>
+                        <TableCell>{movement.tradeReference}</TableCell>
+                        <TableCell>{movement.bargeName}</TableCell>
+                        <TableCell>{movement.movementDate.toLocaleDateString()}</TableCell>
+                        <TableCell>{movement.nominationValid.toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <span className={cn(
+                            "px-2 py-1 rounded-full text-xs font-medium",
+                            movement.customsStatus === "cleared" 
+                              ? "bg-green-900/60 text-green-200" 
+                              : movement.customsStatus === "pending"
+                                ? "bg-yellow-900/60 text-yellow-200"
+                                : "bg-blue-900/60 text-blue-200"
+                          )}>
+                            {movement.customsStatus}
+                          </span>
+                        </TableCell>
+                        <TableCell>{movement.sustainability}</TableCell>
+                        <TableCell>{movement.comments || "-"}</TableCell>
+                        <TableCell className="font-medium">{movement.product}</TableCell>
+                        <TableCell className={cn(
+                          "font-semibold border-r border-white/30",
+                          movement.buySell === "buy" ? "text-green-400" : "text-red-400"
+                        )}>
+                          {movement.buySell === "buy" 
+                            ? `+${movement.scheduledQuantity}` 
+                            : `-${movement.scheduledQuantity}`}
+                        </TableCell>
+                        
+                        {products.map((productName) => (
+                          <React.Fragment key={`${movement.id}-${productName}`}>
+                            <TableCell 
+                              className={cn(
+                                "text-center",
+                                movement.tanks[productName].quantity > 0 ? "text-green-400" :
+                                movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
+                              )}
+                            >
+                              {movement.tanks[productName].quantity !== 0 
+                                ? (movement.tanks[productName].quantity > 0 
+                                  ? `+${movement.tanks[productName].quantity}` 
+                                  : movement.tanks[productName].quantity) 
+                                : "-"}
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">
+                              {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
+                            </TableCell>
+                            <TableCell className="text-center bg-brand-navy border-r border-white/30">
+                              {movement.tanks[productName].balance}
+                            </TableCell>
+                          </React.Fragment>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </div>
           </CardContent>
         </Card>
