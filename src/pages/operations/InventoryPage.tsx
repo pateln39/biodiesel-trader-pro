@@ -199,8 +199,29 @@ const InventoryPage = () => {
               {/* Left fixed table with trade details */}
               <div className="flex-none w-[750px]"> {/* Fixed width for left table */}
                 <Table className="text-xs border-r border-white/30">
-                  {/* Left table headers */}
+                  {/* Left table headers - Empty rows to match the tank info on the right */}
                   <TableHeader>
+                    {/* Empty rows to match tank info headers */}
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className={`${rowHeight}`}>
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    
+                    {/* Trade info headers */}
                     <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
                       <TableHead className="w-[150px]">Counterparty</TableHead>
                       <TableHead className="w-[120px]">Trade Ref.</TableHead>
@@ -399,7 +420,7 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Column headers for tanks */}
+                        {/* Column headers for tanks - aligned with trade details headers */}
                         <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <React.Fragment key={`${productName}-columns`}>
