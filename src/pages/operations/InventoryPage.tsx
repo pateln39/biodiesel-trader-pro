@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -172,6 +172,42 @@ const InventoryPage = () => {
   // Products array to match the types defined in the system
   const products: Product[] = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
   
+  // References to track row heights for alignment
+  const leftTableRowsRef = useRef<(HTMLTableRowElement | null)[]>([]);
+  const rightTableRowsRef = useRef<(HTMLTableRowElement | null)[]>([]);
+  
+  // Effect to align row heights between tables
+  useEffect(() => {
+    const alignRowHeights = () => {
+      if (leftTableRowsRef.current && rightTableRowsRef.current) {
+        // Match rows in both tables
+        for (let i = 0; i < leftTableRowsRef.current.length; i++) {
+          const leftRow = leftTableRowsRef.current[i];
+          const rightRow = rightTableRowsRef.current[i];
+          
+          if (leftRow && rightRow) {
+            // Get the height of both rows
+            const leftHeight = leftRow.offsetHeight;
+            const rightHeight = rightRow.offsetHeight;
+            
+            // Set both rows to the maximum height
+            const maxHeight = Math.max(leftHeight, rightHeight);
+            leftRow.style.height = `${maxHeight}px`;
+            rightRow.style.height = `${maxHeight}px`;
+          }
+        }
+      }
+    };
+    
+    // Align initially and on window resize
+    alignRowHeights();
+    window.addEventListener('resize', alignRowHeights);
+    
+    return () => {
+      window.removeEventListener('resize', alignRowHeights);
+    };
+  }, []);
+  
   return (
     <Layout>
       <div className="space-y-6">
@@ -192,92 +228,94 @@ const InventoryPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex">
-              {/* Fixed columns table */}
-              <div className="min-w-[650px] border-r border-white/30">
-                <div className="overflow-visible">
-                  <Table>
-                    {/* Fixed Column Headers */}
-                    <TableHeader>
-                      {/* Empty rows to match the tank details rows */}
-                      <TableRow className="bg-muted/50 border-b border-white/10 h-[36px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-[54px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-[76px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-[76px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-[40px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-[40px]">
-                        <TableHead colSpan={10}></TableHead>
-                      </TableRow>
-                      
-                      {/* Main fixed column headers */}
-                      <TableRow className="bg-muted/50 border-b border-white/10">
-                        <TableHead className="w-[150px]">Counterparty</TableHead>
-                        <TableHead className="w-[120px]">Trade Ref.</TableHead>
-                        <TableHead className="w-[120px]">Barge Name</TableHead>
-                        <TableHead className="w-[100px]">Movement Date</TableHead>
-                        <TableHead className="w-[100px]">Nomination Valid From</TableHead>
-                        <TableHead className="w-[100px]">Customs</TableHead>
-                        <TableHead className="w-[120px]">Sustainability</TableHead>
-                        <TableHead className="w-[120px]">Comments</TableHead>
-                        <TableHead className="w-[100px]">Product</TableHead>
-                        <TableHead className="w-[100px]">Qty. (MT)</TableHead>
-                      </TableRow>
-                    </TableHeader>
+            <div className="inventory-table-container flex w-full">
+              {/* Fixed columns table - Left side */}
+              <div className="inventory-fixed-columns min-w-[600px] w-[600px] overflow-hidden">
+                <Table>
+                  {/* Fixed Column Headers */}
+                  <TableHeader>
+                    {/* Empty rows to match the tank details rows */}
+                    <TableRow className="bg-muted/50 border-b border-white/10 h-[36px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className="bg-muted/40 border-b border-white/10 h-[54px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className="bg-muted/40 border-b border-white/10 h-[76px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className="bg-muted/40 border-b border-white/10 h-[76px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className="bg-muted/40 border-b border-white/10 h-[40px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
+                    <TableRow className="bg-muted/40 border-b border-white/10 h-[40px]">
+                      <TableHead colSpan={10}></TableHead>
+                    </TableRow>
                     
-                    <TableBody>
-                      {mockInventoryMovements.map((movement) => (
-                        <TableRow key={`fixed-${movement.id}`} className={cn(
+                    {/* Main fixed column headers */}
+                    <TableRow className="bg-muted/50 border-b border-white/10">
+                      <TableHead className="w-[110px] text-xs">Counterparty</TableHead>
+                      <TableHead className="w-[80px] text-xs">Trade Ref.</TableHead>
+                      <TableHead className="w-[80px] text-xs">Barge Name</TableHead>
+                      <TableHead className="w-[80px] text-xs">Movement Date</TableHead>
+                      <TableHead className="w-[80px] text-xs">Nomination Valid</TableHead>
+                      <TableHead className="w-[60px] text-xs">Customs</TableHead>
+                      <TableHead className="w-[70px] text-xs">Sustainability</TableHead>
+                      <TableHead className="w-[70px] text-xs">Comments</TableHead>
+                      <TableHead className="w-[70px] text-xs">Product</TableHead>
+                      <TableHead className="w-[70px] text-xs">Qty. (MT)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  
+                  <TableBody>
+                    {mockInventoryMovements.map((movement, index) => (
+                      <TableRow 
+                        key={`fixed-${movement.id}`} 
+                        className={cn(
                           "hover:bg-brand-navy/80 border-b border-white/5",
                           movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
-                        )}>
-                          <TableCell className="font-medium">{movement.counterpartyName}</TableCell>
-                          <TableCell>{movement.tradeReference}</TableCell>
-                          <TableCell>{movement.bargeName}</TableCell>
-                          <TableCell>{movement.movementDate.toLocaleDateString()}</TableCell>
-                          <TableCell>{movement.nominationValid.toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <span className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              movement.customsStatus === "cleared" 
-                                ? "bg-green-900/60 text-green-200" 
-                                : movement.customsStatus === "pending"
-                                  ? "bg-yellow-900/60 text-yellow-200"
-                                  : "bg-blue-900/60 text-blue-200"
-                            )}>
-                              {movement.customsStatus}
-                            </span>
-                          </TableCell>
-                          <TableCell>{movement.sustainability}</TableCell>
-                          <TableCell>{movement.comments || "-"}</TableCell>
-                          <TableCell className="font-medium">{movement.product}</TableCell>
-                          <TableCell className={cn(
-                            "font-semibold",
-                            movement.buySell === "buy" ? "text-green-400" : "text-red-400"
+                        )}
+                        ref={el => leftTableRowsRef.current[index] = el}
+                      >
+                        <TableCell className="font-medium text-xs truncate max-w-[110px]">{movement.counterpartyName}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[80px]">{movement.tradeReference}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[80px]">{movement.bargeName}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[80px]">{movement.movementDate.toLocaleDateString()}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[80px]">{movement.nominationValid.toLocaleDateString()}</TableCell>
+                        <TableCell className="max-w-[60px]">
+                          <span className={cn(
+                            "px-1 py-0.5 rounded-full text-xs font-medium",
+                            movement.customsStatus === "cleared" 
+                              ? "bg-green-900/60 text-green-200" 
+                              : movement.customsStatus === "pending"
+                                ? "bg-yellow-900/60 text-yellow-200"
+                                : "bg-blue-900/60 text-blue-200"
                           )}>
-                            {movement.buySell === "buy" 
-                              ? `+${movement.scheduledQuantity}` 
-                              : `-${movement.scheduledQuantity}`}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                            {movement.customsStatus}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs truncate max-w-[70px]">{movement.sustainability}</TableCell>
+                        <TableCell className="text-xs truncate max-w-[70px]">{movement.comments || "-"}</TableCell>
+                        <TableCell className="font-medium text-xs truncate max-w-[70px]">{movement.product}</TableCell>
+                        <TableCell className={cn(
+                          "font-semibold text-xs",
+                          movement.buySell === "buy" ? "text-green-400" : "text-red-400"
+                        )}>
+                          {movement.buySell === "buy" 
+                            ? `+${movement.scheduledQuantity}` 
+                            : `-${movement.scheduledQuantity}`}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
               
-              {/* Scrollable tank columns */}
-              <div className="w-full bg-white/5 rounded-r-md overflow-hidden">
-                <ScrollArea className="max-w-full">
+              {/* Scrollable tank columns - Right side */}
+              <div className="inventory-scrollable-columns flex-1 bg-white/5 rounded-r-md">
+                <ScrollArea className="w-full" orientation="horizontal">
                   <div className="min-w-[1200px]">
                     <Table>
                       {/* Tank Info Headers */}
@@ -429,11 +467,15 @@ const InventoryPage = () => {
                       </TableHeader>
                       
                       <TableBody>
-                        {mockInventoryMovements.map((movement) => (
-                          <TableRow key={`tank-${movement.id}`} className={cn(
-                            "hover:bg-brand-navy/80 border-b border-white/5",
-                            movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
-                          )}>
+                        {mockInventoryMovements.map((movement, index) => (
+                          <TableRow 
+                            key={`tank-${movement.id}`} 
+                            className={cn(
+                              "hover:bg-brand-navy/80 border-b border-white/5",
+                              movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
+                            )}
+                            ref={el => rightTableRowsRef.current[index] = el}
+                          >
                             {/* Tank movement and balance columns */}
                             {products.map((productName) => (
                               <React.Fragment key={`${movement.id}-${productName}`}>
@@ -469,6 +511,30 @@ const InventoryPage = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* CSS to ensure proper layout */}
+      <style jsx global>{`
+        .inventory-table-container {
+          display: flex;
+          width: 100%;
+          overflow: hidden;
+          border-radius: 0.375rem;
+        }
+        
+        .inventory-fixed-columns {
+          flex-shrink: 0;
+          border-right: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .inventory-fixed-columns .table {
+          width: 100%;
+        }
+        
+        .inventory-scrollable-columns {
+          flex-grow: 1;
+          overflow: hidden;
+        }
+      `}</style>
     </Layout>
   );
 };
