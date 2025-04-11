@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +21,7 @@ const mockInventoryMovements = [
     comments: "Regular delivery",
     buySell: "buy",
     scheduledQuantity: 1000,
-    product: "UCOME", // Added product
+    product: "UCOME",
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
@@ -44,7 +43,7 @@ const mockInventoryMovements = [
     comments: "Priority shipment",
     buySell: "buy",
     scheduledQuantity: 750,
-    product: "FAME0", // Added product
+    product: "FAME0",
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -66,7 +65,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "sell",
     scheduledQuantity: 500,
-    product: "HVO", // Added product
+    product: "HVO",
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -88,7 +87,7 @@ const mockInventoryMovements = [
     comments: "Special handling required",
     buySell: "sell",
     scheduledQuantity: 600,
-    product: "RME DC", // Added product
+    product: "RME DC",
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
@@ -110,7 +109,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "buy",
     scheduledQuantity: 1200,
-    product: "UCOME-5", // Added product
+    product: "UCOME-5",
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
       "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
@@ -173,7 +172,7 @@ const InventoryPage = () => {
   const products: Product[] = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
   
   // CSS class for a row with fixed height
-  const rowHeight = "h-8";
+  const rowHeight = "h-12";
   
   return (
     <Layout>
@@ -197,31 +196,9 @@ const InventoryPage = () => {
           <CardContent className="p-0">
             <div className="flex">
               {/* Left fixed table with trade details */}
-              <div className="flex-none w-[750px]"> {/* Fixed width for left table */}
+              <div className="flex-none w-[750px]">
                 <Table className="text-xs border-r border-white/30">
-                  {/* Left table headers - Empty rows to match the tank info on the right */}
                   <TableHeader>
-                    {/* Empty rows to match tank info headers */}
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    <TableRow className={`${rowHeight}`}>
-                      <TableHead colSpan={10}></TableHead>
-                    </TableRow>
-                    
-                    {/* Trade info headers */}
                     <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
                       <TableHead className="w-[150px]">Counterparty</TableHead>
                       <TableHead className="w-[120px]">Trade Ref.</TableHead>
@@ -284,9 +261,7 @@ const InventoryPage = () => {
                 <ScrollArea className="w-full">
                   <div className="min-w-max">
                     <Table className="text-xs">
-                      {/* Tank Details Headers */}
                       <TableHeader>
-                        {/* Tank Info Headers */}
                         <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -299,7 +274,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Tank Numbers */}
                         <TableRow className={`bg-muted/40 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -312,7 +286,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Capacity MT */}
                         <TableRow className={`bg-muted/40 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -349,7 +322,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Capacity M³ */}
                         <TableRow className={`bg-muted/40 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -385,7 +357,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Spec */}
                         <TableRow className={`bg-muted/40 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -401,7 +372,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Heating */}
                         <TableRow className={`bg-muted/40 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <TableHead 
@@ -420,7 +390,6 @@ const InventoryPage = () => {
                           ))}
                         </TableRow>
                         
-                        {/* Column headers for tanks - aligned with trade details headers */}
                         <TableRow className={`bg-muted/50 border-b border-white/10 ${rowHeight}`}>
                           {products.map((productName) => (
                             <React.Fragment key={`${productName}-columns`}>
@@ -441,7 +410,6 @@ const InventoryPage = () => {
                               movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
                             )}
                           >
-                            {/* Tank movement and balance cells */}
                             {products.map((productName) => (
                               <React.Fragment key={`${movement.id}-${productName}`}>
                                 <TableCell 
