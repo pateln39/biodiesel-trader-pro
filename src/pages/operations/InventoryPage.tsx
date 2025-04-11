@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -192,7 +193,8 @@ const InventoryPage = () => {
           </CardHeader>
           <CardContent>
             <div className="overflow-hidden">
-              <style jsx global>{`
+              {/* Add CSS styles using style tag with proper TypeScript typing */}
+              <style dangerouslySetInnerHTML={{ __html: `
                 .sticky-column {
                   position: sticky;
                   left: 0;
@@ -222,7 +224,7 @@ const InventoryPage = () => {
                   border-right: 1px solid rgba(255, 255, 255, 0.3);
                   box-shadow: 6px 0 5px -5px rgba(0, 0, 0, 0.3);
                 }
-              `}</style>
+              `}} />
               
               <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
                 <Table>
