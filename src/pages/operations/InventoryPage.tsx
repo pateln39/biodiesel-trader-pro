@@ -6,7 +6,6 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Product } from '@/types';
 import { Database, Filter, Thermometer } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Mock data for inventory movements
 const mockInventoryMovements = [
@@ -22,7 +21,7 @@ const mockInventoryMovements = [
     comments: "Regular delivery",
     buySell: "buy",
     scheduledQuantity: 1000,
-    product: "UCOME",
+    product: "UCOME", // Added product
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
@@ -44,7 +43,7 @@ const mockInventoryMovements = [
     comments: "Priority shipment",
     buySell: "buy",
     scheduledQuantity: 750,
-    product: "FAME0",
+    product: "FAME0", // Added product
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -66,7 +65,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "sell",
     scheduledQuantity: 500,
-    product: "HVO",
+    product: "HVO", // Added product
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -88,7 +87,7 @@ const mockInventoryMovements = [
     comments: "Special handling required",
     buySell: "sell",
     scheduledQuantity: 600,
-    product: "RME DC",
+    product: "RME DC", // Added product
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
@@ -110,7 +109,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "buy",
     scheduledQuantity: 1200,
-    product: "UCOME-5",
+    product: "UCOME-5", // Added product
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
       "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
@@ -192,272 +191,237 @@ const InventoryPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden">
-              {/* Add CSS styles using style tag with proper TypeScript typing */}
-              <style dangerouslySetInnerHTML={{ __html: `
-                .sticky-column {
-                  position: sticky;
-                  left: 0;
-                  z-index: 10;
-                  background-color: #091C3E;
-                }
+            <div className="overflow-x-auto">
+              <Table>
+                {/* Tank Details and Column Headers */}
+                <TableHeader>
+                  {/* Tank Info Headers */}
+                  <TableRow className="bg-muted/50 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-header`}
+                        colSpan={3} 
+                        className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold"
+                      >
+                        {productName}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Tank Numbers */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-tank-number`}
+                        colSpan={3} 
+                        className="text-center text-xs border-r border-white/30"
+                      >
+                        Tank {tankDetails[productName].tankNumber}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Capacity MT */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-capacity`}
+                        colSpan={3} 
+                        className="text-xs border-r border-white/30"
+                      >
+                        <div className="flex justify-between items-center px-2">
+                          <span>Capacity: {tankDetails[productName].capacity} MT</span>
+                          <Database className="h-4 w-4 text-brand-lime/70" />
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                          <div 
+                            className="bg-brand-lime h-2 rounded-full" 
+                            style={{ 
+                              width: `${Math.min(
+                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
+                                100
+                              )}%` 
+                            }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between px-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round(
+                              (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
+                            )}%
+                          </span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Capacity M³ */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-capacity-m3`}
+                        colSpan={3} 
+                        className="text-xs border-r border-white/30"
+                      >
+                        <div className="flex justify-between items-center px-2">
+                          <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                          <div 
+                            className="bg-brand-blue h-2 rounded-full" 
+                            style={{ 
+                              width: `${Math.min(
+                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
+                                100
+                              )}%` 
+                            }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between px-2 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round(
+                              (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
+                            )}%
+                          </span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Spec */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-spec`}
+                        colSpan={3} 
+                        className="text-xs border-r border-white/30"
+                      >
+                        <div className="flex justify-between px-2">
+                          <span className="text-muted-foreground">Spec:</span>
+                          <span>{tankDetails[productName].spec}</span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Heating */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <TableHead 
+                        key={`${productName}-heating`}
+                        colSpan={3} 
+                        className="text-xs border-r border-white/30"
+                      >
+                        <div className="flex justify-between px-2">
+                          <span className="text-muted-foreground">Heating:</span>
+                          <div className="flex items-center">
+                            <Thermometer className="h-3 w-3 mr-1 text-red-400" />
+                            <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
+                          </div>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Main data columns */}
+                  <TableRow className="bg-muted/50 border-b border-white/10">
+                    <TableHead className="w-[150px]">Counterparty</TableHead>
+                    <TableHead className="w-[120px]">Trade Ref.</TableHead>
+                    <TableHead className="w-[120px]">Barge Name</TableHead>
+                    <TableHead className="w-[100px]">Movement Date</TableHead>
+                    <TableHead className="w-[100px]">Nomination Valid From</TableHead>
+                    <TableHead className="w-[100px]">Customs</TableHead>
+                    <TableHead className="w-[120px]">Sustainability</TableHead>
+                    <TableHead className="w-[120px]">Comments</TableHead>
+                    <TableHead className="w-[100px]">Product</TableHead>
+                    <TableHead className="w-[100px] border-r border-white/30">Qty. (MT)</TableHead>
+                    
+                    {/* Tank columns - each with Movement and Balance subcolumns */}
+                    {products.map((productName) => (
+                      <React.Fragment key={productName}>
+                        <TableHead className="text-center text-xs">Movement (MT)</TableHead>
+                        <TableHead className="text-center text-xs">Movement (M³)</TableHead>
+                        <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30">Balance</TableHead>
+                      </React.Fragment>
+                    ))}
+                  </TableRow>
+                </TableHeader>
                 
-                .sticky-column-1 { left: 0; }
-                .sticky-column-2 { left: 150px; }
-                .sticky-column-3 { left: 270px; }
-                .sticky-column-4 { left: 390px; }
-                .sticky-column-5 { left: 490px; }
-                .sticky-column-6 { left: 590px; }
-                .sticky-column-7 { left: 690px; }
-                .sticky-column-8 { left: 810px; }
-                .sticky-column-9 { left: 930px; }
-                .sticky-column-10 { left: 1030px; }
-                
-                .sticky-header {
-                  position: sticky;
-                  left: 0;
-                  z-index: 11;
-                  background-color: rgba(9, 28, 62, 0.9);
-                }
-
-                .sticky-column-with-border {
-                  border-right: 1px solid rgba(255, 255, 255, 0.3);
-                  box-shadow: 6px 0 5px -5px rgba(0, 0, 0, 0.3);
-                }
-              `}} />
-              
-              <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
-                <Table>
-                  {/* Tank Details and Column Headers */}
-                  <TableHeader>
-                    {/* Tank Info Headers */}
-                    <TableRow className="bg-muted/50 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-header`}
-                          colSpan={3} 
-                          className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold"
-                        >
-                          {productName}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Tank Numbers */}
-                    <TableRow className="bg-muted/40 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-tank-number`}
-                          colSpan={3} 
-                          className="text-center text-xs border-r border-white/30"
-                        >
-                          Tank {tankDetails[productName].tankNumber}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Capacity MT */}
-                    <TableRow className="bg-muted/40 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-capacity`}
-                          colSpan={3} 
-                          className="text-xs border-r border-white/30"
-                        >
-                          <div className="flex justify-between items-center px-2">
-                            <span>Capacity: {tankDetails[productName].capacity} MT</span>
-                            <Database className="h-4 w-4 text-brand-lime/70" />
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                            <div 
-                              className="bg-brand-lime h-2 rounded-full" 
-                              style={{ 
-                                width: `${Math.min(
-                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
-                                  100
-                                )}%` 
-                              }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between px-2 mt-1">
-                            <span className="text-xs text-muted-foreground">
-                              {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {Math.round(
-                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
-                              )}%
-                            </span>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Capacity M³ */}
-                    <TableRow className="bg-muted/40 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-capacity-m3`}
-                          colSpan={3} 
-                          className="text-xs border-r border-white/30"
-                        >
-                          <div className="flex justify-between items-center px-2">
-                            <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                            <div 
-                              className="bg-brand-blue h-2 rounded-full" 
-                              style={{ 
-                                width: `${Math.min(
-                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
-                                  100
-                                )}%` 
-                              }}
-                            ></div>
-                          </div>
-                          <div className="flex justify-between px-2 mt-1">
-                            <span className="text-xs text-muted-foreground">
-                              {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {Math.round(
-                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
-                              )}%
-                            </span>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Spec */}
-                    <TableRow className="bg-muted/40 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-spec`}
-                          colSpan={3} 
-                          className="text-xs border-r border-white/30"
-                        >
-                          <div className="flex justify-between px-2">
-                            <span className="text-muted-foreground">Spec:</span>
-                            <span>{tankDetails[productName].spec}</span>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Heating */}
-                    <TableRow className="bg-muted/40 border-b border-white/10">
-                      <TableHead colSpan={10} className="border-r border-white/30 sticky-header sticky-column-1 sticky-column-with-border"></TableHead>
-                      {products.map((productName) => (
-                        <TableHead 
-                          key={`${productName}-heating`}
-                          colSpan={3} 
-                          className="text-xs border-r border-white/30"
-                        >
-                          <div className="flex justify-between px-2">
-                            <span className="text-muted-foreground">Heating:</span>
-                            <div className="flex items-center">
-                              <Thermometer className="h-3 w-3 mr-1 text-red-400" />
-                              <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
-                            </div>
-                          </div>
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                    
-                    {/* Main data columns */}
-                    <TableRow className="bg-muted/50 border-b border-white/10">
-                      <TableHead className="w-[150px] sticky-header sticky-column-1">Counterparty</TableHead>
-                      <TableHead className="w-[120px] sticky-header sticky-column-2">Trade Ref.</TableHead>
-                      <TableHead className="w-[120px] sticky-header sticky-column-3">Barge Name</TableHead>
-                      <TableHead className="w-[100px] sticky-header sticky-column-4">Movement Date</TableHead>
-                      <TableHead className="w-[100px] sticky-header sticky-column-5">Nomination Valid From</TableHead>
-                      <TableHead className="w-[100px] sticky-header sticky-column-6">Customs</TableHead>
-                      <TableHead className="w-[120px] sticky-header sticky-column-7">Sustainability</TableHead>
-                      <TableHead className="w-[120px] sticky-header sticky-column-8">Comments</TableHead>
-                      <TableHead className="w-[100px] sticky-header sticky-column-9">Product</TableHead>
-                      <TableHead className="w-[100px] sticky-header sticky-column-10 border-r border-white/30 sticky-column-with-border">Qty. (MT)</TableHead>
+                <TableBody>
+                  {mockInventoryMovements.map((movement) => (
+                    <TableRow key={movement.id} className={cn(
+                      "hover:bg-brand-navy/80 border-b border-white/5",
+                      movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
+                    )}>
+                      <TableCell className="font-medium">{movement.counterpartyName}</TableCell>
+                      <TableCell>{movement.tradeReference}</TableCell>
+                      <TableCell>{movement.bargeName}</TableCell>
+                      <TableCell>{movement.movementDate.toLocaleDateString()}</TableCell>
+                      <TableCell>{movement.nominationValid.toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "px-2 py-1 rounded-full text-xs font-medium",
+                          movement.customsStatus === "cleared" 
+                            ? "bg-green-900/60 text-green-200" 
+                            : movement.customsStatus === "pending"
+                              ? "bg-yellow-900/60 text-yellow-200"
+                              : "bg-blue-900/60 text-blue-200"
+                        )}>
+                          {movement.customsStatus}
+                        </span>
+                      </TableCell>
+                      <TableCell>{movement.sustainability}</TableCell>
+                      <TableCell>{movement.comments || "-"}</TableCell>
+                      <TableCell className="font-medium">{movement.product}</TableCell>
+                      <TableCell className={cn(
+                        "font-semibold border-r border-white/30",
+                        movement.buySell === "buy" ? "text-green-400" : "text-red-400"
+                      )}>
+                        {movement.buySell === "buy" 
+                          ? `+${movement.scheduledQuantity}` 
+                          : `-${movement.scheduledQuantity}`}
+                      </TableCell>
                       
-                      {/* Tank columns - each with Movement and Balance subcolumns */}
+                      {/* Tank movement and balance columns */}
                       {products.map((productName) => (
-                        <React.Fragment key={productName}>
-                          <TableHead className="text-center text-xs">Movement (MT)</TableHead>
-                          <TableHead className="text-center text-xs">Movement (M³)</TableHead>
-                          <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30">Balance</TableHead>
+                        <React.Fragment key={`${movement.id}-${productName}`}>
+                          <TableCell 
+                            className={cn(
+                              "text-center",
+                              movement.tanks[productName].quantity > 0 ? "text-green-400" :
+                              movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
+                            )}
+                          >
+                            {movement.tanks[productName].quantity !== 0 
+                              ? (movement.tanks[productName].quantity > 0 
+                                ? `+${movement.tanks[productName].quantity}` 
+                                : movement.tanks[productName].quantity) 
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
+                          </TableCell>
+                          <TableCell className="text-center bg-brand-navy border-r border-white/30">
+                            {movement.tanks[productName].balance}
+                          </TableCell>
                         </React.Fragment>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  
-                  <TableBody>
-                    {mockInventoryMovements.map((movement) => (
-                      <TableRow key={movement.id} className={cn(
-                        "hover:bg-brand-navy/80 border-b border-white/5",
-                        movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
-                      )}>
-                        <TableCell className="font-medium sticky-column sticky-column-1">{movement.counterpartyName}</TableCell>
-                        <TableCell className="sticky-column sticky-column-2">{movement.tradeReference}</TableCell>
-                        <TableCell className="sticky-column sticky-column-3">{movement.bargeName}</TableCell>
-                        <TableCell className="sticky-column sticky-column-4">{movement.movementDate.toLocaleDateString()}</TableCell>
-                        <TableCell className="sticky-column sticky-column-5">{movement.nominationValid.toLocaleDateString()}</TableCell>
-                        <TableCell className="sticky-column sticky-column-6">
-                          <span className={cn(
-                            "px-2 py-1 rounded-full text-xs font-medium",
-                            movement.customsStatus === "cleared" 
-                              ? "bg-green-900/60 text-green-200" 
-                              : movement.customsStatus === "pending"
-                                ? "bg-yellow-900/60 text-yellow-200"
-                                : "bg-blue-900/60 text-blue-200"
-                          )}>
-                            {movement.customsStatus}
-                          </span>
-                        </TableCell>
-                        <TableCell className="sticky-column sticky-column-7">{movement.sustainability}</TableCell>
-                        <TableCell className="sticky-column sticky-column-8">{movement.comments || "-"}</TableCell>
-                        <TableCell className="font-medium sticky-column sticky-column-9">{movement.product}</TableCell>
-                        <TableCell className={cn(
-                          "font-semibold border-r border-white/30 sticky-column sticky-column-10 sticky-column-with-border",
-                          movement.buySell === "buy" ? "text-green-400" : "text-red-400"
-                        )}>
-                          {movement.buySell === "buy" 
-                            ? `+${movement.scheduledQuantity}` 
-                            : `-${movement.scheduledQuantity}`}
-                        </TableCell>
-                        
-                        {/* Tank movement and balance columns */}
-                        {products.map((productName) => (
-                          <React.Fragment key={`${movement.id}-${productName}`}>
-                            <TableCell 
-                              className={cn(
-                                "text-center",
-                                movement.tanks[productName].quantity > 0 ? "text-green-400" :
-                                movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
-                              )}
-                            >
-                              {movement.tanks[productName].quantity !== 0 
-                                ? (movement.tanks[productName].quantity > 0 
-                                  ? `+${movement.tanks[productName].quantity}` 
-                                  : movement.tanks[productName].quantity) 
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="text-center text-muted-foreground">
-                              {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
-                            </TableCell>
-                            <TableCell className="text-center bg-brand-navy border-r border-white/30">
-                              {movement.tanks[productName].balance}
-                            </TableCell>
-                          </React.Fragment>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
