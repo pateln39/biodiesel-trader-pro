@@ -278,7 +278,7 @@ const InventoryPage = () => {
                 
                 {/* Right scrollable table with tank details and movement values - using single scrollbar */}
                 <div className="flex-1 overflow-hidden">
-                  <ScrollArea orientation="both" className="w-full">
+                  <ScrollArea orientation="horizontal" className="w-full">
                     <div className="min-w-max">
                       {/* Tank details table - aligned with the movement columns */}
                       <Table className="text-xs">
@@ -443,7 +443,7 @@ const InventoryPage = () => {
                                 <React.Fragment key={`${movement.id}-${productName}`}>
                                   <TableCell 
                                     className={cn(
-                                      "text-center p-2",
+                                      "text-center p-2 h-12",
                                       movement.tanks[productName].quantity > 0 ? "text-green-400" :
                                       movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                     )}
@@ -454,10 +454,10 @@ const InventoryPage = () => {
                                         : movement.tanks[productName].quantity) 
                                       : "-"}
                                   </TableCell>
-                                  <TableCell className="text-center text-muted-foreground p-2">
+                                  <TableCell className="text-center text-muted-foreground p-2 h-12">
                                     {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
                                   </TableCell>
-                                  <TableCell className="text-center bg-brand-navy border-r border-white/30 p-2">
+                                  <TableCell className="text-center bg-brand-navy border-r border-white/30 p-2 h-12">
                                     {movement.tanks[productName].balance}
                                   </TableCell>
                                 </React.Fragment>
