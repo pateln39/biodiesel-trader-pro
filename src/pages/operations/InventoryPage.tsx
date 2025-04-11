@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -192,184 +192,30 @@ const InventoryPage = () => {
           </CardHeader>
           <CardContent>
             <div className="relative">
-              {/* Layout with fixed left columns and scrollable right area for tanks */}
-              <div className="flex flex-col">
-                {/* Tank Headers */}
-                <div className="flex">
-                  {/* Fixed trade data column headers - empty space */}
-                  <div className="flex-none w-[1070px]"></div>
+              {/* Main layout with fixed left section and scrollable right section */}
+              <div className="flex">
+                {/* Fixed left section with trade data */}
+                <div className="flex-none w-[1070px]">
+                  {/* Tank Headers - Empty space for fixed column headers */}
+                  <div className="h-[32px]"></div>
                   
-                  {/* Scrollable tank headers */}
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-header`}
-                            className="w-[243px] text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold py-1.5 px-2"
-                          >
-                            {productName}
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Tank Numbers */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px]"></div>
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-tank-number`}
-                            className="w-[243px] text-center text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
-                          >
-                            Tank {tankDetails[productName].tankNumber}
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Capacity MT */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px]"></div>
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-capacity`}
-                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
-                          >
-                            <div className="flex justify-between items-center px-1">
-                              <span className="text-[10px]">Capacity: {tankDetails[productName].capacity} MT</span>
-                              <Database className="h-3 w-3 text-brand-lime/70" />
-                            </div>
-                            <div className="w-full bg-gray-700 rounded-full h-1.5 mt-0.5 mx-1">
-                              <div 
-                                className="bg-brand-lime h-1.5 rounded-full" 
-                                style={{ 
-                                  width: `${Math.min(
-                                    (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
-                                    100
-                                  )}%` 
-                                }}
-                              ></div>
-                            </div>
-                            <div className="flex justify-between px-1 mt-0.5">
-                              <span className="text-[9px] text-muted-foreground">
-                                {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
-                              </span>
-                              <span className="text-[9px] text-muted-foreground">
-                                {Math.round(
-                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
-                                )}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Capacity M³ */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px]"></div>
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-capacity-m3`}
-                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
-                          >
-                            <div className="flex justify-between items-center px-1">
-                              <span className="text-[10px]">Capacity: {tankDetails[productName].capacityM3} M³</span>
-                            </div>
-                            <div className="w-full bg-gray-700 rounded-full h-1.5 mt-0.5 mx-1">
-                              <div 
-                                className="bg-brand-blue h-1.5 rounded-full" 
-                                style={{ 
-                                  width: `${Math.min(
-                                    (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
-                                    100
-                                  )}%` 
-                                }}
-                              ></div>
-                            </div>
-                            <div className="flex justify-between px-1 mt-0.5">
-                              <span className="text-[9px] text-muted-foreground">
-                                {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
-                              </span>
-                              <span className="text-[9px] text-muted-foreground">
-                                {Math.round(
-                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
-                                )}%
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Spec */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px]"></div>
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-spec`}
-                            className="w-[243px] text-[10px] border-r border-white/30 bg-muted/40 py-1 px-2"
-                          >
-                            <div className="flex justify-between px-1">
-                              <span className="text-muted-foreground">Spec:</span>
-                              <span>{tankDetails[productName].spec}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Heating */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px]"></div>
-                  <div className="flex-grow overflow-hidden">
-                    <ScrollArea orientation="horizontal" className="w-full" hideScrollbar={true}>
-                      <div className="flex min-w-max">
-                        {products.map((productName) => (
-                          <div 
-                            key={`${productName}-heating`}
-                            className="w-[243px] text-[10px] border-r border-white/30 bg-muted/40 py-1 px-2"
-                          >
-                            <div className="flex justify-between px-1">
-                              <span className="text-muted-foreground">Heating:</span>
-                              <div className="flex items-center">
-                                <Thermometer className="h-2.5 w-2.5 mr-1 text-red-400" />
-                                <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Main Table Header with a single scrollbar for the entire tank section */}
-                <div className="flex">
-                  <div className="flex-none w-[1070px] bg-muted/50 border-b border-white/10 flex">
+                  {/* Tank Numbers - Empty space for fixed column headers */}
+                  <div className="h-[24px]"></div>
+                  
+                  {/* Capacity MT - Empty space for fixed column headers */}
+                  <div className="h-[44px]"></div>
+                  
+                  {/* Capacity M³ - Empty space for fixed column headers */}
+                  <div className="h-[44px]"></div>
+                  
+                  {/* Spec - Empty space for fixed column headers */}
+                  <div className="h-[24px]"></div>
+                  
+                  {/* Heating - Empty space for fixed column headers */}
+                  <div className="h-[24px]"></div>
+                  
+                  {/* Main Table Header */}
+                  <div className="bg-muted/50 border-b border-white/10 flex h-[32px]">
                     <div className="w-[150px] py-1.5 px-2 text-left text-xs font-medium text-muted-foreground">Counterparty</div>
                     <div className="w-[120px] py-1.5 px-2 text-left text-xs font-medium text-muted-foreground">Trade Ref.</div>
                     <div className="w-[120px] py-1.5 px-2 text-left text-xs font-medium text-muted-foreground">Barge Name</div>
@@ -381,33 +227,16 @@ const InventoryPage = () => {
                     <div className="w-[100px] py-1.5 px-2 text-left text-xs font-medium text-muted-foreground">Product</div>
                     <div className="w-[100px] py-1.5 px-2 text-left text-xs font-medium text-muted-foreground border-r border-white/30">Qty. (MT)</div>
                   </div>
-                    
-                  {/* Scrollable area for tank column headers */}
-                  <div className="flex-grow overflow-hidden border-b border-white/10">
-                    <ScrollArea orientation="horizontal" className="w-full">
-                      <div className="flex min-w-max bg-muted/50">
-                        {products.map((productName) => (
-                          <React.Fragment key={`header-${productName}`}>
-                            <div className="w-[81px] py-1.5 px-1 text-center text-[9px] font-medium text-muted-foreground">Movement (MT)</div>
-                            <div className="w-[81px] py-1.5 px-1 text-center text-[9px] font-medium text-muted-foreground">Movement (M³)</div>
-                            <div className="w-[81px] py-1.5 px-1 text-center text-[9px] font-medium text-muted-foreground bg-brand-navy border-r border-white/30">Balance</div>
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </div>
-                
-                {/* Table Body Rows */}
-                {mockInventoryMovements.map((movement) => (
-                  <div 
-                    key={movement.id} 
-                    className={cn(
-                      "flex border-b border-white/5 hover:bg-brand-navy/80",
-                      movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
-                    )}
-                  >
-                    <div className="flex-none w-[1070px] flex">
+                  
+                  {/* Table Body Rows - Fixed left side */}
+                  {mockInventoryMovements.map((movement) => (
+                    <div 
+                      key={`fixed-${movement.id}`} 
+                      className={cn(
+                        "flex border-b border-white/5 hover:bg-brand-navy/80",
+                        movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
+                      )}
+                    >
                       <div className="w-[150px] py-1.5 px-2 text-xs font-medium">{movement.counterpartyName}</div>
                       <div className="w-[120px] py-1.5 px-2 text-xs">{movement.tradeReference}</div>
                       <div className="w-[120px] py-1.5 px-2 text-xs">{movement.bargeName}</div>
@@ -437,16 +266,166 @@ const InventoryPage = () => {
                           : `-${movement.scheduledQuantity}`}
                       </div>
                     </div>
-                    
-                    {/* Scrollable tank data cells that sync with the header */}
-                    <div className="flex-grow overflow-hidden">
-                      <ScrollArea orientation="horizontal" className="w-full">
-                        <div className="flex min-w-max">
+                  ))}
+                </div>
+                
+                {/* Scrollable right section for tank data - SINGLE ScrollArea */}
+                <div className="flex-grow">
+                  <ScrollArea orientation="horizontal" className="w-full">
+                    <div className="min-w-max">
+                      {/* Tank Headers */}
+                      <div className="flex h-[32px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-header`}
+                            className="w-[243px] text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold py-1.5 px-2"
+                          >
+                            {productName}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Tank Numbers */}
+                      <div className="flex h-[24px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-tank-number`}
+                            className="w-[243px] text-center text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
+                          >
+                            Tank {tankDetails[productName].tankNumber}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Capacity MT */}
+                      <div className="flex h-[44px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-capacity`}
+                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
+                          >
+                            <div className="flex justify-between items-center px-1">
+                              <span className="text-xs">Capacity: {tankDetails[productName].capacity} MT</span>
+                              <Database className="h-3 w-3 text-brand-lime/70" />
+                            </div>
+                            <div className="w-full bg-gray-700 rounded-full h-1.5 mt-0.5 mx-1">
+                              <div 
+                                className="bg-brand-lime h-1.5 rounded-full" 
+                                style={{ 
+                                  width: `${Math.min(
+                                    (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
+                                    100
+                                  )}%` 
+                                }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between px-1 mt-0.5">
+                              <span className="text-xs text-muted-foreground">
+                                {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {Math.round(
+                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
+                                )}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Capacity M³ */}
+                      <div className="flex h-[44px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-capacity-m3`}
+                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
+                          >
+                            <div className="flex justify-between items-center px-1">
+                              <span className="text-xs">Capacity: {tankDetails[productName].capacityM3} M³</span>
+                            </div>
+                            <div className="w-full bg-gray-700 rounded-full h-1.5 mt-0.5 mx-1">
+                              <div 
+                                className="bg-brand-blue h-1.5 rounded-full" 
+                                style={{ 
+                                  width: `${Math.min(
+                                    (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
+                                    100
+                                  )}%` 
+                                }}
+                              ></div>
+                            </div>
+                            <div className="flex justify-between px-1 mt-0.5">
+                              <span className="text-xs text-muted-foreground">
+                                {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {Math.round(
+                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
+                                )}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Spec */}
+                      <div className="flex h-[24px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-spec`}
+                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
+                          >
+                            <div className="flex justify-between px-1">
+                              <span className="text-muted-foreground">Spec:</span>
+                              <span>{tankDetails[productName].spec}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Heating */}
+                      <div className="flex h-[24px]">
+                        {products.map((productName) => (
+                          <div 
+                            key={`${productName}-heating`}
+                            className="w-[243px] text-xs border-r border-white/30 bg-muted/40 py-1 px-2"
+                          >
+                            <div className="flex justify-between px-1">
+                              <span className="text-muted-foreground">Heating:</span>
+                              <div className="flex items-center">
+                                <Thermometer className="h-3 w-3 mr-1 text-red-400" />
+                                <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Tank Table Header */}
+                      <div className="flex bg-muted/50 border-b border-white/10 h-[32px]">
+                        {products.map((productName) => (
+                          <React.Fragment key={`header-${productName}`}>
+                            <div className="w-[81px] py-1.5 px-1 text-center text-xs font-medium text-muted-foreground">Movement (MT)</div>
+                            <div className="w-[81px] py-1.5 px-1 text-center text-xs font-medium text-muted-foreground">Movement (M³)</div>
+                            <div className="w-[81px] py-1.5 px-1 text-center text-xs font-medium text-muted-foreground bg-brand-navy border-r border-white/30">Balance</div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      
+                      {/* Tank Table Body Rows */}
+                      {mockInventoryMovements.map((movement) => (
+                        <div 
+                          key={`scrollable-${movement.id}`} 
+                          className={cn(
+                            "flex border-b border-white/5",
+                            movement.buySell === "buy" ? "hover:bg-green-900/20" : "hover:bg-red-900/20"
+                          )}
+                        >
                           {products.map((productName) => (
                             <React.Fragment key={`${movement.id}-${productName}`}>
                               <div 
                                 className={cn(
-                                  "w-[81px] py-1.5 px-1 text-center text-[9px]",
+                                  "w-[81px] py-1.5 px-1 text-center text-xs",
                                   movement.tanks[productName].quantity > 0 ? "text-green-400" :
                                   movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                 )}
@@ -457,19 +436,19 @@ const InventoryPage = () => {
                                     : movement.tanks[productName].quantity) 
                                   : "-"}
                               </div>
-                              <div className="w-[81px] py-1.5 px-1 text-center text-[9px] text-muted-foreground">
+                              <div className="w-[81px] py-1.5 px-1 text-center text-xs text-muted-foreground">
                                 {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
                               </div>
-                              <div className="w-[81px] py-1.5 px-1 text-center text-[9px] bg-brand-navy border-r border-white/30">
+                              <div className="w-[81px] py-1.5 px-1 text-center text-xs bg-brand-navy border-r border-white/30">
                                 {movement.tanks[productName].balance}
                               </div>
                             </React.Fragment>
                           ))}
                         </div>
-                      </ScrollArea>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  </ScrollArea>
+                </div>
               </div>
             </div>
           </CardContent>
