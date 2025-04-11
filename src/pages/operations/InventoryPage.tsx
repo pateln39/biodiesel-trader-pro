@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Product } from '@/types';
 import { Database, Filter, Thermometer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Mock data for inventory movements with randomly selected products
+// Mock data for inventory movements
 const mockInventoryMovements = [
   {
     id: "1",
@@ -19,7 +20,6 @@ const mockInventoryMovements = [
     sustainability: "ISCC",
     comments: "Regular delivery",
     buySell: "buy",
-    product: "UCOME",
     scheduledQuantity: 1000,
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
@@ -41,7 +41,6 @@ const mockInventoryMovements = [
     sustainability: "ISCC EU",
     comments: "Priority shipment",
     buySell: "buy",
-    product: "FAME0",
     scheduledQuantity: 750,
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
@@ -63,7 +62,6 @@ const mockInventoryMovements = [
     sustainability: "ISCC",
     comments: "",
     buySell: "sell",
-    product: "RME DC",
     scheduledQuantity: 500,
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
@@ -85,7 +83,6 @@ const mockInventoryMovements = [
     sustainability: "ISCC PLUS",
     comments: "Special handling required",
     buySell: "sell",
-    product: "UCOME-5",
     scheduledQuantity: 600,
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
@@ -107,7 +104,6 @@ const mockInventoryMovements = [
     sustainability: "ISCC",
     comments: "",
     buySell: "buy",
-    product: "HVO",
     scheduledQuantity: 1200,
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
@@ -167,6 +163,7 @@ const tankDetails = {
 };
 
 const InventoryPage = () => {
+  // Products array to match the types defined in the system
   const products: Product[] = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
   
   return (
@@ -180,6 +177,7 @@ const InventoryPage = () => {
           </div>
         </div>
         
+        {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle>Inventory Movements</CardTitle>
@@ -190,7 +188,9 @@ const InventoryPage = () => {
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
+                {/* Tank Details and Column Headers */}
                 <TableHeader>
+                  {/* Tank Info Headers */}
                   <TableRow className="bg-muted/50 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -204,6 +204,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Tank Numbers */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -217,6 +218,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Capacity MT */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -254,6 +256,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Capacity M³ */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -290,6 +293,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Spec */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -306,6 +310,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Heating */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -325,6 +330,7 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
+                  {/* Main data columns */}
                   <TableRow className="bg-muted/50 border-b border-white/10">
                     <TableHead className="w-[150px]">Counterparty</TableHead>
                     <TableHead className="w-[120px]">Trade Ref.</TableHead>
@@ -335,8 +341,8 @@ const InventoryPage = () => {
                     <TableHead className="w-[120px]">Sustainability</TableHead>
                     <TableHead className="w-[120px]">Comments</TableHead>
                     <TableHead className="w-[100px] border-r border-white/30">Qty. (MT)</TableHead>
-                    <TableHead className="w-[100px]">Product</TableHead>
                     
+                    {/* Tank columns - each with Movement and Balance subcolumns */}
                     {products.map((productName) => (
                       <React.Fragment key={productName}>
                         <TableHead className="text-center text-xs">Movement (MT)</TableHead>
@@ -380,10 +386,8 @@ const InventoryPage = () => {
                           ? `+${movement.scheduledQuantity}` 
                           : `-${movement.scheduledQuantity}`}
                       </TableCell>
-                      <TableCell className="font-medium">
-                        {movement.product}
-                      </TableCell>
                       
+                      {/* Tank movement and balance columns */}
                       {products.map((productName) => (
                         <React.Fragment key={`${movement.id}-${productName}`}>
                           <TableCell 
