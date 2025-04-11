@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -193,9 +192,8 @@ const InventoryPage = () => {
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
-                {/* Tank Details and Column Headers */}
                 <TableHeader>
-                  {/* Tank Info Headers */}
+                  {/* Tank Info Headers - Precisely Aligned Columns */}
                   <TableRow className="bg-muted/50 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
@@ -209,55 +207,84 @@ const InventoryPage = () => {
                     ))}
                   </TableRow>
                   
-                  {/* Tank Numbers */}
+                  {/* Tank Numbers - Precisely Aligned */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-tank-number`}
-                        colSpan={3} 
-                        className="text-center text-xs border-r border-white/30"
-                      >
-                        Tank {tankDetails[productName].tankNumber}
-                      </TableHead>
+                      <React.Fragment key={`${productName}-tank-details`}>
+                        <TableHead 
+                          colSpan={1} 
+                          className="text-center text-xs border-r border-white/30 w-1/3"
+                        >
+                          Movement (MT)
+                        </TableHead>
+                        <TableHead 
+                          colSpan={1} 
+                          className="text-center text-xs border-r border-white/30 w-1/3"
+                        >
+                          Movement (M³)
+                        </TableHead>
+                        <TableHead 
+                          colSpan={1} 
+                          className="text-center text-xs bg-brand-navy border-r border-white/30 w-1/3"
+                        >
+                          Balance
+                        </TableHead>
+                      </React.Fragment>
                     ))}
                   </TableRow>
                   
-                  {/* Capacity MT */}
+                  {/* Tank Number Details */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
                     <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
-                      <TableHead 
-                        key={`${productName}-capacity`}
-                        colSpan={3} 
-                        className="text-xs border-r border-white/30"
-                      >
-                        <div className="flex justify-between items-center px-2">
-                          <span>Capacity: {tankDetails[productName].capacity} MT</span>
-                          <Database className="h-4 w-4 text-brand-lime/70" />
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                          <div 
-                            className="bg-brand-lime h-2 rounded-full" 
-                            style={{ 
-                              width: `${Math.min(
-                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
-                                100
-                              )}%` 
-                            }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between px-2 mt-1">
-                          <span className="text-xs text-muted-foreground">
-                            {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {Math.round(
-                              (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
-                            )}%
-                          </span>
-                        </div>
-                      </TableHead>
+                      <React.Fragment key={`${productName}-tank-number`}>
+                        <TableHead 
+                          colSpan={3} 
+                          className="text-center text-xs border-r border-white/30"
+                        >
+                          Tank {tankDetails[productName].tankNumber}
+                        </TableHead>
+                      </React.Fragment>
+                    ))}
+                  </TableRow>
+                  
+                  {/* Capacity MT Details */}
+                  <TableRow className="bg-muted/40 border-b border-white/10">
+                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    {products.map((productName) => (
+                      <React.Fragment key={`${productName}-capacity`}>
+                        <TableHead 
+                          colSpan={3} 
+                          className="text-xs border-r border-white/30"
+                        >
+                          <div className="flex justify-between items-center px-2">
+                            <span>Capacity: {tankDetails[productName].capacity} MT</span>
+                            <Database className="h-4 w-4 text-brand-lime/70" />
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                            <div 
+                              className="bg-brand-lime h-2 rounded-full" 
+                              style={{ 
+                                width: `${Math.min(
+                                  (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
+                                  100
+                                )}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between px-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(
+                                (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
+                              )}%
+                            </span>
+                          </div>
+                        </TableHead>
+                      </React.Fragment>
                     ))}
                   </TableRow>
                   
@@ -351,9 +378,9 @@ const InventoryPage = () => {
                     {/* Tank columns - each with Movement and Balance subcolumns */}
                     {products.map((productName) => (
                       <React.Fragment key={productName}>
-                        <TableHead className="text-center text-xs">Movement (MT)</TableHead>
-                        <TableHead className="text-center text-xs">Movement (M³)</TableHead>
-                        <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30">Balance</TableHead>
+                        <TableHead className="text-center text-xs w-1/3">Movement (MT)</TableHead>
+                        <TableHead className="text-center text-xs w-1/3">Movement (M³)</TableHead>
+                        <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30 w-1/3">Balance</TableHead>
                       </React.Fragment>
                     ))}
                   </TableRow>
