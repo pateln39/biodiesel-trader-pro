@@ -21,6 +21,7 @@ const mockInventoryMovements = [
     comments: "Regular delivery",
     buySell: "buy",
     scheduledQuantity: 1000,
+    product: "UCOME", // Added product
     tanks: {
       "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
@@ -42,6 +43,7 @@ const mockInventoryMovements = [
     comments: "Priority shipment",
     buySell: "buy",
     scheduledQuantity: 750,
+    product: "FAME0", // Added product
     tanks: {
       "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -63,6 +65,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "sell",
     scheduledQuantity: 500,
+    product: "HVO", // Added product
     tanks: {
       "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
@@ -84,6 +87,7 @@ const mockInventoryMovements = [
     comments: "Special handling required",
     buySell: "sell",
     scheduledQuantity: 600,
+    product: "RME DC", // Added product
     tanks: {
       "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
       "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
@@ -105,6 +109,7 @@ const mockInventoryMovements = [
     comments: "",
     buySell: "buy",
     scheduledQuantity: 1200,
+    product: "UCOME-5", // Added product
     tanks: {
       "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
       "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
@@ -340,6 +345,7 @@ const InventoryPage = () => {
                     <TableHead className="w-[100px]">Customs</TableHead>
                     <TableHead className="w-[120px]">Sustainability</TableHead>
                     <TableHead className="w-[120px]">Comments</TableHead>
+                    <TableHead className="w-[100px]">Product</TableHead>
                     <TableHead className="w-[100px] border-r border-white/30">Qty. (MT)</TableHead>
                     
                     {/* Tank columns - each with Movement and Balance subcolumns */}
@@ -378,6 +384,7 @@ const InventoryPage = () => {
                       </TableCell>
                       <TableCell>{movement.sustainability}</TableCell>
                       <TableCell>{movement.comments || "-"}</TableCell>
+                      <TableCell className="font-medium">{movement.product}</TableCell>
                       <TableCell className={cn(
                         "font-semibold border-r border-white/30",
                         movement.buySell === "buy" ? "text-green-400" : "text-red-400"
