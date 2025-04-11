@@ -197,7 +197,7 @@ const InventoryPage = () => {
                 <TableHeader>
                   {/* Tank Info Headers */}
                   <TableRow className="bg-muted/50 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-header`}
@@ -211,7 +211,7 @@ const InventoryPage = () => {
                   
                   {/* Tank Numbers */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-tank-number`}
@@ -225,7 +225,7 @@ const InventoryPage = () => {
                   
                   {/* Capacity MT */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-capacity`}
@@ -263,7 +263,7 @@ const InventoryPage = () => {
                   
                   {/* Capacity M³ */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-capacity-m3`}
@@ -300,7 +300,7 @@ const InventoryPage = () => {
                   
                   {/* Spec */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-spec`}
@@ -317,7 +317,7 @@ const InventoryPage = () => {
                   
                   {/* Heating */}
                   <TableRow className="bg-muted/40 border-b border-white/10">
-                    <TableHead colSpan={9} className="border-r border-white/30"></TableHead>
+                    <TableHead colSpan={10} className="border-r border-white/30"></TableHead>
                     {products.map((productName) => (
                       <TableHead 
                         key={`${productName}-heating`}
