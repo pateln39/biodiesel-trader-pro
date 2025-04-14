@@ -9,13 +9,15 @@ interface ProductTokenProps {
   value: number | string;
   className?: string;
   showTooltip?: boolean;
+  isReadOnly?: boolean;
 }
 
 const ProductToken: React.FC<ProductTokenProps> = ({
   product,
   value,
   className,
-  showTooltip = true
+  showTooltip = true,
+  isReadOnly = false
 }) => {
   // Get background color based on product, default to gray if product not in mapping
   const colorClass = PRODUCT_COLORS[product] || 'bg-gray-500 text-white';
@@ -25,6 +27,7 @@ const ProductToken: React.FC<ProductTokenProps> = ({
       className={cn(
         "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium", 
         colorClass,
+        isReadOnly ? "cursor-default" : "cursor-pointer hover:brightness-110",
         className
       )}
     >

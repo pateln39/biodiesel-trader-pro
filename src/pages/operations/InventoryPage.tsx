@@ -100,6 +100,9 @@ const InventoryPage = () => {
   // Get tank IDs list
   const tankIds = Object.keys(tanks);
   
+  // Get list of products for the legend
+  const productsList = Object.keys(PRODUCT_COLORS);
+  
   return (
     <Layout>
       <div className="space-y-6">
@@ -110,9 +113,6 @@ const InventoryPage = () => {
             <span className="text-sm text-muted-foreground">Filter</span>
           </div>
         </div>
-        
-        {/* Product legend at the top */}
-        <ProductLegend />
         
         {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
@@ -136,53 +136,24 @@ const InventoryPage = () => {
                     <Table>
                       {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
                       <TableHeader>
-                        {/* Row 1: Product headers - empty for sticky columns */}
-                        <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
-                        
-                        {/* Row 2: Tank numbers - empty for sticky columns */}
-                        <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
-                        
-                        {/* Row 3: Tank capacity MT - empty for sticky columns */}
-                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
-                        
-                        {/* Row 4: Tank capacity M³ - empty for sticky columns */}
-                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
-                        
-                        {/* Row 5: Tank specs - empty for sticky columns */}
-                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
-                        
-                        {/* Row 6: Tank heating - empty for sticky columns */}
-                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                          <TableHead 
-                            colSpan={9} 
-                            className="bg-brand-navy text-[10px]"
-                          ></TableHead>
-                        </TableRow>
+                        {/* Replace first 6 empty rows with product legend */}
+                        {productsList.slice(0, 6).map((product, index) => (
+                          <TableRow 
+                            key={`legend-${product}`} 
+                            className="bg-muted/50 border-b border-white/10 h-8"
+                          >
+                            <TableHead 
+                              colSpan={9} 
+                              className="bg-brand-navy text-[10px] pl-4"
+                            >
+                              <ProductToken 
+                                product={product} 
+                                value={product} 
+                                showTooltip={false}
+                              />
+                            </TableHead>
+                          </TableRow>
+                        ))}
                         
                         {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                         <TableRow className="bg-muted/50 border-b border-white/10 h-10">
@@ -377,8 +348,21 @@ const InventoryPage = () => {
                     <div className="min-w-[1800px]"> {/* Increased minimum width to accommodate new columns */}
                       <Table>
                         <TableHeader>
+                          {/* Row 1-6: Match empty rows with product legend */}
+                          {productsList.slice(0, 6).map((product, index) => (
+                            <TableRow 
+                              key={`legend-${product}-right`} 
+                              className="bg-muted/50 border-b border-white/10 h-8"
+                            >
+                              <TableHead 
+                                colSpan={tankIds.length * 3 + 6} 
+                                className="bg-brand-navy text-[10px]"
+                              ></TableHead>
+                            </TableRow>
+                          ))}
+                          
                           {/* Tank Info Headers - Now with editable product selection */}
-                          <TableRow className="bg-muted/50 border-b border-white/10 h-12">
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {tankIds.map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-header`}
@@ -687,9 +671,15 @@ const InventoryPage = () => {
                                         "-"
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
-                                      {movement.tanks[tankId].quantity !== 0 ? 
-                                        Math.round(movement.tanks[tankId].quantity * 1.1) : "-"}
+                                    <TableCell className="text-center text-[10px] py-2">
+                                      {/* Use ProductToken for M3 but make it read-only */}
+                                      {movement.tanks[tankId].quantity !== 0 ? (
+                                        <ProductToken
+                                          product={movement.tanks[tankId].productAtTimeOfMovement}
+                                          value={Math.round(movement.tanks[tankId].quantity * 1.1)}
+                                          isReadOnly={true}
+                                        />
+                                      ) : "-"}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[tankId].balance}
@@ -697,17 +687,26 @@ const InventoryPage = () => {
                                   </React.Fragment>
                                 ))}
                                 
-                                {/* New summary columns */}
+                                {/* New summary columns - use green/red colors for values */}
                                 <TableCell className="text-center text-[10px] py-2">
                                   {totals.totalMT !== 0 ? (
-                                    <ProductToken 
-                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
-                                      value={totals.totalMT}
-                                    />
+                                    <span className={cn(
+                                      "font-medium",
+                                      totals.totalMT > 0 ? "text-green-400" : "text-red-400"
+                                    )}>
+                                      {totals.totalMT}
+                                    </span>
                                   ) : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {totals.totalM3 !== 0 ? totals.totalM3 : "-"}
+                                  {totals.totalM3 !== 0 ? (
+                                    <span className={cn(
+                                      "font-medium",
+                                      totals.totalM3 > 0 ? "text-green-400" : "text-red-400"
+                                    )}>
+                                      {totals.totalM3}
+                                    </span>
+                                  ) : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                   {totals.t1Balance !== 0 ? totals.t1Balance : "-"}
