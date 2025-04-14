@@ -26,6 +26,12 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
     ? trade.tradeReference 
     : `${trade.tradeReference}-${String.fromCharCode(97 + legIndex)}`;
 
+  // Handle comments save
+  const handleCommentsSave = (comments: string) => {
+    // This function would typically update the comments via API
+    console.log(`Saving comments for trade ${trade.id}, leg ${leg.id}: ${comments}`);
+  };
+
   return (
     <TableRow 
       key={leg.id} 
@@ -69,6 +75,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
           tradeId={trade.id}
           legId={leg.id}
           initialValue={leg.comments || ''}
+          onSave={handleCommentsSave}
         />
       </TableCell>
       <TableCell>

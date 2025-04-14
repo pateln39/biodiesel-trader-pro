@@ -597,11 +597,23 @@ const InventoryPage: React.FC = () => {
   // Product options for dropdowns
   const productOptions = Object.keys(PRODUCT_COLORS).filter(p => p !== "");
 
+  // Convert the string array to an array of objects with label and value properties
+  const productOptionsForDropdown = productOptions.map(product => ({
+    label: product,
+    value: product
+  }));
+
   // Heating options
   const heatingOptions = [
     { value: "true", label: "Enabled" },
     { value: "false", label: "Disabled" }
   ];
+
+  // Convert the string array to an array of objects with label and value properties
+  const heatingOptionsForDropdown = heatingOptions.map(option => ({
+    label: option.label,
+    value: option.value
+  }));
 
   // Loading state
   const isLoading = terminalsLoading || tanksLoading || movementsLoading || tankMovementsLoading;
@@ -1059,7 +1071,6 @@ const InventoryPage: React.FC = () => {
                                               onSave={(value) => handleUpdateTankCapacity(tank.id, value)}
                                               className="text-[10px] ml-1 inline-block"
                                               placeholder="Capacity"
-                                              prefix=""
                                             /> MT
                                           </span>
                                           <Database className="h-3 w-3 text-brand-lime/70" />
