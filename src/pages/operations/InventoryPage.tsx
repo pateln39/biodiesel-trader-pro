@@ -194,7 +194,7 @@ const truncatedHeaders = {
 };
 
 // Helper component for truncated text with tooltip
-const TruncatedCell = ({ text, width, className }) => (
+const TruncatedCell = ({ text, width, className = "" }) => (
   <TooltipProvider>
     <Tooltip>
       <TooltipTrigger asChild>
@@ -307,6 +307,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.counterparty} 
                             width={stickyColumnWidths.counterparty - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -316,6 +317,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.tradeRef} 
                             width={stickyColumnWidths.tradeRef - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -325,6 +327,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.bargeName} 
                             width={stickyColumnWidths.bargeName - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -334,6 +337,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.movementDate} 
                             width={stickyColumnWidths.movementDate - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -343,6 +347,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.nominationDate} 
                             width={stickyColumnWidths.nominationDate - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -352,6 +357,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.customs} 
                             width={stickyColumnWidths.customs - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -361,6 +367,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.sustainability} 
                             width={stickyColumnWidths.sustainability - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -370,6 +377,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.comments} 
                             width={stickyColumnWidths.comments - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
@@ -379,6 +387,7 @@ const InventoryPage = () => {
                           <TruncatedCell 
                             text={truncatedHeaders.quantity} 
                             width={stickyColumnWidths.quantity - 8} 
+                            className="text-[10px] font-medium"
                           />
                         </TableHead>
                       </TableRow>
@@ -400,31 +409,35 @@ const InventoryPage = () => {
                               <TruncatedCell 
                                 text={movement.counterpartyName} 
                                 width={stickyColumnWidths.counterparty - 16} 
-                                className="font-medium"
+                                className="font-medium text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
                               <TruncatedCell 
                                 text={movement.tradeReference} 
                                 width={stickyColumnWidths.tradeRef - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
                               <TruncatedCell 
                                 text={movement.bargeName} 
                                 width={stickyColumnWidths.bargeName - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
                               <TruncatedCell 
                                 text={movement.movementDate.toLocaleDateString()} 
                                 width={stickyColumnWidths.movementDate - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
                               <TruncatedCell 
                                 text={movement.nominationValid.toLocaleDateString()} 
                                 width={stickyColumnWidths.nominationDate - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
@@ -443,12 +456,14 @@ const InventoryPage = () => {
                               <TruncatedCell 
                                 text={movement.sustainability} 
                                 width={stickyColumnWidths.sustainability - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className="bg-brand-navy text-[10px] py-2">
                               <TruncatedCell 
                                 text={movement.comments || "-"} 
                                 width={stickyColumnWidths.comments - 16} 
+                                className="text-[10px]"
                               />
                             </TableCell>
                             <TableCell className={cn(
@@ -584,6 +599,7 @@ const InventoryPage = () => {
                                   <TruncatedCell
                                     text={tankDetails[productName].spec}
                                     width={100}
+                                    className="text-[10px]"
                                   />
                                 </div>
                               </TableHead>
