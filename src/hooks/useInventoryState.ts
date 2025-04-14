@@ -71,18 +71,76 @@ export const useInventoryState = (terminalId?: string) => {
     enabled: !!terminalId
   });
 
+  const calculateTankBalance = async (tankId: string, movementDate: Date) => {
+    const { data: previousMovements } = await supabase
+      .from('tank_movements')
+      .select('*')
+      .eq('tank_id', tankId)
+      .lt('movement_date', movementDate.toISOString())
+      .order('movement_date', { ascending: false })
+      .limit(1);
+
+    const previousBalance = previousMovements?.[0] || null;
+    return {
+      mt: previousBalance ? previousBalance.balance_mt : 0,
+      m3: previousBalance ? previousBalance.balance_m3 : 0
+    };
+  };
+
+  const formatDateForStorage = (date: Date) => {
+    return date.toISOString();
+  };
+
   const updateMovementQuantityMutation = useMutation({
     mutationFn: async ({ movementId, quantity }: { movementId: string, quantity: number }) => {
-      const { error } = await supabase
+      const { error: movementError } = await supabase
         .from('movements')
         .update({ actual_quantity: quantity })
         .eq('id', movementId);
       
-      if (error) throw error;
+      if (movementError) throw movementError;
+      
+      const movementDate = new Date();
+      const { data: movement } = await supabase
+        .from('movements')
+        .select('terminal_id, product')
+        .eq('id', movementId)
+        .single();
+
+      if (!movement?.terminal_id) throw new Error('No terminal found for movement');
+
+      const { data: tanks } = await supabase
+        .from('tanks')
+        .select('*')
+        .eq('terminal_id', movement.terminal_id);
+
+      if (!tanks?.length) throw new Error('No tanks found for terminal');
+
+      for (const tank of tanks) {
+        const balance = await calculateTankBalance(tank.id, movementDate);
+        const tankMovementData = {
+          movement_id: movementId,
+          tank_id: tank.id,
+          quantity_mt: quantity,
+          quantity_m3: quantity * 1.1,
+          balance_mt: balance.mt + quantity,
+          balance_m3: (balance.mt + quantity) * 1.1,
+          product_at_time: tank.current_product,
+          movement_date: formatDateForStorage(movementDate)
+        };
+
+        const { error: tankMovementError } = await supabase
+          .from('tank_movements')
+          .insert([tankMovementData]);
+
+        if (tankMovementError) throw tankMovementError;
+      }
+
       return { movementId, quantity };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       toast.success('Movement quantity updated');
     },
     onError: (error) => {
@@ -173,7 +231,7 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankCapacityMutation = useMutation({
     mutationFn: async ({ tankId, capacityMt }: { tankId: string, capacityMt: number }) => {
-      const capacityM3 = capacityMt * 1.1; // Using 1.1 as conversion factor
+      const capacityM3 = capacityMt * 1.1;
       const { error } = await supabase
         .from('tanks')
         .update({ 
