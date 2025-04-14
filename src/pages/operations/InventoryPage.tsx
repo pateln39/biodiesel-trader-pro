@@ -134,10 +134,10 @@ const InventoryPage = () => {
                 >
                   <div style={{ minWidth: `${totalStickyWidth}px` }}>
                     <Table>
-                      {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
+                      {/* Sticky Column Headers - NOW INCLUDES PRODUCT LEGEND */}
                       <TableHeader>
-                        {/* Replace first 6 empty rows with product legend */}
-                        {productsList.slice(0, 6).map((product, index) => (
+                        {/* Product legend rows - one product per row */}
+                        {productsList.map((product, index) => (
                           <TableRow 
                             key={`legend-${product}`} 
                             className="bg-muted/50 border-b border-white/10 h-8"
@@ -348,8 +348,8 @@ const InventoryPage = () => {
                     <div className="min-w-[1800px]"> {/* Increased minimum width to accommodate new columns */}
                       <Table>
                         <TableHeader>
-                          {/* Row 1-6: Match empty rows with product legend */}
-                          {productsList.slice(0, 6).map((product, index) => (
+                          {/* Product legend space holders - to align with left panel */}
+                          {productsList.map((product, index) => (
                             <TableRow 
                               key={`legend-${product}-right`} 
                               className="bg-muted/50 border-b border-white/10 h-8"
