@@ -1,9 +1,8 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -13,6 +12,10 @@ import EditableNumberField from '@/components/operations/inventory/EditableNumbe
 import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
 import ProductToken from '@/components/operations/inventory/ProductToken';
 import ProductLegend from '@/components/operations/inventory/ProductLegend';
+import { useTerminals } from '@/hooks/useTerminals';
+import { useTanks, Tank } from '@/hooks/useTanks';
+import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
+import TankForm from '@/components/operations/inventory/TankForm';
 
 // Define sticky column widths for layout calculation
 const stickyColumnWidths = {
@@ -83,10 +86,15 @@ const TruncatedCell = ({ text, width, className = "" }) => (
 );
 
 const InventoryPage = () => {
-  const {
+  const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
+  const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
+  const [isNewTerminal, setIsNewTerminal] = React.useState(false);
+  const [selectedTank, setSelectedTank] = React.useState<Tank>();
+
+  const { terminals } = useTerminals();
+  const { tanks, refetchTanks } = useTanks(selectedTerminalId);
+  const { 
     movements,
-    tanks,
-    rowTotals,
     productOptions,
     heatingOptions,
     PRODUCT_COLORS,
@@ -95,11 +103,30 @@ const InventoryPage = () => {
     updateTankProduct,
     updateTankSpec,
     updateTankHeating
-  } = useInventoryState();
-  
-  // Get tank IDs list
-  const tankIds = Object.keys(tanks);
-  
+  } = useInventoryState(selectedTerminalId);
+
+  React.useEffect(() => {
+    if (terminals.length > 0 && !selectedTerminalId) {
+      setSelectedTerminalId(terminals[0].id);
+    }
+  }, [terminals, selectedTerminalId]);
+
+  const handleAddTerminal = () => {
+    setIsNewTerminal(true);
+    setSelectedTank(undefined);
+    setIsTankFormOpen(true);
+  };
+
+  const handleAddTank = () => {
+    setIsNewTerminal(false);
+    setSelectedTank(undefined);
+    setIsTankFormOpen(true);
+  };
+
+  const handleTankFormSuccess = () => {
+    refetchTanks();
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -114,12 +141,28 @@ const InventoryPage = () => {
         {/* Product legend at the top */}
         <ProductLegend />
         
-        {/* Integrated Inventory Movements Table with Tank Details */}
+        {/* Terminal tabs */}
+        <TerminalTabs
+          terminals={terminals}
+          selectedTerminalId={selectedTerminalId}
+          onTerminalChange={setSelectedTerminalId}
+          onAddTerminal={handleAddTerminal}
+        />
+        
+        {/* Inventory table */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
-            <CardTitle>Inventory Movements</CardTitle>
+            <CardTitle className="flex justify-between items-center">
+              <span>Inventory Movements</span>
+              {selectedTerminalId && (
+                <Button variant="outline" size="sm" onClick={handleAddTank}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Tank
+                </Button>
+              )}
+            </CardTitle>
             <CardDescription>
-              All product movements affecting tank levels
+              Tank inventory management for {terminals.find(t => t.id === selectedTerminalId)?.name || 'selected terminal'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -314,14 +357,14 @@ const InventoryPage = () => {
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.movementDate.toLocaleDateString()} 
+                                  text={movement.date.toLocaleDateString()} 
                                   width={stickyColumnWidths.movementDate - 16} 
                                   className="text-[10px]"
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.nominationValid.toLocaleDateString()} 
+                                  text={movement.nominationValid?.toLocaleDateString() || '-'}
                                   width={stickyColumnWidths.nominationDate - 16} 
                                   className="text-[10px]"
                                 />
@@ -357,7 +400,7 @@ const InventoryPage = () => {
                                 {movement.scheduledQuantity !== 0 && (
                                   <div className="flex justify-center">
                                     <ProductToken 
-                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
+                                      product={movement.product}
                                       value={`${movement.buySell === "buy" ? "+" : "-"}${movement.scheduledQuantity}`}
                                     />
                                   </div>
@@ -379,7 +422,7 @@ const InventoryPage = () => {
                         <TableHeader>
                           {/* Tank Info Headers - Now with editable product selection */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-header`}
                                 colSpan={3} 
@@ -421,7 +464,7 @@ const InventoryPage = () => {
                           
                           {/* Tank Numbers */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-tank-number`}
                                 colSpan={3} 
@@ -440,7 +483,7 @@ const InventoryPage = () => {
                           
                           {/* Capacity MT */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-capacity`}
                                 colSpan={3} 
@@ -455,7 +498,8 @@ const InventoryPage = () => {
                                     className="bg-brand-lime h-2 rounded-full" 
                                     style={{ 
                                       width: `${Math.min(
-                                        (movements[movements.length - 1].tanks[tankId].balance / tanks[tankId].capacity) * 100,
+                                        (100)
+                                        ,
                                         100
                                       )}%` 
                                     }}
@@ -463,12 +507,10 @@ const InventoryPage = () => {
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
                                   <span className="text-[9px] text-muted-foreground">
-                                    {movements[movements.length - 1].tanks[tankId].balance} MT
+                                    0 MT
                                   </span>
                                   <span className="text-[9px] text-muted-foreground">
-                                    {Math.round(
-                                      (movements[movements.length - 1].tanks[tankId].balance / tanks[tankId].capacity) * 100
-                                    )}%
+                                    0%
                                   </span>
                                 </div>
                               </TableHead>
@@ -487,7 +529,7 @@ const InventoryPage = () => {
                           
                           {/* Capacity M³ */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-capacity-m3`}
                                 colSpan={3} 
@@ -501,7 +543,8 @@ const InventoryPage = () => {
                                     className="bg-brand-blue h-2 rounded-full" 
                                     style={{ 
                                       width: `${Math.min(
-                                        (movements[movements.length - 1].tanks[tankId].balanceM3 / tanks[tankId].capacityM3) * 100,
+                                        (100)
+                                        ,
                                         100
                                       )}%` 
                                     }}
@@ -509,12 +552,10 @@ const InventoryPage = () => {
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
                                   <span className="text-[9px] text-muted-foreground">
-                                    {movements[movements.length - 1].tanks[tankId].balanceM3} M³
+                                    0 M³
                                   </span>
                                   <span className="text-[9px] text-muted-foreground">
-                                    {Math.round(
-                                      (movements[movements.length - 1].tanks[tankId].balanceM3 / tanks[tankId].capacityM3) * 100
-                                    )}%
+                                    0%
                                   </span>
                                 </div>
                               </TableHead>
@@ -533,7 +574,7 @@ const InventoryPage = () => {
                           
                           {/* Spec - now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-spec`}
                                 colSpan={3} 
@@ -560,7 +601,7 @@ const InventoryPage = () => {
                           
                           {/* Heating - now editable as dropdown */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <TableHead 
                                 key={`${tankId}-heating`}
                                 colSpan={3} 
@@ -591,7 +632,7 @@ const InventoryPage = () => {
                           
                           {/* Column headers for tank details and new summary columns */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
-                            {tankIds.map((tankId) => (
+                            {Object.keys(tanks).map((tankId) => (
                               <React.Fragment key={tankId}>
                                 <TableHead className="text-center text-[10px]">
                                   <TruncatedCell
@@ -664,74 +705,44 @@ const InventoryPage = () => {
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
                             
-                            // Get the row totals for this movement
-                            const totals = rowTotals[index];
-                            
                             return (
                               <TableRow 
                                 key={`scroll-${movement.id}`} 
                                 className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
                                 {/* Tank movement and balance columns */}
-                                {tankIds.map((tankId) => (
+                                {Object.keys(tanks).map((tankId) => (
                                   <React.Fragment key={`${movement.id}-${tankId}`}>
                                     <TableCell className="text-center text-[10px] py-2">
-                                      {/* Make quantity editable with product token */}
-                                      {movement.tanks[tankId].quantity !== 0 ? (
-                                        <EditableNumberField
-                                          initialValue={movement.tanks[tankId].quantity}
-                                          onSave={(value) => updateMovementQuantity(movement.id, tankId, value)}
-                                          product={movement.tanks[tankId].productAtTimeOfMovement}
-                                        />
-                                      ) : (
-                                        "-"
-                                      )}
+                                      -
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2">
-                                      {movement.tanks[tankId].quantity !== 0 ? (
-                                        <ProductToken 
-                                          product={movement.tanks[tankId].productAtTimeOfMovement}
-                                          value={Math.round(movement.tanks[tankId].quantity * 1.1)}
-                                          showTooltip={true}
-                                        />
-                                      ) : (
-                                        "-"
-                                      )}
+                                      -
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
-                                      {movement.tanks[tankId].balance}
+                                      0
                                     </TableCell>
                                   </React.Fragment>
                                 ))}
                                 
                                 {/* New summary columns */}
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {totals.totalMT !== 0 ? (
-                                    <ProductToken 
-                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
-                                      value={totals.totalMT}
-                                    />
-                                  ) : "-"}
+                                  -
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {totals.totalM3 !== 0 ? (
-                                    <ProductToken 
-                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
-                                      value={totals.totalM3}
-                                    />
-                                  ) : "-"}
+                                  -
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
-                                  {totals.t1Balance !== 0 ? totals.t1Balance : "-"}
+                                  -
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
-                                  {totals.t2Balance !== 0 ? totals.t2Balance : "-"}
+                                  -
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium">
-                                  {totals.currentStock}
+                                  0
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {totals.currentUllage}
+                                  0
                                 </TableCell>
                               </TableRow>
                             );
@@ -746,6 +757,15 @@ const InventoryPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      <TankForm
+        open={isTankFormOpen}
+        onOpenChange={setIsTankFormOpen}
+        onSuccess={handleTankFormSuccess}
+        terminal={terminals.find(t => t.id === selectedTerminalId)}
+        tank={selectedTank}
+        isNewTerminal={isNewTerminal}
+      />
     </Layout>
   );
 };
