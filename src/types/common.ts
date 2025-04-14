@@ -123,6 +123,8 @@ export interface Movement {
   quantity?: number; // Legacy field, can be removed if not needed
   createdAt: Date;
   updatedAt: Date;
+  terminal_id?: string; // Added for terminal assignment
+  inventory_movement_date?: Date; // Added for terminal assignment
 }
 
 export interface AuditLog {

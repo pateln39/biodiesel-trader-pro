@@ -119,7 +119,7 @@ export interface Movement {
   referenceNumber?: string;
   tradeLegId?: string;
   parentTradeId?: string;
-  tradeReference?: string;
+  tradeReference: string;
   counterpartyName: string;
   product: string;
   buySell?: string;
@@ -156,4 +156,6 @@ export interface Movement {
   coaSentChecked?: boolean;
   eadChecked?: boolean;
   sort_order?: number; // Add sort_order field
+  terminal_id?: string; // Add terminal_id field
+  inventory_movement_date?: Date; // Add inventory_movement_date field
 }

@@ -34,11 +34,14 @@ export function AssignToTerminalButton({ movementId, currentTerminalId }: Assign
 
   const assignToTerminalMutation = useMutation({
     mutationFn: async ({ terminalId, date }: { terminalId: string; date: Date }) => {
+      // Format the date as ISO string to match Supabase's expected format
+      const formattedDate = date.toISOString();
+      
       const { error } = await supabase
         .from('movements')
         .update({ 
           terminal_id: terminalId,
-          inventory_movement_date: date
+          inventory_movement_date: formattedDate
         })
         .eq('id', movementId);
       

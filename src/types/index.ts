@@ -1,4 +1,3 @@
-
 // Export from type modules
 export * from './pricing';
 export * from './physical';
@@ -49,6 +48,8 @@ export interface Movement {
   coaSentChecked?: boolean;
   eadChecked?: boolean;
   sort_order?: number; // Added sort_order property
+  terminal_id?: string; // Added terminal_id property for terminal assignment
+  inventory_movement_date?: Date; // Added inventory_movement_date for terminal assignments
 }
 
 // Explicit re-exports to avoid name conflicts when importing
