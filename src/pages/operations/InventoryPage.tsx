@@ -1,179 +1,28 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Product } from '@/types';
-import { Database, Filter, Thermometer } from 'lucide-react';
+import { Filter, Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useInventoryState } from '@/hooks/useInventoryState';
+import EditableField from '@/components/operations/inventory/EditableField';
+import EditableNumberField from '@/components/operations/inventory/EditableNumberField';
+import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
 
-// Mock data for inventory movements
-const mockInventoryMovements = [
-  {
-    id: "1",
-    counterpartyName: "BioFuel Partners",
-    tradeReference: "TR-2025-0123",
-    bargeName: "Horizon Trader",
-    movementDate: new Date('2025-04-05'),
-    nominationValid: new Date('2025-04-10'),
-    customsStatus: "cleared",
-    sustainability: "ISCC",
-    comments: "Regular delivery",
-    buySell: "buy",
-    scheduledQuantity: 1000,
-    tanks: {
-      "UCOME": { quantity: 800, balance: 2800, balanceM3: 3080 },
-      "RME": { quantity: 200, balance: 1200, balanceM3: 1320 },
-      "FAME0": { quantity: 0, balance: 500, balanceM3: 550 },
-      "HVO": { quantity: 0, balance: 300, balanceM3: 330 },
-      "RME DC": { quantity: 0, balance: 400, balanceM3: 440 },
-      "UCOME-5": { quantity: 0, balance: 600, balanceM3: 660 },
-    }
-  },
-  {
-    id: "2",
-    counterpartyName: "GreenEnergy Corp",
-    tradeReference: "TR-2025-0124",
-    bargeName: "Eco Voyager",
-    movementDate: new Date('2025-04-07'),
-    nominationValid: new Date('2025-04-12'),
-    customsStatus: "pending",
-    sustainability: "ISCC EU",
-    comments: "Priority shipment",
-    buySell: "buy",
-    scheduledQuantity: 750,
-    tanks: {
-      "UCOME": { quantity: 0, balance: 2800, balanceM3: 3080 },
-      "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
-      "FAME0": { quantity: 750, balance: 1250, balanceM3: 1375 },
-      "HVO": { quantity: 0, balance: 300, balanceM3: 330 },
-      "RME DC": { quantity: 0, balance: 400, balanceM3: 440 },
-      "UCOME-5": { quantity: 0, balance: 600, balanceM3: 660 },
-    }
-  },
-  {
-    id: "3",
-    counterpartyName: "EcoFuels Ltd",
-    tradeReference: "TR-2025-0125",
-    bargeName: "Clean Venture",
-    movementDate: new Date('2025-04-09'),
-    nominationValid: new Date('2025-04-14'),
-    customsStatus: "cleared",
-    sustainability: "ISCC",
-    comments: "",
-    buySell: "sell",
-    scheduledQuantity: 500,
-    tanks: {
-      "UCOME": { quantity: -300, balance: 2500, balanceM3: 2750 },
-      "RME": { quantity: 0, balance: 1200, balanceM3: 1320 },
-      "FAME0": { quantity: 0, balance: 1250, balanceM3: 1375 },
-      "HVO": { quantity: -200, balance: 100, balanceM3: 110 },
-      "RME DC": { quantity: 0, balance: 400, balanceM3: 440 },
-      "UCOME-5": { quantity: 0, balance: 600, balanceM3: 660 },
-    }
-  },
-  {
-    id: "4",
-    counterpartyName: "Renewable Solutions",
-    tradeReference: "TR-2025-0126",
-    bargeName: "Green Pioneer",
-    movementDate: new Date('2025-04-12'),
-    nominationValid: new Date('2025-04-17'),
-    customsStatus: "T1",
-    sustainability: "ISCC PLUS",
-    comments: "Special handling required",
-    buySell: "sell",
-    scheduledQuantity: 600,
-    tanks: {
-      "UCOME": { quantity: 0, balance: 2500, balanceM3: 2750 },
-      "RME": { quantity: -200, balance: 1000, balanceM3: 1100 },
-      "FAME0": { quantity: 0, balance: 1250, balanceM3: 1375 },
-      "HVO": { quantity: 0, balance: 100, balanceM3: 110 },
-      "RME DC": { quantity: 0, balance: 400, balanceM3: 440 },
-      "UCOME-5": { quantity: -400, balance: 200, balanceM3: 220 },
-    }
-  },
-  {
-    id: "5",
-    counterpartyName: "SustainOil Inc",
-    tradeReference: "TR-2025-0127",
-    bargeName: "Eco Wave",
-    movementDate: new Date('2025-04-15'),
-    nominationValid: new Date('2025-04-20'),
-    customsStatus: "cleared",
-    sustainability: "ISCC",
-    comments: "",
-    buySell: "buy",
-    scheduledQuantity: 1200,
-    tanks: {
-      "UCOME": { quantity: 500, balance: 3000, balanceM3: 3300 },
-      "RME": { quantity: 300, balance: 1300, balanceM3: 1430 },
-      "FAME0": { quantity: 400, balance: 1650, balanceM3: 1815 },
-      "HVO": { quantity: 0, balance: 100, balanceM3: 110 },
-      "RME DC": { quantity: 0, balance: 400, balanceM3: 440 },
-      "UCOME-5": { quantity: 0, balance: 200, balanceM3: 220 },
-    }
-  }
-];
-
-// Initial tank capacities and details
-const tankDetails = {
-  "UCOME": {
-    capacity: 5000,
-    capacityM3: 5500,
-    tankNumber: "T125",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  },
-  "RME": {
-    capacity: 3000,
-    capacityM3: 3300,
-    tankNumber: "T241",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  },
-  "FAME0": {
-    capacity: 2500,
-    capacityM3: 2750,
-    tankNumber: "T369",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  },
-  "HVO": {
-    capacity: 2000,
-    capacityM3: 2200,
-    tankNumber: "T482",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  },
-  "RME DC": {
-    capacity: 1500,
-    capacityM3: 1650,
-    tankNumber: "T513",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  },
-  "UCOME-5": {
-    capacity: 2000,
-    capacityM3: 2200,
-    tankNumber: "T649",
-    spec: "CFPP +2; W 370; S 21.6; TC 32",
-    heating: true
-  }
-};
-
-// Define sticky column widths for layout calculation - REDUCED WIDTHS HERE
+// Define sticky column widths for layout calculation
 const stickyColumnWidths = {
-  counterparty: 110, // Reduced from 130
-  tradeRef: 80, // Reduced from 100
-  bargeName: 90, // Reduced from 110
-  movementDate: 75, // Reduced from 90
-  nominationDate: 75, // Reduced from 90
-  customs: 75, // Reduced from 90
-  sustainability: 90, // Reduced from 110
-  comments: 90, // Reduced from 110
-  quantity: 70, // Reduced from 90
+  counterparty: 110,
+  tradeRef: 80,
+  bargeName: 90,
+  movementDate: 75,
+  nominationDate: 75,
+  customs: 75,
+  sustainability: 90,
+  comments: 90,
+  quantity: 70,
 };
 
 // Calculate total width of sticky columns for positioning
@@ -215,8 +64,20 @@ const TruncatedCell = ({ text, width, className = "" }) => (
 );
 
 const InventoryPage = () => {
-  // Products array to match the types defined in the system
-  const products: Product[] = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
+  const {
+    movements,
+    tanks,
+    productOptions,
+    heatingOptions,
+    updateMovementQuantity,
+    updateMovementComments,
+    updateTankProduct,
+    updateTankSpec,
+    updateTankHeating
+  } = useInventoryState();
+  
+  // Get tank IDs list
+  const tankIds = Object.keys(tanks);
   
   return (
     <Layout>
@@ -395,7 +256,7 @@ const InventoryPage = () => {
                       </TableHeader>
                       
                       <TableBody>
-                        {mockInventoryMovements.map((movement) => {
+                        {movements.map((movement) => {
                           // Determine the background color for the row based on buy/sell
                           const bgColorClass = movement.buySell === "buy" 
                             ? "bg-green-900/10 hover:bg-green-900/20" 
@@ -461,10 +322,13 @@ const InventoryPage = () => {
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.comments || "-"} 
-                                  width={stickyColumnWidths.comments - 16} 
+                                {/* Make comments editable */}
+                                <EditableField
+                                  initialValue={movement.comments}
+                                  onSave={(value) => updateMovementComments(movement.id, value)}
+                                  maxWidth={stickyColumnWidths.comments - 16}
                                   className="text-[10px]"
+                                  placeholder="Add comments..."
                                 />
                               </TableCell>
                               <TableCell className={cn(
@@ -486,45 +350,51 @@ const InventoryPage = () => {
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1200px]"> {/* FURTHER REDUCED MINIMUM WIDTH */}
+                    <div className="min-w-[1200px]">
                       <Table>
                         <TableHeader>
-                          {/* Tank Info Headers */}
+                          {/* Tank Info Headers - Now with editable product selection */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-header`}
+                                key={`${tankId}-header`}
                                 colSpan={3} 
                                 className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                               >
-                                {productName}
+                                <EditableDropdownField
+                                  initialValue={tanks[tankId].product}
+                                  options={productOptions}
+                                  onSave={(value) => updateTankProduct(tankId, value)}
+                                  className="text-[10px] font-bold text-center w-full"
+                                  truncate={false}
+                                />
                               </TableHead>
                             ))}
                           </TableRow>
                           
                           {/* Tank Numbers */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-tank-number`}
+                                key={`${tankId}-tank-number`}
                                 colSpan={3} 
                                 className="text-center text-[10px] border-r border-white/30"
                               >
-                                Tank {tankDetails[productName].tankNumber}
+                                Tank {tanks[tankId].tankNumber}
                               </TableHead>
                             ))}
                           </TableRow>
                           
                           {/* Capacity MT */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-capacity`}
+                                key={`${tankId}-capacity`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tankDetails[productName].capacity} MT</span>
+                                  <span>Capacity: {tanks[tankId].capacity} MT</span>
                                   <Database className="h-3 w-3 text-brand-lime/70" />
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
@@ -532,7 +402,7 @@ const InventoryPage = () => {
                                     className="bg-brand-lime h-2 rounded-full" 
                                     style={{ 
                                       width: `${Math.min(
-                                        (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100,
+                                        (movements[movements.length - 1].tanks[tankId].balance / tanks[tankId].capacity) * 100,
                                         100
                                       )}%` 
                                     }}
@@ -540,11 +410,11 @@ const InventoryPage = () => {
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
                                   <span className="text-[9px] text-muted-foreground">
-                                    {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
+                                    {movements[movements.length - 1].tanks[tankId].balance} MT
                                   </span>
                                   <span className="text-[9px] text-muted-foreground">
                                     {Math.round(
-                                      (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
+                                      (movements[movements.length - 1].tanks[tankId].balance / tanks[tankId].capacity) * 100
                                     )}%
                                   </span>
                                 </div>
@@ -554,21 +424,21 @@ const InventoryPage = () => {
                           
                           {/* Capacity M³ */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-capacity-m3`}
+                                key={`${tankId}-capacity-m3`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
+                                  <span>Capacity: {tanks[tankId].capacityM3} M³</span>
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
                                   <div 
                                     className="bg-brand-blue h-2 rounded-full" 
                                     style={{ 
                                       width: `${Math.min(
-                                        (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100,
+                                        (movements[movements.length - 1].tanks[tankId].balanceM3 / tanks[tankId].capacityM3) * 100,
                                         100
                                       )}%` 
                                     }}
@@ -576,11 +446,11 @@ const InventoryPage = () => {
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
                                   <span className="text-[9px] text-muted-foreground">
-                                    {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
+                                    {movements[movements.length - 1].tanks[tankId].balanceM3} M³
                                   </span>
                                   <span className="text-[9px] text-muted-foreground">
                                     {Math.round(
-                                      (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
+                                      (movements[movements.length - 1].tanks[tankId].balanceM3 / tanks[tankId].capacityM3) * 100
                                     )}%
                                   </span>
                                 </div>
@@ -588,31 +458,32 @@ const InventoryPage = () => {
                             ))}
                           </TableRow>
                           
-                          {/* Spec */}
+                          {/* Spec - now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-spec`}
+                                key={`${tankId}-spec`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Spec:</span>
-                                  <TruncatedCell
-                                    text={tankDetails[productName].spec}
-                                    width={100}
+                                  <EditableField
+                                    initialValue={tanks[tankId].spec}
+                                    onSave={(value) => updateTankSpec(tankId, value)}
                                     className="text-[10px]"
+                                    maxWidth={100}
                                   />
                                 </div>
                               </TableHead>
                             ))}
                           </TableRow>
                           
-                          {/* Heating */}
+                          {/* Heating - now editable as dropdown */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {products.map((productName) => (
+                            {tankIds.map((tankId) => (
                               <TableHead 
-                                key={`${productName}-heating`}
+                                key={`${tankId}-heating`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
@@ -620,7 +491,13 @@ const InventoryPage = () => {
                                   <span className="text-muted-foreground">Heating:</span>
                                   <div className="flex items-center">
                                     <Thermometer className="h-3 w-3 mr-1 text-red-400" />
-                                    <span>{tankDetails[productName].heating ? "Yes" : "No"}</span>
+                                    <EditableDropdownField
+                                      initialValue={tanks[tankId].heating ? "true" : "false"}
+                                      options={heatingOptions}
+                                      onSave={(value) => updateTankHeating(tankId, value)}
+                                      className="text-[10px]"
+                                      truncate={false}
+                                    />
                                   </div>
                                 </div>
                               </TableHead>
@@ -629,8 +506,8 @@ const InventoryPage = () => {
                           
                           {/* Column headers for tank details - UPDATED WITH MOVEMENT TEXT */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
-                            {products.map((productName) => (
-                              <React.Fragment key={productName}>
+                            {tankIds.map((tankId) => (
+                              <React.Fragment key={tankId}>
                                 <TableHead className="text-center text-[10px]">
                                   <TruncatedCell
                                     text="Movement (MT)"
@@ -652,7 +529,7 @@ const InventoryPage = () => {
                         </TableHeader>
                         
                         <TableBody>
-                          {mockInventoryMovements.map((movement) => {
+                          {movements.map((movement) => {
                             // Determine the background color for the row based on buy/sell
                             const bgColorClass = movement.buySell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
@@ -664,26 +541,33 @@ const InventoryPage = () => {
                                 className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
                                 {/* Tank movement and balance columns */}
-                                {products.map((productName) => (
-                                  <React.Fragment key={`${movement.id}-${productName}`}>
+                                {tankIds.map((tankId) => (
+                                  <React.Fragment key={`${movement.id}-${tankId}`}>
                                     <TableCell 
                                       className={cn(
                                         "text-center text-[10px] py-2",
-                                        movement.tanks[productName].quantity > 0 ? "text-green-400" :
-                                        movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
+                                        movement.tanks[tankId].quantity > 0 ? "text-green-400" :
+                                        movement.tanks[tankId].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                       )}
                                     >
-                                      {movement.tanks[productName].quantity !== 0 
-                                        ? (movement.tanks[productName].quantity > 0 
-                                          ? `+${movement.tanks[productName].quantity}` 
-                                          : movement.tanks[productName].quantity) 
-                                        : "-"}
+                                      {/* Make quantity editable */}
+                                      {movement.tanks[tankId].quantity !== 0 ? (
+                                        <EditableNumberField
+                                          initialValue={movement.tanks[tankId].quantity}
+                                          onSave={(value) => updateMovementQuantity(movement.id, tankId, value)}
+                                          className={cn(
+                                            movement.tanks[tankId].quantity > 0 ? "text-green-400" : "text-red-400"
+                                          )}
+                                        />
+                                      ) : (
+                                        "-"
+                                      )}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
-                                      {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
+                                      {movement.tanks[tankId].quantity !== 0 ? "-" : "-"}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
-                                      {movement.tanks[productName].balance}
+                                      {movement.tanks[tankId].balance}
                                     </TableCell>
                                   </React.Fragment>
                                 ))}
