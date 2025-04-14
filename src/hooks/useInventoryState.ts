@@ -1,6 +1,8 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 export interface TankMovement {
   id: string;
@@ -84,6 +86,7 @@ export const useInventoryState = (terminalId?: string) => {
       product: string 
     }) => {
       // First, create a tank movement record
+      const now = new Date();
       const { error: tankMovementError } = await supabase
         .from('tank_movements')
         .insert({
@@ -92,7 +95,8 @@ export const useInventoryState = (terminalId?: string) => {
           quantity_mt: quantityMt,
           quantity_m3: quantityMt * 1.1, // Using 1.1 as conversion factor
           product_at_time: product,
-          movement_date: new Date()
+          // Convert Date to string format expected by Supabase
+          movement_date: formatDateForStorage(now)
         });
       
       if (tankMovementError) throw tankMovementError;
@@ -108,8 +112,8 @@ export const useInventoryState = (terminalId?: string) => {
       return { movementId, tankId, quantityMt };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements', terminalId] });
       toast.success('Movement quantity updated');
     },
     onError: (error) => {
