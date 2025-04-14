@@ -687,9 +687,16 @@ const InventoryPage = () => {
                                         "-"
                                       )}
                                     </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
-                                      {movement.tanks[tankId].quantity !== 0 ? 
-                                        Math.round(movement.tanks[tankId].quantity * 1.1) : "-"}
+                                    <TableCell className="text-center text-[10px] py-2">
+                                      {movement.tanks[tankId].quantity !== 0 ? (
+                                        <ProductToken 
+                                          product={movement.tanks[tankId].productAtTimeOfMovement}
+                                          value={Math.round(movement.tanks[tankId].quantity * 1.1)}
+                                          showTooltip={true}
+                                        />
+                                      ) : (
+                                        "-"
+                                      )}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[tankId].balance}
@@ -707,7 +714,12 @@ const InventoryPage = () => {
                                   ) : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {totals.totalM3 !== 0 ? totals.totalM3 : "-"}
+                                  {totals.totalM3 !== 0 ? (
+                                    <ProductToken 
+                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
+                                      value={totals.totalM3}
+                                    />
+                                  ) : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                   {totals.t1Balance !== 0 ? totals.t1Balance : "-"}
