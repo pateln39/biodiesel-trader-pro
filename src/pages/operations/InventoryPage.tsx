@@ -11,6 +11,8 @@ import { useInventoryState } from '@/hooks/useInventoryState';
 import EditableField from '@/components/operations/inventory/EditableField';
 import EditableNumberField from '@/components/operations/inventory/EditableNumberField';
 import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
+import ProductToken from '@/components/operations/inventory/ProductToken';
+import ProductLegend from '@/components/operations/inventory/ProductLegend';
 
 // Define sticky column widths for layout calculation
 const stickyColumnWidths = {
@@ -87,6 +89,7 @@ const InventoryPage = () => {
     rowTotals,
     productOptions,
     heatingOptions,
+    PRODUCT_COLORS,
     updateMovementQuantity,
     updateMovementComments,
     updateTankProduct,
@@ -107,6 +110,9 @@ const InventoryPage = () => {
             <span className="text-sm text-muted-foreground">Filter</span>
           </div>
         </div>
+        
+        {/* Product legend at the top */}
+        <ProductLegend />
         
         {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
@@ -347,13 +353,15 @@ const InventoryPage = () => {
                                   placeholder="Add comments..."
                                 />
                               </TableCell>
-                              <TableCell className={cn(
-                                "font-semibold bg-brand-navy text-[10px] py-2 border-r border-white/30",
-                                movement.buySell === "buy" ? "text-green-400" : "text-red-400"
-                              )}>
-                                {movement.buySell === "buy" 
-                                  ? `+${movement.scheduledQuantity}` 
-                                  : `-${movement.scheduledQuantity}`}
+                              <TableCell className="bg-brand-navy text-[10px] py-2 border-r border-white/30">
+                                {movement.scheduledQuantity !== 0 && (
+                                  <div className="flex justify-center">
+                                    <ProductToken 
+                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
+                                      value={`${movement.buySell === "buy" ? "+" : "-"}${movement.scheduledQuantity}`}
+                                    />
+                                  </div>
+                                )}
                               </TableCell>
                             </TableRow>
                           );
@@ -375,13 +383,18 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${tankId}-header`}
                                 colSpan={3} 
-                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                                className={cn(
+                                  "text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                                )}
                               >
                                 <EditableDropdownField
                                   initialValue={tanks[tankId].product}
                                   options={productOptions}
                                   onSave={(value) => updateTankProduct(tankId, value)}
-                                  className="text-[10px] font-bold text-center w-full"
+                                  className={cn(
+                                    "text-[10px] font-bold text-center w-full",
+                                    PRODUCT_COLORS[tanks[tankId].product]?.split(' ')[0] // Extract just the background color
+                                  )}
                                   truncate={false}
                                 />
                               </TableHead>
@@ -662,28 +675,21 @@ const InventoryPage = () => {
                                 {/* Tank movement and balance columns */}
                                 {tankIds.map((tankId) => (
                                   <React.Fragment key={`${movement.id}-${tankId}`}>
-                                    <TableCell 
-                                      className={cn(
-                                        "text-center text-[10px] py-2",
-                                        movement.tanks[tankId].quantity > 0 ? "text-green-400" :
-                                        movement.tanks[tankId].quantity < 0 ? "text-red-400" : "text-muted-foreground"
-                                      )}
-                                    >
-                                      {/* Make quantity editable */}
+                                    <TableCell className="text-center text-[10px] py-2">
+                                      {/* Make quantity editable with product token */}
                                       {movement.tanks[tankId].quantity !== 0 ? (
                                         <EditableNumberField
                                           initialValue={movement.tanks[tankId].quantity}
                                           onSave={(value) => updateMovementQuantity(movement.id, tankId, value)}
-                                          className={cn(
-                                            movement.tanks[tankId].quantity > 0 ? "text-green-400" : "text-red-400"
-                                          )}
+                                          product={movement.tanks[tankId].productAtTimeOfMovement}
                                         />
                                       ) : (
                                         "-"
                                       )}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
-                                      {movement.tanks[tankId].quantity !== 0 ? "-" : "-"}
+                                      {movement.tanks[tankId].quantity !== 0 ? 
+                                        Math.round(movement.tanks[tankId].quantity * 1.1) : "-"}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[tankId].balance}
@@ -692,18 +698,15 @@ const InventoryPage = () => {
                                 ))}
                                 
                                 {/* New summary columns */}
-                                <TableCell className={cn(
-                                  "text-center text-[10px] py-2",
-                                  totals.totalMT > 0 ? "text-green-400" :
-                                  totals.totalMT < 0 ? "text-red-400" : "text-muted-foreground"
-                                )}>
-                                  {totals.totalMT !== 0 ? totals.totalMT : "-"}
+                                <TableCell className="text-center text-[10px] py-2">
+                                  {totals.totalMT !== 0 ? (
+                                    <ProductToken 
+                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
+                                      value={totals.totalMT}
+                                    />
+                                  ) : "-"}
                                 </TableCell>
-                                <TableCell className={cn(
-                                  "text-center text-[10px] py-2",
-                                  totals.totalM3 > 0 ? "text-green-400" :
-                                  totals.totalM3 < 0 ? "text-red-400" : "text-muted-foreground"
-                                )}>
+                                <TableCell className="text-center text-[10px] py-2">
                                   {totals.totalM3 !== 0 ? totals.totalM3 : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">

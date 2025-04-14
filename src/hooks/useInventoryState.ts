@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { Product } from '@/types';
 
@@ -9,6 +10,13 @@ export interface Tank {
   tankNumber: string;
   spec: string;
   heating: boolean;
+}
+
+export interface TankMovement {
+  quantity: number;
+  balance: number;
+  balanceM3: number;
+  productAtTimeOfMovement: Product; // New field to track historical product
 }
 
 export interface Movement {
@@ -24,11 +32,7 @@ export interface Movement {
   buySell: 'buy' | 'sell';
   scheduledQuantity: number;
   tanks: {
-    [tankId: string]: {
-      quantity: number;
-      balance: number;
-      balanceM3: number;
-    };
+    [tankId: string]: TankMovement;
   };
 }
 
@@ -41,6 +45,16 @@ export interface RowTotals {
   currentStock: number;
   currentUllage: number;
 }
+
+// Product color mapping for tokens
+export const PRODUCT_COLORS = {
+  'UCOME': 'bg-red-500 text-white',
+  'RME': 'bg-purple-500 text-white',
+  'FAME0': 'bg-yellow-500 text-black',
+  'HVO': 'bg-blue-500 text-white',
+  'RME DC': 'bg-green-500 text-white',
+  'UCOME-5': 'bg-orange-500 text-white'
+};
 
 // Mock data - in a real app this would come from API
 const initialTankDetails: { [key: string]: Tank } = {
@@ -109,12 +123,12 @@ const initialMovements: Movement[] = [
     buySell: "buy",
     scheduledQuantity: 1000,
     tanks: {
-      "tank1": { quantity: 800, balance: 2800, balanceM3: 3080 },
-      "tank2": { quantity: 200, balance: 1200, balanceM3: 1320 },
-      "tank3": { quantity: 0, balance: 500, balanceM3: 550 },
-      "tank4": { quantity: 0, balance: 300, balanceM3: 330 },
-      "tank5": { quantity: 0, balance: 400, balanceM3: 440 },
-      "tank6": { quantity: 0, balance: 600, balanceM3: 660 },
+      "tank1": { quantity: 800, balance: 2800, balanceM3: 3080, productAtTimeOfMovement: "UCOME" },
+      "tank2": { quantity: 200, balance: 1200, balanceM3: 1320, productAtTimeOfMovement: "RME" },
+      "tank3": { quantity: 0, balance: 500, balanceM3: 550, productAtTimeOfMovement: "FAME0" },
+      "tank4": { quantity: 0, balance: 300, balanceM3: 330, productAtTimeOfMovement: "HVO" },
+      "tank5": { quantity: 0, balance: 400, balanceM3: 440, productAtTimeOfMovement: "RME DC" },
+      "tank6": { quantity: 0, balance: 600, balanceM3: 660, productAtTimeOfMovement: "UCOME-5" },
     }
   },
   {
@@ -130,12 +144,12 @@ const initialMovements: Movement[] = [
     buySell: "buy",
     scheduledQuantity: 750,
     tanks: {
-      "tank1": { quantity: 0, balance: 2800, balanceM3: 3080 },
-      "tank2": { quantity: 0, balance: 1200, balanceM3: 1320 },
-      "tank3": { quantity: 750, balance: 1250, balanceM3: 1375 },
-      "tank4": { quantity: 0, balance: 300, balanceM3: 330 },
-      "tank5": { quantity: 0, balance: 400, balanceM3: 440 },
-      "tank6": { quantity: 0, balance: 600, balanceM3: 660 },
+      "tank1": { quantity: 0, balance: 2800, balanceM3: 3080, productAtTimeOfMovement: "UCOME" },
+      "tank2": { quantity: 0, balance: 1200, balanceM3: 1320, productAtTimeOfMovement: "RME" },
+      "tank3": { quantity: 750, balance: 1250, balanceM3: 1375, productAtTimeOfMovement: "FAME0" },
+      "tank4": { quantity: 0, balance: 300, balanceM3: 330, productAtTimeOfMovement: "HVO" },
+      "tank5": { quantity: 0, balance: 400, balanceM3: 440, productAtTimeOfMovement: "RME DC" },
+      "tank6": { quantity: 0, balance: 600, balanceM3: 660, productAtTimeOfMovement: "UCOME-5" },
     }
   },
   {
@@ -151,12 +165,12 @@ const initialMovements: Movement[] = [
     buySell: "sell",
     scheduledQuantity: 500,
     tanks: {
-      "tank1": { quantity: -300, balance: 2500, balanceM3: 2750 },
-      "tank2": { quantity: 0, balance: 1200, balanceM3: 1320 },
-      "tank3": { quantity: 0, balance: 1250, balanceM3: 1375 },
-      "tank4": { quantity: -200, balance: 100, balanceM3: 110 },
-      "tank5": { quantity: 0, balance: 400, balanceM3: 440 },
-      "tank6": { quantity: 0, balance: 600, balanceM3: 660 },
+      "tank1": { quantity: -300, balance: 2500, balanceM3: 2750, productAtTimeOfMovement: "UCOME" },
+      "tank2": { quantity: 0, balance: 1200, balanceM3: 1320, productAtTimeOfMovement: "RME" },
+      "tank3": { quantity: 0, balance: 1250, balanceM3: 1375, productAtTimeOfMovement: "FAME0" },
+      "tank4": { quantity: -200, balance: 100, balanceM3: 110, productAtTimeOfMovement: "HVO" },
+      "tank5": { quantity: 0, balance: 400, balanceM3: 440, productAtTimeOfMovement: "RME DC" },
+      "tank6": { quantity: 0, balance: 600, balanceM3: 660, productAtTimeOfMovement: "UCOME-5" },
     }
   },
   {
@@ -172,12 +186,12 @@ const initialMovements: Movement[] = [
     buySell: "sell",
     scheduledQuantity: 600,
     tanks: {
-      "tank1": { quantity: 0, balance: 2500, balanceM3: 2750 },
-      "tank2": { quantity: -200, balance: 1000, balanceM3: 1100 },
-      "tank3": { quantity: 0, balance: 1250, balanceM3: 1375 },
-      "tank4": { quantity: 0, balance: 100, balanceM3: 110 },
-      "tank5": { quantity: 0, balance: 400, balanceM3: 440 },
-      "tank6": { quantity: -400, balance: 200, balanceM3: 220 },
+      "tank1": { quantity: 0, balance: 2500, balanceM3: 2750, productAtTimeOfMovement: "UCOME" },
+      "tank2": { quantity: -200, balance: 1000, balanceM3: 1100, productAtTimeOfMovement: "RME" },
+      "tank3": { quantity: 0, balance: 1250, balanceM3: 1375, productAtTimeOfMovement: "FAME0" },
+      "tank4": { quantity: 0, balance: 100, balanceM3: 110, productAtTimeOfMovement: "HVO" },
+      "tank5": { quantity: 0, balance: 400, balanceM3: 440, productAtTimeOfMovement: "RME DC" },
+      "tank6": { quantity: -400, balance: 200, balanceM3: 220, productAtTimeOfMovement: "UCOME-5" },
     }
   },
   {
@@ -193,12 +207,12 @@ const initialMovements: Movement[] = [
     buySell: "buy",
     scheduledQuantity: 1200,
     tanks: {
-      "tank1": { quantity: 500, balance: 3000, balanceM3: 3300 },
-      "tank2": { quantity: 300, balance: 1300, balanceM3: 1430 },
-      "tank3": { quantity: 400, balance: 1650, balanceM3: 1815 },
-      "tank4": { quantity: 0, balance: 100, balanceM3: 110 },
-      "tank5": { quantity: 0, balance: 400, balanceM3: 440 },
-      "tank6": { quantity: 0, balance: 200, balanceM3: 220 },
+      "tank1": { quantity: 500, balance: 3000, balanceM3: 3300, productAtTimeOfMovement: "UCOME" },
+      "tank2": { quantity: 300, balance: 1300, balanceM3: 1430, productAtTimeOfMovement: "RME" },
+      "tank3": { quantity: 400, balance: 1650, balanceM3: 1815, productAtTimeOfMovement: "FAME0" },
+      "tank4": { quantity: 0, balance: 100, balanceM3: 110, productAtTimeOfMovement: "HVO" },
+      "tank5": { quantity: 0, balance: 400, balanceM3: 440, productAtTimeOfMovement: "RME DC" },
+      "tank6": { quantity: 0, balance: 200, balanceM3: 220, productAtTimeOfMovement: "UCOME-5" },
     }
   }
 ];
@@ -372,6 +386,7 @@ export const useInventoryState = () => {
     totalTankCapacity,
     productOptions,
     heatingOptions,
+    PRODUCT_COLORS,
     updateMovementQuantity,
     updateMovementComments,
     updateTankProduct,
