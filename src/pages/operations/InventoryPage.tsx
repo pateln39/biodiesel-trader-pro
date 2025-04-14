@@ -165,26 +165,45 @@ const InventoryPage = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="relative border rounded-md overflow-hidden">
-              {/* For now, render a simplified version to avoid errors */}
-              <div className="flex flex-col items-center justify-center p-8">
-                <h3 className="text-xl font-semibold mb-4">Inventory Management</h3>
-                <p className="text-center max-w-lg mb-6">
-                  This panel displays inventory movements and tank levels. 
-                  Each terminal can have multiple tanks, and you can track movements between tanks.
-                </p>
-                <div className="grid grid-cols-3 gap-4 w-full max-w-3xl">
-                  {terminalTanks.map((tank) => (
-                    <div key={tank.id} className="bg-brand-navy/50 p-4 rounded-lg border border-white/10">
-                      <h4 className="font-medium">Tank {tank.tank_number}</h4>
-                      <p>Product: {tank.current_product}</p>
-                      <p>Capacity: {tank.capacity_mt} MT</p>
-                      <p>Capacity: {tank.capacity_m3} M³</p>
-                      <p>Heating: {tank.is_heating_enabled ? 'Enabled' : 'Disabled'}</p>
-                      <p>Spec: {tank.spec || 'N/A'}</p>
-                    </div>
-                  ))}
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Panel - Tank Status */}
+              <div className="bg-brand-navy/50 p-4 rounded-lg border border-white/10">
+                <h3 className="text-lg font-semibold mb-4">Tank Status</h3>
+                {terminalTanks.length > 0 ? (
+                  <div className="space-y-4">
+                    {terminalTanks.map((tank) => (
+                      <div key={tank.id} className="bg-brand-navy/30 p-3 rounded border border-white/5">
+                        <h4 className="font-medium">Tank {tank.tank_number}</h4>
+                        <p className="text-sm">Product: {tank.current_product || 'Empty'}</p>
+                        <p className="text-sm">Capacity (MT): {tank.capacity_mt}</p>
+                        <p className="text-sm">Capacity (M³): {tank.capacity_m3}</p>
+                        <p className="text-sm">Heating: {tank.is_heating_enabled ? 'Enabled' : 'Disabled'}</p>
+                        <p className="text-sm">Spec: {tank.spec || 'N/A'}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No tanks available</p>
+                )}
+              </div>
+
+              {/* Center Panel - Movements */}
+              <div className="lg:col-span-2 bg-brand-navy/50 p-4 rounded-lg border border-white/10">
+                <h3 className="text-lg font-semibold mb-4">Movement History</h3>
+                {movements && movements.length > 0 ? (
+                  <div className="space-y-4">
+                    {movements.map((movement) => (
+                      <div key={movement.id} className="bg-brand-navy/30 p-3 rounded border border-white/5">
+                        <p className="text-sm">Reference: {movement.reference_number}</p>
+                        <p className="text-sm">Product: {movement.product}</p>
+                        <p className="text-sm">Date: {movement.inventory_movement_date ? 
+                          new Date(movement.inventory_movement_date).toLocaleDateString() : 'Not set'}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No movements available</p>
+                )}
               </div>
             </div>
           </CardContent>
