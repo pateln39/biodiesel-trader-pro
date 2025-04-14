@@ -46,8 +46,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import TradeDetailsDialog from './TradeDetailsDialog';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
-import { AssignTerminalDialog } from './inventory/AssignTerminalDialog';
-import { Factory } from 'lucide-react';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -72,8 +70,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [tradeDetailsOpen, setTradeDetailsOpen] = useState(false);
   const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
-  const [assignTerminalOpen, setAssignTerminalOpen] = useState(false);
-  const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null);
 
   const onReorder = async (reorderedItems: Movement[]) => {
     try {
@@ -214,11 +210,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     setSelectedTradeId(parentId);
     setSelectedLegId(legId);
     setTradeDetailsOpen(true);
-  };
-
-  const handleAssignTerminal = (movement: Movement) => {
-    setSelectedMovementId(movement.id);
-    setAssignTerminalOpen(true);
   };
 
   if (isLoading) {
@@ -425,23 +416,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => handleAssignTerminal(movement)}
-                >
-                  <Factory className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Assign to Terminal</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       </TableCell>
     </>
@@ -492,14 +466,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         tradeId={selectedTradeId}
         legId={selectedLegId}
       />
-
-      {selectedMovementId && (
-        <AssignTerminalDialog
-          open={assignTerminalOpen}
-          onOpenChange={setAssignTerminalOpen}
-          movementId={selectedMovementId}
-        />
-      )}
     </>
   );
 };

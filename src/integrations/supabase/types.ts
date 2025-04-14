@@ -324,7 +324,6 @@ export type Database = {
           ead_checked: boolean | null
           id: string
           inco_term: string | null
-          inventory_movement_date: string | null
           load_plan_checked: boolean | null
           loading_period_end: string | null
           loading_period_start: string | null
@@ -342,7 +341,6 @@ export type Database = {
           sort_order: number | null
           status: string | null
           sustainability: string | null
-          terminal_id: string | null
           trade_leg_id: string | null
           trade_reference: string | null
           updated_at: string
@@ -369,7 +367,6 @@ export type Database = {
           ead_checked?: boolean | null
           id?: string
           inco_term?: string | null
-          inventory_movement_date?: string | null
           load_plan_checked?: boolean | null
           loading_period_end?: string | null
           loading_period_start?: string | null
@@ -387,7 +384,6 @@ export type Database = {
           sort_order?: number | null
           status?: string | null
           sustainability?: string | null
-          terminal_id?: string | null
           trade_leg_id?: string | null
           trade_reference?: string | null
           updated_at?: string
@@ -414,7 +410,6 @@ export type Database = {
           ead_checked?: boolean | null
           id?: string
           inco_term?: string | null
-          inventory_movement_date?: string | null
           load_plan_checked?: boolean | null
           loading_period_end?: string | null
           loading_period_start?: string | null
@@ -432,19 +427,11 @@ export type Database = {
           sort_order?: number | null
           status?: string | null
           sustainability?: string | null
-          terminal_id?: string | null
           trade_leg_id?: string | null
           trade_reference?: string | null
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "movements_terminal_id_fkey"
-            columns: ["terminal_id"]
-            isOneToOne: false
-            referencedRelation: "terminals"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "movements_trade_leg_id_fkey"
             columns: ["trade_leg_id"]
@@ -911,140 +898,6 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
-        }
-        Relationships: []
-      }
-      tank_movements: {
-        Row: {
-          balance_m3: number
-          balance_mt: number
-          created_at: string
-          id: string
-          movement_date: string
-          movement_id: string | null
-          product_at_time: string
-          quantity_m3: number
-          quantity_mt: number
-          tank_id: string
-          updated_at: string
-        }
-        Insert: {
-          balance_m3: number
-          balance_mt: number
-          created_at?: string
-          id?: string
-          movement_date?: string
-          movement_id?: string | null
-          product_at_time: string
-          quantity_m3?: number
-          quantity_mt?: number
-          tank_id: string
-          updated_at?: string
-        }
-        Update: {
-          balance_m3?: number
-          balance_mt?: number
-          created_at?: string
-          id?: string
-          movement_date?: string
-          movement_id?: string | null
-          product_at_time?: string
-          quantity_m3?: number
-          quantity_mt?: number
-          tank_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tank_movements_movement_id_fkey"
-            columns: ["movement_id"]
-            isOneToOne: false
-            referencedRelation: "movements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tank_movements_tank_id_fkey"
-            columns: ["tank_id"]
-            isOneToOne: false
-            referencedRelation: "tanks"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tanks: {
-        Row: {
-          capacity_m3: number
-          capacity_mt: number
-          created_at: string
-          current_product: string
-          display_order: number | null
-          id: string
-          is_heating_enabled: boolean | null
-          spec: string | null
-          tank_number: string
-          terminal_id: string
-          updated_at: string
-        }
-        Insert: {
-          capacity_m3: number
-          capacity_mt: number
-          created_at?: string
-          current_product: string
-          display_order?: number | null
-          id?: string
-          is_heating_enabled?: boolean | null
-          spec?: string | null
-          tank_number: string
-          terminal_id: string
-          updated_at?: string
-        }
-        Update: {
-          capacity_m3?: number
-          capacity_mt?: number
-          created_at?: string
-          current_product?: string
-          display_order?: number | null
-          id?: string
-          is_heating_enabled?: boolean | null
-          spec?: string | null
-          tank_number?: string
-          terminal_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tanks_terminal_id_fkey"
-            columns: ["terminal_id"]
-            isOneToOne: false
-            referencedRelation: "terminals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      terminals: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string
         }
         Relationships: []
       }

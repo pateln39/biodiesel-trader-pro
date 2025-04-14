@@ -11,42 +11,32 @@ export interface Movement {
   referenceNumber?: string;
   tradeLegId?: string;
   parentTradeId?: string;
-  trade_reference?: string;
-  counterparty?: string;
-  counterpartyName?: string; // Added for backward compatibility
+  tradeReference?: string;
+  counterpartyName?: string;
   product?: string;
-  buy_sell?: string;
-  buySell?: string; // Added for backward compatibility
+  buySell?: string;
   incoTerm?: string;
   sustainability?: string;
-  quantity?: number;
-  scheduled_quantity?: number;
-  scheduledQuantity?: number; // Added for backward compatibility
+  quantity?: number; // Added this field to match the open trade's quantity
+  scheduledQuantity?: number;
   blQuantity?: number;
-  actual_quantity?: number;
-  actualQuantity?: number; // Added for backward compatibility
-  nomination_eta?: Date;
-  nominationEta?: Date; // Added for backward compatibility
-  nomination_valid?: Date;
-  nominationValid?: Date; // Added for backward compatibility
-  cashFlow?: Date;
-  barge_name?: string;
-  bargeName?: string; // Added for backward compatibility
+  actualQuantity?: number;
+  nominationEta?: Date;
+  nominationValid?: Date;
+  cashFlow?: Date; // Changed from string to Date
+  bargeName?: string;
   loadport?: string;
   loadportInspector?: string;
   disport?: string;
   disportInspector?: string;
-  bl_date?: Date;
-  blDate?: Date; // Added for backward compatibility
+  blDate?: Date;
   codDate?: Date;
-  pricingType?: string;
+  pricingType?: PricingType;
   pricingFormula?: any;
   comments?: string;
-  customs_status?: string;
-  customsStatus?: string; // Added for backward compatibility
-  credit_status?: string;
-  creditStatus?: string; // Added for backward compatibility
-  contract_status?: string;
+  customsStatus?: string;
+  creditStatus?: string;
+  contractStatus?: string;
   status: string;
   date: Date;
   createdAt: Date;
@@ -58,14 +48,7 @@ export interface Movement {
   coaReceivedChecked?: boolean;
   coaSentChecked?: boolean;
   eadChecked?: boolean;
-  sort_order?: number;
-  // New structure for tank movements
-  tanks?: Record<string, {
-    quantity: number; 
-    balance: number;
-    balanceM3: number;
-    productAtTimeOfMovement: string;
-  }>;
+  sort_order?: number; // Added sort_order property
 }
 
 // Explicit re-exports to avoid name conflicts when importing
