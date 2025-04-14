@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -242,244 +241,247 @@ const InventoryPage = () => {
             <div className="relative border rounded-md overflow-hidden">
               {/* Two-panel layout with fixed sticky columns and scrollable tank details */}
               <div className="flex">
-                {/* Fixed left panel for sticky columns */}
-                <div 
-                  className="flex-shrink-0 z-30 border-r border-white/30"
+                {/* Fixed left panel for sticky columns - NOW WITH SCROLL AREA */}
+                <ScrollArea 
+                  className="flex-shrink-0 z-30 border-r border-white/30" 
+                  orientation="horizontal"
                   style={{ width: `${totalStickyWidth}px` }}
                 >
-                  <Table>
-                    {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
-                    <TableHeader>
-                      {/* Row 1: Product headers - empty for sticky columns */}
-                      <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 2: Tank numbers - empty for sticky columns */}
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 3: Tank capacity MT - empty for sticky columns */}
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 4: Tank capacity M³ - empty for sticky columns */}
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 5: Tank specs - empty for sticky columns */}
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 6: Tank heating - empty for sticky columns */}
-                      <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                        <TableHead 
-                          colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
-                        ></TableHead>
-                      </TableRow>
-                      
-                      {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
-                      <TableRow className="bg-muted/50 border-b border-white/10 h-10">
-                        <TableHead 
-                          className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.counterparty}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.counterparty} 
-                            width={stickyColumnWidths.counterparty - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.tradeRef}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.tradeRef} 
-                            width={stickyColumnWidths.tradeRef - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.bargeName}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.bargeName} 
-                            width={stickyColumnWidths.bargeName - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.movementDate}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.movementDate} 
-                            width={stickyColumnWidths.movementDate - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.nominationDate}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.nominationDate} 
-                            width={stickyColumnWidths.nominationDate - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.customs}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.customs} 
-                            width={stickyColumnWidths.customs - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.sustainability}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.sustainability} 
-                            width={stickyColumnWidths.sustainability - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
-                          style={{ width: `${stickyColumnWidths.comments}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.comments} 
-                            width={stickyColumnWidths.comments - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                        <TableHead 
-                          className={`bg-brand-navy text-[10px] border-r border-white/30`}
-                          style={{ width: `${stickyColumnWidths.quantity}px` }}
-                        >
-                          <TruncatedCell 
-                            text={truncatedHeaders.quantity} 
-                            width={stickyColumnWidths.quantity - 8} 
-                            className="text-[10px] font-medium"
-                          />
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    
-                    <TableBody>
-                      {mockInventoryMovements.map((movement) => {
-                        // Determine the background color for the row based on buy/sell
-                        const bgColorClass = movement.buySell === "buy" 
-                          ? "bg-green-900/10 hover:bg-green-900/20" 
-                          : "bg-red-900/10 hover:bg-red-900/20";
+                  <div style={{ minWidth: `${totalStickyWidth}px` }}>
+                    <Table>
+                      {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
+                      <TableHeader>
+                        {/* Row 1: Product headers - empty for sticky columns */}
+                        <TableRow className="bg-muted/50 border-b border-white/10 h-12">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
                         
-                        return (
-                          <TableRow 
-                            key={`sticky-${movement.id}`} 
-                            className={cn("border-b border-white/5 h-10", bgColorClass)}
+                        {/* Row 2: Tank numbers - empty for sticky columns */}
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-10">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
+                        
+                        {/* Row 3: Tank capacity MT - empty for sticky columns */}
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
+                        
+                        {/* Row 4: Tank capacity M³ - empty for sticky columns */}
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
+                        
+                        {/* Row 5: Tank specs - empty for sticky columns */}
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
+                        
+                        {/* Row 6: Tank heating - empty for sticky columns */}
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                          <TableHead 
+                            colSpan={9} 
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
+                        </TableRow>
+                        
+                        {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
+                        <TableRow className="bg-muted/50 border-b border-white/10 h-10">
+                          <TableHead 
+                            className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.counterparty}px` }}
                           >
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.counterpartyName} 
-                                width={stickyColumnWidths.counterparty - 16} 
-                                className="font-medium text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.tradeReference} 
-                                width={stickyColumnWidths.tradeRef - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.bargeName} 
-                                width={stickyColumnWidths.bargeName - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.movementDate.toLocaleDateString()} 
-                                width={stickyColumnWidths.movementDate - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.nominationValid.toLocaleDateString()} 
-                                width={stickyColumnWidths.nominationDate - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <span className={cn(
-                                "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
-                                movement.customsStatus === "cleared" 
-                                  ? "bg-green-900/60 text-green-200" 
-                                  : movement.customsStatus === "pending"
-                                    ? "bg-yellow-900/60 text-yellow-200"
-                                    : "bg-blue-900/60 text-blue-200"
-                              )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
-                                {movement.customsStatus}
-                              </span>
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.sustainability} 
-                                width={stickyColumnWidths.sustainability - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
-                              <TruncatedCell 
-                                text={movement.comments || "-"} 
-                                width={stickyColumnWidths.comments - 16} 
-                                className="text-[10px]"
-                              />
-                            </TableCell>
-                            <TableCell className={cn(
-                              "font-semibold bg-brand-navy text-[10px] py-2 border-r border-white/30",
-                              movement.buySell === "buy" ? "text-green-400" : "text-red-400"
-                            )}>
-                              {movement.buySell === "buy" 
-                                ? `+${movement.scheduledQuantity}` 
-                                : `-${movement.scheduledQuantity}`}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                            <TruncatedCell 
+                              text={truncatedHeaders.counterparty} 
+                              width={stickyColumnWidths.counterparty - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.tradeRef}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.tradeRef} 
+                              width={stickyColumnWidths.tradeRef - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.bargeName}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.bargeName} 
+                              width={stickyColumnWidths.bargeName - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.movementDate}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.movementDate} 
+                              width={stickyColumnWidths.movementDate - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.nominationDate}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.nominationDate} 
+                              width={stickyColumnWidths.nominationDate - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.customs}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.customs} 
+                              width={stickyColumnWidths.customs - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.sustainability}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.sustainability} 
+                              width={stickyColumnWidths.sustainability - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.comments}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.comments} 
+                              width={stickyColumnWidths.comments - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px] border-r border-white/30`}
+                            style={{ width: `${stickyColumnWidths.quantity}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.quantity} 
+                              width={stickyColumnWidths.quantity - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      
+                      <TableBody>
+                        {mockInventoryMovements.map((movement) => {
+                          // Determine the background color for the row based on buy/sell
+                          const bgColorClass = movement.buySell === "buy" 
+                            ? "bg-green-900/10 hover:bg-green-900/20" 
+                            : "bg-red-900/10 hover:bg-red-900/20";
+                          
+                          return (
+                            <TableRow 
+                              key={`sticky-${movement.id}`} 
+                              className={cn("border-b border-white/5 h-10", bgColorClass)}
+                            >
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.counterpartyName} 
+                                  width={stickyColumnWidths.counterparty - 16} 
+                                  className="font-medium text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.tradeReference} 
+                                  width={stickyColumnWidths.tradeRef - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.bargeName} 
+                                  width={stickyColumnWidths.bargeName - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.movementDate.toLocaleDateString()} 
+                                  width={stickyColumnWidths.movementDate - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.nominationValid.toLocaleDateString()} 
+                                  width={stickyColumnWidths.nominationDate - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <span className={cn(
+                                  "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
+                                  movement.customsStatus === "cleared" 
+                                    ? "bg-green-900/60 text-green-200" 
+                                    : movement.customsStatus === "pending"
+                                      ? "bg-yellow-900/60 text-yellow-200"
+                                      : "bg-blue-900/60 text-blue-200"
+                                )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
+                                  {movement.customsStatus}
+                                </span>
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.sustainability} 
+                                  width={stickyColumnWidths.sustainability - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.comments || "-"} 
+                                  width={stickyColumnWidths.comments - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className={cn(
+                                "font-semibold bg-brand-navy text-[10px] py-2 border-r border-white/30",
+                                movement.buySell === "buy" ? "text-green-400" : "text-red-400"
+                              )}>
+                                {movement.buySell === "buy" 
+                                  ? `+${movement.scheduledQuantity}` 
+                                  : `-${movement.scheduledQuantity}`}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
                 
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
