@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Product } from '@/types';
 
@@ -31,6 +30,16 @@ export interface Movement {
       balanceM3: number;
     };
   };
+}
+
+// Interface for row totals
+export interface RowTotals {
+  totalMT: number;
+  totalM3: number;
+  t1Balance: number;
+  t2Balance: number;
+  currentStock: number;
+  currentUllage: number;
 }
 
 // Mock data - in a real app this would come from API
@@ -85,7 +94,7 @@ const initialTankDetails: { [key: string]: Tank } = {
   }
 };
 
-// Mock movement data
+// Mock movement data with updated customs status to only T1 or T2
 const initialMovements: Movement[] = [
   {
     id: "1",
@@ -94,7 +103,7 @@ const initialMovements: Movement[] = [
     bargeName: "Horizon Trader",
     movementDate: new Date('2025-04-05'),
     nominationValid: new Date('2025-04-10'),
-    customsStatus: "cleared",
+    customsStatus: "T1",
     sustainability: "ISCC",
     comments: "Regular delivery",
     buySell: "buy",
@@ -115,7 +124,7 @@ const initialMovements: Movement[] = [
     bargeName: "Eco Voyager",
     movementDate: new Date('2025-04-07'),
     nominationValid: new Date('2025-04-12'),
-    customsStatus: "pending",
+    customsStatus: "T1",
     sustainability: "ISCC EU",
     comments: "Priority shipment",
     buySell: "buy",
@@ -136,7 +145,7 @@ const initialMovements: Movement[] = [
     bargeName: "Clean Venture",
     movementDate: new Date('2025-04-09'),
     nominationValid: new Date('2025-04-14'),
-    customsStatus: "cleared",
+    customsStatus: "T2",
     sustainability: "ISCC",
     comments: "",
     buySell: "sell",
@@ -157,7 +166,7 @@ const initialMovements: Movement[] = [
     bargeName: "Green Pioneer",
     movementDate: new Date('2025-04-12'),
     nominationValid: new Date('2025-04-17'),
-    customsStatus: "T1",
+    customsStatus: "T2",
     sustainability: "ISCC PLUS",
     comments: "Special handling required",
     buySell: "sell",
@@ -178,7 +187,7 @@ const initialMovements: Movement[] = [
     bargeName: "Eco Wave",
     movementDate: new Date('2025-04-15'),
     nominationValid: new Date('2025-04-20'),
-    customsStatus: "cleared",
+    customsStatus: "T1",
     sustainability: "ISCC",
     comments: "",
     buySell: "buy",
@@ -197,6 +206,52 @@ const initialMovements: Movement[] = [
 export const useInventoryState = () => {
   const [movements, setMovements] = useState<Movement[]>(initialMovements);
   const [tanks, setTanks] = useState<{ [key: string]: Tank }>(initialTankDetails);
+  
+  // Calculate total capacity for all tanks
+  const totalTankCapacity = useMemo(() => {
+    return Object.values(tanks).reduce((sum, tank) => sum + tank.capacity, 0);
+  }, [tanks]);
+  
+  // Calculate row totals for each movement
+  const rowTotals = useMemo(() => {
+    // Initialize running T1 and T2 balances
+    let runningT1Balance = 0;
+    let runningT2Balance = 0;
+    
+    return movements.map(movement => {
+      // Calculate total MT and M3 across all tanks for this movement
+      let totalMT = 0;
+      let totalM3 = 0;
+      let currentStock = 0;
+      
+      // Sum up all tank quantities and balances
+      Object.values(movement.tanks).forEach(tank => {
+        totalMT += tank.quantity;
+        // For M3, we'll approximate based on the same 1.1 ratio used elsewhere
+        totalM3 += Math.round(tank.quantity * 1.1);
+        currentStock += tank.balance;
+      });
+      
+      // Update running T1/T2 balances based on customs status
+      if (movement.customsStatus === "T1") {
+        runningT1Balance += totalMT;
+      } else if (movement.customsStatus === "T2") {
+        runningT2Balance += totalMT;
+      }
+      
+      // Calculate current ullage
+      const currentUllage = totalTankCapacity - currentStock;
+      
+      return {
+        totalMT,
+        totalM3,
+        t1Balance: runningT1Balance,
+        t2Balance: runningT2Balance,
+        currentStock,
+        currentUllage
+      };
+    });
+  }, [movements, totalTankCapacity]);
   
   // List of available products for dropdown
   const productOptions = useMemo(() => {
@@ -313,6 +368,8 @@ export const useInventoryState = () => {
   return {
     movements,
     tanks,
+    rowTotals,
+    totalTankCapacity,
     productOptions,
     heatingOptions,
     updateMovementQuantity,

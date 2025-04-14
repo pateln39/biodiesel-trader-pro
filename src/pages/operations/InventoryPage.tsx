@@ -28,6 +28,16 @@ const stickyColumnWidths = {
 // Calculate total width of sticky columns for positioning
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
+// Define summary column widths
+const summaryColumnWidths = {
+  totalMT: 80,
+  totalM3: 80,
+  t1Balance: 80,
+  t2Balance: 80,
+  currentStock: 100,
+  currentUllage: 100,
+};
+
 // Truncated header names to save space
 const truncatedHeaders = {
   counterparty: "Counterparty",
@@ -39,6 +49,13 @@ const truncatedHeaders = {
   sustainability: "Sustain.",
   comments: "Comments",
   quantity: "Qty (MT)",
+  // Add new header names
+  totalMT: "Total (MT)",
+  totalM3: "Total (M³)",
+  t1Balance: "T1",
+  t2Balance: "T2",
+  currentStock: "Current Stock",
+  currentUllage: "Current Ullage",
 };
 
 // Helper component for truncated text with tooltip
@@ -67,6 +84,7 @@ const InventoryPage = () => {
   const {
     movements,
     tanks,
+    rowTotals,
     productOptions,
     heatingOptions,
     updateMovementQuantity,
@@ -256,7 +274,7 @@ const InventoryPage = () => {
                       </TableHeader>
                       
                       <TableBody>
-                        {movements.map((movement) => {
+                        {movements.map((movement, index) => {
                           // Determine the background color for the row based on buy/sell
                           const bgColorClass = movement.buySell === "buy" 
                             ? "bg-green-900/10 hover:bg-green-900/20" 
@@ -305,11 +323,9 @@ const InventoryPage = () => {
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <span className={cn(
                                   "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
-                                  movement.customsStatus === "cleared" 
+                                  movement.customsStatus === "T1" 
                                     ? "bg-green-900/60 text-green-200" 
-                                    : movement.customsStatus === "pending"
-                                      ? "bg-yellow-900/60 text-yellow-200"
-                                      : "bg-blue-900/60 text-blue-200"
+                                    : "bg-blue-900/60 text-blue-200"
                                 )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
                                   {movement.customsStatus}
                                 </span>
@@ -350,7 +366,7 @@ const InventoryPage = () => {
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1200px]">
+                    <div className="min-w-[1800px]"> {/* Increased minimum width to accommodate new columns */}
                       <Table>
                         <TableHeader>
                           {/* Tank Info Headers - Now with editable product selection */}
@@ -370,6 +386,24 @@ const InventoryPage = () => {
                                 />
                               </TableHead>
                             ))}
+                            
+                            {/* Add headers for the 6 new columns */}
+                            <TableHead 
+                              colSpan={1} 
+                              className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                            >
+                              <div className="text-[10px] font-bold text-center w-full">
+                                Summary
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              colSpan={5} 
+                              className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                            >
+                              <div className="text-[10px] font-bold text-center w-full">
+                                Balances
+                              </div>
+                            </TableHead>
                           </TableRow>
                           
                           {/* Tank Numbers */}
@@ -383,6 +417,12 @@ const InventoryPage = () => {
                                 Tank {tanks[tankId].tankNumber}
                               </TableHead>
                             ))}
+                            
+                            {/* Blank cells for the 6 new columns */}
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-center text-[10px] border-r border-white/30"
+                            ></TableHead>
                           </TableRow>
                           
                           {/* Capacity MT */}
@@ -420,6 +460,16 @@ const InventoryPage = () => {
                                 </div>
                               </TableHead>
                             ))}
+                            
+                            {/* Summary row data */}
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            >
+                              <div className="flex items-center h-full px-2">
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity, 0)} MT</span>
+                              </div>
+                            </TableHead>
                           </TableRow>
                           
                           {/* Capacity M³ */}
@@ -456,6 +506,16 @@ const InventoryPage = () => {
                                 </div>
                               </TableHead>
                             ))}
+                            
+                            {/* M³ Summary row data */}
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            >
+                              <div className="flex items-center h-full px-2">
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacityM3, 0)} M³</span>
+                              </div>
+                            </TableHead>
                           </TableRow>
                           
                           {/* Spec - now editable */}
@@ -477,6 +537,12 @@ const InventoryPage = () => {
                                 </div>
                               </TableHead>
                             ))}
+                            
+                            {/* Blank cells for the 6 new columns */}
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            ></TableHead>
                           </TableRow>
                           
                           {/* Heating - now editable as dropdown */}
@@ -502,9 +568,15 @@ const InventoryPage = () => {
                                 </div>
                               </TableHead>
                             ))}
+                            
+                            {/* Blank cells for the 6 new columns */}
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            ></TableHead>
                           </TableRow>
                           
-                          {/* Column headers for tank details - UPDATED WITH MOVEMENT TEXT */}
+                          {/* Column headers for tank details and new summary columns */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {tankIds.map((tankId) => (
                               <React.Fragment key={tankId}>
@@ -525,15 +597,62 @@ const InventoryPage = () => {
                                 <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">Balance</TableHead>
                               </React.Fragment>
                             ))}
+                            
+                            {/* Headers for the 6 new columns */}
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.totalMT}
+                                width={summaryColumnWidths.totalMT - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalM3}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.totalM3}
+                                width={summaryColumnWidths.totalM3 - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t1Balance}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.t1Balance}
+                                width={summaryColumnWidths.t1Balance - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t2Balance}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.t2Balance}
+                                width={summaryColumnWidths.t2Balance - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.currentStock}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.currentStock}
+                                width={summaryColumnWidths.currentStock - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.currentUllage}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.currentUllage}
+                                width={summaryColumnWidths.currentUllage - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         
                         <TableBody>
-                          {movements.map((movement) => {
+                          {movements.map((movement, index) => {
                             // Determine the background color for the row based on buy/sell
                             const bgColorClass = movement.buySell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
+                            
+                            // Get the row totals for this movement
+                            const totals = rowTotals[index];
                             
                             return (
                               <TableRow 
@@ -571,6 +690,34 @@ const InventoryPage = () => {
                                     </TableCell>
                                   </React.Fragment>
                                 ))}
+                                
+                                {/* New summary columns */}
+                                <TableCell className={cn(
+                                  "text-center text-[10px] py-2",
+                                  totals.totalMT > 0 ? "text-green-400" :
+                                  totals.totalMT < 0 ? "text-red-400" : "text-muted-foreground"
+                                )}>
+                                  {totals.totalMT !== 0 ? totals.totalMT : "-"}
+                                </TableCell>
+                                <TableCell className={cn(
+                                  "text-center text-[10px] py-2",
+                                  totals.totalM3 > 0 ? "text-green-400" :
+                                  totals.totalM3 < 0 ? "text-red-400" : "text-muted-foreground"
+                                )}>
+                                  {totals.totalM3 !== 0 ? totals.totalM3 : "-"}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
+                                  {totals.t1Balance !== 0 ? totals.t1Balance : "-"}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
+                                  {totals.t2Balance !== 0 ? totals.t2Balance : "-"}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium">
+                                  {totals.currentStock}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {totals.currentUllage}
+                                </TableCell>
                               </TableRow>
                             );
                           })}
