@@ -1,7 +1,11 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import ProductLegend from '@/components/operations/inventory/ProductLegend';
+import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
+import TerminalTanks from '@/components/operations/inventory/TerminalTanks';
+import { useTerminals } from '@/hooks/useTerminals';
+import { useTankMovements } from '@/hooks/useTankMovements';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Filter, Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,7 +16,6 @@ import EditableField from '@/components/operations/inventory/EditableField';
 import EditableNumberField from '@/components/operations/inventory/EditableNumberField';
 import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
 import ProductToken from '@/components/operations/inventory/ProductToken';
-import ProductLegend from '@/components/operations/inventory/ProductLegend';
 
 // Define sticky column widths for layout calculation
 const stickyColumnWidths = {
@@ -83,9 +86,18 @@ const TruncatedCell = ({ text, width, className = "" }) => (
 );
 
 const InventoryPage = () => {
+  const { terminals, tanks } = useTerminals();
+  const [activeTerminalId, setActiveTerminalId] = useState<string>(
+    terminals[0]?.id || ''
+  );
+
   const {
     movements,
-    tanks,
+    tankMovements,
+    loading: movementsLoading
+  } = useTankMovements(activeTerminalId);
+
+  const {
     rowTotals,
     productOptions,
     heatingOptions,
@@ -105,21 +117,24 @@ const InventoryPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filter</span>
-          </div>
         </div>
         
         {/* Product legend at the top */}
         <ProductLegend />
         
+        {/* Terminal selection tabs */}
+        <TerminalTabs
+          activeTerminal={activeTerminalId}
+          onTerminalChange={setActiveTerminalId}
+        />
+        
         {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle>Inventory Movements</CardTitle>
-            <CardDescription>
-              All product movements affecting tank levels
+            <CardDescription className="flex justify-between items-center">
+              <span>Terminal inventory movements and tank levels</span>
+              <TerminalTanks terminalId={activeTerminalId} />
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -335,13 +350,6 @@ const InventoryPage = () => {
                                 )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
                                   {movement.customsStatus}
                                 </span>
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.sustainability} 
-                                  width={stickyColumnWidths.sustainability - 16} 
-                                  className="text-[10px]"
-                                />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 {/* Make comments editable */}
