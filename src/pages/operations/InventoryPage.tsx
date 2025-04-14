@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,12 +179,12 @@ const stickyColumnWidths = {
 // Calculate total width of sticky columns for positioning
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
-// Truncated header names to save space
+// Truncated header names to save space and update "Move" to "Movement"
 const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
   bargeName: "Barge",
-  movementDate: "Move Date",
+  movementDate: "Mvmt Date",
   nominationDate: "Nom. Valid",
   customs: "Customs",
   sustainability: "Sustain.",
@@ -241,7 +240,7 @@ const InventoryPage = () => {
           <CardContent>
             <div className="relative border rounded-md overflow-hidden">
               {/* Two-panel layout with fixed sticky columns and scrollable tank details */}
-              <div className="flex">
+              <div className="flex group">
                 {/* Fixed left panel for sticky columns */}
                 <div 
                   className="flex-shrink-0 z-30 border-r border-white/30"
@@ -254,7 +253,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -262,7 +261,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -270,7 +269,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -278,7 +277,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -286,7 +285,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -294,100 +293,100 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[10px]"
+                          className="bg-brand-navy text-[11px]"
                         ></TableHead>
                       </TableRow>
                       
                       {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                       <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                         <TableHead 
-                          className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
+                          className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.counterparty}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.counterparty} 
                             width={stickyColumnWidths.counterparty - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.tradeRef}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.tradeRef} 
                             width={stickyColumnWidths.tradeRef - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.bargeName}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.bargeName} 
                             width={stickyColumnWidths.bargeName - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.movementDate}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.movementDate} 
                             width={stickyColumnWidths.movementDate - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.nominationDate}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.nominationDate} 
                             width={stickyColumnWidths.nominationDate - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.customs}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.customs} 
                             width={stickyColumnWidths.customs - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.sustainability}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.sustainability} 
                             width={stickyColumnWidths.sustainability - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px]`}
+                          className={`bg-brand-navy text-[11px]`}
                           style={{ width: `${stickyColumnWidths.comments}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.comments} 
                             width={stickyColumnWidths.comments - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                         <TableHead 
-                          className={`bg-brand-navy text-[10px] border-r border-white/30`}
+                          className={`bg-brand-navy text-[11px] border-r border-white/30`}
                           style={{ width: `${stickyColumnWidths.quantity}px` }}
                         >
                           <TruncatedCell 
                             text={truncatedHeaders.quantity} 
                             width={stickyColumnWidths.quantity - 8} 
-                            className="text-[10px] font-medium"
+                            className="text-[11px] font-medium"
                           />
                         </TableHead>
                       </TableRow>
@@ -405,44 +404,44 @@ const InventoryPage = () => {
                             key={`sticky-${movement.id}`} 
                             className={cn("border-b border-white/5 h-10", bgColorClass)}
                           >
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.counterpartyName} 
                                 width={stickyColumnWidths.counterparty - 16} 
-                                className="font-medium text-[10px]"
+                                className="font-medium text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.tradeReference} 
                                 width={stickyColumnWidths.tradeRef - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.bargeName} 
                                 width={stickyColumnWidths.bargeName - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.movementDate.toLocaleDateString()} 
                                 width={stickyColumnWidths.movementDate - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.nominationValid.toLocaleDateString()} 
                                 width={stickyColumnWidths.nominationDate - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <span className={cn(
-                                "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
+                                "px-1 py-0.5 rounded-full text-[11px] font-medium truncate block",
                                 movement.customsStatus === "cleared" 
                                   ? "bg-green-900/60 text-green-200" 
                                   : movement.customsStatus === "pending"
@@ -452,22 +451,22 @@ const InventoryPage = () => {
                                 {movement.customsStatus}
                               </span>
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.sustainability} 
                                 width={stickyColumnWidths.sustainability - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <TruncatedCell 
                                 text={movement.comments || "-"} 
                                 width={stickyColumnWidths.comments - 16} 
-                                className="text-[10px]"
+                                className="text-[11px]"
                               />
                             </TableCell>
                             <TableCell className={cn(
-                              "font-semibold bg-brand-navy text-[10px] py-2 border-r border-white/30",
+                              "font-semibold bg-brand-navy text-[11px] py-2 border-r border-white/30",
                               movement.buySell === "buy" ? "text-green-400" : "text-red-400"
                             )}>
                               {movement.buySell === "buy" 
@@ -483,8 +482,8 @@ const InventoryPage = () => {
                 
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
-                  <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1200px]"> {/* FURTHER REDUCED MINIMUM WIDTH */}
+                  <ScrollArea className="h-[700px]" orientation="both">
+                    <div className="min-w-[1200px]">
                       <Table>
                         <TableHeader>
                           {/* Tank Info Headers */}
@@ -493,7 +492,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-header`}
                                 colSpan={3} 
-                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[11px]"
                               >
                                 {productName}
                               </TableHead>
@@ -506,7 +505,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-tank-number`}
                                 colSpan={3} 
-                                className="text-center text-[10px] border-r border-white/30"
+                                className="text-center text-[11px] border-r border-white/30"
                               >
                                 Tank {tankDetails[productName].tankNumber}
                               </TableHead>
@@ -519,7 +518,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-capacity`}
                                 colSpan={3} 
-                                className="text-[10px] border-r border-white/30"
+                                className="text-[11px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
                                   <span>Capacity: {tankDetails[productName].capacity} MT</span>
@@ -537,10 +536,10 @@ const InventoryPage = () => {
                                   ></div>
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
                                   </span>
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {Math.round(
                                       (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
                                     )}%
@@ -556,7 +555,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-capacity-m3`}
                                 colSpan={3} 
-                                className="text-[10px] border-r border-white/30"
+                                className="text-[11px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
                                   <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
@@ -573,10 +572,10 @@ const InventoryPage = () => {
                                   ></div>
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
                                   </span>
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground">
                                     {Math.round(
                                       (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
                                     )}%
@@ -592,14 +591,14 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-spec`}
                                 colSpan={3} 
-                                className="text-[10px] border-r border-white/30"
+                                className="text-[11px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Spec:</span>
                                   <TruncatedCell
                                     text={tankDetails[productName].spec}
                                     width={100}
-                                    className="text-[10px]"
+                                    className="text-[11px]"
                                   />
                                 </div>
                               </TableHead>
@@ -612,7 +611,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-heating`}
                                 colSpan={3} 
-                                className="text-[10px] border-r border-white/30"
+                                className="text-[11px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Heating:</span>
@@ -629,9 +628,21 @@ const InventoryPage = () => {
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {products.map((productName) => (
                               <React.Fragment key={productName}>
-                                <TableHead className="text-center text-[10px]">Move MT</TableHead>
-                                <TableHead className="text-center text-[10px]">Move M³</TableHead>
-                                <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">Balance</TableHead>
+                                <TableHead className="text-center text-[11px]">
+                                  <TruncatedCell 
+                                    text="Movement (MT)" 
+                                    width={50} 
+                                    className="text-[11px] text-center mx-auto"
+                                  />
+                                </TableHead>
+                                <TableHead className="text-center text-[11px]">
+                                  <TruncatedCell 
+                                    text="Movement (M³)" 
+                                    width={50}
+                                    className="text-[11px] text-center mx-auto"
+                                  />
+                                </TableHead>
+                                <TableHead className="text-center text-[11px] bg-brand-navy border-r border-white/30">Balance</TableHead>
                               </React.Fragment>
                             ))}
                           </TableRow>
@@ -654,7 +665,7 @@ const InventoryPage = () => {
                                   <React.Fragment key={`${movement.id}-${productName}`}>
                                     <TableCell 
                                       className={cn(
-                                        "text-center text-[10px] py-2",
+                                        "text-center text-[11px] py-2",
                                         movement.tanks[productName].quantity > 0 ? "text-green-400" :
                                         movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                       )}
@@ -665,10 +676,10 @@ const InventoryPage = () => {
                                           : movement.tanks[productName].quantity) 
                                         : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
+                                    <TableCell className="text-center text-[11px] py-2 text-muted-foreground">
                                       {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
+                                    <TableCell className="text-center text-[11px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[productName].balance}
                                     </TableCell>
                                   </React.Fragment>
