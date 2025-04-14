@@ -111,7 +111,8 @@ const InventoryPage = () => {
           </div>
         </div>
         
-        {/* Product legend moved to inside the table */}
+        {/* Product legend at the top */}
+        <ProductLegend />
         
         {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
@@ -135,65 +136,52 @@ const InventoryPage = () => {
                     <Table>
                       {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
                       <TableHeader>
-                        {/* Row 1: Product Legend - first row */}
+                        {/* Row 1: Product headers - empty for sticky columns */}
                         <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                           <TableHead 
                             colSpan={9} 
-                            className="bg-brand-navy text-[10px] p-2"
-                          >
-                            <div className="font-medium text-xs mb-1">Product Legend:</div>
-                            <ProductLegend />
-                          </TableHead>
+                            className="bg-brand-navy text-[10px]"
+                          ></TableHead>
                         </TableRow>
                         
-                        {/* Row 2: Empty for alignment - second row */}
+                        {/* Row 2: Tank numbers - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
-                          >
-                            <div className="text-xs text-muted-foreground">Tank Legend</div>
-                          </TableHead>
+                          ></TableHead>
                         </TableRow>
                         
-                        {/* Row 3: Empty for alignment - third row */}
+                        {/* Row 3: Tank capacity MT - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
-                          >
-                            <div className="text-xs text-muted-foreground">MT Capacity Information</div>
-                          </TableHead>
+                          ></TableHead>
                         </TableRow>
                         
-                        {/* Row 4: Empty for alignment - fourth row */}
+                        {/* Row 4: Tank capacity M³ - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
-                          >
-                            <div className="text-xs text-muted-foreground">M³ Capacity Information</div>
-                          </TableHead>
+                          ></TableHead>
                         </TableRow>
                         
-                        {/* Row 5: Empty for alignment - fifth row */}
+                        {/* Row 5: Tank specs - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
-                          >
-                            <div className="text-xs text-muted-foreground">Tank Specifications</div>
-                          </TableHead>
+                          ></TableHead>
                         </TableRow>
                         
-                        {/* Row 6: Empty for alignment - sixth row */}
+                        {/* Row 6: Tank heating - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
-                          >
-                            <div className="text-xs text-muted-foreground">Tank Heating Status</div>
-                          </TableHead>
+                          ></TableHead>
                         </TableRow>
                         
                         {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
@@ -347,6 +335,13 @@ const InventoryPage = () => {
                                 )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
                                   {movement.customsStatus}
                                 </span>
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.sustainability} 
+                                  width={stickyColumnWidths.sustainability - 16} 
+                                  className="text-[10px]"
+                                />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 {/* Make comments editable */}
@@ -693,13 +688,8 @@ const InventoryPage = () => {
                                       )}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
-                                      {movement.tanks[tankId].quantity !== 0 ? (
-                                        <ProductToken 
-                                          product={movement.tanks[tankId].productAtTimeOfMovement}
-                                          value={Math.round(movement.tanks[tankId].quantity * 1.1)}
-                                          className="pointer-events-none"
-                                        />
-                                      ) : "-"}
+                                      {movement.tanks[tankId].quantity !== 0 ? 
+                                        Math.round(movement.tanks[tankId].quantity * 1.1) : "-"}
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[tankId].balance}
@@ -717,13 +707,7 @@ const InventoryPage = () => {
                                   ) : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {totals.totalM3 !== 0 ? (
-                                    <ProductToken 
-                                      product={Object.values(movement.tanks).find(t => t.quantity !== 0)?.productAtTimeOfMovement || ""}
-                                      value={totals.totalM3}
-                                      className="pointer-events-none"
-                                    />
-                                  ) : "-"}
+                                  {totals.totalM3 !== 0 ? totals.totalM3 : "-"}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                   {totals.t1Balance !== 0 ? totals.t1Balance : "-"}
