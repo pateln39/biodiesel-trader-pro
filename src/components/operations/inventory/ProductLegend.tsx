@@ -5,7 +5,7 @@ import ProductToken from './ProductToken';
 
 const ProductLegend: React.FC = () => {
   return (
-    <div className="flex flex-wrap gap-2 mb-2">
+    <div className="flex flex-wrap gap-2">
       {Object.keys(PRODUCT_COLORS).map(product => (
         <ProductToken 
           key={product} 
