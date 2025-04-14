@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText, Database } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -46,8 +46,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import TradeDetailsDialog from './TradeDetailsDialog';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
-import { AssignToTerminalDialog } from './AssignToTerminalDialog';
-import { useTerminals } from '@/hooks/useTerminals';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -65,8 +63,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     handleReorder
   } = useSortableMovements(filterStatuses);
 
-  const { terminals } = useTerminals();
-
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
@@ -74,8 +70,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [tradeDetailsOpen, setTradeDetailsOpen] = useState(false);
   const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
-  const [assignToTerminalOpen, setAssignToTerminalOpen] = useState(false);
-  const [selectedMovementForTerminal, setSelectedMovementForTerminal] = useState<Movement | null>(null);
 
   const onReorder = async (reorderedItems: Movement[]) => {
     try {
@@ -152,44 +146,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   });
 
-  const assignToTerminalMutation = useMutation({
-    mutationFn: async ({ 
-      id, 
-      terminalId, 
-      inventoryMovementDate 
-    }: { 
-      id: string, 
-      terminalId: string, 
-      inventoryMovementDate: Date 
-    }) => {
-      const { data, error } = await supabase
-        .from('movements')
-        .update({ 
-          terminal_id: terminalId,
-          inventory_movement_date: inventoryMovementDate.toISOString()
-        })
-        .eq('id', id)
-        .select();
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      console.log('[DEBUG] Terminal assignment successful - invalidating queries');
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      queryClient.invalidateQueries({ queryKey: ['tankMovements'] });
-      toast.success("Movement assigned", {
-        description: "Movement has been assigned to terminal successfully."
-      });
-    },
-    onError: (error) => {
-      console.error('[MOVEMENTS] Error assigning to terminal:', error);
-      toast.error("Failed to assign movement", {
-        description: "There was an error assigning the movement to terminal."
-      });
-    }
-  });
-
   const deleteMovementMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -254,21 +210,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     setSelectedTradeId(parentId);
     setSelectedLegId(legId);
     setTradeDetailsOpen(true);
-  };
-
-  const handleAssignToTerminal = (movement: Movement) => {
-    setSelectedMovementForTerminal(movement);
-    setAssignToTerminalOpen(true);
-  };
-
-  const handleAssignTerminalSubmit = (data: { terminalId: string, inventoryMovementDate: Date }) => {
-    if (selectedMovementForTerminal) {
-      assignToTerminalMutation.mutate({
-        id: selectedMovementForTerminal.id,
-        terminalId: data.terminalId,
-        inventoryMovementDate: data.inventoryMovementDate
-      });
-    }
   };
 
   if (isLoading) {
@@ -443,23 +384,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </Tooltip>
             </TooltipProvider>
           )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => handleAssignToTerminal(movement)}
-                >
-                  <Database className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Assign to Terminal</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -499,52 +423,48 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   return (
     <>
-      <SortableTable 
-        items={filteredMovements}
-        renderHeader={renderHeader}
-        renderRow={renderRow}
-        rowId={(row) => row.id}
-        onReorder={onReorder}
-      />
-
+      <div className="w-full overflow-auto">
+        <SortableTable
+          items={filteredMovements}
+          onReorder={onReorder}
+          renderHeader={renderHeader}
+          renderRow={renderRow}
+        />
+      </div>
+      
       {selectedMovement && (
-        <MovementEditDialog
-          open={editDialogOpen}
+        <MovementEditDialog 
+          open={editDialogOpen} 
           onOpenChange={setEditDialogOpen}
           movement={selectedMovement}
-          onEditComplete={handleEditComplete}
+          onSuccess={handleEditComplete}
         />
       )}
+      
+      <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogTitle>
+            Comments for Movement {selectedMovementForComments?.referenceNumber}
+          </DialogTitle>
+          <div className="space-y-2 py-4">
+            {selectedMovementForComments && (
+              <CommentsCellInput
+                tradeId={selectedMovementForComments.id}
+                initialValue={selectedMovementForComments.comments || ''}
+                onSave={handleCommentsUpdate}
+                showButtons={true}
+                onCancel={() => setIsCommentsDialogOpen(false)}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {selectedMovementForComments && (
-        <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
-          <DialogContent>
-            <DialogTitle>Movement Comments</DialogTitle>
-            <CommentsCellInput
-              initialValue={selectedMovementForComments.comments || ''}
-              onSave={handleCommentsUpdate}
-              placeholder="Add comments about this movement..."
-              className="min-h-[150px]"
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {selectedTradeId && (
-        <TradeDetailsDialog
-          open={tradeDetailsOpen}
-          onOpenChange={setTradeDetailsOpen}
-          tradeId={selectedTradeId}
-          legId={selectedLegId}
-        />
-      )}
-
-      <AssignToTerminalDialog
-        open={assignToTerminalOpen}
-        onOpenChange={setAssignToTerminalOpen}
-        movement={selectedMovementForTerminal}
-        terminals={terminals}
-        onAssign={handleAssignTerminalSubmit}
+      <TradeDetailsDialog
+        open={tradeDetailsOpen}
+        onOpenChange={setTradeDetailsOpen}
+        tradeId={selectedTradeId}
+        legId={selectedLegId}
       />
     </>
   );
