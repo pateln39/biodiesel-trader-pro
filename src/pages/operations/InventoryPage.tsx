@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -348,19 +347,6 @@ const InventoryPage = () => {
                     <div className="min-w-[1800px]"> {/* Increased minimum width to accommodate new columns */}
                       <Table>
                         <TableHeader>
-                          {/* Product legend space holders - to align with left panel */}
-                          {productsList.map((product, index) => (
-                            <TableRow 
-                              key={`legend-${product}-right`} 
-                              className="bg-muted/50 border-b border-white/10 h-8"
-                            >
-                              <TableHead 
-                                colSpan={tankIds.length * 3 + 6} 
-                                className="bg-brand-navy text-[10px]"
-                              ></TableHead>
-                            </TableRow>
-                          ))}
-                          
                           {/* Tank Info Headers - Now with editable product selection */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {tankIds.map((tankId) => (
