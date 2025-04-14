@@ -22,8 +22,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTankMovements, TankMovement } from '@/hooks/useTankMovements';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { useMovementTanks } from '@/hooks/useMovementTanks';
 
-// Define sticky column widths for layout calculation
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
@@ -36,10 +36,8 @@ const stickyColumnWidths = {
   quantity: 70,
 };
 
-// Calculate total width of sticky columns for positioning
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
-// Define summary column widths
 const summaryColumnWidths = {
   totalMT: 80,
   totalM3: 80,
@@ -49,7 +47,6 @@ const summaryColumnWidths = {
   currentUllage: 100,
 };
 
-// Truncated header names to save space
 const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
@@ -60,7 +57,6 @@ const truncatedHeaders = {
   sustainability: "Sustain.",
   comments: "Comments",
   quantity: "Qty (MT)",
-  // Add new header names
   totalMT: "Total (MT)",
   totalM3: "Total (M³)",
   t1Balance: "T1",
@@ -69,7 +65,6 @@ const truncatedHeaders = {
   currentUllage: "Current Ullage",
 };
 
-// Helper component for truncated text with tooltip
 const TruncatedCell = ({ text, width, className = "" }: { text: string | number, width: number, className?: string }) => (
   <TooltipProvider>
     <Tooltip>
@@ -112,7 +107,6 @@ interface InventoryMovement {
   }>;
 }
 
-// Define product color mapping
 const PRODUCT_COLORS: Record<string, string> = {
   "UCOME": "bg-blue-500 text-white",
   "RME": "bg-green-500 text-white",
@@ -133,27 +127,23 @@ const InventoryPage: React.FC = () => {
   const [selectedTerminalId, setSelectedTerminalId] = useState<string | undefined>(undefined);
   const [addTankDialogOpen, setAddTankDialogOpen] = useState(false);
   
-  // Fetch all terminals
   const { 
     terminals, 
     isLoading: terminalsLoading, 
     addTerminal 
   } = useTerminals();
 
-  // Set initial terminal when terminals load
   useEffect(() => {
     if (terminals.length > 0 && !selectedTerminalId) {
       setSelectedTerminalId(terminals[0].id);
     }
   }, [terminals, selectedTerminalId]);
 
-  // Transform terminal names into options
   const terminalOptions: TerminalOption[] = terminals.map(terminal => ({
     label: terminal.name,
     value: terminal.id
   }));
 
-  // Fetch tanks for selected terminal
   const { 
     tanks, 
     isLoading: tanksLoading, 
@@ -161,7 +151,6 @@ const InventoryPage: React.FC = () => {
     updateTank 
   } = useTanks(selectedTerminalId);
 
-  // Fetch movements for selected terminal with dates
   const fetchTerminalMovements = async (): Promise<InventoryMovement[]> => {
     if (!selectedTerminalId) return [];
 
@@ -176,7 +165,6 @@ const InventoryPage: React.FC = () => {
       
       if (!data?.length) return [];
 
-      // Transform the data to match our InventoryMovement type
       const movements: InventoryMovement[] = data.map((m: any) => ({
         id: m.id,
         counterpartyName: m.counterparty || 'Unknown',
@@ -211,7 +199,6 @@ const InventoryPage: React.FC = () => {
     enabled: !!selectedTerminalId
   });
 
-  // Fetch tank movements for all tanks in this terminal
   const fetchAllTankMovements = async (): Promise<Record<string, TankMovement[]>> => {
     if (!selectedTerminalId || !tanks.length) return {};
 
@@ -226,14 +213,12 @@ const InventoryPage: React.FC = () => {
       
       if (error) throw error;
 
-      // Group by tank ID
       const movementsByTank: Record<string, TankMovement[]> = {};
       
       for (const tankId of tankIds) {
         movementsByTank[tankId] = [];
       }
       
-      // Transform and group data
       if (data) {
         for (const movement of data) {
           const tankId = movement.tank_id;
@@ -275,7 +260,6 @@ const InventoryPage: React.FC = () => {
     enabled: !!selectedTerminalId && tanks.length > 0
   });
 
-  // Add tank movement mutation
   const addTankMovementMutation = useMutation({
     mutationFn: async (newMovement: {
       movementId: string;
@@ -283,7 +267,6 @@ const InventoryPage: React.FC = () => {
       quantityMt: number;
       productAtTime: string;
     }) => {
-      // First, get the last movement for this tank to calculate balance
       const { data: lastMovements } = await supabase
         .from('tank_movements')
         .select('*')
@@ -299,23 +282,10 @@ const InventoryPage: React.FC = () => {
         ? Number(lastMovements[0].balance_m3) 
         : 0;
       
-      // Calculate new balance and m3 values
-      const quantityM3 = newMovement.quantityMt * 1.1; // Simple conversion
+      const quantityM3 = newMovement.quantityMt * 1.1;
       const newBalanceMt = previousBalanceMt + newMovement.quantityMt;
       const newBalanceM3 = previousBalanceM3 + quantityM3;
       
-      // Get movement date from movements table
-      const { data: movementData } = await supabase
-        .from('movements')
-        .select('inventory_movement_date')
-        .eq('id', newMovement.movementId)
-        .single();
-      
-      const movementDate = movementData?.inventory_movement_date 
-        ? new Date(movementData.inventory_movement_date)
-        : new Date();
-      
-      // Create the tank movement
       const { data, error } = await supabase
         .from('tank_movements')
         .insert({
@@ -326,7 +296,7 @@ const InventoryPage: React.FC = () => {
           balance_mt: newBalanceMt,
           balance_m3: newBalanceM3,
           product_at_time: newMovement.productAtTime,
-          movement_date: movementDate.toISOString()
+          movement_date: new Date(newMovement.movementId).toISOString()
         })
         .select()
         .single();
@@ -349,7 +319,6 @@ const InventoryPage: React.FC = () => {
     }
   });
 
-  // Update tank movement mutation
   const updateTankMovementMutation = useMutation({
     mutationFn: async ({ 
       id, 
@@ -360,7 +329,6 @@ const InventoryPage: React.FC = () => {
       tankId: string;
       quantityMt: number 
     }) => {
-      // Get the current movement
       const { data: currentMovement } = await supabase
         .from('tank_movements')
         .select('*')
@@ -371,11 +339,9 @@ const InventoryPage: React.FC = () => {
         throw new Error('Movement not found');
       }
       
-      // Calculate quantity difference
       const quantityDiff = quantityMt - Number(currentMovement.quantity_mt);
-      const quantityM3Diff = quantityDiff * 1.1; // Simple conversion
+      const quantityM3Diff = quantityDiff * 1.1;
       
-      // Update this movement
       const { data, error } = await supabase
         .from('tank_movements')
         .update({
@@ -390,7 +356,6 @@ const InventoryPage: React.FC = () => {
       
       if (error) throw error;
       
-      // Update all subsequent movements' balances
       const { data: subsequentMovements } = await supabase
         .from('tank_movements')
         .select('*')
@@ -426,10 +391,8 @@ const InventoryPage: React.FC = () => {
     }
   });
 
-  // Create merged data for UI with both movements and their tank data
   const mergedMovements = React.useMemo(() => {
     return terminalMovements.map(movement => {
-      // Find all tank movements for this movement
       const movementTanks: Record<string, {
         productAtTimeOfMovement: string;
         quantity: number;
@@ -437,7 +400,6 @@ const InventoryPage: React.FC = () => {
         balanceM3: number;
       }> = {};
       
-      // Initialize with all tanks and zero values
       tanks.forEach(tank => {
         movementTanks[tank.id] = {
           productAtTimeOfMovement: tank.currentProduct,
@@ -447,7 +409,6 @@ const InventoryPage: React.FC = () => {
         };
       });
       
-      // Find all tank movements for this movement ID
       for (const tankId in tankMovementsMap) {
         const tankMovement = tankMovementsMap[tankId].find(tm => tm.movementId === movement.id);
         if (tankMovement) {
@@ -467,7 +428,6 @@ const InventoryPage: React.FC = () => {
     });
   }, [terminalMovements, tankMovementsMap, tanks]);
 
-  // Calculate row totals (last 6 columns)
   const rowTotals = React.useMemo(() => {
     return mergedMovements.map(movement => {
       let totalMT = 0;
@@ -475,13 +435,11 @@ const InventoryPage: React.FC = () => {
       let t1Balance = 0;
       let t2Balance = 0;
       
-      // Sum up quantities across all tanks for this movement
       for (const tankId in movement.tanks) {
         const tankData = movement.tanks[tankId];
         totalMT += tankData.quantity;
-        totalM3 += tankData.quantity * 1.1; // Simple conversion
+        totalM3 += tankData.quantity * 1.1;
         
-        // Use the movement's customs status to allocate to T1/T2
         if (movement.customsStatus === 'T1') {
           t1Balance += tankData.quantity;
         } else {
@@ -489,12 +447,10 @@ const InventoryPage: React.FC = () => {
         }
       }
       
-      // Current stock is the sum of all balances across tanks
       const currentStock = Object.values(movement.tanks).reduce(
         (sum, tank) => sum + tank.balance, 0
       );
       
-      // Calculate ullage (remaining capacity)
       const totalCapacity = tanks.reduce((sum, tank) => sum + tank.capacityMt, 0);
       const currentUllage = totalCapacity - currentStock;
       
@@ -509,14 +465,12 @@ const InventoryPage: React.FC = () => {
     });
   }, [mergedMovements, tanks]);
 
-  // Get tank movements for a specific combination of tank and movement
   const getTankMovementId = (movementId: string, tankId: string): string | undefined => {
     const tankMovements = tankMovementsMap[tankId] || [];
     const tankMovement = tankMovements.find(tm => tm.movementId === movementId);
     return tankMovement?.id;
   };
 
-  // Handlers
   const handleAddTank = (tankData: Omit<Tank, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (selectedTerminalId) {
       addTank(tankData);
@@ -540,7 +494,6 @@ const InventoryPage: React.FC = () => {
   };
 
   const handleUpdateTankCapacity = (tankId: string, capacityMt: number) => {
-    // Calculate M3 based on MT with a simple conversion
     const capacityM3 = capacityMt * 1.1;
     updateTank({ id: tankId, capacityMt, capacityM3 });
   };
@@ -549,14 +502,12 @@ const InventoryPage: React.FC = () => {
     const tankMovementId = getTankMovementId(movementId, tankId);
     
     if (tankMovementId) {
-      // Update existing tank movement
       updateTankMovementMutation.mutate({
         id: tankMovementId,
         tankId,
         quantityMt: quantity
       });
     } else {
-      // Create new tank movement
       const movement = terminalMovements.find(m => m.id === movementId);
       if (movement) {
         const tank = tanks.find(t => t.id === tankId);
@@ -593,7 +544,6 @@ const InventoryPage: React.FC = () => {
     }
   };
 
-  // Product options for dropdowns
   const productOptions = ["UCOME", "RME", "FAME0", "HVO", "RME DC", "UCOME-5"];
   
   const productOptionsForDropdown = productOptions.map(product => ({
@@ -601,22 +551,18 @@ const InventoryPage: React.FC = () => {
     value: product
   }));
 
-  // Heating options
   const heatingOptions = [
     { value: "true", label: "Enabled" },
     { value: "false", label: "Disabled" }
   ];
 
-  // Convert the string array to an array of objects with label and value properties
   const heatingOptionsForDropdown = heatingOptions.map(option => ({
     label: option.label,
     value: option.value
   }));
 
-  // Loading state
   const isLoading = terminalsLoading || tanksLoading || movementsLoading || tankMovementsLoading;
 
-  // Handle terminal change
   const handleTerminalChange = (terminalId: string) => {
     setSelectedTerminalId(terminalId);
   };
@@ -632,10 +578,8 @@ const InventoryPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Product legend at the top */}
         <ProductLegend />
         
-        {/* Terminal selector */}
         <div className="flex justify-between items-center">
           <Select
             value={selectedTerminalId}
@@ -665,7 +609,6 @@ const InventoryPage: React.FC = () => {
           )}
         </div>
         
-        {/* Integrated Inventory Movements Table with Tank Details */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle>Inventory Movements</CardTitle>
@@ -680,9 +623,7 @@ const InventoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="relative border rounded-md overflow-hidden">
-                {/* Two-panel layout with fixed sticky columns and scrollable tank details */}
                 <div className="flex">
-                  {/* Fixed left panel for sticky columns - NOW WITH SCROLL AREA */}
                   <ScrollArea 
                     className="flex-shrink-0 z-30 border-r border-white/30" 
                     orientation="horizontal"
@@ -690,9 +631,7 @@ const InventoryPage: React.FC = () => {
                   >
                     <div style={{ minWidth: `${totalStickyWidth}px` }}>
                       <Table>
-                        {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
                         <TableHeader>
-                          {/* Row 1: Product headers - empty for sticky columns */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                             <TableHead 
                               colSpan={9} 
@@ -700,7 +639,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 2: Tank numbers - empty for sticky columns */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                             <TableHead 
                               colSpan={9} 
@@ -708,7 +646,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 3: Tank capacity MT - empty for sticky columns */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             <TableHead 
                               colSpan={9} 
@@ -716,7 +653,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 4: Tank capacity M³ - empty for sticky columns */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             <TableHead 
                               colSpan={9} 
@@ -724,7 +660,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 5: Tank specs - empty for sticky columns */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             <TableHead 
                               colSpan={9} 
@@ -732,7 +667,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 6: Tank heating - empty for sticky columns */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             <TableHead 
                               colSpan={9} 
@@ -740,7 +674,6 @@ const InventoryPage: React.FC = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             <TableHead 
                               className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
@@ -838,7 +771,6 @@ const InventoryPage: React.FC = () => {
                         <TableBody>
                           {mergedMovements.length > 0 ? (
                             mergedMovements.map((movement, index) => {
-                              // Determine the background color for the row based on buy/sell
                               const bgColorClass = movement.buySell === "buy" 
                                 ? "bg-green-900/10 hover:bg-green-900/20" 
                                 : "bg-red-900/10 hover:bg-red-900/20";
@@ -871,3 +803,41 @@ const InventoryPage: React.FC = () => {
                                   </TableCell>
                                   <TableCell className="bg-brand-navy text-[10px] py-2">
                                     <TruncatedCell
+                                      text={format(movement.movementDate, 'dd/MM/yy')}
+                                      width={stickyColumnWidths.movementDate - 16}
+                                      className="text-[10px]"
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={9} className="h-24 text-center">
+                                No inventory movements found
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <AddTankDialog 
+          open={addTankDialogOpen} 
+          onOpenChange={setAddTankDialogOpen}
+          terminalId={selectedTerminalId}
+          onSubmit={handleAddTank}
+          productOptions={productOptionsForDropdown}
+        />
+      </div>
+    </Layout>
+  );
+};
+
+export default InventoryPage;
