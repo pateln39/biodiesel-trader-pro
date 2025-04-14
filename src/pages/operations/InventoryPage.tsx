@@ -7,6 +7,7 @@ import { Product } from '@/types';
 import { Database, Filter, Thermometer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Mock data for inventory movements
 const mockInventoryMovements = [
@@ -165,19 +166,54 @@ const tankDetails = {
 
 // Define sticky column widths for layout calculation - REDUCED WIDTHS HERE
 const stickyColumnWidths = {
-  counterparty: 130,
-  tradeRef: 100,
-  bargeName: 110,
-  movementDate: 90,
-  nominationDate: 90,
-  customs: 90,
-  sustainability: 110,
-  comments: 110,
-  quantity: 90,
+  counterparty: 110, // Reduced from 130
+  tradeRef: 80, // Reduced from 100
+  bargeName: 90, // Reduced from 110
+  movementDate: 75, // Reduced from 90
+  nominationDate: 75, // Reduced from 90
+  customs: 75, // Reduced from 90
+  sustainability: 90, // Reduced from 110
+  comments: 90, // Reduced from 110
+  quantity: 70, // Reduced from 90
 };
 
 // Calculate total width of sticky columns for positioning
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
+
+// Truncated header names to save space
+const truncatedHeaders = {
+  counterparty: "Counterparty",
+  tradeRef: "Trade Ref",
+  bargeName: "Barge",
+  movementDate: "Move Date",
+  nominationDate: "Nom. Valid",
+  customs: "Customs",
+  sustainability: "Sustain.",
+  comments: "Comments",
+  quantity: "Qty (MT)",
+};
+
+// Helper component for truncated text with tooltip
+const TruncatedCell = ({ text, width, className }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div 
+          className={cn(
+            "truncate max-w-full", 
+            className
+          )} 
+          style={{ width: `${width}px` }}
+        >
+          {text}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="max-w-xs break-words">{text}</p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 const InventoryPage = () => {
   // Products array to match the types defined in the system
@@ -212,13 +248,13 @@ const InventoryPage = () => {
                   style={{ width: `${totalStickyWidth}px` }}
                 >
                   <Table>
-                    {/* Sticky Column Headers - NOW PERFECTLY ALIGNED WITH RIGHT PANEL */}
+                    {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
                     <TableHeader>
                       {/* Row 1: Product headers - empty for sticky columns */}
                       <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -226,7 +262,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -234,7 +270,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -242,7 +278,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -250,7 +286,7 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
@@ -258,21 +294,93 @@ const InventoryPage = () => {
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                         <TableHead 
                           colSpan={9} 
-                          className="bg-brand-navy text-[11px]"
+                          className="bg-brand-navy text-[10px]"
                         ></TableHead>
                       </TableRow>
                       
                       {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
-                      <TableRow className="bg-muted/50 border-b border-white/10">
-                        <TableHead className="w-[130px] bg-brand-navy text-[11px]">Counterparty</TableHead>
-                        <TableHead className="w-[100px] bg-brand-navy text-[11px]">Trade Ref.</TableHead>
-                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Barge Name</TableHead>
-                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Movement Date</TableHead>
-                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Nomination Valid</TableHead>
-                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Customs</TableHead>
-                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Sustainability</TableHead>
-                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Comments</TableHead>
-                        <TableHead className="w-[90px] bg-brand-navy text-[11px] border-r border-white/30">Qty. (MT)</TableHead>
+                      <TableRow className="bg-muted/50 border-b border-white/10 h-10">
+                        <TableHead 
+                          className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.counterparty}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.counterparty} 
+                            width={stickyColumnWidths.counterparty - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.tradeRef}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.tradeRef} 
+                            width={stickyColumnWidths.tradeRef - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.bargeName}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.bargeName} 
+                            width={stickyColumnWidths.bargeName - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.movementDate}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.movementDate} 
+                            width={stickyColumnWidths.movementDate - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.nominationDate}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.nominationDate} 
+                            width={stickyColumnWidths.nominationDate - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.customs}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.customs} 
+                            width={stickyColumnWidths.customs - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.sustainability}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.sustainability} 
+                            width={stickyColumnWidths.sustainability - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px]`}
+                          style={{ width: `${stickyColumnWidths.comments}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.comments} 
+                            width={stickyColumnWidths.comments - 8} 
+                          />
+                        </TableHead>
+                        <TableHead 
+                          className={`bg-brand-navy text-[10px] border-r border-white/30`}
+                          style={{ width: `${stickyColumnWidths.quantity}px` }}
+                        >
+                          <TruncatedCell 
+                            text={truncatedHeaders.quantity} 
+                            width={stickyColumnWidths.quantity - 8} 
+                          />
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     
@@ -286,29 +394,65 @@ const InventoryPage = () => {
                         return (
                           <TableRow 
                             key={`sticky-${movement.id}`} 
-                            className={cn("border-b border-white/5", bgColorClass)}
+                            className={cn("border-b border-white/5 h-10", bgColorClass)}
                           >
-                            <TableCell className="font-medium bg-brand-navy text-[11px] py-2">{movement.counterpartyName}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.tradeReference}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.bargeName}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.movementDate.toLocaleDateString()}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.nominationValid.toLocaleDateString()}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.counterpartyName} 
+                                width={stickyColumnWidths.counterparty - 16} 
+                                className="font-medium"
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.tradeReference} 
+                                width={stickyColumnWidths.tradeRef - 16} 
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.bargeName} 
+                                width={stickyColumnWidths.bargeName - 16} 
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.movementDate.toLocaleDateString()} 
+                                width={stickyColumnWidths.movementDate - 16} 
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.nominationValid.toLocaleDateString()} 
+                                width={stickyColumnWidths.nominationDate - 16} 
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
                               <span className={cn(
-                                "px-1 py-0.5 rounded-full text-[10px] font-medium",
+                                "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
                                 movement.customsStatus === "cleared" 
                                   ? "bg-green-900/60 text-green-200" 
                                   : movement.customsStatus === "pending"
                                     ? "bg-yellow-900/60 text-yellow-200"
                                     : "bg-blue-900/60 text-blue-200"
-                              )}>
+                              )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
                                 {movement.customsStatus}
                               </span>
                             </TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.sustainability}</TableCell>
-                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.comments || "-"}</TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.sustainability} 
+                                width={stickyColumnWidths.sustainability - 16} 
+                              />
+                            </TableCell>
+                            <TableCell className="bg-brand-navy text-[10px] py-2">
+                              <TruncatedCell 
+                                text={movement.comments || "-"} 
+                                width={stickyColumnWidths.comments - 16} 
+                              />
+                            </TableCell>
                             <TableCell className={cn(
-                              "font-semibold bg-brand-navy text-[11px] py-2 border-r border-white/30",
+                              "font-semibold bg-brand-navy text-[10px] py-2 border-r border-white/30",
                               movement.buySell === "buy" ? "text-green-400" : "text-red-400"
                             )}>
                               {movement.buySell === "buy" 
@@ -325,16 +469,16 @@ const InventoryPage = () => {
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1500px]"> {/* REDUCED MINIMUM WIDTH */}
+                    <div className="min-w-[1200px]"> {/* FURTHER REDUCED MINIMUM WIDTH */}
                       <Table>
                         <TableHeader>
                           {/* Tank Info Headers */}
-                          <TableRow className="bg-muted/50 border-b border-white/10">
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-header`}
                                 colSpan={3} 
-                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[11px]"
+                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                               >
                                 {productName}
                               </TableHead>
@@ -342,7 +486,7 @@ const InventoryPage = () => {
                           </TableRow>
                           
                           {/* Tank Numbers */}
-                          <TableRow className="bg-muted/40 border-b border-white/10">
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-tank-number`}
@@ -355,7 +499,7 @@ const InventoryPage = () => {
                           </TableRow>
                           
                           {/* Capacity MT */}
-                          <TableRow className="bg-muted/40 border-b border-white/10">
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-capacity`}
@@ -392,7 +536,7 @@ const InventoryPage = () => {
                           </TableRow>
                           
                           {/* Capacity M³ */}
-                          <TableRow className="bg-muted/40 border-b border-white/10">
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-capacity-m3`}
@@ -428,7 +572,7 @@ const InventoryPage = () => {
                           </TableRow>
                           
                           {/* Spec */}
-                          <TableRow className="bg-muted/40 border-b border-white/10">
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-spec`}
@@ -437,14 +581,17 @@ const InventoryPage = () => {
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Spec:</span>
-                                  <span>{tankDetails[productName].spec}</span>
+                                  <TruncatedCell
+                                    text={tankDetails[productName].spec}
+                                    width={100}
+                                  />
                                 </div>
                               </TableHead>
                             ))}
                           </TableRow>
                           
                           {/* Heating */}
-                          <TableRow className="bg-muted/40 border-b border-white/10">
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             {products.map((productName) => (
                               <TableHead 
                                 key={`${productName}-heating`}
@@ -463,12 +610,12 @@ const InventoryPage = () => {
                           </TableRow>
                           
                           {/* Column headers for tank details - ALIGNED WITH LEFT PANEL HEADERS */}
-                          <TableRow className="bg-muted/50 border-b border-white/10">
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {products.map((productName) => (
                               <React.Fragment key={productName}>
-                                <TableHead className="text-center text-[11px]">Movement (MT)</TableHead>
-                                <TableHead className="text-center text-[11px]">Movement (M³)</TableHead>
-                                <TableHead className="text-center text-[11px] bg-brand-navy border-r border-white/30">Balance</TableHead>
+                                <TableHead className="text-center text-[10px]">Move MT</TableHead>
+                                <TableHead className="text-center text-[10px]">Move M³</TableHead>
+                                <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">Balance</TableHead>
                               </React.Fragment>
                             ))}
                           </TableRow>
@@ -484,14 +631,14 @@ const InventoryPage = () => {
                             return (
                               <TableRow 
                                 key={`scroll-${movement.id}`} 
-                                className={cn("border-b border-white/5", bgColorClass)}
+                                className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
                                 {/* Tank movement and balance columns */}
                                 {products.map((productName) => (
                                   <React.Fragment key={`${movement.id}-${productName}`}>
                                     <TableCell 
                                       className={cn(
-                                        "text-center text-[11px] py-2",
+                                        "text-center text-[10px] py-2",
                                         movement.tanks[productName].quantity > 0 ? "text-green-400" :
                                         movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                       )}
@@ -502,10 +649,10 @@ const InventoryPage = () => {
                                           : movement.tanks[productName].quantity) 
                                         : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-[11px] py-2 text-muted-foreground">
+                                    <TableCell className="text-center text-[10px] py-2 text-muted-foreground">
                                       {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-[11px] py-2 bg-brand-navy border-r border-white/30">
+                                    <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[productName].balance}
                                     </TableCell>
                                   </React.Fragment>
