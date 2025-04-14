@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useInventoryState } from '@/hooks/useInventoryState';
+import { Button } from '@/components/ui/button';
 import EditableField from '@/components/operations/inventory/EditableField';
 import EditableNumberField from '@/components/operations/inventory/EditableNumberField';
 import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
@@ -325,7 +327,7 @@ const InventoryPage = () => {
                       <TableBody>
                         {movements.map((movement, index) => {
                           // Determine the background color for the row based on buy/sell
-                          const bgColorClass = movement.buySell === "buy" 
+                          const bgColorClass = movement.buy_sell === "buy" 
                             ? "bg-green-900/10 hover:bg-green-900/20" 
                             : "bg-red-900/10 hover:bg-red-900/20";
                           
@@ -336,35 +338,35 @@ const InventoryPage = () => {
                             >
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.counterpartyName} 
+                                  text={movement.counterparty} 
                                   width={stickyColumnWidths.counterparty - 16} 
                                   className="font-medium text-[10px]"
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.tradeReference} 
+                                  text={movement.trade_reference} 
                                   width={stickyColumnWidths.tradeRef - 16} 
                                   className="text-[10px]"
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.bargeName} 
+                                  text={movement.barge_name} 
                                   width={stickyColumnWidths.bargeName - 16} 
                                   className="text-[10px]"
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.date.toLocaleDateString()} 
+                                  text={movement.inventory_movement_date ? new Date(movement.inventory_movement_date).toLocaleDateString() : '-'} 
                                   width={stickyColumnWidths.movementDate - 16} 
                                   className="text-[10px]"
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.nominationValid?.toLocaleDateString() || '-'}
+                                  text={movement.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
                                   width={stickyColumnWidths.nominationDate - 16} 
                                   className="text-[10px]"
                                 />
@@ -372,11 +374,11 @@ const InventoryPage = () => {
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <span className={cn(
                                   "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
-                                  movement.customsStatus === "T1" 
+                                  movement.customs_status === "T1" 
                                     ? "bg-green-900/60 text-green-200" 
                                     : "bg-blue-900/60 text-blue-200"
                                 )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
-                                  {movement.customsStatus}
+                                  {movement.customs_status}
                                 </span>
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
@@ -397,11 +399,11 @@ const InventoryPage = () => {
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2 border-r border-white/30">
-                                {movement.scheduledQuantity !== 0 && (
+                                {movement.scheduled_quantity !== 0 && (
                                   <div className="flex justify-center">
                                     <ProductToken 
                                       product={movement.product}
-                                      value={`${movement.buySell === "buy" ? "+" : "-"}${movement.scheduledQuantity}`}
+                                      value={`${movement.buy_sell === "buy" ? "+" : "-"}${movement.scheduled_quantity}`}
                                     />
                                   </div>
                                 )}
@@ -431,12 +433,12 @@ const InventoryPage = () => {
                                 )}
                               >
                                 <EditableDropdownField
-                                  initialValue={tanks[tankId].product}
+                                  initialValue={tanks[tankId].current_product}
                                   options={productOptions}
                                   onSave={(value) => updateTankProduct(tankId, value)}
                                   className={cn(
                                     "text-[10px] font-bold text-center w-full",
-                                    PRODUCT_COLORS[tanks[tankId].product]?.split(' ')[0] // Extract just the background color
+                                    PRODUCT_COLORS[tanks[tankId].current_product]?.split(' ')[0] // Extract just the background color
                                   )}
                                   truncate={false}
                                 />
@@ -470,7 +472,7 @@ const InventoryPage = () => {
                                 colSpan={3} 
                                 className="text-center text-[10px] border-r border-white/30"
                               >
-                                Tank {tanks[tankId].tankNumber}
+                                Tank {tanks[tankId].tank_number}
                               </TableHead>
                             ))}
                             
@@ -490,7 +492,7 @@ const InventoryPage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tanks[tankId].capacity} MT</span>
+                                  <span>Capacity: {tanks[tankId].capacity_mt} MT</span>
                                   <Database className="h-3 w-3 text-brand-lime/70" />
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
@@ -522,7 +524,7 @@ const InventoryPage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity, 0)} MT</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0)} MT</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -536,7 +538,7 @@ const InventoryPage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tanks[tankId].capacityM3} M³</span>
+                                  <span>Capacity: {tanks[tankId].capacity_m3} M³</span>
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
                                   <div 
@@ -567,7 +569,7 @@ const InventoryPage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacityM3, 0)} M³</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0)} M³</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -612,7 +614,7 @@ const InventoryPage = () => {
                                   <div className="flex items-center">
                                     <Thermometer className="h-3 w-3 mr-1 text-red-400" />
                                     <EditableDropdownField
-                                      initialValue={tanks[tankId].heating ? "true" : "false"}
+                                      initialValue={tanks[tankId].is_heating_enabled ? "true" : "false"}
                                       options={heatingOptions}
                                       onSave={(value) => updateTankHeating(tankId, value)}
                                       className="text-[10px]"
@@ -701,7 +703,7 @@ const InventoryPage = () => {
                         <TableBody>
                           {movements.map((movement, index) => {
                             // Determine the background color for the row based on buy/sell
-                            const bgColorClass = movement.buySell === "buy" 
+                            const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
                             
