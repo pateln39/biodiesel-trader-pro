@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -390,6 +391,42 @@ const InventoryPage = () => {
                         </TableHeader>
                         
                         <TableBody>
+                          {/* Restore tank details rows */}
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                            {tankIds.map((tankId) => (
+                              <React.Fragment key={tankId}>
+                                <TableCell className="text-center text-[10px] py-2">
+                                  <EditableField 
+                                    initialValue={tanks[tankId].tankNumber} 
+                                    className="text-center text-[10px]"
+                                    placeholder="Tank Number"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2">
+                                  <EditableField 
+                                    initialValue={tanks[tankId].spec} 
+                                    className="text-center text-[10px]"
+                                    placeholder="Tank Spec"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
+                                  <EditableDropdownField
+                                    initialValue={tanks[tankId].heating ? 'true' : 'false'}
+                                    options={heatingOptions}
+                                    onSave={(value) => updateTankHeating(tankId, value)}
+                                    className="text-center text-[10px]"
+                                  />
+                                </TableCell>
+                              </React.Fragment>
+                            ))}
+                            <TableCell 
+                              colSpan={6} 
+                              className="text-center text-[10px] py-2 bg-brand-navy/50"
+                            >
+                              Tank Details
+                            </TableCell>
+                          </TableRow>
+
                           {movements.map((movement, index) => {
                             const bgColorClass = movement.buySell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
