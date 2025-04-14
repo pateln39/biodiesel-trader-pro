@@ -1,8 +1,6 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { formatDateForStorage } from '@/utils/dateUtils';
 
 export interface TankMovement {
   id: string;
@@ -74,46 +72,17 @@ export const useInventoryState = (terminalId?: string) => {
   });
 
   const updateMovementQuantityMutation = useMutation({
-    mutationFn: async ({ 
-      movementId, 
-      tankId, 
-      quantityMt, 
-      product 
-    }: { 
-      movementId: string, 
-      tankId: string, 
-      quantityMt: number,
-      product: string 
-    }) => {
-      // First, create a tank movement record
-      const now = new Date();
-      const { error: tankMovementError } = await supabase
-        .from('tank_movements')
-        .insert({
-          movement_id: movementId,
-          tank_id: tankId,
-          quantity_mt: quantityMt,
-          quantity_m3: quantityMt * 1.1, // Using 1.1 as conversion factor
-          product_at_time: product,
-          // Convert Date to string format expected by Supabase
-          movement_date: formatDateForStorage(now)
-        });
-      
-      if (tankMovementError) throw tankMovementError;
-
-      // Then update the actual quantity in the movement
-      const { error: movementError } = await supabase
+    mutationFn: async ({ movementId, quantity }: { movementId: string, quantity: number }) => {
+      const { error } = await supabase
         .from('movements')
-        .update({ actual_quantity: quantityMt })
+        .update({ actual_quantity: quantity })
         .eq('id', movementId);
       
-      if (movementError) throw movementError;
-      
-      return { movementId, tankId, quantityMt };
+      if (error) throw error;
+      return { movementId, quantity };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements', terminalId] });
-      queryClient.invalidateQueries({ queryKey: ['tank_movements', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Movement quantity updated');
     },
     onError: (error) => {
@@ -153,7 +122,7 @@ export const useInventoryState = (terminalId?: string) => {
       return { tankId, product };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tanks', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank product updated');
     },
     onError: (error) => {
@@ -173,7 +142,7 @@ export const useInventoryState = (terminalId?: string) => {
       return { tankId, spec };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tanks', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank spec updated');
     },
     onError: (error) => {
@@ -193,7 +162,7 @@ export const useInventoryState = (terminalId?: string) => {
       return { tankId, isHeatingEnabled };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tanks', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank heating updated');
     },
     onError: (error) => {
@@ -217,7 +186,7 @@ export const useInventoryState = (terminalId?: string) => {
       return { tankId, capacityMt };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tanks', terminalId] });
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank capacity updated');
     },
     onError: (error) => {
@@ -246,8 +215,8 @@ export const useInventoryState = (terminalId?: string) => {
     productOptions,
     heatingOptions,
     PRODUCT_COLORS,
-    updateMovementQuantity: (movementId: string, tankId: string, quantityMt: number, product: string) => 
-      updateMovementQuantityMutation.mutate({ movementId, tankId, quantityMt, product }),
+    updateMovementQuantity: (movementId: string, quantity: number) => 
+      updateMovementQuantityMutation.mutate({ movementId, quantity }),
     updateMovementComments: (movementId: string, comments: string) => 
       updateMovementCommentsMutation.mutate({ movementId, comments }),
     updateTankProduct: (tankId: string, product: string) => 
