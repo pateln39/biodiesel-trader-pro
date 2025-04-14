@@ -48,6 +48,8 @@ export interface Movement {
   coaReceivedChecked?: boolean;
   coaSentChecked?: boolean;
   eadChecked?: boolean;
+  terminalId?: string;
+  inventoryMovementDate?: Date;
   sort_order?: number; // Added sort_order property
 }
 
