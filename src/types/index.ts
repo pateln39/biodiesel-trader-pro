@@ -13,29 +13,39 @@ export interface Movement {
   parentTradeId?: string;
   trade_reference?: string;
   counterparty?: string;
+  counterpartyName?: string; // Added for backward compatibility
   product?: string;
   buy_sell?: string;
+  buySell?: string; // Added for backward compatibility
   incoTerm?: string;
   sustainability?: string;
-  quantity?: number; // Added this field to match the open trade's quantity
+  quantity?: number;
   scheduled_quantity?: number;
+  scheduledQuantity?: number; // Added for backward compatibility
   blQuantity?: number;
   actual_quantity?: number;
+  actualQuantity?: number; // Added for backward compatibility
   nomination_eta?: Date;
+  nominationEta?: Date; // Added for backward compatibility
   nomination_valid?: Date;
-  cashFlow?: Date; // Changed from string to Date
+  nominationValid?: Date; // Added for backward compatibility
+  cashFlow?: Date;
   barge_name?: string;
+  bargeName?: string; // Added for backward compatibility
   loadport?: string;
   loadportInspector?: string;
   disport?: string;
   disportInspector?: string;
   bl_date?: Date;
+  blDate?: Date; // Added for backward compatibility
   codDate?: Date;
   pricingType?: string;
   pricingFormula?: any;
   comments?: string;
   customs_status?: string;
+  customsStatus?: string; // Added for backward compatibility
   credit_status?: string;
+  creditStatus?: string; // Added for backward compatibility
   contract_status?: string;
   status: string;
   date: Date;
@@ -48,7 +58,7 @@ export interface Movement {
   coaReceivedChecked?: boolean;
   coaSentChecked?: boolean;
   eadChecked?: boolean;
-  sort_order?: number; // Added sort_order property
+  sort_order?: number;
   // New structure for tank movements
   tanks?: Record<string, {
     quantity: number; 

@@ -3,6 +3,14 @@ import { useState, useMemo } from 'react';
 import { Tank } from './useTerminals';
 import { TankMovement } from './useTankMovements';
 
+// Export the PRODUCT_COLORS constant for use in other components
+export const PRODUCT_COLORS: Record<string, string> = {
+  'FAME': 'bg-green-500 text-white',
+  'UCO': 'bg-orange-500 text-white',
+  'RME': 'bg-blue-500 text-white',
+  'TME': 'bg-purple-500 text-white',
+};
+
 // This is a temporary stub for the hook.
 // The real implementation would fetch and process data for the inventory page.
 export const useInventoryState = () => {
@@ -23,14 +31,6 @@ export const useInventoryState = () => {
     { value: 'true', label: 'Enabled' },
     { value: 'false', label: 'Disabled' },
   ];
-  
-  // Mock product colors
-  const PRODUCT_COLORS: Record<string, string> = {
-    'FAME': 'bg-green-500 text-white',
-    'UCO': 'bg-orange-500 text-white',
-    'RME': 'bg-blue-500 text-white',
-    'TME': 'bg-purple-500 text-white',
-  };
   
   // Mock row totals with sample data
   const rowTotals = [

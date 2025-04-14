@@ -29,31 +29,41 @@ const fetchMovements = async (): Promise<Movement[]> => {
       referenceNumber: m.reference_number,
       tradeLegId: m.trade_leg_id,
       parentTradeId: m.parent_trade_id,
-      tradeReference: m.trade_reference,
-      counterpartyName: m.counterparty || 'Unknown',
+      trade_reference: m.trade_reference,
+      counterparty: m.counterparty,
+      counterpartyName: m.counterparty || 'Unknown', // Map for both property names
       product: m.product || 'Unknown',
-      buySell: m.buy_sell,
+      buy_sell: m.buy_sell,
+      buySell: m.buy_sell, // Map for both property names
       incoTerm: m.inco_term,
       sustainability: m.sustainability,
-      scheduledQuantity: m.scheduled_quantity,
+      scheduled_quantity: m.scheduled_quantity,
+      scheduledQuantity: m.scheduled_quantity, // Map for both property names
       blQuantity: m.bl_quantity,
-      actualQuantity: m.actual_quantity,
-      nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
-      nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
+      actual_quantity: m.actual_quantity,
+      actualQuantity: m.actual_quantity, // Map for both property names
+      nomination_eta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
+      nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined, // Map for both property names
+      nomination_valid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
+      nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined, // Map for both property names
       cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
-      bargeName: m.barge_name,
+      barge_name: m.barge_name,
+      bargeName: m.barge_name, // Map for both property names
       loadport: m.loadport,
       loadportInspector: m.loadport_inspector,
       disport: m.disport,
       disportInspector: m.disport_inspector,
-      blDate: m.bl_date ? new Date(m.bl_date) : undefined,
+      bl_date: m.bl_date ? new Date(m.bl_date) : undefined,
+      blDate: m.bl_date ? new Date(m.bl_date) : undefined, // Map for both property names
       codDate: m.cod_date ? new Date(m.cod_date) : undefined,
       pricingType: m.pricing_type,
       pricingFormula: m.pricing_formula,
       comments: m.comments,
-      customsStatus: m.customs_status,
-      creditStatus: m.credit_status,
-      contractStatus: m.contract_status,
+      customs_status: m.customs_status,
+      customsStatus: m.customs_status, // Map for both property names
+      credit_status: m.credit_status,
+      creditStatus: m.credit_status, // Map for both property names
+      contract_status: m.contract_status,
       status: m.status || 'scheduled',
       date: new Date(m.created_at),
       createdAt: new Date(m.created_at),
