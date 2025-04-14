@@ -15,6 +15,7 @@ export interface SortableTableProps<T> {
   renderRow: (item: T) => React.ReactElement;
   rowId: (item: T) => string | number;
   onReorder?: (items: T[]) => void;
+  isItemDisabled?: (item: T) => boolean;
 }
 
 export function SortableTable<T>({
@@ -22,7 +23,8 @@ export function SortableTable<T>({
   renderHeader,
   renderRow,
   rowId,
-  onReorder
+  onReorder,
+  isItemDisabled
 }: SortableTableProps<T>) {
   return (
     <Table>

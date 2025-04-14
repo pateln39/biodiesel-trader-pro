@@ -21,8 +21,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTankMovements, TankMovement } from '@/hooks/useTankMovements';
-import Select from '@/components/ui/select';
-import { SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 // Define sticky column widths for layout calculation
 const stickyColumnWidths = {
@@ -606,6 +605,11 @@ const InventoryPage: React.FC = () => {
 
   // Loading state
   const isLoading = terminalsLoading || tanksLoading || movementsLoading || tankMovementsLoading;
+
+  // Handle terminal change
+  const handleTerminalChange = (terminalId: string) => {
+    setSelectedTerminalId(terminalId);
+  };
 
   return (
     <Layout>
@@ -1383,7 +1387,6 @@ const InventoryPage: React.FC = () => {
                                           product={movement.product}
                                           value={totals.totalMT}
                                           showTooltip={totals.totalMT !== movement.quantity}
-                                          tooltipText={`Expected: ${movement.quantity} MT`}
                                         />
                                       ) : "-"}
                                     </TableCell>

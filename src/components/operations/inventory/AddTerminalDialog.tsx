@@ -31,16 +31,18 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface AddTerminalDialogProps {
+export interface AddTerminalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: { name: string; description?: string }) => void;
+  onSubmit?: (data: { name: string; description?: string }) => void;
+  onAddTerminal?: (data: { name: string; description?: string }) => void;
 }
 
 export function AddTerminalDialog({
   open,
   onOpenChange,
-  onSubmit
+  onSubmit,
+  onAddTerminal
 }: AddTerminalDialogProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -51,10 +53,19 @@ export function AddTerminalDialog({
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit({
+    const data = {
       name: values.name,
       description: values.description || undefined,
-    });
+    };
+    
+    if (onSubmit) {
+      onSubmit(data);
+    }
+    
+    if (onAddTerminal) {
+      onAddTerminal(data);
+    }
+    
     form.reset();
     onOpenChange(false);
   };

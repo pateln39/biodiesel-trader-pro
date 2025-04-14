@@ -355,6 +355,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
+          rowId={(trade) => trade.id}
           isItemDisabled={isTradeDisabled}
         />
       </div>
@@ -367,7 +368,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           <div className="space-y-2 py-4">
             {selectedTradeForComments && (
               <CommentsCellInput
-                tradeId={selectedTradeForComments.id}
                 initialValue={selectedTradeForComments.comments || ''}
                 onSave={handleCommentsUpdate}
                 showButtons={true}
