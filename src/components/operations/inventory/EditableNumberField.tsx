@@ -13,7 +13,6 @@ interface EditableNumberFieldProps {
   className?: string;
   placeholder?: string;
   product?: string;
-  isReadOnly?: boolean;
 }
 
 const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
@@ -21,8 +20,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
   onSave,
   className,
   placeholder = 'Enter value...',
-  product,
-  isReadOnly = false
+  product
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue.toString());
@@ -47,17 +45,11 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
         product={product} 
         value={initialValue}
         className={className}
-        isReadOnly={isReadOnly}
       />
     ) : (
       <span className={className}>{initialValue}</span>
     )
   );
-
-  // If read-only, just return the display value without popover
-  if (isReadOnly) {
-    return displayValue;
-  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
