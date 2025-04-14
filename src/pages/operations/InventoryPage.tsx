@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +21,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTankMovements, TankMovement } from '@/hooks/useTankMovements';
+import Select from '@/components/ui/select';
+import { SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 // Define sticky column widths for layout calculation
 const stickyColumnWidths = {
@@ -124,6 +125,11 @@ const PRODUCT_COLORS: Record<string, string> = {
   "": "bg-gray-500 text-white"
 };
 
+interface TerminalOption {
+  label: string;
+  value: string;
+}
+
 const InventoryPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedTerminalId, setSelectedTerminalId] = useState<string | undefined>(undefined);
@@ -142,6 +148,12 @@ const InventoryPage: React.FC = () => {
       setSelectedTerminalId(terminals[0].id);
     }
   }, [terminals, selectedTerminalId]);
+
+  // Transform terminal names into options
+  const terminalOptions: TerminalOption[] = terminals.map(terminal => ({
+    label: terminal.name,
+    value: terminal.id
+  }));
 
   // Fetch tanks for selected terminal
   const { 
@@ -611,12 +623,23 @@ const InventoryPage: React.FC = () => {
         
         {/* Terminal selector */}
         <div className="flex justify-between items-center">
-          <TerminalSelector 
-            terminals={terminals}
-            selectedTerminalId={selectedTerminalId}
-            onTerminalChange={setSelectedTerminalId}
-            onAddTerminal={addTerminal}
-          />
+          <Select
+            value={selectedTerminalId}
+            onValueChange={handleTerminalChange}
+          >
+            <SelectTrigger>
+              <SelectValue>
+                {terminalOptions.find(opt => opt.value === selectedTerminalId)?.label || 'Select Terminal'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {terminalOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           {selectedTerminalId && (
             <Button 

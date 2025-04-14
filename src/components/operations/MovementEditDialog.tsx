@@ -1,7 +1,6 @@
-
 import React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Movement } from '@/types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import ScheduleMovementForm from './ScheduleMovementForm';
@@ -14,16 +13,15 @@ interface MovementEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   movement: Movement;
-  onSuccess: () => void;
+  onEditComplete?: () => void;
 }
 
 const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
   open,
   onOpenChange,
   movement,
-  onSuccess
+  onEditComplete
 }) => {
-  // We need to fetch the corresponding open trade to use with the form
   const { data: openTrade, isLoading, error } = useQuery({
     queryKey: ['openTrade', movement.tradeLegId],
     queryFn: async () => {
@@ -39,7 +37,6 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
       
       if (error) throw error;
       
-      // Properly cast the data to the expected types
       if (data) {
         return {
           ...data,
@@ -52,7 +49,6 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
           customs_status: data.customs_status as CustomsStatus,
           contract_status: data.contract_status as ContractStatus,
           pricing_type: data.pricing_type as PricingType,
-          // Properly parse and validate the pricing formula
           pricing_formula: validateAndParsePricingFormula(data.pricing_formula),
           loading_period_start: data.loading_period_start ? new Date(data.loading_period_start) : undefined,
           loading_period_end: data.loading_period_end ? new Date(data.loading_period_end) : undefined,
@@ -60,7 +56,6 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
           pricing_period_end: data.pricing_period_end ? new Date(data.pricing_period_end) : undefined,
           created_at: new Date(data.created_at),
           updated_at: new Date(data.updated_at),
-          // Explicitly cast status to the required union type
           status: (data.status || 'open') as 'open' | 'closed'
         };
       }
@@ -72,7 +67,7 @@ const MovementEditDialog: React.FC<MovementEditDialogProps> = ({
   });
 
   const handleSuccess = () => {
-    onSuccess();
+    onEditComplete?.();
     toast({
       title: "Movement updated",
       description: "Movement has been updated successfully."

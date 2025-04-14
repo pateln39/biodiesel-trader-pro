@@ -6,10 +6,9 @@ import * as z from 'zod';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -17,7 +16,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage
+  FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -30,18 +29,20 @@ const formSchema = z.object({
   description: z.string().optional(),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 interface AddTerminalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddTerminal: (data: { name: string; description?: string }) => void;
+  onSubmit: (data: { name: string; description?: string }) => void;
 }
 
 export function AddTerminalDialog({
   open,
   onOpenChange,
-  onAddTerminal,
+  onSubmit
 }: AddTerminalDialogProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -49,23 +50,23 @@ export function AddTerminalDialog({
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    onAddTerminal(values);
+  const handleSubmit = (values: FormValues) => {
+    onSubmit({
+      name: values.name,
+      description: values.description || undefined,
+    });
     form.reset();
     onOpenChange(false);
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Terminal</DialogTitle>
-          <DialogDescription>
-            Enter details to create a new terminal location.
-          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -73,7 +74,7 @@ export function AddTerminalDialog({
                 <FormItem>
                   <FormLabel>Terminal Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Mumbai Terminal" {...field} />
+                    <Input {...field} placeholder="Enter terminal name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -86,11 +87,7 @@ export function AddTerminalDialog({
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Brief description of this terminal"
-                      className="resize-none"
-                      {...field}
-                    />
+                    <Textarea {...field} placeholder="Enter terminal description" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

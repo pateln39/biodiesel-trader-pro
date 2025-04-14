@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -504,11 +503,10 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         items={filteredMovements}
         renderHeader={renderHeader}
         renderRow={renderRow}
-        getRowId={(row) => row.id}
+        rowId={(row) => row.id}
         onReorder={onReorder}
       />
 
-      {/* Dialogs */}
       {selectedMovement && (
         <MovementEditDialog
           open={editDialogOpen}
