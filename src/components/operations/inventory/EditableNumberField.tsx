@@ -43,7 +43,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     product ? (
       <ProductToken 
         product={product} 
-        value={initialValue}
+        value={initialValue.toString()}
         className={className}
       />
     ) : (
@@ -55,7 +55,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div className="cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded">
-          {initialValue === 0 ? "-" : displayValue}
+          {displayValue}
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3">

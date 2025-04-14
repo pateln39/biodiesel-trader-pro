@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -104,7 +103,8 @@ const InventoryPage = () => {
     updateMovementComments,
     updateTankProduct,
     updateTankSpec,
-    updateTankHeating
+    updateTankHeating,
+    updateTankCapacity
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -483,7 +483,7 @@ const InventoryPage = () => {
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Capacity MT */}
+                          {/* Capacity MT - Now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             {Object.keys(tanks).map((tankId) => (
                               <TableHead 
@@ -492,8 +492,15 @@ const InventoryPage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tanks[tankId].capacity_mt} MT</span>
-                                  <Database className="h-3 w-3 text-brand-lime/70" />
+                                  <span>Capacity: </span>
+                                  <div className="flex items-center">
+                                    <EditableNumberField
+                                      initialValue={tanks[tankId].capacity_mt}
+                                      onSave={(value) => updateTankCapacity(tankId, value)}
+                                      className="text-[10px] w-20"
+                                    /> MT
+                                    <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
+                                  </div>
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
                                   <div 
@@ -716,10 +723,18 @@ const InventoryPage = () => {
                                 {Object.keys(tanks).map((tankId) => (
                                   <React.Fragment key={`${movement.id}-${tankId}`}>
                                     <TableCell className="text-center text-[10px] py-2">
-                                      -
+                                      <EditableNumberField
+                                        initialValue={0}
+                                        onSave={(value) => {
+                                          // TODO: Implement updateMovementQuantity here
+                                          console.log('Update movement quantity:', value);
+                                        }}
+                                        className="text-[10px] w-16"
+                                        product={tanks[tankId].current_product}
+                                      />
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2">
-                                      -
+                                      0
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                       0
@@ -728,24 +743,12 @@ const InventoryPage = () => {
                                 ))}
                                 
                                 {/* New summary columns */}
-                                <TableCell className="text-center text-[10px] py-2">
-                                  -
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2">
-                                  -
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
-                                  -
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
-                                  -
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium">
-                                  0
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  0
-                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">0</TableCell>
                               </TableRow>
                             );
                           })}

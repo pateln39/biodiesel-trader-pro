@@ -171,6 +171,30 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const updateTankCapacityMutation = useMutation({
+    mutationFn: async ({ tankId, capacityMt }: { tankId: string, capacityMt: number }) => {
+      const capacityM3 = capacityMt * 1.1; // Using 1.1 as conversion factor
+      const { error } = await supabase
+        .from('tanks')
+        .update({ 
+          capacity_mt: capacityMt,
+          capacity_m3: capacityM3
+        })
+        .eq('id', tankId);
+      
+      if (error) throw error;
+      return { tankId, capacityMt };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
+      toast.success('Tank capacity updated');
+    },
+    onError: (error) => {
+      console.error('Error updating tank capacity:', error);
+      toast.error('Failed to update tank capacity');
+    }
+  });
+
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -206,6 +230,8 @@ export const useInventoryState = (terminalId?: string) => {
           ? isHeatingEnabled === 'true' 
           : isHeatingEnabled 
       }),
+    updateTankCapacity: (tankId: string, capacityMt: number) => 
+      updateTankCapacityMutation.mutate({ tankId, capacityMt }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
