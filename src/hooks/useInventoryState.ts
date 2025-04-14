@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -20,9 +19,10 @@ export interface TankMovement {
 export const PRODUCT_COLORS = {
   'UCOME': 'bg-blue-500 text-white',
   'RME': 'bg-green-500 text-white',
-  'TME': 'bg-purple-500 text-white',
-  'UFAME': 'bg-orange-500 text-white',
-  'PME': 'bg-red-500 text-white'
+  'FAME0': 'bg-purple-500 text-white',
+  'HVO': 'bg-orange-500 text-white',
+  'RME DC': 'bg-red-500 text-white',
+  'UCOME-5': 'bg-yellow-500 text-white'
 };
 
 export const useInventoryState = (terminalId?: string) => {
@@ -71,7 +71,6 @@ export const useInventoryState = (terminalId?: string) => {
     enabled: !!terminalId
   });
 
-  // Update movement quantity mutation
   const updateMovementQuantityMutation = useMutation({
     mutationFn: async ({ movementId, quantity }: { movementId: string, quantity: number }) => {
       const { error } = await supabase
@@ -92,7 +91,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  // Update movement comments mutation
   const updateMovementCommentsMutation = useMutation({
     mutationFn: async ({ movementId, comments }: { movementId: string, comments: string }) => {
       const { error } = await supabase
@@ -113,7 +111,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  // Update tank product mutation
   const updateTankProductMutation = useMutation({
     mutationFn: async ({ tankId, product }: { tankId: string, product: string }) => {
       const { error } = await supabase
@@ -134,7 +131,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  // Update tank spec mutation
   const updateTankSpecMutation = useMutation({
     mutationFn: async ({ tankId, spec }: { tankId: string, spec: string }) => {
       const { error } = await supabase
@@ -155,7 +151,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  // Update tank heating mutation
   const updateTankHeatingMutation = useMutation({
     mutationFn: async ({ tankId, isHeatingEnabled }: { tankId: string, isHeatingEnabled: boolean }) => {
       const { error } = await supabase
@@ -179,9 +174,10 @@ export const useInventoryState = (terminalId?: string) => {
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
-    { label: 'TME', value: 'TME' },
-    { label: 'UFAME', value: 'UFAME' },
-    { label: 'PME', value: 'PME' }
+    { label: 'FAME0', value: 'FAME0' },
+    { label: 'HVO', value: 'HVO' },
+    { label: 'RME DC', value: 'RME DC' },
+    { label: 'UCOME-5', value: 'UCOME-5' }
   ];
 
   const heatingOptions = [

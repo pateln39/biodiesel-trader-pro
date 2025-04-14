@@ -46,6 +46,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import TradeDetailsDialog from './TradeDetailsDialog';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
+import { AssignToTerminalButton } from './movements/AssignToTerminalButton';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -272,6 +273,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <TableHead>COD Date</TableHead>
       <TableHead>Status</TableHead>
       <TableHead className="text-center">Actions</TableHead>
+      <TableHead>Assign to Terminal</TableHead>
     </>
   );
 
@@ -417,6 +419,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </AlertDialogContent>
           </AlertDialog>
         </div>
+      </TableCell>
+      <TableCell>
+        <AssignToTerminalButton 
+          movementId={movement.id}
+          currentTerminalId={movement.terminal_id}
+        />
       </TableCell>
     </>
   );
