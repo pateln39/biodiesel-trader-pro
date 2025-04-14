@@ -48,7 +48,9 @@ export const useMovementTanks = (movementId?: string) => {
   });
 
   const addMovementTankMutation = useMutation({
-    mutationFn: async (newMovement: Omit<MovementTank, 'id' | 'balanceMt' | 'balanceM3'>) => {
+    mutationFn: async (newMovement: Omit<MovementTank, 'id'>) => {
+      // Calculate or get balances if needed
+      // Here we use the provided balance values from the parameter
       const { data, error } = await supabase
         .from('tank_movements')
         .insert({
@@ -56,6 +58,8 @@ export const useMovementTanks = (movementId?: string) => {
           tank_id: newMovement.tankId,
           quantity_mt: newMovement.quantityMt,
           quantity_m3: newMovement.quantityM3,
+          balance_mt: newMovement.balanceMt,
+          balance_m3: newMovement.balanceM3,
           product_at_time: newMovement.productAtTime
         })
         .select()

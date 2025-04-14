@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTankMovements, TankMovement } from '@/hooks/useTankMovements';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { useMovementTanks } from '@/hooks/useMovementTanks';
+import { useMovementTanks, MovementTank } from '@/hooks/useMovementTanks';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -296,7 +296,7 @@ const InventoryPage: React.FC = () => {
           balance_mt: newBalanceMt,
           balance_m3: newBalanceM3,
           product_at_time: newMovement.productAtTime,
-          movement_date: new Date(newMovement.movementId).toISOString()
+          movement_date: new Date().toISOString()
         })
         .select()
         .single();
