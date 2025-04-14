@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -153,6 +154,26 @@ const InventoryPage = () => {
                             </TableHead>
                           </TableRow>
                         ))}
+                        
+                        {/* Adding 5 empty rows to align with tank info headers in right panel */}
+                        <TableRow className="bg-muted/50 border-b border-white/10 h-10">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-10">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
+                        <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                          <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        </TableRow>
                         
                         {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                         <TableRow className="bg-muted/50 border-b border-white/10 h-10">
