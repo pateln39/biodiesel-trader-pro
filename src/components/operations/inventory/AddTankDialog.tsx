@@ -38,7 +38,7 @@ const AddTankDialog: React.FC<AddTankDialogProps> = ({ onAddTank, children }) =>
     defaultValues: {
       tank_number: '',
       current_product: '',
-      capacity_mt: '',
+      capacity_mt: undefined as unknown as number,
       spec: '',
       is_heating_enabled: false
     }
@@ -48,7 +48,6 @@ const AddTankDialog: React.FC<AddTankDialogProps> = ({ onAddTank, children }) =>
     try {
       await onAddTank({
         ...values,
-        capacity_m3: values.capacity_mt * 1.1, // Approximate conversion
       });
       toast.success('Tank added successfully');
       setOpen(false);
@@ -96,8 +95,8 @@ const AddTankDialog: React.FC<AddTankDialogProps> = ({ onAddTank, children }) =>
                     </FormControl>
                     <SelectContent>
                       {productOptions.map((product) => (
-                        <SelectItem key={product.value} value={product.value}>
-                          {product.label}
+                        <SelectItem key={product} value={product}>
+                          {product}
                         </SelectItem>
                       ))}
                     </SelectContent>

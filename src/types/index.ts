@@ -11,32 +11,32 @@ export interface Movement {
   referenceNumber?: string;
   tradeLegId?: string;
   parentTradeId?: string;
-  tradeReference?: string;
-  counterpartyName?: string;
+  trade_reference?: string;
+  counterparty?: string;
   product?: string;
-  buySell?: string;
+  buy_sell?: string;
   incoTerm?: string;
   sustainability?: string;
   quantity?: number; // Added this field to match the open trade's quantity
-  scheduledQuantity?: number;
+  scheduled_quantity?: number;
   blQuantity?: number;
-  actualQuantity?: number;
-  nominationEta?: Date;
-  nominationValid?: Date;
+  actual_quantity?: number;
+  nomination_eta?: Date;
+  nomination_valid?: Date;
   cashFlow?: Date; // Changed from string to Date
-  bargeName?: string;
+  barge_name?: string;
   loadport?: string;
   loadportInspector?: string;
   disport?: string;
   disportInspector?: string;
-  blDate?: Date;
+  bl_date?: Date;
   codDate?: Date;
-  pricingType?: PricingType;
+  pricingType?: string;
   pricingFormula?: any;
   comments?: string;
-  customsStatus?: string;
-  creditStatus?: string;
-  contractStatus?: string;
+  customs_status?: string;
+  credit_status?: string;
+  contract_status?: string;
   status: string;
   date: Date;
   createdAt: Date;
@@ -49,6 +49,13 @@ export interface Movement {
   coaSentChecked?: boolean;
   eadChecked?: boolean;
   sort_order?: number; // Added sort_order property
+  // New structure for tank movements
+  tanks?: Record<string, {
+    quantity: number; 
+    balance: number;
+    balanceM3: number;
+    productAtTimeOfMovement: string;
+  }>;
 }
 
 // Explicit re-exports to avoid name conflicts when importing

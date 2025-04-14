@@ -34,9 +34,18 @@ export const useReferenceData = () => {
   };
 
   const fetchCustomsStatus = async () => {
-    // Query the customs_status table which was renamed from product_credit_status
     const { data, error } = await supabase
       .from('customs_status')
+      .select('name')
+      .order('name');
+    
+    if (error) throw error;
+    return data.map(item => item.name);
+  };
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
       .select('name')
       .order('name');
     
@@ -64,10 +73,16 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
+  const { data: productOptions = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProducts
+  });
+
   return {
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
-    customsStatusOptions
+    customsStatusOptions,
+    productOptions
   };
 };

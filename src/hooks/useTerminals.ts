@@ -73,9 +73,16 @@ export const useTerminals = () => {
 
   const addTank = async (terminalId: string, tankData: Omit<Tank, 'id' | 'terminal_id'>) => {
     try {
+      // Calculate capacity_m3 based on capacity_mt
+      const capacity_m3 = tankData.capacity_mt * 1.1; // Approximate conversion
+      
       const { data, error } = await supabase
         .from('tanks')
-        .insert([{ ...tankData, terminal_id: terminalId }])
+        .insert([{ 
+          ...tankData, 
+          terminal_id: terminalId,
+          capacity_m3
+        }])
         .select()
         .single();
 

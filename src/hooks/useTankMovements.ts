@@ -25,6 +25,15 @@ interface Movement {
   scheduled_quantity: number;
   actual_quantity: number | null;
   status: string;
+  buy_sell: string;
+  barge_name: string | null;
+  loadport: string | null;
+  disport: string | null;
+  nomination_valid: Date | null;
+  bl_date: Date | null;
+  customs_status: string | null;
+  credit_status: string | null;
+  comments: string | null;
 }
 
 export const useTankMovements = (terminalId: string) => {
@@ -56,7 +65,14 @@ export const useTankMovements = (terminalId: string) => {
 
       if (tankMovementsError) throw tankMovementsError;
 
-      setMovements(movementsData);
+      // Process movement dates
+      const processedMovements = movementsData.map(movement => ({
+        ...movement,
+        nomination_valid: movement.nomination_valid ? new Date(movement.nomination_valid) : null,
+        bl_date: movement.bl_date ? new Date(movement.bl_date) : null
+      }));
+
+      setMovements(processedMovements);
       setTankMovements(tankMovementsData);
       setError(null);
     } catch (err) {
