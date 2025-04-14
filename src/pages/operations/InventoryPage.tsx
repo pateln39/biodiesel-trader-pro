@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,17 +163,17 @@ const tankDetails = {
   }
 };
 
-// Define sticky column widths for layout calculation
+// Define sticky column widths for layout calculation - REDUCED WIDTHS HERE
 const stickyColumnWidths = {
-  counterparty: 150,
-  tradeRef: 120,
-  bargeName: 120,
-  movementDate: 100,
-  nominationDate: 100,
-  customs: 100,
-  sustainability: 120,
-  comments: 120,
-  quantity: 100,
+  counterparty: 130,
+  tradeRef: 100,
+  bargeName: 110,
+  movementDate: 90,
+  nominationDate: 90,
+  customs: 90,
+  sustainability: 110,
+  comments: 110,
+  quantity: 90,
 };
 
 // Calculate total width of sticky columns for positioning
@@ -211,49 +212,67 @@ const InventoryPage = () => {
                   style={{ width: `${totalStickyWidth}px` }}
                 >
                   <Table>
-                    {/* Sticky Column Headers */}
+                    {/* Sticky Column Headers - NOW PERFECTLY ALIGNED WITH RIGHT PANEL */}
                     <TableHeader>
-                      {/* Row for tank headers - empty for sticky columns */}
+                      {/* Row 1: Product headers - empty for sticky columns */}
                       <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Row for tank numbers - empty for sticky columns */}
+                      {/* Row 2: Tank numbers - empty for sticky columns */}
                       <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Row for tank capacity MT - empty for sticky columns */}
+                      {/* Row 3: Tank capacity MT - empty for sticky columns */}
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Row for tank capacity M³ - empty for sticky columns */}
+                      {/* Row 4: Tank capacity M³ - empty for sticky columns */}
                       <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Row for tank specs - empty for sticky columns */}
+                      {/* Row 5: Tank specs - empty for sticky columns */}
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Row for tank heating - empty for sticky columns */}
+                      {/* Row 6: Tank heating - empty for sticky columns */}
                       <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                        <TableHead colSpan={9} className="bg-brand-navy"></TableHead>
+                        <TableHead 
+                          colSpan={9} 
+                          className="bg-brand-navy text-[11px]"
+                        ></TableHead>
                       </TableRow>
                       
-                      {/* Main column headers */}
+                      {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                       <TableRow className="bg-muted/50 border-b border-white/10">
-                        <TableHead className="w-[150px] bg-brand-navy">Counterparty</TableHead>
-                        <TableHead className="w-[120px] bg-brand-navy">Trade Ref.</TableHead>
-                        <TableHead className="w-[120px] bg-brand-navy">Barge Name</TableHead>
-                        <TableHead className="w-[100px] bg-brand-navy">Movement Date</TableHead>
-                        <TableHead className="w-[100px] bg-brand-navy">Nomination Valid From</TableHead>
-                        <TableHead className="w-[100px] bg-brand-navy">Customs</TableHead>
-                        <TableHead className="w-[120px] bg-brand-navy">Sustainability</TableHead>
-                        <TableHead className="w-[120px] bg-brand-navy">Comments</TableHead>
-                        <TableHead className="w-[100px] bg-brand-navy border-r border-white/30">Qty. (MT)</TableHead>
+                        <TableHead className="w-[130px] bg-brand-navy text-[11px]">Counterparty</TableHead>
+                        <TableHead className="w-[100px] bg-brand-navy text-[11px]">Trade Ref.</TableHead>
+                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Barge Name</TableHead>
+                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Movement Date</TableHead>
+                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Nomination Valid</TableHead>
+                        <TableHead className="w-[90px] bg-brand-navy text-[11px]">Customs</TableHead>
+                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Sustainability</TableHead>
+                        <TableHead className="w-[110px] bg-brand-navy text-[11px]">Comments</TableHead>
+                        <TableHead className="w-[90px] bg-brand-navy text-[11px] border-r border-white/30">Qty. (MT)</TableHead>
                       </TableRow>
                     </TableHeader>
                     
@@ -269,14 +288,14 @@ const InventoryPage = () => {
                             key={`sticky-${movement.id}`} 
                             className={cn("border-b border-white/5", bgColorClass)}
                           >
-                            <TableCell className="font-medium bg-brand-navy">{movement.counterpartyName}</TableCell>
-                            <TableCell className="bg-brand-navy">{movement.tradeReference}</TableCell>
-                            <TableCell className="bg-brand-navy">{movement.bargeName}</TableCell>
-                            <TableCell className="bg-brand-navy">{movement.movementDate.toLocaleDateString()}</TableCell>
-                            <TableCell className="bg-brand-navy">{movement.nominationValid.toLocaleDateString()}</TableCell>
-                            <TableCell className="bg-brand-navy">
+                            <TableCell className="font-medium bg-brand-navy text-[11px] py-2">{movement.counterpartyName}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.tradeReference}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.bargeName}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.movementDate.toLocaleDateString()}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.nominationValid.toLocaleDateString()}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">
                               <span className={cn(
-                                "px-2 py-1 rounded-full text-xs font-medium",
+                                "px-1 py-0.5 rounded-full text-[10px] font-medium",
                                 movement.customsStatus === "cleared" 
                                   ? "bg-green-900/60 text-green-200" 
                                   : movement.customsStatus === "pending"
@@ -286,10 +305,10 @@ const InventoryPage = () => {
                                 {movement.customsStatus}
                               </span>
                             </TableCell>
-                            <TableCell className="bg-brand-navy">{movement.sustainability}</TableCell>
-                            <TableCell className="bg-brand-navy">{movement.comments || "-"}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.sustainability}</TableCell>
+                            <TableCell className="bg-brand-navy text-[11px] py-2">{movement.comments || "-"}</TableCell>
                             <TableCell className={cn(
-                              "font-semibold bg-brand-navy border-r border-white/30",
+                              "font-semibold bg-brand-navy text-[11px] py-2 border-r border-white/30",
                               movement.buySell === "buy" ? "text-green-400" : "text-red-400"
                             )}>
                               {movement.buySell === "buy" 
@@ -306,7 +325,7 @@ const InventoryPage = () => {
                 {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1800px]"> {/* Adjusted minimum width for tank columns */}
+                    <div className="min-w-[1500px]"> {/* REDUCED MINIMUM WIDTH */}
                       <Table>
                         <TableHeader>
                           {/* Tank Info Headers */}
@@ -315,7 +334,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-header`}
                                 colSpan={3} 
-                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold"
+                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[11px]"
                               >
                                 {productName}
                               </TableHead>
@@ -328,7 +347,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-tank-number`}
                                 colSpan={3} 
-                                className="text-center text-xs border-r border-white/30"
+                                className="text-center text-[10px] border-r border-white/30"
                               >
                                 Tank {tankDetails[productName].tankNumber}
                               </TableHead>
@@ -341,11 +360,11 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-capacity`}
                                 colSpan={3} 
-                                className="text-xs border-r border-white/30"
+                                className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
                                   <span>Capacity: {tankDetails[productName].capacity} MT</span>
-                                  <Database className="h-4 w-4 text-brand-lime/70" />
+                                  <Database className="h-3 w-3 text-brand-lime/70" />
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
                                   <div 
@@ -359,10 +378,10 @@ const InventoryPage = () => {
                                   ></div>
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[9px] text-muted-foreground">
                                     {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance} MT
                                   </span>
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[9px] text-muted-foreground">
                                     {Math.round(
                                       (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balance / tankDetails[productName].capacity) * 100
                                     )}%
@@ -378,7 +397,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-capacity-m3`}
                                 colSpan={3} 
-                                className="text-xs border-r border-white/30"
+                                className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
                                   <span>Capacity: {tankDetails[productName].capacityM3} M³</span>
@@ -395,10 +414,10 @@ const InventoryPage = () => {
                                   ></div>
                                 </div>
                                 <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[9px] text-muted-foreground">
                                     {mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3} M³
                                   </span>
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-[9px] text-muted-foreground">
                                     {Math.round(
                                       (mockInventoryMovements[mockInventoryMovements.length - 1].tanks[productName].balanceM3 / tankDetails[productName].capacityM3) * 100
                                     )}%
@@ -414,7 +433,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-spec`}
                                 colSpan={3} 
-                                className="text-xs border-r border-white/30"
+                                className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Spec:</span>
@@ -430,7 +449,7 @@ const InventoryPage = () => {
                               <TableHead 
                                 key={`${productName}-heating`}
                                 colSpan={3} 
-                                className="text-xs border-r border-white/30"
+                                className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Heating:</span>
@@ -443,13 +462,13 @@ const InventoryPage = () => {
                             ))}
                           </TableRow>
                           
-                          {/* Column headers for tank details */}
+                          {/* Column headers for tank details - ALIGNED WITH LEFT PANEL HEADERS */}
                           <TableRow className="bg-muted/50 border-b border-white/10">
                             {products.map((productName) => (
                               <React.Fragment key={productName}>
-                                <TableHead className="text-center text-xs">Movement (MT)</TableHead>
-                                <TableHead className="text-center text-xs">Movement (M³)</TableHead>
-                                <TableHead className="text-center text-xs bg-brand-navy border-r border-white/30">Balance</TableHead>
+                                <TableHead className="text-center text-[11px]">Movement (MT)</TableHead>
+                                <TableHead className="text-center text-[11px]">Movement (M³)</TableHead>
+                                <TableHead className="text-center text-[11px] bg-brand-navy border-r border-white/30">Balance</TableHead>
                               </React.Fragment>
                             ))}
                           </TableRow>
@@ -472,7 +491,7 @@ const InventoryPage = () => {
                                   <React.Fragment key={`${movement.id}-${productName}`}>
                                     <TableCell 
                                       className={cn(
-                                        "text-center",
+                                        "text-center text-[11px] py-2",
                                         movement.tanks[productName].quantity > 0 ? "text-green-400" :
                                         movement.tanks[productName].quantity < 0 ? "text-red-400" : "text-muted-foreground"
                                       )}
@@ -483,10 +502,10 @@ const InventoryPage = () => {
                                           : movement.tanks[productName].quantity) 
                                         : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center text-muted-foreground">
+                                    <TableCell className="text-center text-[11px] py-2 text-muted-foreground">
                                       {movement.tanks[productName].quantity !== 0 ? "-" : "-"}
                                     </TableCell>
-                                    <TableCell className="text-center bg-brand-navy border-r border-white/30">
+                                    <TableCell className="text-center text-[11px] py-2 bg-brand-navy border-r border-white/30">
                                       {movement.tanks[productName].balance}
                                     </TableCell>
                                   </React.Fragment>
