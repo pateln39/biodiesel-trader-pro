@@ -625,12 +625,24 @@ const InventoryPage = () => {
                             ))}
                           </TableRow>
                           
-                          {/* Column headers for tank details - ALIGNED WITH LEFT PANEL HEADERS */}
+                          {/* Column headers for tank details - UPDATED WITH MOVEMENT TEXT */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {products.map((productName) => (
                               <React.Fragment key={productName}>
-                                <TableHead className="text-center text-[10px]">Move MT</TableHead>
-                                <TableHead className="text-center text-[10px]">Move M³</TableHead>
+                                <TableHead className="text-center text-[10px]">
+                                  <TruncatedCell
+                                    text="Movement (MT)"
+                                    width={65}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </TableHead>
+                                <TableHead className="text-center text-[10px]">
+                                  <TruncatedCell
+                                    text="Movement (M³)"
+                                    width={65}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </TableHead>
                                 <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">Balance</TableHead>
                               </React.Fragment>
                             ))}
