@@ -174,18 +174,24 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankProductMutation = useMutation({
     mutationFn: async ({ tankId, product }: { tankId: string, product: string }) => {
-      console.log('Updating tank product:', { tankId, product });
+      console.log('Attempting to update tank product:', { tankId, product });
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tanks')
         .update({ current_product: product })
-        .eq('id', tankId);
+        .eq('id', tankId)
+        .select();
       
       if (error) {
-        console.error('Error updating tank product:', error);
+        console.error('Detailed error updating tank product:', {
+          message: error.message,
+          details: error.details,
+          code: error.code
+        });
         throw error;
       }
       
+      console.log('Tank product update response:', data);
       return { tankId, product };
     },
     onSuccess: () => {
@@ -193,91 +199,109 @@ export const useInventoryState = (terminalId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       toast.success('Tank product updated');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating tank product:', error);
-      toast.error('Failed to update tank product');
+      toast.error(`Failed to update tank product: ${error.message || 'Unknown error'}`);
     }
   });
 
   const updateTankSpecMutation = useMutation({
     mutationFn: async ({ tankId, spec }: { tankId: string, spec: string }) => {
-      console.log('Updating tank spec:', { tankId, spec });
+      console.log('Attempting to update tank spec:', { tankId, spec });
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tanks')
         .update({ spec })
-        .eq('id', tankId);
+        .eq('id', tankId)
+        .select();
       
       if (error) {
-        console.error('Error updating tank spec:', error);
+        console.error('Detailed error updating tank spec:', {
+          message: error.message,
+          details: error.details,
+          code: error.code
+        });
         throw error;
       }
       
+      console.log('Tank spec update response:', data);
       return { tankId, spec };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank spec updated');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating tank spec:', error);
-      toast.error('Failed to update tank spec');
+      toast.error(`Failed to update tank spec: ${error.message || 'Unknown error'}`);
     }
   });
 
   const updateTankHeatingMutation = useMutation({
     mutationFn: async ({ tankId, isHeatingEnabled }: { tankId: string, isHeatingEnabled: boolean }) => {
-      console.log('Updating tank heating:', { tankId, isHeatingEnabled });
+      console.log('Attempting to update tank heating:', { tankId, isHeatingEnabled });
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tanks')
         .update({ is_heating_enabled: isHeatingEnabled })
-        .eq('id', tankId);
+        .eq('id', tankId)
+        .select();
       
       if (error) {
-        console.error('Error updating tank heating:', error);
+        console.error('Detailed error updating tank heating:', {
+          message: error.message,
+          details: error.details,
+          code: error.code
+        });
         throw error;
       }
       
+      console.log('Tank heating update response:', data);
       return { tankId, isHeatingEnabled };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank heating updated');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating tank heating:', error);
-      toast.error('Failed to update tank heating');
+      toast.error(`Failed to update tank heating: ${error.message || 'Unknown error'}`);
     }
   });
 
   const updateTankCapacityMutation = useMutation({
     mutationFn: async ({ tankId, capacityMt }: { tankId: string, capacityMt: number }) => {
-      console.log('Updating tank capacity:', { tankId, capacityMt });
+      console.log('Attempting to update tank capacity:', { tankId, capacityMt });
       
       const capacityM3 = capacityMt * 1.1;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tanks')
         .update({ 
           capacity_mt: capacityMt,
           capacity_m3: capacityM3
         })
-        .eq('id', tankId);
+        .eq('id', tankId)
+        .select();
       
       if (error) {
-        console.error('Error updating tank capacity:', error);
+        console.error('Detailed error updating tank capacity:', {
+          message: error.message,
+          details: error.details,
+          code: error.code
+        });
         throw error;
       }
       
+      console.log('Tank capacity update response:', data);
       return { tankId, capacityMt };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tanks'] });
       toast.success('Tank capacity updated');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error updating tank capacity:', error);
-      toast.error('Failed to update tank capacity');
+      toast.error(`Failed to update tank capacity: ${error.message || 'Unknown error'}`);
     }
   });
 
