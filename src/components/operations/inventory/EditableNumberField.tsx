@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -38,16 +37,21 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     setIsOpen(false);
   };
 
+  // Format display value based on whether it's an M3 value
+  const formattedValue = product && initialValue.toString().includes('M³') 
+    ? Number(initialValue).toFixed(2)
+    : initialValue;
+
   // Display as token if product is provided, otherwise just show the number
   const displayValue = (
     product ? (
       <ProductToken 
         product={product} 
-        value={initialValue.toString()}
+        value={formattedValue.toString()}
         className={className}
       />
     ) : (
-      <span className={className}>{initialValue}</span>
+      <span className={className}>{formattedValue}</span>
     )
   );
 
