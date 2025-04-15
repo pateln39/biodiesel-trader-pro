@@ -51,8 +51,8 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       
       if (currentMovements.length === 0) return;
       
-      const productType = currentMovements[0]?.product_at_time || '';
-      const isT1Product = productType.includes('T1');
+      const firstMovement = currentMovements[0];
+      const isT1Movement = firstMovement?.customs_status === 'T1';
       
       let totalBalanceMT = 0;
       
@@ -69,7 +69,7 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
 
       const movementTotalMT = currentMovements.reduce((sum, tm) => sum + tm.quantity_mt, 0);
       
-      if (isT1Product) {
+      if (isT1Movement) {
         runningT1Balance += movementTotalMT;
       } else {
         runningT2Balance += movementTotalMT;
