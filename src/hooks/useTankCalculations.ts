@@ -34,7 +34,7 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       currentUllage: 0
     };
 
-    // Get latest movements per tank to calculate current balances
+    // Get latest movements per tank for current balances
     const latestTankMovements = tanks.map(tank => {
       const tankLatestMovement = tankMovements
         .filter(tm => tm.tank_id === tank.id)
@@ -52,14 +52,14 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       summary.totalCapacity += tank.capacity_mt;
 
       if (latestMovement) {
-        // Add to current stock
-        summary.currentStock += latestMovement.balance_mt;
+        // Add to current stock using quantity_mt instead of balance_mt
+        summary.currentStock += latestMovement.quantity_mt;
 
-        // Add to T1/T2 balances based on product
+        // Add to T1/T2 balances based on product using quantity_mt
         if (latestMovement.product_at_time.includes('T1')) {
-          summary.t1Balance += latestMovement.balance_mt;
+          summary.t1Balance += latestMovement.quantity_mt;
         } else {
-          summary.t2Balance += latestMovement.balance_mt;
+          summary.t2Balance += latestMovement.quantity_mt;
         }
 
         // Add to total MT and M3
