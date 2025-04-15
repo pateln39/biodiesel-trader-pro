@@ -1,4 +1,3 @@
-
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -54,14 +53,9 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
     
     // Process each unique movement
     uniqueMovementIds.forEach(movementId => {
-      // Find all tank movements for this movement ID
       const currentMovements = movementGroups[movementId] || [];
       
       if (currentMovements.length === 0) return;
-      
-      // Sum of all tank balances at this point
-      let totalBalanceMT = 0;
-      let totalBalanceM3 = 0;
       
       // Find the product type of this movement
       const productType = currentMovements[0]?.product_at_time || '';
@@ -76,34 +70,15 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       } else {
         runningT2Balance += movementTotalMT;
       }
+
+      // Calculate total balance for this point in time by summing all tank balances
+      let totalBalanceMT = 0;
+      currentMovements.forEach(tm => {
+        totalBalanceMT += tm.balance_mt;
+      });
       
-      // Calculate total balance across all tanks at this point
-      // This requires checking the latest balance of EACH tank at this point in time
-      const tanksLatestBalance = new Map<string, number>();
-      
-      // First populate the map with the latest balance for each tank up to this movement
-      for (const tank of tanks) {
-        // Get all movements for this tank up to and including current movement
-        const tankMovementsUpToNow = sortedMovements.filter(tm => 
-          tm.tank_id === tank.id && 
-          (new Date(tm.movement_date) <= new Date(currentMovements[0].movement_date))
-        );
-        
-        // Get the latest balance for this tank
-        const latestTankMovement = tankMovementsUpToNow.length > 0 
-          ? tankMovementsUpToNow[tankMovementsUpToNow.length - 1] 
-          : null;
-        
-        tanksLatestBalance.set(tank.id, latestTankMovement?.balance_mt || 0);
-      }
-      
-      // Sum up all tank balances to get total inventory at this point
-      for (const [, balance] of tanksLatestBalance) {
-        totalBalanceMT += balance;
-      }
-      
-      // Calculate M3 equivalent (using 1.1 conversion factor)
-      totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
+      // Calculate M3 equivalent
+      const totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
       
       // Calculate current ullage
       const currentUllage = totalCapacity - totalBalanceMT;

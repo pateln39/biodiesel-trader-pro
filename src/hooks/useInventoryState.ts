@@ -326,7 +326,10 @@ export const useInventoryState = (terminalId?: string) => {
       
       if (tankError) throw tankError;
 
-      const movementDate = new Date();
+      const movementDate = movement.inventory_movement_date 
+        ? new Date(movement.inventory_movement_date)
+        : new Date();
+
       const balance = await calculateTankBalance(tankId, movementDate);
       
       const tankMovementData = {
@@ -337,7 +340,7 @@ export const useInventoryState = (terminalId?: string) => {
         balance_mt: balance.mt + quantity,
         balance_m3: (balance.mt + quantity) * 1.1,
         product_at_time: tankData.current_product,
-        movement_date: formatDateForStorage(movementDate)
+        movement_date: movementDate.toISOString()
       };
 
       const { data: existingMovements } = await supabase
