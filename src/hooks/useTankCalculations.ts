@@ -1,4 +1,3 @@
-
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -34,38 +33,34 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       currentUllage: 0
     };
 
-    // Get latest movements per tank for current balances
-    const latestTankMovements = tanks.map(tank => {
-      const tankLatestMovement = tankMovements
-        .filter(tm => tm.tank_id === tank.id)
-        .sort((a, b) => new Date(b.movement_date).getTime() - new Date(a.movement_date).getTime())[0];
-      
-      return {
-        tank,
-        latestMovement: tankLatestMovement
-      };
+    // Add up total capacity from all tanks
+    tanks.forEach(tank => {
+      summary.totalCapacity += tank.capacity_mt;
     });
 
-    // Calculate totals from latest movements
-    latestTankMovements.forEach(({ tank, latestMovement }) => {
-      // Add to total capacity
-      summary.totalCapacity += tank.capacity_mt;
+    // Sort all movements by date to process them chronologically
+    const sortedMovements = [...tankMovements].sort(
+      (a, b) => new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime()
+    );
 
-      if (latestMovement) {
-        // Add to current stock using quantity_mt instead of balance_mt
-        summary.currentStock += latestMovement.quantity_mt;
+    // Process each movement in chronological order to maintain running totals
+    sortedMovements.forEach((movement) => {
+      // Update running totals based on movement quantity
+      const quantityMT = movement.quantity_mt;
+      
+      // Add to current stock
+      summary.currentStock += quantityMT;
 
-        // Add to T1/T2 balances based on product using quantity_mt
-        if (latestMovement.product_at_time.includes('T1')) {
-          summary.t1Balance += latestMovement.quantity_mt;
-        } else {
-          summary.t2Balance += latestMovement.quantity_mt;
-        }
-
-        // Add to total MT and M3
-        summary.totalMT += latestMovement.quantity_mt;
-        summary.totalM3 += Number(latestMovement.quantity_m3.toFixed(2));
+      // Update T1/T2 balances based on product
+      if (movement.product_at_time.includes('T1')) {
+        summary.t1Balance += quantityMT;
+      } else {
+        summary.t2Balance += quantityMT;
       }
+
+      // Update total MT and M3
+      summary.totalMT += quantityMT;
+      summary.totalM3 += movement.quantity_m3;
     });
 
     // Calculate ullage (available space)
