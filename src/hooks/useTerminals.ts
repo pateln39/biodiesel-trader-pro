@@ -26,7 +26,10 @@ export const useTerminals = () => {
         .eq('is_active', true)
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching terminals:', error);
+        throw error;
+      }
 
       return data.map((terminal: any) => ({
         ...terminal,

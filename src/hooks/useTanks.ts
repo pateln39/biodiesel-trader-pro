@@ -33,7 +33,10 @@ export const useTanks = (terminalId?: string) => {
         .eq('terminal_id', terminalId)
         .order('display_order');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching tanks:', error);
+        throw error;
+      }
 
       return data.map((tank: any) => ({
         ...tank,
