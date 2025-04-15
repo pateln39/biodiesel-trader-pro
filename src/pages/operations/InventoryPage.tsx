@@ -17,6 +17,7 @@ import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
+import { useTankCalculations } from '@/hooks/useTankCalculations';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -124,6 +125,9 @@ const InventoryPage = () => {
   const handleTankFormSuccess = () => {
     refetchTanks();
   };
+
+  const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
+  const summary = calculateSummary();
 
   return (
     <Layout>
@@ -471,26 +475,29 @@ const InventoryPage = () => {
                                     <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
                                   </div>
                                 </div>
-                                <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                  <div 
-                                    className="bg-brand-lime h-2 rounded-full" 
-                                    style={{ 
-                                      width: `${Math.min(
-                                        (100)
-                                        ,
-                                        100
-                                      )}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                                <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-[9px] text-muted-foreground">
-                                    0 MT
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground">
-                                    0%
-                                  </span>
-                                </div>
+                                {(() => {
+                                  const utilization = calculateTankUtilization(tank);
+                                  return (
+                                    <>
+                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                        <div 
+                                          className="bg-brand-lime h-2 rounded-full" 
+                                          style={{ 
+                                            width: `${Math.min(utilization.utilizationMT, 100)}%` 
+                                          }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between px-2 mt-1">
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.currentBalance)} MT
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.utilizationMT)}%
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </TableHead>
                             ))}
                             
@@ -514,26 +521,29 @@ const InventoryPage = () => {
                                 <div className="flex justify-between items-center px-2">
                                   <span>Capacity: {tank.capacity_m3} M³</span>
                                 </div>
-                                <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                  <div 
-                                    className="bg-brand-blue h-2 rounded-full" 
-                                    style={{ 
-                                      width: `${Math.min(
-                                        (100)
-                                        ,
-                                        100
-                                      )}%` 
-                                    }}
-                                  ></div>
-                                </div>
-                                <div className="flex justify-between px-2 mt-1">
-                                  <span className="text-[9px] text-muted-foreground">
-                                    0 M³
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground">
-                                    0%
-                                  </span>
-                                </div>
+                                {(() => {
+                                  const utilization = calculateTankUtilization(tank);
+                                  return (
+                                    <>
+                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                        <div 
+                                          className="bg-brand-blue h-2 rounded-full" 
+                                          style={{ 
+                                            width: `${Math.min(utilization.utilizationM3, 100)}%` 
+                                          }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between px-2 mt-1">
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.balanceM3)} M³
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.utilizationM3)}%
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </TableHead>
                             ))}
                             
@@ -703,12 +713,24 @@ const InventoryPage = () => {
                                   );
                                 })}
                                 
-                                <TableCell className="text-center text-[10px] py-2">0</TableCell>
-                                <TableCell className="text-center text-[10px] py-2">0</TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">0</TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">0</TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium">0</TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">0</TableCell>
+                                <TableCell className="text-center text-[10px] py-2">
+                                  {Math.round(summary.totalMT)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2">
+                                  {Math.round(summary.totalM3)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
+                                  {Math.round(summary.t1Balance)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
+                                  {Math.round(summary.t2Balance)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium">
+                                  {Math.round(summary.currentStock)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {Math.round(summary.currentUllage)}
+                                </TableCell>
                               </TableRow>
                             );
                           })}
