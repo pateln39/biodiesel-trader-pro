@@ -305,6 +305,43 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const updateTankMovementMutation = useMutation({
+    mutationFn: async ({ 
+      movementId, 
+      tankId, 
+      quantity 
+    }: { 
+      movementId: string, 
+      tankId: string, 
+      quantity: number 
+    }) => {
+      const movement = movements.find(m => m.id === movementId);
+      if (!movement) throw new Error('Movement not found');
+
+      const { error } = await supabase
+        .from('tank_movements')
+        .insert([{
+          movement_id: movementId,
+          tank_id: tankId,
+          quantity_mt: quantity,
+          quantity_m3: quantity * 1.1,
+          movement_date: new Date().toISOString()
+        }]);
+      
+      if (error) throw error;
+      
+      return { movementId, tankId, quantity };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Movement quantity updated');
+    },
+    onError: (error: any) => {
+      console.error('Error updating tank movement:', error);
+      toast.error(`Failed to update movement quantity: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -342,6 +379,8 @@ export const useInventoryState = (terminalId?: string) => {
       }),
     updateTankCapacity: (tankId: string, capacityMt: number) => 
       updateTankCapacityMutation.mutate({ tankId, capacityMt }),
+    updateTankMovement: (movementId: string, tankId: string, quantity: number) =>
+      updateTankMovementMutation.mutate({ movementId, tankId, quantity }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

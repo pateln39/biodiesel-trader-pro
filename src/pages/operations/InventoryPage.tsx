@@ -18,7 +18,6 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 
-// Define sticky column widths for layout calculation
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
@@ -31,10 +30,8 @@ const stickyColumnWidths = {
   quantity: 70,
 };
 
-// Calculate total width of sticky columns for positioning
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
-// Define summary column widths
 const summaryColumnWidths = {
   totalMT: 80,
   totalM3: 80,
@@ -44,7 +41,6 @@ const summaryColumnWidths = {
   currentUllage: 100,
 };
 
-// Truncated header names to save space
 const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
@@ -55,7 +51,6 @@ const truncatedHeaders = {
   sustainability: "Sustain.",
   comments: "Comments",
   quantity: "Qty (MT)",
-  // Add new header names
   totalMT: "Total (MT)",
   totalM3: "Total (M³)",
   t1Balance: "T1",
@@ -64,7 +59,6 @@ const truncatedHeaders = {
   currentUllage: "Current Ullage",
 };
 
-// Helper component for truncated text with tooltip
 const TruncatedCell = ({ text, width, className = "" }) => (
   <TooltipProvider>
     <Tooltip>
@@ -96,9 +90,11 @@ const InventoryPage = () => {
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
   const { 
     movements,
+    tankMovements,
     productOptions,
     heatingOptions,
     PRODUCT_COLORS,
+    updateTankMovement,
     updateMovementQuantity,
     updateMovementComments,
     updateTankProduct,
@@ -140,10 +136,8 @@ const InventoryPage = () => {
           </div>
         </div>
         
-        {/* Product legend at the top */}
         <ProductLegend />
         
-        {/* Terminal tabs */}
         <TerminalTabs
           terminals={terminals}
           selectedTerminalId={selectedTerminalId}
@@ -151,7 +145,6 @@ const InventoryPage = () => {
           onAddTerminal={handleAddTerminal}
         />
         
-        {/* Inventory table */}
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
@@ -169,9 +162,7 @@ const InventoryPage = () => {
           </CardHeader>
           <CardContent>
             <div className="relative border rounded-md overflow-hidden">
-              {/* Two-panel layout with fixed sticky columns and scrollable tank details */}
               <div className="flex">
-                {/* Fixed left panel for sticky columns - NOW WITH SCROLL AREA */}
                 <ScrollArea 
                   className="flex-shrink-0 z-30 border-r border-white/30" 
                   orientation="horizontal"
@@ -179,57 +170,43 @@ const InventoryPage = () => {
                 >
                   <div style={{ minWidth: `${totalStickyWidth}px` }}>
                     <Table>
-                      {/* Sticky Column Headers - NOW ALIGNED WITH RIGHT PANEL */}
                       <TableHeader>
-                        {/* Row 1: Product headers - empty for sticky columns */}
                         <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 2: Tank numbers - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 3: Tank capacity MT - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 4: Tank capacity M³ - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 5: Tank specs - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 6: Tank heating - empty for sticky columns */}
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
                             colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
-                        
-                        {/* Row 7: Main column headers - ALIGNED WITH "Movement (MT)/Balance" */}
                         <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                           <TableHead 
                             className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
@@ -326,7 +303,6 @@ const InventoryPage = () => {
                       
                       <TableBody>
                         {movements.map((movement, index) => {
-                          // Determine the background color for the row based on buy/sell
                           const bgColorClass = movement.buy_sell === "buy" 
                             ? "bg-green-900/10 hover:bg-green-900/20" 
                             : "bg-red-900/10 hover:bg-red-900/20";
@@ -389,7 +365,6 @@ const InventoryPage = () => {
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
-                                {/* Make comments editable */}
                                 <EditableField
                                   initialValue={movement.comments}
                                   onSave={(value) => updateMovementComments(movement.id, value)}
@@ -416,13 +391,11 @@ const InventoryPage = () => {
                   </div>
                 </ScrollArea>
                 
-                {/* Scrollable right panel for tank details */}
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <div className="min-w-[1800px]"> {/* Increased minimum width to accommodate new columns */}
+                    <div className="min-w-[1800px]">
                       <Table>
                         <TableHeader>
-                          {/* Tank Info Headers - Now with editable product selection */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -438,14 +411,13 @@ const InventoryPage = () => {
                                   onSave={(value) => updateTankProduct(tank.id, value)}
                                   className={cn(
                                     "text-[10px] font-bold text-center w-full",
-                                    PRODUCT_COLORS[tank.current_product]?.split(' ')[0] // Extract just the background color
+                                    PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
                                   )}
                                   truncate={false}
                                 />
                               </TableHead>
                             ))}
                             
-                            {/* Add headers for the 6 new columns */}
                             <TableHead 
                               colSpan={1} 
                               className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
@@ -464,7 +436,6 @@ const InventoryPage = () => {
                             </TableHead>
                           </TableRow>
                           
-                          {/* Tank Numbers */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -476,14 +447,12 @@ const InventoryPage = () => {
                               </TableHead>
                             ))}
                             
-                            {/* Blank cells for the 6 new columns */}
                             <TableHead 
                               colSpan={6} 
                               className="text-center text-[10px] border-r border-white/30"
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Capacity MT - Now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -525,7 +494,6 @@ const InventoryPage = () => {
                               </TableHead>
                             ))}
                             
-                            {/* Summary row data */}
                             <TableHead 
                               colSpan={6} 
                               className="text-[10px] border-r border-white/30"
@@ -536,7 +504,6 @@ const InventoryPage = () => {
                             </TableHead>
                           </TableRow>
                           
-                          {/* Capacity M³ */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -570,7 +537,6 @@ const InventoryPage = () => {
                               </TableHead>
                             ))}
                             
-                            {/* M³ Summary row data */}
                             <TableHead 
                               colSpan={6} 
                               className="text-[10px] border-r border-white/30"
@@ -581,7 +547,6 @@ const InventoryPage = () => {
                             </TableHead>
                           </TableRow>
                           
-                          {/* Spec - now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -601,14 +566,12 @@ const InventoryPage = () => {
                               </TableHead>
                             ))}
                             
-                            {/* Blank cells for the 6 new columns */}
                             <TableHead 
                               colSpan={6} 
                               className="text-[10px] border-r border-white/30"
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Heating - now editable as dropdown */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                             {tanks.map((tank) => (
                               <TableHead 
@@ -632,14 +595,12 @@ const InventoryPage = () => {
                               </TableHead>
                             ))}
                             
-                            {/* Blank cells for the 6 new columns */}
                             <TableHead 
                               colSpan={6} 
                               className="text-[10px] border-r border-white/30"
                             ></TableHead>
                           </TableRow>
                           
-                          {/* Column headers for tank details and new summary columns */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             {tanks.map((tank) => (
                               <React.Fragment key={tank.id}>
@@ -661,7 +622,6 @@ const InventoryPage = () => {
                               </React.Fragment>
                             ))}
                             
-                            {/* Headers for the 6 new columns */}
                             <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
                               <TruncatedCell
                                 text={truncatedHeaders.totalMT}
@@ -709,7 +669,6 @@ const InventoryPage = () => {
                         
                         <TableBody>
                           {movements.map((movement, index) => {
-                            // Determine the background color for the row based on buy/sell
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
@@ -719,30 +678,31 @@ const InventoryPage = () => {
                                 key={`scroll-${movement.id}`} 
                                 className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
-                                {/* Tank movement and balance columns */}
-                                {tanks.map((tank) => (
-                                  <React.Fragment key={`${movement.id}-${tank.id}`}>
-                                    <TableCell className="text-center text-[10px] py-2">
-                                      <EditableNumberField
-                                        initialValue={0}
-                                        onSave={(value) => {
-                                          // TODO: Implement updateMovementQuantity here
-                                          console.log('Update movement quantity:', value);
-                                        }}
-                                        className="text-[10px] w-16"
-                                        product={tank.current_product}
-                                      />
-                                    </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2">
-                                      0
-                                    </TableCell>
-                                    <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
-                                      0
-                                    </TableCell>
-                                  </React.Fragment>
-                                ))}
+                                {tanks.map((tank) => {
+                                  const tankMovement = tankMovements.find(
+                                    tm => tm.movement_id === movement.id && tm.tank_id === tank.id
+                                  );
+                                  
+                                  return (
+                                    <React.Fragment key={`${movement.id}-${tank.id}`}>
+                                      <TableCell className="text-center text-[10px] py-2">
+                                        <EditableNumberField
+                                          initialValue={tankMovement?.quantity_mt || 0}
+                                          onSave={(value) => updateTankMovement(movement.id, tank.id, value)}
+                                          className="text-[10px] w-16"
+                                          product={tank.current_product}
+                                        />
+                                      </TableCell>
+                                      <TableCell className="text-center text-[10px] py-2">
+                                        {tankMovement?.quantity_m3 || 0}
+                                      </TableCell>
+                                      <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
+                                        {tankMovement?.balance_mt || 0}
+                                      </TableCell>
+                                    </React.Fragment>
+                                  );
+                                })}
                                 
-                                {/* New summary columns */}
                                 <TableCell className="text-center text-[10px] py-2">0</TableCell>
                                 <TableCell className="text-center text-[10px] py-2">0</TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">0</TableCell>
