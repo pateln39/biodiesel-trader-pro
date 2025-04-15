@@ -4,6 +4,7 @@ import { Tank } from './useTanks';
 
 export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]) => {
   const calculateTankUtilization = (tank: Tank) => {
+    // Get the latest movement for this tank
     const latestMovement = tankMovements
       .filter(tm => tm.tank_id === tank.id)
       .sort((a, b) => new Date(b.movement_date).getTime() - new Date(a.movement_date).getTime())[0];
@@ -22,50 +23,53 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
   };
 
   const calculateSummary = () => {
-    const summary = tankMovements.reduce((acc, movement) => {
-      const tankItem = tanks.find(t => t.id === movement.tank_id);
-      if (!tankItem) return acc;
-
-      // Calculate totals with rounded M3
-      acc.totalMT += movement.quantity_mt;
-      acc.totalM3 += Number((movement.quantity_m3).toFixed(2));
-
-      if (movement.product_at_time.includes('T1')) {
-        acc.t1Balance += movement.balance_mt;
-      } else {
-        acc.t2Balance += movement.balance_mt;
-      }
-
-      // Current stock per tank
-      const isLatestMovement = tankMovements
-        .filter(tm => tm.tank_id === movement.tank_id)
-        .sort((a, b) => new Date(b.movement_date).getTime() - new Date(a.movement_date).getTime())[0]?.id === movement.id;
-
-      if (isLatestMovement) {
-        acc.currentStock += movement.balance_mt;
-      }
-      
-      // Only add capacity once per tank
-      if (!acc.processedTanks.includes(tankItem.id)) {
-        acc.totalCapacity += tankItem.capacity_mt;
-        acc.processedTanks.push(tankItem.id);
-      }
-
-      return acc;
-    }, {
+    // Initialize summary object
+    const summary = {
       totalMT: 0,
       totalM3: 0,
       t1Balance: 0,
       t2Balance: 0,
       currentStock: 0,
       totalCapacity: 0,
-      currentUllage: 0,
-      processedTanks: [] as string[]
+      currentUllage: 0
+    };
+
+    // Get latest movements per tank to calculate current balances
+    const latestTankMovements = tanks.map(tank => {
+      const tankLatestMovement = tankMovements
+        .filter(tm => tm.tank_id === tank.id)
+        .sort((a, b) => new Date(b.movement_date).getTime() - new Date(a.movement_date).getTime())[0];
+      
+      return {
+        tank,
+        latestMovement: tankLatestMovement
+      };
     });
 
-    // Calculate ullage after all tanks have been processed
+    // Calculate totals from latest movements
+    latestTankMovements.forEach(({ tank, latestMovement }) => {
+      // Add to total capacity
+      summary.totalCapacity += tank.capacity_mt;
+
+      if (latestMovement) {
+        // Add to current stock
+        summary.currentStock += latestMovement.balance_mt;
+
+        // Add to T1/T2 balances based on product
+        if (latestMovement.product_at_time.includes('T1')) {
+          summary.t1Balance += latestMovement.balance_mt;
+        } else {
+          summary.t2Balance += latestMovement.balance_mt;
+        }
+
+        // Add to total MT and M3
+        summary.totalMT += latestMovement.quantity_mt;
+        summary.totalM3 += Number(latestMovement.quantity_m3.toFixed(2));
+      }
+    });
+
+    // Calculate ullage (available space)
     summary.currentUllage = summary.totalCapacity - summary.currentStock;
-    delete summary.processedTanks; // Remove helper array before returning
 
     return summary;
   };
