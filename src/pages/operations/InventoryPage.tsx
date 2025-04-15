@@ -424,21 +424,21 @@ const InventoryPage = () => {
                         <TableHeader>
                           {/* Tank Info Headers - Now with editable product selection */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-header`}
+                                key={`${tank.id}-header`}
                                 colSpan={3} 
                                 className={cn(
                                   "text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                                 )}
                               >
                                 <EditableDropdownField
-                                  initialValue={tanks[tankId].current_product}
+                                  initialValue={tank.current_product}
                                   options={productOptions}
-                                  onSave={(value) => updateTankProduct(tankId, value)}
+                                  onSave={(value) => updateTankProduct(tank.id, value)}
                                   className={cn(
                                     "text-[10px] font-bold text-center w-full",
-                                    PRODUCT_COLORS[tanks[tankId].current_product]?.split(' ')[0] // Extract just the background color
+                                    PRODUCT_COLORS[tank.current_product]?.split(' ')[0] // Extract just the background color
                                   )}
                                   truncate={false}
                                 />
@@ -466,13 +466,13 @@ const InventoryPage = () => {
                           
                           {/* Tank Numbers */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-tank-number`}
+                                key={`${tank.id}-tank-number`}
                                 colSpan={3} 
                                 className="text-center text-[10px] border-r border-white/30"
                               >
-                                Tank {tanks[tankId].tank_number}
+                                Tank {tank.tank_number}
                               </TableHead>
                             ))}
                             
@@ -485,9 +485,9 @@ const InventoryPage = () => {
                           
                           {/* Capacity MT - Now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-capacity`}
+                                key={`${tank.id}-capacity`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
@@ -495,8 +495,8 @@ const InventoryPage = () => {
                                   <span>Capacity: </span>
                                   <div className="flex items-center">
                                     <EditableNumberField
-                                      initialValue={tanks[tankId].capacity_mt}
-                                      onSave={(value) => updateTankCapacity(tankId, value)}
+                                      initialValue={tank.capacity_mt}
+                                      onSave={(value) => updateTankCapacity(tank.id, value)}
                                       className="text-[10px] w-20"
                                     /> MT
                                     <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
@@ -538,14 +538,14 @@ const InventoryPage = () => {
                           
                           {/* Capacity M³ */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-capacity-m3`}
+                                key={`${tank.id}-capacity-m3`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: {tanks[tankId].capacity_m3} M³</span>
+                                  <span>Capacity: {tank.capacity_m3} M³</span>
                                 </div>
                                 <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
                                   <div 
@@ -583,17 +583,17 @@ const InventoryPage = () => {
                           
                           {/* Spec - now editable */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-spec`}
+                                key={`${tank.id}-spec`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
                                   <span className="text-muted-foreground">Spec:</span>
                                   <EditableField
-                                    initialValue={tanks[tankId].spec}
-                                    onSave={(value) => updateTankSpec(tankId, value)}
+                                    initialValue={tank.spec}
+                                    onSave={(value) => updateTankSpec(tank.id, value)}
                                     className="text-[10px]"
                                     maxWidth={100}
                                   />
@@ -610,9 +610,9 @@ const InventoryPage = () => {
                           
                           {/* Heating - now editable as dropdown */}
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            {Object.keys(tanks).map((tankId) => (
+                            {tanks.map((tank) => (
                               <TableHead 
-                                key={`${tankId}-heating`}
+                                key={`${tank.id}-heating`}
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
@@ -621,9 +621,9 @@ const InventoryPage = () => {
                                   <div className="flex items-center">
                                     <Thermometer className="h-3 w-3 mr-1 text-red-400" />
                                     <EditableDropdownField
-                                      initialValue={tanks[tankId].is_heating_enabled ? "true" : "false"}
+                                      initialValue={tank.is_heating_enabled ? "true" : "false"}
                                       options={heatingOptions}
-                                      onSave={(value) => updateTankHeating(tankId, value)}
+                                      onSave={(value) => updateTankHeating(tank.id, value)}
                                       className="text-[10px]"
                                       truncate={false}
                                     />
@@ -641,8 +641,8 @@ const InventoryPage = () => {
                           
                           {/* Column headers for tank details and new summary columns */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-10">
-                            {Object.keys(tanks).map((tankId) => (
-                              <React.Fragment key={tankId}>
+                            {tanks.map((tank) => (
+                              <React.Fragment key={tank.id}>
                                 <TableHead className="text-center text-[10px]">
                                   <TruncatedCell
                                     text="Movement (MT)"
@@ -720,8 +720,8 @@ const InventoryPage = () => {
                                 className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
                                 {/* Tank movement and balance columns */}
-                                {Object.keys(tanks).map((tankId) => (
-                                  <React.Fragment key={`${movement.id}-${tankId}`}>
+                                {tanks.map((tank) => (
+                                  <React.Fragment key={`${movement.id}-${tank.id}`}>
                                     <TableCell className="text-center text-[10px] py-2">
                                       <EditableNumberField
                                         initialValue={0}
@@ -730,7 +730,7 @@ const InventoryPage = () => {
                                           console.log('Update movement quantity:', value);
                                         }}
                                         className="text-[10px] w-16"
-                                        product={tanks[tankId].current_product}
+                                        product={tank.current_product}
                                       />
                                     </TableCell>
                                     <TableCell className="text-center text-[10px] py-2">
