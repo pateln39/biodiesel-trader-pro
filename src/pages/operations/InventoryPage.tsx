@@ -77,7 +77,8 @@ const TruncatedCell = ({ text, width, className = "" }) => (
       <TooltipContent>
         <p className="max-w-xs break-words">{text}</p>
       </TooltipContent>
-    </TooltipProvider>
+    </Tooltip>
+  </TooltipProvider>
 );
 
 const InventoryPage = () => {
