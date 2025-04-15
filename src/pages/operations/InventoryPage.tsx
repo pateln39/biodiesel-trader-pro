@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -688,6 +689,7 @@ const InventoryPage = () => {
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
                             
+                            // Get the summary for this specific movement
                             const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                             
                             return (
@@ -720,6 +722,7 @@ const InventoryPage = () => {
                                   );
                                 })}
                                 
+                                {/* Summary columns - now showing point-in-time values */}
                                 <TableCell className="text-center text-[10px] py-2">
                                   {Math.round(movementSummary.totalMT)}
                                 </TableCell>
