@@ -318,15 +318,50 @@ export const useInventoryState = (terminalId?: string) => {
       const movement = movements.find(m => m.id === movementId);
       if (!movement) throw new Error('Movement not found');
 
-      const { error } = await supabase
+      const { data: tankData, error: tankError } = await supabase
+        .from('tanks')
+        .select('current_product')
+        .eq('id', tankId)
+        .single();
+      
+      if (tankError) throw tankError;
+
+      const movementDate = new Date();
+      const balance = await calculateTankBalance(tankId, movementDate);
+      
+      const tankMovementData = {
+        movement_id: movementId,
+        tank_id: tankId,
+        quantity_mt: quantity,
+        quantity_m3: quantity * 1.1,
+        balance_mt: balance.mt + quantity,
+        balance_m3: (balance.mt + quantity) * 1.1,
+        product_at_time: tankData.current_product,
+        movement_date: formatDateForStorage(movementDate)
+      };
+
+      const { data: existingMovements } = await supabase
         .from('tank_movements')
-        .insert([{
-          movement_id: movementId,
-          tank_id: tankId,
-          quantity_mt: quantity,
-          quantity_m3: quantity * 1.1,
-          movement_date: new Date().toISOString()
-        }]);
+        .select('id')
+        .eq('movement_id', movementId)
+        .eq('tank_id', tankId);
+
+      let error;
+      
+      if (existingMovements && existingMovements.length > 0) {
+        const { error: updateError } = await supabase
+          .from('tank_movements')
+          .update(tankMovementData)
+          .eq('id', existingMovements[0].id);
+          
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('tank_movements')
+          .insert([tankMovementData]);
+          
+        error = insertError;
+      }
       
       if (error) throw error;
       
