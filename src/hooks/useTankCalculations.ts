@@ -22,15 +22,16 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
 
   const calculateSummary = () => {
     const summary = tankMovements.reduce((acc, movement) => {
-      const tank = tanks.find(t => t.tank_id === movement.tank_id);
-      if (!tank) return acc;
+      const tankItem = tanks.find(t => t.id === movement.tank_id);
+      if (!tankItem) return acc;
 
       // Calculate totals
       acc.totalMT += movement.quantity_mt;
       acc.totalM3 += movement.quantity_m3;
 
       // Split by customs status (assuming T1 and T2 are the only statuses)
-      if (movement.customs_status === 'T1') {
+      // Note: customs_status comes from movement data, not from tank movement
+      if (movement.product_at_time.includes('T1')) {
         acc.t1Balance += movement.balance_mt;
       } else {
         acc.t2Balance += movement.balance_mt;
@@ -38,9 +39,9 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
 
       // Current stock and ullage
       acc.currentStock += movement.balance_mt;
-      const tank = tanks.find(t => t.tank_id === movement.tank_id);
-      if (tank) {
-        acc.totalCapacity += tank.capacity_mt;
+      
+      if (tankItem) {
+        acc.totalCapacity += tankItem.capacity_mt;
       }
 
       return acc;
@@ -50,7 +51,8 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       t1Balance: 0,
       t2Balance: 0,
       currentStock: 0,
-      totalCapacity: 0
+      totalCapacity: 0,
+      currentUllage: 0
     });
 
     summary.currentUllage = summary.totalCapacity - summary.currentStock;
