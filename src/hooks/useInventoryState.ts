@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -331,10 +330,8 @@ export const useInventoryState = (terminalId?: string) => {
         ? new Date(movement.inventory_movement_date)
         : new Date();
 
-      // Get the current balance for this tank
       const previousBalance = await calculateTankBalance(tankId, movementDate);
       
-      // If no new quantity is added, maintain the previous balance
       const newBalance = previousBalance.mt + quantity;
       
       const tankMovementData = {

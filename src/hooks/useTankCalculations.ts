@@ -38,11 +38,13 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
     const uniqueMovementIds = Array.from(new Set(
       sortedMovements.map(m => m.movement_id)
     ));
-    
+
     let runningT1Balance = 0;
     let runningT2Balance = 0;
     
     const movementSummaries: Record<string, any> = {};
+    
+    const tankLastBalances = new Map<string, number>();
     
     uniqueMovementIds.forEach(movementId => {
       const currentMovements = movementGroups[movementId] || [];
@@ -52,6 +54,19 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const productType = currentMovements[0]?.product_at_time || '';
       const isT1Product = productType.includes('T1');
       
+      let totalBalanceMT = 0;
+      
+      tanks.forEach(tank => {
+        const tankMovement = currentMovements.find(tm => tm.tank_id === tank.id);
+        if (tankMovement) {
+          tankLastBalances.set(tank.id, tankMovement.balance_mt);
+          totalBalanceMT += tankMovement.balance_mt;
+        } else {
+          const lastBalance = tankLastBalances.get(tank.id) || 0;
+          totalBalanceMT += lastBalance;
+        }
+      });
+
       const movementTotalMT = currentMovements.reduce((sum, tm) => sum + tm.quantity_mt, 0);
       
       if (isT1Product) {
@@ -59,12 +74,6 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       } else {
         runningT2Balance += movementTotalMT;
       }
-
-      let totalBalanceMT = 0;
-      
-      currentMovements.forEach(tm => {
-        totalBalanceMT += tm.balance_mt;
-      });
       
       const totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
       const currentUllage = totalCapacity - totalBalanceMT;
