@@ -127,7 +127,7 @@ const InventoryPage = () => {
   };
 
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
-  const summary = calculateSummary();
+  const summaryCalculator = calculateSummary();
 
   return (
     <Layout>
@@ -311,9 +311,11 @@ const InventoryPage = () => {
                             ? "bg-green-900/10 hover:bg-green-900/20" 
                             : "bg-red-900/10 hover:bg-red-900/20";
                           
+                          const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
+                          
                           return (
                             <TableRow 
-                              key={`sticky-${movement.id}`} 
+                              key={`scroll-${movement.id}`} 
                               className={cn("border-b border-white/5 h-10", bgColorClass)}
                             >
                               <TableCell className="bg-brand-navy text-[10px] py-2">
@@ -686,6 +688,8 @@ const InventoryPage = () => {
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
                             
+                            const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
+                            
                             return (
                               <TableRow 
                                 key={`scroll-${movement.id}`} 
@@ -717,22 +721,22 @@ const InventoryPage = () => {
                                 })}
                                 
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(summary.totalMT)}
+                                  {Math.round(movementSummary.totalMT)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(summary.totalM3)}
+                                  {Math.round(movementSummary.totalM3)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
-                                  {Math.round(summary.t1Balance)}
+                                  {Math.round(movementSummary.t1Balance)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
-                                  {Math.round(summary.t2Balance)}
+                                  {Math.round(movementSummary.t2Balance)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium">
-                                  {Math.round(summary.currentStock)}
+                                  {Math.round(movementSummary.currentStock)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(summary.currentUllage)}
+                                  {Math.round(movementSummary.currentUllage)}
                                 </TableCell>
                               </TableRow>
                             );

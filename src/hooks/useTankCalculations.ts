@@ -1,3 +1,4 @@
+
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -22,51 +23,64 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
   };
 
   const calculateSummary = () => {
-    // Initialize summary object
-    const summary = {
-      totalMT: 0,
-      totalM3: 0,
-      t1Balance: 0,
-      t2Balance: 0,
-      currentStock: 0,
-      totalCapacity: 0,
-      currentUllage: 0
-    };
-
-    // Add up total capacity from all tanks
-    tanks.forEach(tank => {
-      summary.totalCapacity += tank.capacity_mt;
-    });
-
-    // Sort all movements by date to process them chronologically
+    // Sort all movements by date
     const sortedMovements = [...tankMovements].sort(
       (a, b) => new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime()
     );
 
-    // Process each movement in chronological order to maintain running totals
-    sortedMovements.forEach((movement) => {
-      // Update running totals based on movement quantity
+    // Initialize running totals
+    const totalCapacity = tanks.reduce((sum, tank) => sum + tank.capacity_mt, 0);
+    let runningTotalMT = 0;
+    let runningTotalM3 = 0;
+    let runningT1Balance = 0;
+    let runningT2Balance = 0;
+    let runningCurrentStock = 0;
+
+    // Calculate summary for each movement point in time
+    const movementSummaries = sortedMovements.map(movement => {
+      // Update running totals based on current movement
       const quantityMT = movement.quantity_mt;
-      
-      // Add to current stock
-      summary.currentStock += quantityMT;
+      runningTotalMT += quantityMT;
+      runningTotalM3 += movement.quantity_m3;
+      runningCurrentStock += quantityMT;
 
       // Update T1/T2 balances based on product
       if (movement.product_at_time.includes('T1')) {
-        summary.t1Balance += quantityMT;
+        runningT1Balance += quantityMT;
       } else {
-        summary.t2Balance += quantityMT;
+        runningT2Balance += quantityMT;
       }
 
-      // Update total MT and M3
-      summary.totalMT += quantityMT;
-      summary.totalM3 += movement.quantity_m3;
+      // Create summary state for this point in time
+      return {
+        movementId: movement.movement_id,
+        totalMT: runningTotalMT,
+        totalM3: runningTotalM3,
+        t1Balance: runningT1Balance,
+        t2Balance: runningT2Balance,
+        currentStock: runningCurrentStock,
+        totalCapacity,
+        currentUllage: totalCapacity - runningCurrentStock
+      };
     });
 
-    // Calculate ullage (available space)
-    summary.currentUllage = summary.totalCapacity - summary.currentStock;
+    // For any movement, find its summary state
+    const getSummaryForMovement = (movementId: string) => {
+      return movementSummaries.find(summary => summary.movementId === movementId) || {
+        totalMT: 0,
+        totalM3: 0,
+        t1Balance: 0,
+        t2Balance: 0,
+        currentStock: 0,
+        totalCapacity,
+        currentUllage: totalCapacity
+      };
+    };
 
-    return summary;
+    return {
+      getSummaryForMovement,
+      totalCapacity
+    };
   };
 
   return {
