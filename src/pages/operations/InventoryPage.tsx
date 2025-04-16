@@ -294,7 +294,7 @@ const InventoryPage = () => {
                             />
                           </TableHead>
                           <TableHead 
-                            className={`bg-brand-navy text-[10px] border-r border-white/30`}
+                            className={`bg-brand-navy text-[10px]`}
                             style={{ width: `${stickyColumnWidths.quantity}px` }}
                           >
                             <TruncatedCell 
@@ -380,22 +380,13 @@ const InventoryPage = () => {
                                   placeholder="Add comments..."
                                 />
                               </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2 border-r border-white/30">
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <div className="flex justify-center">
                                   <ProductToken 
                                     product={movement.product}
                                     value={movement.assignment_quantity?.toString() || '0'}
                                   />
                                 </div>
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <EditableField
-                                  initialValue={movement.terminal_comments}
-                                  onSave={(value) => movement.assignment_id && updateAssignmentComments(movement.assignment_id, value)}
-                                  maxWidth={stickyColumnWidths.comments - 16}
-                                  className="text-[10px]"
-                                  placeholder="Add terminal comments..."
-                                />
                               </TableCell>
                             </TableRow>
                           );
