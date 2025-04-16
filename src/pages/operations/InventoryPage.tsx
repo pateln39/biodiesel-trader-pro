@@ -707,7 +707,7 @@ const InventoryPage = () => {
                                           initialValue={tankMovement?.quantity_mt || 0}
                                           onSave={(value) => updateTankMovement(movement.id, tank.id, value)}
                                           className="text-[10px] w-16"
-                                          product={tank.current_product}
+                                          product={tankMovement?.product_at_time || tank.current_product}
                                         />
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2">
