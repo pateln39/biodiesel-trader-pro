@@ -41,12 +41,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
     if (open && existingAssignments.length > 0) {
       setAssignments(existingAssignments);
     } else if (open) {
-      setAssignments([{
-        terminal_id: '',
-        quantity_mt: 0,
-        assignment_date: new Date(),
-        comments: '',
-      }]);
+      setAssignments([]);
     }
   }, [open, existingAssignments]);
 
@@ -82,7 +77,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       !a.terminal_id || !a.quantity_mt || !a.assignment_date
     );
 
-    if (invalidAssignments) {
+    if (invalidAssignments && assignments.length > 0) {
       toast.error('Please fill in all fields for each terminal assignment');
       return;
     }
@@ -93,12 +88,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
 
   const handleClose = () => {
     if (!existingAssignments.length) {
-      setAssignments([{
-        terminal_id: '',
-        quantity_mt: 0,
-        assignment_date: new Date(),
-        comments: '',
-      }]);
+      setAssignments([]);
     }
     onOpenChange(false);
   };
@@ -131,15 +121,13 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
               <div key={index} className="space-y-4 border-b pb-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Terminal Assignment {index + 1}</h4>
-                  {index > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveAssignment(index)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveAssignment(index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
                 </div>
 
                 <div className="grid gap-4">
@@ -210,7 +198,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
         </ScrollArea>
 
         <DialogFooter>
-          <Button onClick={handleSave} disabled={totalAssigned === 0}>
+          <Button onClick={handleSave}>
             <Factory className="mr-2 h-4 w-4" />
             {existingAssignments.length ? 'Update' : 'Save'} Assignments
           </Button>
@@ -219,3 +207,4 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
     </Dialog>
   );
 }
+
