@@ -19,7 +19,6 @@ import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 
-// Remove or update stickyColumnWidths to remove comments width
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
@@ -28,6 +27,7 @@ const stickyColumnWidths = {
   nominationDate: 75,
   customs: 75,
   sustainability: 90,
+  comments: 100,
   quantity: 70,
 };
 
@@ -42,7 +42,6 @@ const summaryColumnWidths = {
   currentUllage: 100,
 };
 
-// Update truncatedHeaders to remove comments
 const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
@@ -51,6 +50,7 @@ const truncatedHeaders = {
   nominationDate: "Nom. Valid",
   customs: "Customs",
   sustainability: "Sustain.",
+  comments: "Comments",
   quantity: "Qty (MT)",
   totalMT: "Total (MT)",
   totalM3: "Total (M³)",
@@ -284,6 +284,16 @@ const InventoryPage = () => {
                           </TableHead>
                           <TableHead 
                             className={`bg-brand-navy text-[10px]`}
+                            style={{ width: `${stickyColumnWidths.comments}px` }}
+                          >
+                            <TruncatedCell 
+                              text={truncatedHeaders.comments} 
+                              width={stickyColumnWidths.comments - 8} 
+                              className="text-[10px] font-medium"
+                            />
+                          </TableHead>
+                          <TableHead 
+                            className={`bg-brand-navy text-[10px]`}
                             style={{ width: `${stickyColumnWidths.quantity}px` }}
                           >
                             <TruncatedCell 
@@ -300,8 +310,6 @@ const InventoryPage = () => {
                           const bgColorClass = movement.buy_sell === "buy" 
                             ? "bg-green-900/10 hover:bg-green-900/20" 
                             : "bg-red-900/10 hover:bg-red-900/20";
-                          
-                          const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                           
                           return (
                             <TableRow 
@@ -357,6 +365,13 @@ const InventoryPage = () => {
                                 <TruncatedCell 
                                   text={movement.sustainability} 
                                   width={stickyColumnWidths.sustainability - 16} 
+                                  className="text-[10px]"
+                                />
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <TruncatedCell 
+                                  text={movement.terminal_comments || '-'} 
+                                  width={stickyColumnWidths.comments - 16} 
                                   className="text-[10px]"
                                 />
                               </TableCell>
