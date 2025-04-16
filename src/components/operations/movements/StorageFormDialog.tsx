@@ -6,13 +6,14 @@ import { CalendarIcon, Factory, Warehouse, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Select,
   SelectContent,
@@ -20,13 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTerminalAssignments, TerminalAssignment } from '@/hooks/useTerminalAssignments';
 
@@ -95,22 +90,22 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent className="w-[600px] sm:w-[800px]">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Warehouse className="h-5 w-5" />
             Storage Assignment
-          </SheetTitle>
-          <SheetDescription>
+          </DialogTitle>
+          <DialogDescription>
             Assign movement {movement.referenceNumber} to terminals
             <div className="mt-2 text-sm">
               <span className="font-semibold">Actual Quantity:</span> {movement.actualQuantity} MT
               <br />
               <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
             </div>
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-8 py-8">
           {assignments.map((assignment, index) => (
@@ -161,22 +156,11 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
 
                 <div>
                   <label className="text-sm">Movement Date</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={!assignment.assignment_date ? "text-muted-foreground" : ""}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {assignment.assignment_date ? format(assignment.assignment_date, 'PPP') : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={assignment.assignment_date}
-                        onSelect={(date) => date && updateAssignment(index, 'assignment_date', date)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePicker
+                    date={assignment.assignment_date}
+                    setDate={(date) => updateAssignment(index, 'assignment_date', date)}
+                    placeholder="Pick a date"
+                  />
                 </div>
               </div>
             </div>
@@ -192,13 +176,13 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
           </Button>
         </div>
 
-        <SheetFooter>
+        <DialogFooter>
           <Button onClick={handleSave} disabled={totalAssigned === 0}>
             <Factory className="mr-2 h-4 w-4" />
             Save Assignments
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
