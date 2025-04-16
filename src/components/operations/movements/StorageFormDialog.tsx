@@ -4,7 +4,6 @@ import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
 import { CalendarIcon, Factory, Warehouse, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
@@ -33,12 +32,21 @@ interface StorageFormDialogProps {
 
 export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormDialogProps) {
   const { terminals } = useTerminals();
-  const { createAssignments } = useTerminalAssignments(movement.id);
-  const [assignments, setAssignments] = React.useState<TerminalAssignment[]>([{
-    terminal_id: '',
-    quantity_mt: 0,
-    assignment_date: new Date(),
-  }]);
+  const { assignments: existingAssignments, updateAssignments, isLoading } = useTerminalAssignments(movement.id);
+  const [assignments, setAssignments] = React.useState<TerminalAssignment[]>([]);
+
+  // Initialize assignments with existing data when dialog opens
+  React.useEffect(() => {
+    if (open && existingAssignments.length > 0) {
+      setAssignments(existingAssignments);
+    } else if (open) {
+      setAssignments([{
+        terminal_id: '',
+        quantity_mt: 0,
+        assignment_date: new Date(),
+      }]);
+    }
+  }, [open, existingAssignments]);
 
   const totalAssigned = assignments.reduce((sum, a) => sum + (a.quantity_mt || 0), 0);
   const remainingQuantity = (movement.actualQuantity || 0) - totalAssigned;
@@ -76,18 +84,24 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       return;
     }
 
-    createAssignments(assignments);
+    updateAssignments(assignments);
     onOpenChange(false);
   };
 
   const handleClose = () => {
-    setAssignments([{
-      terminal_id: '',
-      quantity_mt: 0,
-      assignment_date: new Date(),
-    }]);
+    if (!existingAssignments.length) {
+      setAssignments([{
+        terminal_id: '',
+        quantity_mt: 0,
+        assignment_date: new Date(),
+      }]);
+    }
     onOpenChange(false);
   };
+
+  if (isLoading) {
+    return null; // Or show a loading state
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -179,7 +193,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
         <DialogFooter>
           <Button onClick={handleSave} disabled={totalAssigned === 0}>
             <Factory className="mr-2 h-4 w-4" />
-            Save Assignments
+            {existingAssignments.length ? 'Update' : 'Save'} Assignments
           </Button>
         </DialogFooter>
       </DialogContent>

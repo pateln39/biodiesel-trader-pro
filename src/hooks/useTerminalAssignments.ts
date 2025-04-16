@@ -31,9 +31,18 @@ export const useTerminalAssignments = (movementId: string) => {
     enabled: !!movementId
   });
 
-  const createAssignmentsMutation = useMutation({
+  const updateAssignmentsMutation = useMutation({
     mutationFn: async (assignments: TerminalAssignment[]) => {
-      const { error } = await supabase
+      // First delete existing assignments
+      const { error: deleteError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('movement_id', movementId);
+      
+      if (deleteError) throw deleteError;
+
+      // Then insert new assignments
+      const { error: insertError } = await supabase
         .from('movement_terminal_assignments')
         .insert(assignments.map(assignment => ({
           movement_id: movementId,
@@ -42,16 +51,16 @@ export const useTerminalAssignments = (movementId: string) => {
           assignment_date: assignment.assignment_date.toISOString().split('T')[0]
         })));
 
-      if (error) throw error;
+      if (insertError) throw insertError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminal-assignments', movementId] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
-      toast.success('Terminal assignments saved successfully');
+      toast.success('Terminal assignments updated successfully');
     },
     onError: (error) => {
-      console.error('Error creating terminal assignments:', error);
-      toast.error('Failed to save terminal assignments');
+      console.error('Error updating terminal assignments:', error);
+      toast.error('Failed to update terminal assignments');
     }
   });
 
@@ -69,8 +78,8 @@ export const useTerminalAssignments = (movementId: string) => {
   return {
     assignments,
     isLoading,
-    createAssignments: (assignments: TerminalAssignment[]) => 
-      createAssignmentsMutation.mutate(assignments),
+    updateAssignments: (assignments: TerminalAssignment[]) => 
+      updateAssignmentsMutation.mutate(assignments),
     deleteAssignments: () => deleteAssignmentsMutation.mutate()
   };
 };
