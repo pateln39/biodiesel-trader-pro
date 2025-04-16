@@ -13,6 +13,7 @@ export interface TankMovement {
   created_at: Date;
   updated_at: Date;
   customs_status?: string;
+  terminal_assignment_id?: string;
 }
 
 export const PRODUCT_COLORS = {
