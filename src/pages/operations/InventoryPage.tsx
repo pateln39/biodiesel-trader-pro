@@ -19,6 +19,7 @@ import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import EditableAssignmentComments from '@/components/operations/inventory/EditableAssignmentComments';
+import { Badge } from '@/components/ui/badge';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -720,7 +721,24 @@ const InventoryPage = () => {
                                 })}
                                 
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(movementSummary.totalMTMoved)}
+                                  {(() => {
+                                    const totalMTMoved = Math.round(movementSummary.totalMTMoved);
+                                    const movementQuantity = Math.round(movement.assignment_quantity || 0);
+                                    
+                                    return (
+                                      <div className="flex items-center justify-center space-x-1">
+                                        <span>{totalMTMoved}</span>
+                                        {totalMTMoved !== movementQuantity && (
+                                          <Badge 
+                                            variant="outline" 
+                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                          >
+                                            !
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
                                   {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
