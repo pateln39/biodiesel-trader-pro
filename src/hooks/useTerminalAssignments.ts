@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 interface TerminalAssignment {
   id?: string;
@@ -25,7 +26,8 @@ export const useTerminalAssignments = (movementId: string) => {
       if (error) throw error;
       return data.map(assignment => ({
         ...assignment,
-        assignment_date: new Date(assignment.assignment_date)
+        // Ensure we create a new Date object without timezone adjustment
+        assignment_date: new Date(assignment.assignment_date + 'T00:00:00')
       }));
     },
     enabled: !!movementId
@@ -48,7 +50,8 @@ export const useTerminalAssignments = (movementId: string) => {
           movement_id: movementId,
           terminal_id: assignment.terminal_id,
           quantity_mt: assignment.quantity_mt,
-          assignment_date: assignment.assignment_date.toISOString().split('T')[0]
+          // Use formatDateForStorage to ensure consistent date format without timezone issues
+          assignment_date: formatDateForStorage(assignment.assignment_date)
         })));
 
       if (insertError) throw insertError;
