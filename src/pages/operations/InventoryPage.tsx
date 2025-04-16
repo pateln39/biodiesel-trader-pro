@@ -101,7 +101,8 @@ const InventoryPage = () => {
     updateTankProduct,
     updateTankSpec,
     updateTankHeating,
-    updateTankCapacity
+    updateTankCapacity,
+    updateAssignmentComments
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -380,14 +381,21 @@ const InventoryPage = () => {
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2 border-r border-white/30">
-                                {movement.scheduled_quantity !== 0 && (
-                                  <div className="flex justify-center">
-                                    <ProductToken 
-                                      product={movement.product}
-                                      value={`${movement.buy_sell === "buy" ? "+" : "-"}${movement.scheduled_quantity}`}
-                                    />
-                                  </div>
-                                )}
+                                <div className="flex justify-center">
+                                  <ProductToken 
+                                    product={movement.product}
+                                    value={movement.assignment_quantity?.toString() || '0'}
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell className="bg-brand-navy text-[10px] py-2">
+                                <EditableField
+                                  initialValue={movement.terminal_comments}
+                                  onSave={(value) => movement.assignment_id && updateAssignmentComments(movement.assignment_id, value)}
+                                  maxWidth={stickyColumnWidths.comments - 16}
+                                  className="text-[10px]"
+                                  placeholder="Add terminal comments..."
+                                />
                               </TableCell>
                             </TableRow>
                           );

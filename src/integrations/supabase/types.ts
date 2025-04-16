@@ -304,6 +304,7 @@ export type Database = {
       movement_terminal_assignments: {
         Row: {
           assignment_date: string
+          comments: string | null
           created_at: string
           id: string
           movement_id: string
@@ -313,6 +314,7 @@ export type Database = {
         }
         Insert: {
           assignment_date: string
+          comments?: string | null
           created_at?: string
           id?: string
           movement_id: string
@@ -322,6 +324,7 @@ export type Database = {
         }
         Update: {
           assignment_date?: string
+          comments?: string | null
           created_at?: string
           id?: string
           movement_id?: string

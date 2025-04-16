@@ -12,7 +12,7 @@ export interface TankMovement {
   movement_date: Date;
   created_at: Date;
   updated_at: Date;
-  customs_status?: string; // Added customs_status property
+  customs_status?: string;
 }
 
 export const PRODUCT_COLORS = {
@@ -32,7 +32,6 @@ export const useInventoryState = (terminalId?: string) => {
     queryFn: async () => {
       if (!terminalId) return [];
 
-      // Fetch movements through movement_terminal_assignments
       const { data, error } = await supabase
         .from('movement_terminal_assignments')
         .select(`
@@ -47,11 +46,12 @@ export const useInventoryState = (terminalId?: string) => {
         throw error;
       }
 
-      // Transform the data to extract movement information
       return data.map(assignment => ({
         ...assignment.movements,
+        assignment_id: assignment.id,
         assignment_quantity: assignment.quantity_mt,
-        assignment_date: assignment.assignment_date
+        assignment_date: assignment.assignment_date,
+        terminal_comments: assignment.comments
       }));
     },
     enabled: !!terminalId
@@ -87,8 +87,6 @@ export const useInventoryState = (terminalId?: string) => {
   });
 
   const calculateTankBalance = async (tankId: string, movementDate: Date) => {
-    // This function is no longer needed but we'll keep it for backward compatibility
-    // We're now calculating balances dynamically in useTankCalculations
     return {
       mt: 0,
       m3: 0
@@ -336,7 +334,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
         movement_date: movement.inventory_movement_date || new Date().toISOString(),
-        customs_status: movement.customs_status // Copy customs_status from parent movement
+        customs_status: movement.customs_status
       };
 
       const { data: existing } = await supabase
@@ -370,6 +368,26 @@ export const useInventoryState = (terminalId?: string) => {
     onError: (error: any) => {
       console.error('Error updating tank movement:', error);
       toast.error(`Failed to update movement quantity: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const updateAssignmentCommentsMutation = useMutation({
+    mutationFn: async ({ assignmentId, comments }: { assignmentId: string, comments: string }) => {
+      const { error } = await supabase
+        .from('movement_terminal_assignments')
+        .update({ comments })
+        .eq('id', assignmentId);
+      
+      if (error) throw error;
+      return { assignmentId, comments };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      toast.success('Terminal comments updated');
+    },
+    onError: (error) => {
+      console.error('Error updating terminal comments:', error);
+      toast.error('Failed to update terminal comments');
     }
   });
 
@@ -412,6 +430,8 @@ export const useInventoryState = (terminalId?: string) => {
       updateTankCapacityMutation.mutate({ tankId, capacityMt }),
     updateTankMovement: (movementId: string, tankId: string, quantity: number) =>
       updateTankMovementMutation.mutate({ movementId, tankId, quantity }),
+    updateAssignmentComments: (assignmentId: string, comments: string) => 
+      updateAssignmentCommentsMutation.mutate({ assignmentId, comments }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
