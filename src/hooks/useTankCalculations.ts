@@ -49,36 +49,49 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       tankRunningBalances[tank.id] = { balanceMT: 0, balanceM3: 0 };
     });
 
-    // Group tank movements by movement_id for easier processing
+    // Group tank movements by terminal_assignment_id for easier processing
     const movementGroups: Record<string, TankMovement[]> = {};
     
-    // Sort all movements by date to ensure correct chronological processing
-    const sortedMovements = [...tankMovements].sort((a, b) => {
-      return new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime();
+    // Sort all movements by assignment_date to ensure correct chronological processing
+    // For this we need to look up the assignment date from the movements array
+    const movementsById: Record<string, any> = {};
+    tankMovements.forEach(tm => {
+      if (tm.terminal_assignment_id) {
+        const movement = movementsById[tm.movement_id];
+        if (!movementGroups[tm.terminal_assignment_id]) {
+          movementGroups[tm.terminal_assignment_id] = [];
+        }
+        movementGroups[tm.terminal_assignment_id].push(tm);
+      }
     });
     
-    // Group the sorted movements by movement_id
-    sortedMovements.forEach(movement => {
-      if (!movementGroups[movement.movement_id]) {
-        movementGroups[movement.movement_id] = [];
-      }
-      movementGroups[movement.movement_id].push(movement);
-    });
-
     // Get unique movement IDs in sorted order by movement date
-    const uniqueMovementIds: string[] = [];
-    sortedMovements.forEach(m => {
-      if (!uniqueMovementIds.includes(m.movement_id)) {
-        uniqueMovementIds.push(m.movement_id);
-      }
+    // We now use the movement_date from tankMovements to sort
+    const uniqueAssignmentIds: string[] = Object.keys(movementGroups);
+    const sortedAssignmentIds = [...uniqueAssignmentIds].sort((a, b) => {
+      const aMovements = movementGroups[a];
+      const bMovements = movementGroups[b];
+      
+      if (!aMovements.length || !bMovements.length) return 0;
+      
+      const aDate = new Date(aMovements[0].movement_date).getTime();
+      const bDate = new Date(bMovements[0].movement_date).getTime();
+      
+      return aDate - bDate;
     });
 
-    uniqueMovementIds.forEach(movementId => {
-      const currentMovements = movementGroups[movementId] || [];
+    sortedAssignmentIds.forEach(assignmentId => {
+      const currentMovements = movementGroups[assignmentId] || [];
       let totalMTMovedInStep = 0;
+      let movementId = ''; // We'll use the first movement's ID as the movement ID
 
       // Process each tank movement in this step
       currentMovements.forEach(tm => {
+        // Store the first movement ID we encounter for this assignment
+        if (!movementId && tm.movement_id) {
+          movementId = tm.movement_id;
+        }
+        
         const tankId = tm.tank_id;
         const quantityMT = tm.quantity_mt;
         const quantityM3 = tm.quantity_mt * 1.1;
@@ -103,17 +116,20 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const currentStockM3 = Object.values(tankRunningBalances).reduce((sum, state) => sum + state.balanceM3, 0);
       const currentUllage = totalCapacity - currentStockMT;
 
-      // Store the summary for this movement
-      movementSummaries[movementId] = {
-        movementId,
-        tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
-        totalMTMoved: totalMTMovedInStep,
-        currentStockMT,
-        currentStockM3,
-        currentUllage,
-        t1Balance: runningT1Balance,
-        t2Balance: runningT2Balance
-      };
+      // Only create a summary if we found a valid movement ID
+      if (movementId) {
+        // Store the summary for this movement
+        movementSummaries[movementId] = {
+          movementId,
+          tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
+          totalMTMoved: totalMTMovedInStep,
+          currentStockMT,
+          currentStockM3,
+          currentUllage,
+          t1Balance: runningT1Balance,
+          t2Balance: runningT2Balance
+        };
+      }
     });
 
     const getSummaryForMovement = (movementId: string) => {
