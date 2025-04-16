@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Movement, PricingType } from '@/types';
+import { Movement } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText, Warehouse } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -16,7 +16,6 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import { 
   Select,
   SelectContent,
@@ -46,8 +45,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import TradeDetailsDialog from './TradeDetailsDialog';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
-import { AssignToTerminalButton } from './movements/AssignToTerminalButton';
 import { StorageFormDialog } from './movements/StorageFormDialog';
+import { toast } from 'sonner';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -281,7 +280,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <TableHead>COD Date</TableHead>
       <TableHead>Status</TableHead>
       <TableHead className="text-center">Actions</TableHead>
-      <TableHead>Assign to Terminal</TableHead>
     </>
   );
 
@@ -374,7 +372,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         </Select>
       </TableCell>
       <TableCell className="text-center">
-        <div className="flex justify-center gap-1">
+        <div className="flex justify-center space-x-1">
           {movement.parentTradeId && (
             <TooltipProvider>
               <Tooltip>
@@ -444,12 +442,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </AlertDialogContent>
           </AlertDialog>
         </div>
-      </TableCell>
-      <TableCell>
-        <AssignToTerminalButton 
-          movementId={movement.id}
-          currentTerminalId={movement.terminal_id}
-        />
       </TableCell>
     </>
   );
