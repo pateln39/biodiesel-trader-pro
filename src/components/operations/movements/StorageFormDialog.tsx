@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { useTerminalAssignments, TerminalAssignment } from '@/hooks/useTerminalAssignments';
 
@@ -36,7 +36,6 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   const { assignments: existingAssignments, updateAssignments, isLoading } = useTerminalAssignments(movement.id);
   const [assignments, setAssignments] = React.useState<TerminalAssignment[]>([]);
 
-  // Initialize assignments with existing data when dialog opens
   React.useEffect(() => {
     if (open && existingAssignments.length > 0) {
       setAssignments(existingAssignments);
@@ -104,12 +103,12 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   };
 
   if (isLoading) {
-    return null; // Or show a loading state
+    return null;
   }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Warehouse className="h-5 w-5" />
@@ -125,87 +124,89 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8 py-8">
-          {assignments.map((assignment, index) => (
-            <div key={index} className="space-y-4 border-b pb-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium">Terminal Assignment {index + 1}</h4>
-                {index > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveAssignment(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
+        <ScrollArea className="flex-grow overflow-y-auto pr-4">
+          <div className="space-y-8 py-8">
+            {assignments.map((assignment, index) => (
+              <div key={index} className="space-y-4 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Terminal Assignment {index + 1}</h4>
+                  {index > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveAssignment(index)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-4">
+                  <div>
+                    <label className="text-sm">Terminal</label>
+                    <Select
+                      value={assignment.terminal_id}
+                      onValueChange={(value) => updateAssignment(index, 'terminal_id', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select terminal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {terminals.map((terminal) => (
+                          <SelectItem key={terminal.id} value={terminal.id}>
+                            {terminal.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm">Quantity (MT)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={assignment.quantity_mt || ''}
+                      onChange={(e) => updateAssignment(index, 'quantity_mt', parseFloat(e.target.value) || 0)}
+                      placeholder="Enter quantity in MT"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm">Movement Date</label>
+                    <DatePicker
+                      date={assignment.assignment_date}
+                      setDate={(date) => updateAssignment(index, 'assignment_date', date)}
+                      placeholder="Pick a date"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm flex items-center gap-1">
+                      <MessageSquare className="h-4 w-4" />
+                      Comments
+                    </label>
+                    <Textarea
+                      placeholder="Add comments about this assignment..."
+                      value={assignment.comments || ''}
+                      onChange={(e) => updateAssignment(index, 'comments', e.target.value)}
+                      className="resize-y min-h-[80px]"
+                    />
+                  </div>
+                </div>
               </div>
+            ))}
 
-              <div className="grid gap-4">
-                <div>
-                  <label className="text-sm">Terminal</label>
-                  <Select
-                    value={assignment.terminal_id}
-                    onValueChange={(value) => updateAssignment(index, 'terminal_id', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select terminal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {terminals.map((terminal) => (
-                        <SelectItem key={terminal.id} value={terminal.id}>
-                          {terminal.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="text-sm">Quantity (MT)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={assignment.quantity_mt || ''}
-                    onChange={(e) => updateAssignment(index, 'quantity_mt', parseFloat(e.target.value) || 0)}
-                    placeholder="Enter quantity in MT"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm">Movement Date</label>
-                  <DatePicker
-                    date={assignment.assignment_date}
-                    setDate={(date) => updateAssignment(index, 'assignment_date', date)}
-                    placeholder="Pick a date"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm flex items-center gap-1">
-                    <MessageSquare className="h-4 w-4" />
-                    Comments
-                  </label>
-                  <Textarea
-                    placeholder="Add comments about this assignment..."
-                    value={assignment.comments || ''}
-                    onChange={(e) => updateAssignment(index, 'comments', e.target.value)}
-                    className="resize-y min-h-[80px]"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <Button
-            variant="outline"
-            onClick={handleAddAssignment}
-            disabled={totalAssigned >= (movement.actualQuantity || 0)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Terminal Assignment
-          </Button>
-        </div>
+            <Button
+              variant="outline"
+              onClick={handleAddAssignment}
+              disabled={totalAssigned >= (movement.actualQuantity || 0)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Terminal Assignment
+            </Button>
+          </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button onClick={handleSave} disabled={totalAssigned === 0}>
