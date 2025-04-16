@@ -49,26 +49,20 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       tankRunningBalances[tank.id] = { balanceMT: 0, balanceM3: 0 };
     });
 
-    // Group tank movements by terminal_assignment_id for easier processing
+    // Group tank movements by movement_id for easier processing
     const movementGroups: Record<string, TankMovement[]> = {};
     
-    // Sort all movements by assignment_date to ensure correct chronological processing
-    // For this we need to look up the assignment date from the movements array
-    const movementsById: Record<string, any> = {};
+    // First, group all tank movements by movement_id
     tankMovements.forEach(tm => {
-      if (tm.terminal_assignment_id) {
-        const movement = movementsById[tm.movement_id];
-        if (!movementGroups[tm.terminal_assignment_id]) {
-          movementGroups[tm.terminal_assignment_id] = [];
-        }
-        movementGroups[tm.terminal_assignment_id].push(tm);
+      if (!movementGroups[tm.movement_id]) {
+        movementGroups[tm.movement_id] = [];
       }
+      movementGroups[tm.movement_id].push(tm);
     });
     
     // Get unique movement IDs in sorted order by movement date
-    // We now use the movement_date from tankMovements to sort
-    const uniqueAssignmentIds: string[] = Object.keys(movementGroups);
-    const sortedAssignmentIds = [...uniqueAssignmentIds].sort((a, b) => {
+    const uniqueMovementIds = Object.keys(movementGroups);
+    const sortedMovementIds = [...uniqueMovementIds].sort((a, b) => {
       const aMovements = movementGroups[a];
       const bMovements = movementGroups[b];
       
@@ -80,21 +74,15 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       return aDate - bDate;
     });
 
-    sortedAssignmentIds.forEach(assignmentId => {
-      const currentMovements = movementGroups[assignmentId] || [];
+    sortedMovementIds.forEach(movementId => {
+      const currentMovements = movementGroups[movementId] || [];
       let totalMTMovedInStep = 0;
-      let movementId = ''; // We'll use the first movement's ID as the movement ID
-
+      
       // Process each tank movement in this step
       currentMovements.forEach(tm => {
-        // Store the first movement ID we encounter for this assignment
-        if (!movementId && tm.movement_id) {
-          movementId = tm.movement_id;
-        }
-        
         const tankId = tm.tank_id;
         const quantityMT = tm.quantity_mt;
-        const quantityM3 = tm.quantity_mt * 1.1;
+        const quantityM3 = tm.quantity_m3;
 
         // Update running balances
         if (tankRunningBalances[tankId]) {
@@ -116,20 +104,17 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const currentStockM3 = Object.values(tankRunningBalances).reduce((sum, state) => sum + state.balanceM3, 0);
       const currentUllage = totalCapacity - currentStockMT;
 
-      // Only create a summary if we found a valid movement ID
-      if (movementId) {
-        // Store the summary for this movement
-        movementSummaries[movementId] = {
-          movementId,
-          tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
-          totalMTMoved: totalMTMovedInStep,
-          currentStockMT,
-          currentStockM3,
-          currentUllage,
-          t1Balance: runningT1Balance,
-          t2Balance: runningT2Balance
-        };
-      }
+      // Store the summary for this movement
+      movementSummaries[movementId] = {
+        movementId,
+        tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
+        totalMTMoved: totalMTMovedInStep,
+        currentStockMT,
+        currentStockM3,
+        currentUllage,
+        t1Balance: runningT1Balance,
+        t2Balance: runningT2Balance
+      };
     });
 
     const getSummaryForMovement = (movementId: string) => {

@@ -384,6 +384,7 @@ export const useInventoryState = (terminalId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Movement quantity updated');
     },
     onError: (error: any) => {
@@ -463,6 +464,7 @@ export const useInventoryState = (terminalId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Tank movement updated successfully');
     },
     onError: (error: any) => {
@@ -493,6 +495,7 @@ export const useInventoryState = (terminalId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Tank movement deleted successfully');
     },
     onError: (error: any) => {
