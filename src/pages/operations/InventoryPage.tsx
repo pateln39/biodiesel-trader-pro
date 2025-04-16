@@ -714,7 +714,7 @@ const InventoryPage = () => {
                                         {tankMovement?.quantity_m3 || 0}
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
-                                        {tankMovement?.balance_mt || 0}
+                                        {movementSummary.tankBalances[tank.id]?.balanceMT || 0}
                                       </TableCell>
                                     </React.Fragment>
                                   );
