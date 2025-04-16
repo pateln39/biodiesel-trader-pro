@@ -29,7 +29,6 @@ const stickyColumnWidths = {
   customs: 75,
   sustainability: 90,
   quantity: 70,
-  // Removed 'comments' entry
 };
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
@@ -53,7 +52,6 @@ const truncatedHeaders = {
   customs: "Customs",
   sustainability: "Sustain.",
   quantity: "Qty (MT)",
-  // Removed 'comments' entry
   totalMT: "Total (MT)",
   totalM3: "Total (M³)",
   t1Balance: "T1",
@@ -103,8 +101,7 @@ const InventoryPage = () => {
     updateTankProduct,
     updateTankSpec,
     updateTankHeating,
-    updateTankCapacity,
-    updateAssignmentComments
+    updateTankCapacity
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -378,6 +375,7 @@ const InventoryPage = () => {
                     </Table>
                   </div>
                 </ScrollArea>
+                
                 
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
