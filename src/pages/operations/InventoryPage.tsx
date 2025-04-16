@@ -342,7 +342,7 @@ const InventoryPage = () => {
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
                                 <TruncatedCell 
-                                  text={movement.inventory_movement_date ? new Date(movement.inventory_movement_date).toLocaleDateString() : '-'} 
+                                  text={movement.assignment_date ? new Date(movement.assignment_date).toLocaleDateString() : '-'} 
                                   width={stickyColumnWidths.movementDate - 16} 
                                   className="text-[10px]"
                                 />
