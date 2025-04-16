@@ -68,7 +68,7 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       currentMovements.forEach(tm => {
         const tankId = tm.tank_id;
         const quantityMT = tm.quantity_mt;
-        const quantityM3 = quantityMT * 1.1;
+        const quantityM3 = tm.quantity_mt * 1.1;
 
         // Update running balances
         if (tankRunningBalances[tankId]) {

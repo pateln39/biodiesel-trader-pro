@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -689,7 +688,6 @@ const InventoryPage = () => {
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
                             
-                            // Get the summary for this specific movement
                             const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                             
                             return (
@@ -722,12 +720,11 @@ const InventoryPage = () => {
                                   );
                                 })}
                                 
-                                {/* Summary columns - now showing point-in-time values */}
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(movementSummary.totalMT)}
+                                  {Math.round(movementSummary.totalMTMoved)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(movementSummary.totalM3)}
+                                  {Math.round(movementSummary.totalMTMoved * 1.1)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                   {Math.round(movementSummary.t1Balance)}
@@ -736,7 +733,7 @@ const InventoryPage = () => {
                                   {Math.round(movementSummary.t2Balance)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium">
-                                  {Math.round(movementSummary.currentStock)}
+                                  {Math.round(movementSummary.currentStockMT)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
                                   {Math.round(movementSummary.currentUllage)}

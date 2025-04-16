@@ -8,8 +8,6 @@ export interface TankMovement {
   tank_id: string;
   quantity_mt: number;
   quantity_m3: number;
-  balance_mt: number;
-  balance_m3: number;
   product_at_time: string;
   movement_date: Date;
   created_at: Date;
@@ -76,18 +74,11 @@ export const useInventoryState = (terminalId?: string) => {
   });
 
   const calculateTankBalance = async (tankId: string, movementDate: Date) => {
-    const { data: previousMovements } = await supabase
-      .from('tank_movements')
-      .select('*')
-      .eq('tank_id', tankId)
-      .lt('movement_date', movementDate.toISOString())
-      .order('movement_date', { ascending: false })
-      .limit(1);
-
-    const previousBalance = previousMovements?.[0] || null;
+    // This function is no longer needed but we'll keep it for backward compatibility
+    // We're now calculating balances dynamically in useTankCalculations
     return {
-      mt: previousBalance ? previousBalance.balance_mt : 0,
-      m3: previousBalance ? previousBalance.balance_m3 : 0
+      mt: 0,
+      m3: 0
     };
   };
 
@@ -127,8 +118,6 @@ export const useInventoryState = (terminalId?: string) => {
           tank_id: tank.id,
           quantity_mt: quantity,
           quantity_m3: quantity * 1.1,
-          balance_mt: balance.mt + quantity,
-          balance_m3: (balance.mt + quantity) * 1.1,
           product_at_time: tank.current_product,
           movement_date: formatDateForStorage(movementDate)
         };
@@ -334,7 +323,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
         movement_date: movement.inventory_movement_date || new Date().toISOString(),
-        customs_status: movement.customs_status
+        customs_status: movement.customs_status // Copy customs_status from parent movement
       };
 
       const { data: existing } = await supabase
