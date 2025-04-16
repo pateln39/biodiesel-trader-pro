@@ -46,7 +46,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   }]);
 
   const totalAssigned = assignments.reduce((sum, a) => sum + (a.quantity_mt || 0), 0);
-  const remainingQuantity = (movement.actual_quantity || 0) - totalAssigned;
+  const remainingQuantity = (movement.actualQuantity || 0) - totalAssigned;
 
   const handleAddAssignment = () => {
     setAssignments([...assignments, {
@@ -67,7 +67,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   };
 
   const handleSave = () => {
-    if (totalAssigned > (movement.actual_quantity || 0)) {
+    if (totalAssigned > (movement.actualQuantity || 0)) {
       toast.error('Total assigned quantity exceeds actual quantity');
       return;
     }
@@ -105,7 +105,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
           <SheetDescription>
             Assign movement {movement.referenceNumber} to terminals
             <div className="mt-2 text-sm">
-              <span className="font-semibold">Actual Quantity:</span> {movement.actual_quantity} MT
+              <span className="font-semibold">Actual Quantity:</span> {movement.actualQuantity} MT
               <br />
               <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
             </div>
@@ -185,7 +185,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
           <Button
             variant="outline"
             onClick={handleAddAssignment}
-            disabled={totalAssigned >= (movement.actual_quantity || 0)}
+            disabled={totalAssigned >= (movement.actualQuantity || 0)}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Terminal Assignment
