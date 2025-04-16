@@ -2,7 +2,7 @@
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
-import { CalendarIcon, Factory, Warehouse, Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, Factory, Warehouse, Plus, Trash2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useTerminalAssignments, TerminalAssignment } from '@/hooks/useTerminalAssignments';
 
@@ -44,6 +45,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
         terminal_id: '',
         quantity_mt: 0,
         assignment_date: new Date(),
+        comments: '',
       }]);
     }
   }, [open, existingAssignments]);
@@ -56,6 +58,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       terminal_id: '',
       quantity_mt: 0,
       assignment_date: new Date(),
+      comments: '',
     }]);
   };
 
@@ -94,6 +97,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
         terminal_id: '',
         quantity_mt: 0,
         assignment_date: new Date(),
+        comments: '',
       }]);
     }
     onOpenChange(false);
@@ -174,6 +178,19 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
                     date={assignment.assignment_date}
                     setDate={(date) => updateAssignment(index, 'assignment_date', date)}
                     placeholder="Pick a date"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4" />
+                    Comments
+                  </label>
+                  <Textarea
+                    placeholder="Add comments about this assignment..."
+                    value={assignment.comments || ''}
+                    onChange={(e) => updateAssignment(index, 'comments', e.target.value)}
+                    className="resize-y min-h-[80px]"
                   />
                 </div>
               </div>

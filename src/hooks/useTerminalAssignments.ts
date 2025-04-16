@@ -9,6 +9,7 @@ interface TerminalAssignment {
   terminal_id: string;
   quantity_mt: number;
   assignment_date: Date;
+  comments?: string;
 }
 
 export const useTerminalAssignments = (movementId: string) => {
@@ -51,7 +52,8 @@ export const useTerminalAssignments = (movementId: string) => {
           terminal_id: assignment.terminal_id,
           quantity_mt: assignment.quantity_mt,
           // Use formatDateForStorage to ensure consistent date format without timezone issues
-          assignment_date: formatDateForStorage(assignment.assignment_date)
+          assignment_date: formatDateForStorage(assignment.assignment_date),
+          comments: assignment.comments || null
         })));
 
       if (insertError) throw insertError;
