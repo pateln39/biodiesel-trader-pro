@@ -508,7 +508,7 @@ const InventoryPage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0)} MT</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -540,7 +540,7 @@ const InventoryPage = () => {
                                       </div>
                                       <div className="flex justify-between px-2 mt-1">
                                         <span className="text-[9px] text-muted-foreground">
-                                          {utilization.balanceM3} M³
+                                          {utilization.balanceM3.toFixed(2)} M³
                                         </span>
                                         <span className="text-[9px] text-muted-foreground">
                                           {Math.round(utilization.utilizationM3)}%
@@ -557,7 +557,7 @@ const InventoryPage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0)} M³</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -711,7 +711,7 @@ const InventoryPage = () => {
                                         />
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2">
-                                        {tankMovement?.quantity_m3 || 0}
+                                        {tankMovement?.quantity_m3 ? (tankMovement.quantity_m3).toFixed(2) : '0.00'}
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
                                         {movementSummary.tankBalances[tank.id]?.balanceMT || 0}
@@ -724,7 +724,7 @@ const InventoryPage = () => {
                                   {Math.round(movementSummary.totalMTMoved)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {Math.round(movementSummary.totalMTMoved * 1.1)}
+                                  {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                   {Math.round(movementSummary.t1Balance)}
