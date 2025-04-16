@@ -1,3 +1,4 @@
+
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -41,10 +42,9 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
 
     let runningT1Balance = 0;
     let runningT2Balance = 0;
+    const tankLastBalances = new Map<string, number>();
     
     const movementSummaries: Record<string, any> = {};
-    
-    const tankLastBalances = new Map<string, number>();
     
     uniqueMovementIds.forEach(movementId => {
       const currentMovements = movementGroups[movementId] || [];
@@ -55,22 +55,25 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const isT1Movement = firstMovement?.customs_status === 'T1';
       
       let totalBalanceMT = 0;
+      let movementQuantityMT = 0;
       
       tanks.forEach(tank => {
         const tankMovement = currentMovements.find(tm => tm.tank_id === tank.id);
         if (tankMovement) {
           tankLastBalances.set(tank.id, tankMovement.balance_mt);
           totalBalanceMT += tankMovement.balance_mt;
+          movementQuantityMT += tankMovement.quantity_mt;
         } else {
           const lastBalance = tankLastBalances.get(tank.id) || 0;
           totalBalanceMT += lastBalance;
         }
       });
 
+      // Update running balances by adding the movement quantity to the appropriate total
       if (isT1Movement) {
-        runningT1Balance = totalBalanceMT;
+        runningT1Balance += movementQuantityMT;
       } else {
-        runningT2Balance = totalBalanceMT;
+        runningT2Balance += movementQuantityMT;
       }
       
       const totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
