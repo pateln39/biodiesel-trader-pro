@@ -32,14 +32,27 @@ export const useInventoryState = (terminalId?: string) => {
     queryFn: async () => {
       if (!terminalId) return [];
 
+      // Fetch movements through movement_terminal_assignments
       const { data, error } = await supabase
-        .from('movements')
-        .select('*')
+        .from('movement_terminal_assignments')
+        .select(`
+          *,
+          movements:movements(*)
+        `)
         .eq('terminal_id', terminalId)
-        .order('inventory_movement_date', { ascending: true });
+        .order('assignment_date', { ascending: true });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching movements:', error);
+        throw error;
+      }
+
+      // Transform the data to extract movement information
+      return data.map(assignment => ({
+        ...assignment.movements,
+        assignment_quantity: assignment.quantity_mt,
+        assignment_date: assignment.assignment_date
+      }));
     },
     enabled: !!terminalId
   });
