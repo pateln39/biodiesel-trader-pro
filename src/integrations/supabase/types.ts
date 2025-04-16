@@ -973,6 +973,7 @@ export type Database = {
           quantity_m3: number
           quantity_mt: number
           tank_id: string
+          terminal_assignment_id: string | null
           updated_at: string
         }
         Insert: {
@@ -985,6 +986,7 @@ export type Database = {
           quantity_m3?: number
           quantity_mt?: number
           tank_id: string
+          terminal_assignment_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -997,6 +999,7 @@ export type Database = {
           quantity_m3?: number
           quantity_mt?: number
           tank_id?: string
+          terminal_assignment_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1012,6 +1015,13 @@ export type Database = {
             columns: ["tank_id"]
             isOneToOne: false
             referencedRelation: "tanks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tank_movements_terminal_assignment_id_fkey"
+            columns: ["terminal_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "movement_terminal_assignments"
             referencedColumns: ["id"]
           },
         ]

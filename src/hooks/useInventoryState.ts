@@ -344,9 +344,9 @@ export const useInventoryState = (terminalId?: string) => {
         .select('current_product')
         .eq('id', tankId)
         .single();
-
+      
       if (tankError) throw tankError;
-
+      
       const tankMovementData = {
         movement_id: movementId,
         tank_id: tankId,
@@ -391,6 +391,115 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const createTankMovementMutation = useMutation({
+    mutationFn: async ({ 
+      terminalAssignmentId, 
+      tankId, 
+      quantity, 
+      movementDate,
+      customsStatus,
+      product
+    }: { 
+      terminalAssignmentId: string, 
+      tankId: string, 
+      quantity: number,
+      movementDate: Date,
+      customsStatus?: string,
+      product?: string  
+    }) => {
+      console.log('Creating tank movement:', { terminalAssignmentId, tankId, quantity });
+      
+      const { data: tankData, error: tankError } = await supabase
+        .from('tanks')
+        .select('current_product')
+        .eq('id', tankId)
+        .single();
+      
+      if (tankError) throw tankError;
+      
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('movement_id')
+        .eq('id', terminalAssignmentId)
+        .single();
+        
+      if (assignmentError) throw assignmentError;
+
+      const tankMovementData = {
+        terminal_assignment_id: terminalAssignmentId,
+        movement_id: assignment.movement_id,
+        tank_id: tankId,
+        quantity_mt: quantity,
+        quantity_m3: quantity * 1.1,
+        product_at_time: product || tankData.current_product,
+        movement_date: formatDateForStorage(movementDate),
+        customs_status: customsStatus
+      };
+
+      const { data: existingMovement } = await supabase
+        .from('tank_movements')
+        .select('id')
+        .eq('terminal_assignment_id', terminalAssignmentId)
+        .eq('tank_id', tankId)
+        .maybeSingle();
+
+      if (existingMovement) {
+        const { error: updateError } = await supabase
+          .from('tank_movements')
+          .update(tankMovementData)
+          .eq('id', existingMovement.id);
+        
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('tank_movements')
+          .insert([tankMovementData]);
+        
+        if (insertError) throw insertError;
+      }
+
+      return { terminalAssignmentId, tankId, quantity };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Tank movement updated successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error updating tank movement:', error);
+      toast.error(`Failed to update tank movement: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const deleteTankMovementMutation = useMutation({
+    mutationFn: async ({ 
+      terminalAssignmentId, 
+      tankId 
+    }: { 
+      terminalAssignmentId: string, 
+      tankId: string 
+    }) => {
+      console.log('Deleting tank movement:', { terminalAssignmentId, tankId });
+      
+      const { error } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('terminal_assignment_id', terminalAssignmentId)
+        .eq('tank_id', tankId);
+      
+      if (error) throw error;
+      
+      return { terminalAssignmentId, tankId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Tank movement deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting tank movement:', error);
+      toast.error(`Failed to delete tank movement: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -432,6 +541,23 @@ export const useInventoryState = (terminalId?: string) => {
       updateTankCapacityMutation.mutate({ tankId, capacityMt }),
     updateTankMovement: (movementId: string, tankId: string, quantity: number) =>
       updateTankMovementMutation.mutate({ movementId, tankId, quantity }),
+    createTankMovement: (
+      terminalAssignmentId: string, 
+      tankId: string, 
+      quantity: number, 
+      movementDate: Date,
+      customsStatus?: string,
+      product?: string
+    ) => createTankMovementMutation.mutate({ 
+      terminalAssignmentId, 
+      tankId, 
+      quantity, 
+      movementDate,
+      customsStatus,
+      product
+    }),
+    deleteTankMovement: (terminalAssignmentId: string, tankId: string) => 
+      deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
