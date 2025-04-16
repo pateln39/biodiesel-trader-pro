@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement, PricingType } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText, Warehouse } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -47,6 +47,7 @@ import TradeDetailsDialog from './TradeDetailsDialog';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { AssignToTerminalButton } from './movements/AssignToTerminalButton';
+import { StorageFormDialog } from './movements/StorageFormDialog';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -71,6 +72,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [tradeDetailsOpen, setTradeDetailsOpen] = useState(false);
   const [selectedTradeId, setSelectedTradeId] = useState<string | undefined>(undefined);
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
+  const [isStorageFormOpen, setIsStorageFormOpen] = useState(false);
+  const [selectedMovementForStorage, setSelectedMovementForStorage] = useState<Movement | null>(null);
 
   const onReorder = async (reorderedItems: Movement[]) => {
     try {
@@ -211,6 +214,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     setSelectedTradeId(parentId);
     setSelectedLegId(legId);
     setTradeDetailsOpen(true);
+  };
+
+  const handleStorageClick = (movement: Movement) => {
+    setSelectedMovementForStorage(movement);
+    setIsStorageFormOpen(true);
   };
 
   if (isLoading) {
@@ -386,6 +394,23 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </Tooltip>
             </TooltipProvider>
           )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => handleStorageClick(movement)}
+                >
+                  <Warehouse className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Assign to Storage Terminal</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -467,6 +492,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {selectedMovementForStorage && (
+        <StorageFormDialog 
+          open={isStorageFormOpen} 
+          onOpenChange={setIsStorageFormOpen}
+          movement={selectedMovementForStorage}
+        />
+      )}
 
       <TradeDetailsDialog
         open={tradeDetailsOpen}
