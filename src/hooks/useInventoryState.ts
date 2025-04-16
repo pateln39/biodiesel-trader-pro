@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -325,53 +324,41 @@ export const useInventoryState = (terminalId?: string) => {
         .select('current_product')
         .eq('id', tankId)
         .single();
-      
+
       if (tankError) throw tankError;
 
-      const movementDate = movement.inventory_movement_date 
-        ? new Date(movement.inventory_movement_date)
-        : new Date();
-
-      const previousBalance = await calculateTankBalance(tankId, movementDate);
-      
-      const newBalance = previousBalance.mt + quantity;
-      
       const tankMovementData = {
         movement_id: movementId,
         tank_id: tankId,
         quantity_mt: quantity,
         quantity_m3: quantity * 1.1,
-        balance_mt: newBalance,
-        balance_m3: newBalance * 1.1,
         product_at_time: tankData.current_product,
-        movement_date: movementDate.toISOString()
+        movement_date: movement.inventory_movement_date || new Date().toISOString(),
+        customs_status: movement.customs_status
       };
 
-      const { data: existingMovements } = await supabase
+      const { data: existing } = await supabase
         .from('tank_movements')
         .select('id')
         .eq('movement_id', movementId)
-        .eq('tank_id', tankId);
+        .eq('tank_id', tankId)
+        .maybeSingle();
 
       let error;
-      
-      if (existingMovements && existingMovements.length > 0) {
+      if (existing) {
         const { error: updateError } = await supabase
           .from('tank_movements')
           .update(tankMovementData)
-          .eq('id', existingMovements[0].id);
-          
+          .eq('id', existing.id);
         error = updateError;
       } else {
         const { error: insertError } = await supabase
           .from('tank_movements')
           .insert([tankMovementData]);
-          
         error = insertError;
       }
-      
+
       if (error) throw error;
-      
       return { movementId, tankId, quantity };
     },
     onSuccess: () => {

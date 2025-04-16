@@ -2,13 +2,29 @@
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
+interface TankState {
+  balanceMT: number;
+  balanceM3: number;
+}
+
+interface MovementSummary {
+  movementId: string;
+  tankBalances: Record<string, TankState>;
+  totalMTMoved: number;
+  currentStockMT: number;
+  currentStockM3: number;
+  currentUllage: number;
+  t1Balance: number;
+  t2Balance: number;
+}
+
 export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]) => {
   const calculateTankUtilization = (tank: Tank) => {
-    const latestMovement = tankMovements
+    // Calculate current balance by summing all movements for this tank
+    const currentBalance = tankMovements
       .filter(tm => tm.tank_id === tank.id)
-      .sort((a, b) => new Date(b.movement_date).getTime() - new Date(a.movement_date).getTime())[0];
+      .reduce((sum, tm) => sum + tm.quantity_mt, 0);
 
-    const currentBalance = latestMovement?.balance_mt || 0;
     const utilizationMT = (currentBalance / tank.capacity_mt) * 100;
     const balanceM3 = Number((currentBalance * 1.1).toFixed(2));
     const utilizationM3 = (balanceM3 / tank.capacity_m3) * 100;
@@ -23,83 +39,81 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
 
   const calculateSummary = () => {
     const totalCapacity = tanks.reduce((sum, tank) => sum + tank.capacity_mt, 0);
-    
-    const sortedMovements = [...tankMovements].sort(
-      (a, b) => new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime()
-    );
-    
-    const movementGroups = sortedMovements.reduce((groups, movement) => {
+    const movementSummaries: Record<string, MovementSummary> = {};
+    const tankRunningBalances: Record<string, TankState> = {};
+    let runningT1Balance = 0;
+    let runningT2Balance = 0;
+
+    // Initialize tank balances
+    tanks.forEach(tank => {
+      tankRunningBalances[tank.id] = { balanceMT: 0, balanceM3: 0 };
+    });
+
+    // Group tank movements by movement_id for easier processing
+    const movementGroups = tankMovements.reduce((groups, movement) => {
       if (!groups[movement.movement_id]) {
         groups[movement.movement_id] = [];
       }
       groups[movement.movement_id].push(movement);
       return groups;
     }, {} as Record<string, TankMovement[]>);
-    
-    const uniqueMovementIds = Array.from(new Set(
-      sortedMovements.map(m => m.movement_id)
-    ));
 
-    let runningT1Balance = 0;
-    let runningT2Balance = 0;
-    const tankLastBalances = new Map<string, number>();
-    
-    const movementSummaries: Record<string, any> = {};
-    
+    const uniqueMovementIds = Array.from(new Set(tankMovements.map(m => m.movement_id)));
+
     uniqueMovementIds.forEach(movementId => {
       const currentMovements = movementGroups[movementId] || [];
-      
-      if (currentMovements.length === 0) return;
-      
-      const firstMovement = currentMovements[0];
-      const isT1Movement = firstMovement?.customs_status === 'T1';
-      
-      let totalBalanceMT = 0;
-      let movementQuantityMT = 0;
-      
-      tanks.forEach(tank => {
-        const tankMovement = currentMovements.find(tm => tm.tank_id === tank.id);
-        if (tankMovement) {
-          tankLastBalances.set(tank.id, tankMovement.balance_mt);
-          totalBalanceMT += tankMovement.balance_mt;
-          movementQuantityMT += tankMovement.quantity_mt;
+      let totalMTMovedInStep = 0;
+
+      // Process each tank movement in this step
+      currentMovements.forEach(tm => {
+        const tankId = tm.tank_id;
+        const quantityMT = tm.quantity_mt;
+        const quantityM3 = quantityMT * 1.1;
+
+        // Update running balances
+        if (tankRunningBalances[tankId]) {
+          tankRunningBalances[tankId].balanceMT += quantityMT;
+          tankRunningBalances[tankId].balanceM3 = Number((tankRunningBalances[tankId].balanceMT * 1.1).toFixed(2));
+          totalMTMovedInStep += quantityMT;
+        }
+
+        // Update T1/T2 balances based on customs status
+        if (tm.customs_status === 'T1') {
+          runningT1Balance += quantityMT;
         } else {
-          const lastBalance = tankLastBalances.get(tank.id) || 0;
-          totalBalanceMT += lastBalance;
+          runningT2Balance += quantityMT;
         }
       });
 
-      // Update running balances by adding the movement quantity to the appropriate total
-      if (isT1Movement) {
-        runningT1Balance += movementQuantityMT;
-      } else {
-        runningT2Balance += movementQuantityMT;
-      }
-      
-      const totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
-      const currentUllage = totalCapacity - totalBalanceMT;
-      
+      // Calculate current stock and ullage after this step
+      const currentStockMT = Object.values(tankRunningBalances).reduce((sum, state) => sum + state.balanceMT, 0);
+      const currentStockM3 = Object.values(tankRunningBalances).reduce((sum, state) => sum + state.balanceM3, 0);
+      const currentUllage = totalCapacity - currentStockMT;
+
+      // Store the summary for this movement
       movementSummaries[movementId] = {
         movementId,
-        totalMT: totalBalanceMT,
-        totalM3: totalBalanceM3,
+        tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
+        totalMTMoved: totalMTMovedInStep,
+        currentStockMT,
+        currentStockM3,
+        currentUllage,
         t1Balance: runningT1Balance,
-        t2Balance: runningT2Balance,
-        currentStock: totalBalanceMT,
-        totalCapacity,
-        currentUllage: currentUllage
+        t2Balance: runningT2Balance
       };
     });
-    
+
     const getSummaryForMovement = (movementId: string) => {
       return movementSummaries[movementId] || {
-        totalMT: 0,
-        totalM3: 0,
+        tankBalances: Object.fromEntries(
+          tanks.map(tank => [tank.id, { balanceMT: 0, balanceM3: 0 }])
+        ),
+        totalMTMoved: 0,
+        currentStockMT: 0,
+        currentStockM3: 0,
+        currentUllage: totalCapacity,
         t1Balance: 0,
-        t2Balance: 0,
-        currentStock: 0,
-        totalCapacity,
-        currentUllage: totalCapacity
+        t2Balance: 0
       };
     };
 

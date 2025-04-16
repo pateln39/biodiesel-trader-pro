@@ -916,9 +916,8 @@ export type Database = {
       }
       tank_movements: {
         Row: {
-          balance_m3: number
-          balance_mt: number
           created_at: string
+          customs_status: string | null
           id: string
           movement_date: string
           movement_id: string | null
@@ -929,9 +928,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          balance_m3: number
-          balance_mt: number
           created_at?: string
+          customs_status?: string | null
           id?: string
           movement_date?: string
           movement_id?: string | null
@@ -942,9 +940,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          balance_m3?: number
-          balance_mt?: number
           created_at?: string
+          customs_status?: string | null
           id?: string
           movement_date?: string
           movement_id?: string | null
