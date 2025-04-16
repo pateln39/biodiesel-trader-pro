@@ -371,26 +371,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  const updateAssignmentCommentsMutation = useMutation({
-    mutationFn: async ({ assignmentId, comments }: { assignmentId: string, comments: string }) => {
-      const { error } = await supabase
-        .from('movement_terminal_assignments')
-        .update({ comments })
-        .eq('id', assignmentId);
-      
-      if (error) throw error;
-      return { assignmentId, comments };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      toast.success('Terminal comments updated');
-    },
-    onError: (error) => {
-      console.error('Error updating terminal comments:', error);
-      toast.error('Failed to update terminal comments');
-    }
-  });
-
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -430,8 +410,6 @@ export const useInventoryState = (terminalId?: string) => {
       updateTankCapacityMutation.mutate({ tankId, capacityMt }),
     updateTankMovement: (movementId: string, tankId: string, quantity: number) =>
       updateTankMovementMutation.mutate({ movementId, tankId, quantity }),
-    updateAssignmentComments: (assignmentId: string, comments: string) => 
-      updateAssignmentCommentsMutation.mutate({ assignmentId, comments }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

@@ -19,6 +19,7 @@ import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 
+// Remove or update stickyColumnWidths to remove comments width
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
@@ -27,8 +28,8 @@ const stickyColumnWidths = {
   nominationDate: 75,
   customs: 75,
   sustainability: 90,
-  comments: 90,
   quantity: 70,
+  // Removed 'comments' entry
 };
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
@@ -42,6 +43,7 @@ const summaryColumnWidths = {
   currentUllage: 100,
 };
 
+// Update truncatedHeaders to remove comments
 const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
@@ -50,8 +52,8 @@ const truncatedHeaders = {
   nominationDate: "Nom. Valid",
   customs: "Customs",
   sustainability: "Sustain.",
-  comments: "Comments",
   quantity: "Qty (MT)",
+  // Removed 'comments' entry
   totalMT: "Total (MT)",
   totalM3: "Total (M³)",
   t1Balance: "T1",
@@ -171,44 +173,44 @@ const InventoryPage = () => {
                 <ScrollArea 
                   className="flex-shrink-0 z-30 border-r border-white/30" 
                   orientation="horizontal"
-                  style={{ width: `${totalStickyWidth}px` }}
+                  style={{ width: `${Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0)}px` }}
                 >
                   <div style={{ minWidth: `${totalStickyWidth}px` }}>
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={9} 
+                            colSpan={8} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
@@ -280,16 +282,6 @@ const InventoryPage = () => {
                             <TruncatedCell 
                               text={truncatedHeaders.sustainability} 
                               width={stickyColumnWidths.sustainability - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.comments}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.comments} 
-                              width={stickyColumnWidths.comments - 8} 
                               className="text-[10px] font-medium"
                             />
                           </TableHead>
@@ -369,15 +361,6 @@ const InventoryPage = () => {
                                   text={movement.sustainability} 
                                   width={stickyColumnWidths.sustainability - 16} 
                                   className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <EditableField
-                                  initialValue={movement.comments}
-                                  onSave={(value) => updateMovementComments(movement.id, value)}
-                                  maxWidth={stickyColumnWidths.comments - 16}
-                                  className="text-[10px]"
-                                  placeholder="Add comments..."
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
