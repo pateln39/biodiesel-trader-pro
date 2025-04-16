@@ -153,6 +153,26 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const updateAssignmentCommentsMutation = useMutation({
+    mutationFn: async ({ assignmentId, comments }: { assignmentId: string, comments: string }) => {
+      const { error } = await supabase
+        .from('movement_terminal_assignments')
+        .update({ comments })
+        .eq('id', assignmentId);
+      
+      if (error) throw error;
+      return { assignmentId, comments };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+    },
+    onError: (error) => {
+      console.error('Error updating assignment comments:', error);
+      toast.error('Failed to update comments');
+    }
+  });
+
   const updateMovementCommentsMutation = useMutation({
     mutationFn: async ({ movementId, comments }: { movementId: string, comments: string }) => {
       const { error } = await supabase
@@ -393,6 +413,8 @@ export const useInventoryState = (terminalId?: string) => {
     PRODUCT_COLORS,
     updateMovementQuantity: (movementId: string, quantity: number) => 
       updateMovementQuantityMutation.mutate({ movementId, quantity }),
+    updateAssignmentComments: (assignmentId: string, comments: string) => 
+      updateAssignmentCommentsMutation.mutate({ assignmentId, comments }),
     updateMovementComments: (movementId: string, comments: string) => 
       updateMovementCommentsMutation.mutate({ movementId, comments }),
     updateTankProduct: (tankId: string, product: string) => 

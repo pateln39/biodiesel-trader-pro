@@ -18,6 +18,7 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
+import EditableAssignmentComments from '@/components/operations/inventory/EditableAssignmentComments';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -97,7 +98,7 @@ const InventoryPage = () => {
     PRODUCT_COLORS,
     updateTankMovement,
     updateMovementQuantity,
-    updateMovementComments,
+    updateAssignmentComments,
     updateTankProduct,
     updateTankSpec,
     updateTankHeating,
@@ -311,6 +312,8 @@ const InventoryPage = () => {
                             ? "bg-green-900/10 hover:bg-green-900/20" 
                             : "bg-red-900/10 hover:bg-red-900/20";
                           
+                          const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
+                          
                           return (
                             <TableRow 
                               key={`scroll-${movement.id}`} 
@@ -369,9 +372,10 @@ const InventoryPage = () => {
                                 />
                               </TableCell>
                               <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.terminal_comments || '-'} 
-                                  width={stickyColumnWidths.comments - 16} 
+                                <EditableAssignmentComments
+                                  assignmentId={movement.assignment_id}
+                                  initialValue={movement.terminal_comments}
+                                  onSave={updateAssignmentComments}
                                   className="text-[10px]"
                                 />
                               </TableCell>
