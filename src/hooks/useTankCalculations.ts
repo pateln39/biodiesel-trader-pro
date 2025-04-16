@@ -1,4 +1,3 @@
-
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -68,12 +67,10 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
         }
       });
 
-      const movementTotalMT = currentMovements.reduce((sum, tm) => sum + tm.quantity_mt, 0);
-      
       if (isT1Movement) {
-        runningT1Balance += movementTotalMT;
+        runningT1Balance = totalBalanceMT;
       } else {
-        runningT2Balance += movementTotalMT;
+        runningT2Balance = totalBalanceMT;
       }
       
       const totalBalanceM3 = Number((totalBalanceMT * 1.1).toFixed(2));
