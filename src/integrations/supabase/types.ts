@@ -301,6 +301,51 @@ export type Database = {
         }
         Relationships: []
       }
+      movement_terminal_assignments: {
+        Row: {
+          assignment_date: string
+          created_at: string
+          id: string
+          movement_id: string
+          quantity_mt: number
+          terminal_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_date: string
+          created_at?: string
+          id?: string
+          movement_id: string
+          quantity_mt: number
+          terminal_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_date?: string
+          created_at?: string
+          id?: string
+          movement_id?: string
+          quantity_mt?: number
+          terminal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movement_terminal_assignments_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movement_terminal_assignments_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movements: {
         Row: {
           actual_quantity: number | null

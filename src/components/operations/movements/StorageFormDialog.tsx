@@ -2,19 +2,17 @@
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { CalendarIcon, Factory, Warehouse } from 'lucide-react';
+import { CalendarIcon, Factory, Warehouse, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -28,7 +26,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useTerminalAssignments, TerminalAssignment } from '@/hooks/useTerminalAssignments';
 
 interface StorageFormDialogProps {
   movement: Movement;
@@ -38,144 +38,167 @@ interface StorageFormDialogProps {
 
 export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormDialogProps) {
   const { terminals } = useTerminals();
-  const queryClient = useQueryClient();
-  const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>('');
-  const [date, setDate] = React.useState<Date>();
-  const [quantity, setQuantity] = React.useState<string>('');
+  const { createAssignments } = useTerminalAssignments(movement.id);
+  const [assignments, setAssignments] = React.useState<TerminalAssignment[]>([{
+    terminal_id: '',
+    quantity_mt: 0,
+    assignment_date: new Date(),
+  }]);
 
-  const assignToTerminalMutation = useMutation({
-    mutationFn: async ({ 
-      movementId, 
-      terminalId, 
-      date, 
-      quantity 
-    }: { 
-      movementId: string; 
-      terminalId: string; 
-      date: Date;
-      quantity: number;
-    }) => {
-      const formattedDate = date.toISOString();
-      
-      const { error } = await supabase
-        .from('movements')
-        .update({ 
-          terminal_id: terminalId,
-          inventory_movement_date: formattedDate,
-          actual_quantity: quantity
-        })
-        .eq('id', movementId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
-      toast.success('Movement assigned to terminal successfully');
-      handleClose();
-    },
-    onError: (error) => {
-      console.error('Error assigning movement to terminal:', error);
-      toast.error('Failed to assign movement to terminal');
-    }
-  });
+  const totalAssigned = assignments.reduce((sum, a) => sum + (a.quantity_mt || 0), 0);
+  const remainingQuantity = (movement.actual_quantity || 0) - totalAssigned;
 
-  const handleAssign = () => {
-    if (!selectedTerminalId || !date || !quantity) {
-      toast.error('Please fill in all fields');
+  const handleAddAssignment = () => {
+    setAssignments([...assignments, {
+      terminal_id: '',
+      quantity_mt: 0,
+      assignment_date: new Date(),
+    }]);
+  };
+
+  const handleRemoveAssignment = (index: number) => {
+    setAssignments(assignments.filter((_, i) => i !== index));
+  };
+
+  const updateAssignment = (index: number, field: keyof TerminalAssignment, value: any) => {
+    const newAssignments = [...assignments];
+    newAssignments[index] = { ...newAssignments[index], [field]: value };
+    setAssignments(newAssignments);
+  };
+
+  const handleSave = () => {
+    if (totalAssigned > (movement.actual_quantity || 0)) {
+      toast.error('Total assigned quantity exceeds actual quantity');
       return;
     }
 
-    const parsedQuantity = parseFloat(quantity);
-    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
-      toast.error('Please enter a valid quantity');
+    const invalidAssignments = assignments.some(a => 
+      !a.terminal_id || !a.quantity_mt || !a.assignment_date
+    );
+
+    if (invalidAssignments) {
+      toast.error('Please fill in all fields for each terminal assignment');
       return;
     }
 
-    assignToTerminalMutation.mutate({
-      movementId: movement.id,
-      terminalId: selectedTerminalId,
-      date,
-      quantity: parsedQuantity,
-    });
+    createAssignments(assignments);
+    onOpenChange(false);
   };
 
   const handleClose = () => {
-    setSelectedTerminalId('');
-    setDate(undefined);
-    setQuantity('');
+    setAssignments([{
+      terminal_id: '',
+      quantity_mt: 0,
+      assignment_date: new Date(),
+    }]);
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={handleClose}>
+      <SheetContent className="w-[600px] sm:w-[800px]">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
             <Warehouse className="h-5 w-5" />
-            Storage Form
-          </DialogTitle>
-          <DialogDescription>
-            Assign movement {movement.referenceNumber} to a terminal
-          </DialogDescription>
-        </DialogHeader>
+            Storage Assignment
+          </SheetTitle>
+          <SheetDescription>
+            Assign movement {movement.referenceNumber} to terminals
+            <div className="mt-2 text-sm">
+              <span className="font-semibold">Actual Quantity:</span> {movement.actual_quantity} MT
+              <br />
+              <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
+            </div>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <label>Terminal</label>
-            <Select value={selectedTerminalId} onValueChange={setSelectedTerminalId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select terminal" />
-              </SelectTrigger>
-              <SelectContent>
-                {terminals.map((terminal) => (
-                  <SelectItem key={terminal.id} value={terminal.id}>
-                    {terminal.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-8 py-8">
+          {assignments.map((assignment, index) => (
+            <div key={index} className="space-y-4 border-b pb-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium">Terminal Assignment {index + 1}</h4>
+                {index > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveAssignment(index)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                )}
+              </div>
 
-          <div className="grid gap-2">
-            <label>Quantity (MT)</label>
-            <Input
-              type="number"
-              step="0.01"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="Enter quantity in MT"
-            />
-          </div>
+              <div className="grid gap-4">
+                <div>
+                  <label className="text-sm">Terminal</label>
+                  <Select
+                    value={assignment.terminal_id}
+                    onValueChange={(value) => updateAssignment(index, 'terminal_id', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select terminal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {terminals.map((terminal) => (
+                        <SelectItem key={terminal.id} value={terminal.id}>
+                          {terminal.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="grid gap-2">
-            <label>Movement Date</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={!date ? "text-muted-foreground" : ""}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, 'PPP') : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+                <div>
+                  <label className="text-sm">Quantity (MT)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={assignment.quantity_mt || ''}
+                    onChange={(e) => updateAssignment(index, 'quantity_mt', parseFloat(e.target.value) || 0)}
+                    placeholder="Enter quantity in MT"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm">Movement Date</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={!assignment.assignment_date ? "text-muted-foreground" : ""}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {assignment.assignment_date ? format(assignment.assignment_date, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={assignment.assignment_date}
+                        onSelect={(date) => date && updateAssignment(index, 'assignment_date', date)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
+          ))}
 
           <Button
-            onClick={handleAssign}
-            disabled={!selectedTerminalId || !date || !quantity}
+            variant="outline"
+            onClick={handleAddAssignment}
+            disabled={totalAssigned >= (movement.actual_quantity || 0)}
           >
-            <Factory className="mr-2 h-4 w-4" />
-            Assign to Terminal
+            <Plus className="mr-2 h-4 w-4" />
+            Add Terminal Assignment
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        <SheetFooter>
+          <Button onClick={handleSave} disabled={totalAssigned === 0}>
+            <Factory className="mr-2 h-4 w-4" />
+            Save Assignments
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
