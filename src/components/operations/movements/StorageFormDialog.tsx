@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';

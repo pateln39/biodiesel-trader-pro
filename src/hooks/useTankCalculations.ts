@@ -50,15 +50,28 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
     });
 
     // Group tank movements by movement_id for easier processing
-    const movementGroups = tankMovements.reduce((groups, movement) => {
-      if (!groups[movement.movement_id]) {
-        groups[movement.movement_id] = [];
+    const movementGroups: Record<string, TankMovement[]> = {};
+    
+    // Sort all movements by date to ensure correct chronological processing
+    const sortedMovements = [...tankMovements].sort((a, b) => {
+      return new Date(a.movement_date).getTime() - new Date(b.movement_date).getTime();
+    });
+    
+    // Group the sorted movements by movement_id
+    sortedMovements.forEach(movement => {
+      if (!movementGroups[movement.movement_id]) {
+        movementGroups[movement.movement_id] = [];
       }
-      groups[movement.movement_id].push(movement);
-      return groups;
-    }, {} as Record<string, TankMovement[]>);
+      movementGroups[movement.movement_id].push(movement);
+    });
 
-    const uniqueMovementIds = Array.from(new Set(tankMovements.map(m => m.movement_id)));
+    // Get unique movement IDs in sorted order by movement date
+    const uniqueMovementIds: string[] = [];
+    sortedMovements.forEach(m => {
+      if (!uniqueMovementIds.includes(m.movement_id)) {
+        uniqueMovementIds.push(m.movement_id);
+      }
+    });
 
     uniqueMovementIds.forEach(movementId => {
       const currentMovements = movementGroups[movementId] || [];
