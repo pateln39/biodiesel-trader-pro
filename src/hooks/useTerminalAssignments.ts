@@ -62,19 +62,27 @@ export const useTerminalAssignments = (movementId: string) => {
         return;
       }
 
+      // Prepare assignments with sort_order values
+      const assignmentsWithSortOrder = assignments.map((assignment, index) => ({
+        movement_id: movementId,
+        terminal_id: assignment.terminal_id,
+        quantity_mt: assignment.quantity_mt,
+        // Use formatDateForStorage to ensure consistent date format without timezone issues
+        assignment_date: formatDateForStorage(assignment.assignment_date),
+        comments: assignment.comments || null,
+        sort_order: index + 1 // Add sort_order based on index
+      }));
+
       // Then insert new assignments
       const { error: insertError } = await supabase
         .from('movement_terminal_assignments')
-        .insert(assignments.map(assignment => ({
-          movement_id: movementId,
-          terminal_id: assignment.terminal_id,
-          quantity_mt: assignment.quantity_mt,
-          // Use formatDateForStorage to ensure consistent date format without timezone issues
-          assignment_date: formatDateForStorage(assignment.assignment_date),
-          comments: assignment.comments || null
-        })));
+        .insert(assignmentsWithSortOrder);
 
       if (insertError) throw insertError;
+
+      // After insertion, initialize sort order for any null values
+      // This is a fallback in case the insert didn't set sort_order properly
+      await supabase.rpc('initialize_sort_order', { p_table_name: 'movement_terminal_assignments' });
     },
     onSuccess: () => {
       // Invalidate all relevant queries to ensure data is refreshed
@@ -93,7 +101,18 @@ export const useTerminalAssignments = (movementId: string) => {
     mutationFn: async (assignmentId: string) => {
       console.log('Deleting terminal assignment:', assignmentId);
       
-      // Delete the specific assignment (tank movements will cascade delete)
+      // First, delete all related tank movements to ensure proper cleanup
+      const { error: tankMovementError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementError) {
+        console.error('Error deleting related tank movements:', tankMovementError);
+        // Continue with assignment deletion even if tank movements deletion fails
+      }
+      
+      // Then delete the specific assignment
       const { error } = await supabase
         .from('movement_terminal_assignments')
         .delete()
@@ -118,7 +137,28 @@ export const useTerminalAssignments = (movementId: string) => {
     mutationFn: async () => {
       console.log('Deleting all terminal assignments for movement:', movementId);
       
-      // Delete all assignments (tank movements will cascade delete)
+      // First, delete all related tank movements
+      const { data: assignments } = await supabase
+        .from('movement_terminal_assignments')
+        .select('id')
+        .eq('movement_id', movementId);
+      
+      if (assignments && assignments.length > 0) {
+        const assignmentIds = assignments.map(a => a.id);
+        
+        // Delete tank movements for these assignments
+        const { error: tankMovementError } = await supabase
+          .from('tank_movements')
+          .delete()
+          .in('assignment_id', assignmentIds);
+        
+        if (tankMovementError) {
+          console.error('Error deleting related tank movements:', tankMovementError);
+          // Continue with assignment deletion even if tank movements deletion fails
+        }
+      }
+      
+      // Delete all assignments
       const { error } = await supabase
         .from('movement_terminal_assignments')
         .delete()
@@ -149,5 +189,3 @@ export const useTerminalAssignments = (movementId: string) => {
     deleteAssignments: () => deleteAssignmentsMutation.mutate()
   };
 };
-
-// Removed duplicate export here

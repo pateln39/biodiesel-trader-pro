@@ -217,7 +217,6 @@ export const useInventoryState = (terminalId?: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tanks'] });
-      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       toast.success('Tank product updated');
     },
     onError: (error: any) => {
@@ -339,6 +338,11 @@ export const useInventoryState = (terminalId?: string) => {
       const movement = movements.find(m => m.id === movementId);
       if (!movement) throw new Error('Movement not found');
 
+      const assignmentId = movement.assignment_id;
+      if (!assignmentId) {
+        console.warn('No assignment ID found for movement:', movementId);
+      }
+
       const { data: tankData, error: tankError } = await supabase
         .from('tanks')
         .select('current_product')
@@ -353,8 +357,9 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_mt: quantity,
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
-        movement_date: movement.inventory_movement_date || new Date().toISOString(),
-        customs_status: movement.customs_status
+        movement_date: movement.assignment_date || new Date().toISOString(),
+        customs_status: movement.customs_status,
+        assignment_id: assignmentId
       };
 
       const { data: existing } = await supabase
@@ -420,11 +425,13 @@ export const useInventoryState = (terminalId?: string) => {
       
       const { data: assignment, error: assignmentError } = await supabase
         .from('movement_terminal_assignments')
-        .select('movement_id')
+        .select('movement_id, assignment_date')
         .eq('id', terminalAssignmentId)
         .single();
         
       if (assignmentError) throw assignmentError;
+
+      const assignmentDate = assignment.assignment_date ? new Date(assignment.assignment_date) : movementDate;
 
       const tankMovementData = {
         movement_id: assignment.movement_id,
@@ -432,7 +439,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_mt: quantity,
         quantity_m3: quantity * 1.1,
         product_at_time: product || tankData.current_product,
-        movement_date: formatDateForStorage(movementDate),
+        movement_date: formatDateForStorage(assignmentDate),
         customs_status: customsStatus,
         assignment_id: terminalAssignmentId
       };
@@ -440,7 +447,7 @@ export const useInventoryState = (terminalId?: string) => {
       const { data: existingMovement } = await supabase
         .from('tank_movements')
         .select('id')
-        .eq('movement_id', assignment.movement_id)
+        .eq('assignment_id', terminalAssignmentId)
         .eq('tank_id', tankId)
         .maybeSingle();
 
@@ -482,18 +489,10 @@ export const useInventoryState = (terminalId?: string) => {
     }) => {
       console.log('Deleting tank movement:', { terminalAssignmentId, tankId });
       
-      const { data: assignment, error: assignmentError } = await supabase
-        .from('movement_terminal_assignments')
-        .select('movement_id')
-        .eq('id', terminalAssignmentId)
-        .single();
-        
-      if (assignmentError) throw assignmentError;
-      
       const { error } = await supabase
         .from('tank_movements')
         .delete()
-        .eq('movement_id', assignment.movement_id)
+        .eq('assignment_id', terminalAssignmentId)
         .eq('tank_id', tankId);
       
       if (error) throw error;
