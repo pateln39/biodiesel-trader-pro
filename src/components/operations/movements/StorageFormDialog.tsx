@@ -2,7 +2,7 @@
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
-import { CalendarIcon, Factory, Warehouse, Plus, Trash2, MessageSquare } from 'lucide-react';
+import { CalendarIcon, Factory, Warehouse, Plus, Trash2, MessageSquare, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { useTerminalAssignments, TerminalAssignment } from '@/hooks/useTerminalAssignments';
+import { useInventoryState } from '@/hooks/useInventoryState';
 
 interface StorageFormDialogProps {
   movement: Movement;
@@ -35,6 +36,7 @@ interface StorageFormDialogProps {
 export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormDialogProps) {
   const { terminals } = useTerminals();
   const { assignments: existingAssignments, updateAssignments, isLoading } = useTerminalAssignments(movement.id);
+  const { updateExistingTankMovements } = useInventoryState(movement.terminal_id);
   const [assignments, setAssignments] = React.useState<TerminalAssignment[]>([]);
 
   React.useEffect(() => {
@@ -91,6 +93,10 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       setAssignments([]);
     }
     onOpenChange(false);
+  };
+
+  const handleFixTankMovements = () => {
+    updateExistingTankMovements();
   };
 
   if (isLoading) {
@@ -197,7 +203,16 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
           </div>
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-row items-center justify-between space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleFixTankMovements}
+            className="flex items-center gap-1"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            Fix Missing Terminal Links
+          </Button>
           <Button onClick={handleSave}>
             <Factory className="mr-2 h-4 w-4" />
             {existingAssignments.length ? 'Update' : 'Save'} Assignments
@@ -207,4 +222,3 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
     </Dialog>
   );
 }
-
