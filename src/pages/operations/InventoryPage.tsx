@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -129,6 +130,25 @@ const InventoryPage = () => {
 
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
+  
+  // Ensure we have a consistent ordering of movements based on sort_order
+  const sortedMovements = React.useMemo(() => {
+    // Sort movements by sort_order primarily, then by date as a fallback
+    return [...movements].sort((a, b) => {
+      // First sort by sort_order if available
+      if (a.sort_order !== null && b.sort_order !== null) {
+        return a.sort_order - b.sort_order;
+      }
+      // If only one has sort_order, prioritize it
+      if (a.sort_order !== null) return -1;
+      if (b.sort_order !== null) return 1;
+      
+      // Fall back to date comparison if no sort_order
+      const dateA = new Date(a.assignment_date || a.createdAt);
+      const dateB = new Date(b.assignment_date || b.createdAt);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [movements]);
 
   return (
     <Layout>
@@ -526,7 +546,7 @@ const InventoryPage = () => {
                         </TableHeader>
                         
                         <TableBody>
-                          {movements.map((movement, index) => {
+                          {sortedMovements.map((movement, index) => {
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
