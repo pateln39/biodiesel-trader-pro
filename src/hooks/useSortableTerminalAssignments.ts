@@ -49,6 +49,7 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
     }) => {
       console.log('Reordering assignment:', { assignmentId, newOrder, terminalId });
       
+      // Use the new terminal-specific function
       const { data, error } = await supabase.rpc('update_terminal_sort_order', {
         p_id: assignmentId,
         p_new_sort_order: newOrder,

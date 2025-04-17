@@ -61,7 +61,7 @@ export const cleanupOrphanedTankMovements = async (terminalId: string): Promise<
 
 /**
  * Initialize sort_order for movement terminal assignments that have null values
- * This function now ensures that sort_order values are unique per terminal
+ * This function ensures that sort_order values are unique per terminal
  */
 export const initializeAssignmentSortOrder = async (terminalId?: string): Promise<void> => {
   try {

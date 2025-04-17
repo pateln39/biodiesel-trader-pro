@@ -1276,12 +1276,28 @@ export type Database = {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
       }
+      fix_all_duplicate_sort_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      fix_duplicate_sort_orders: {
+        Args: { p_terminal_id: string }
+        Returns: undefined
+      }
       generate_movement_reference: {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
       }
+      initialize_all_terminal_sort_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       initialize_sort_order: {
         Args: { p_table_name: string }
+        Returns: undefined
+      }
+      initialize_terminal_sort_order: {
+        Args: { p_terminal_id: string }
         Returns: undefined
       }
       populate_movement_loading_periods: {
@@ -1290,6 +1306,10 @@ export type Database = {
       }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
+        Returns: undefined
+      }
+      update_terminal_sort_order: {
+        Args: { p_id: string; p_new_sort_order: number; p_terminal_id: string }
         Returns: undefined
       }
     }
