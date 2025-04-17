@@ -144,8 +144,8 @@ const InventoryPage = () => {
       if (b.sort_order !== null) return 1;
       
       // Fall back to date comparison if no sort_order
-      const dateA = new Date(a.assignment_date || a.createdAt);
-      const dateB = new Date(b.assignment_date || b.createdAt);
+      const dateA = new Date(a.assignment_date || a.created_at);
+      const dateB = new Date(b.assignment_date || b.created_at);
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
