@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
@@ -118,10 +119,12 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
               <br />
               <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
               {movement.buy_sell === 'sell' && (
-                <br />
-                <span className="text-xs text-muted-foreground italic">
-                  For sell movements, enter negative quantities (e.g., -300)
-                </span>
+                <>
+                  <br />
+                  <span className="text-xs text-muted-foreground italic">
+                    For sell movements, enter negative quantities (e.g., -300)
+                  </span>
+                </>
               )}
             </div>
           </DialogDescription>
