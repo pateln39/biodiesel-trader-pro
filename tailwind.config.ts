@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -37,6 +36,10 @@ export default {
 		'via-brand-navy/60',
 		'to-brand-lime',
 		'to-brand-lime/25',
+		'bg-green-900/10',
+		'hover:bg-green-900/20',
+		'bg-red-900/10',
+		'hover:bg-red-900/20',
 		'text-brand-navy',
 		'text-brand-blue',
 		'text-brand-lime',

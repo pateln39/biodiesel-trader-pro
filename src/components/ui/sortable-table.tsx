@@ -61,10 +61,17 @@ interface SortableRowProps {
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
+  bgColorClass?: string;
 }
 
 // Sortable row component using dnd-kit sortable hooks
-export const SortableRow = ({ id, children, className, disabled = false }: SortableRowProps) => {
+export const SortableRow = ({ 
+  id, 
+  children, 
+  className, 
+  disabled = false,
+  bgColorClass = "" 
+}: SortableRowProps) => {
   const {
     attributes,
     listeners,
@@ -93,6 +100,7 @@ export const SortableRow = ({ id, children, className, disabled = false }: Sorta
         "transition-colors data-[state=selected]:bg-muted",
         isDragging ? "bg-accent" : "",
         disabled ? "bg-muted text-muted-foreground" : "",
+        bgColorClass,
         className
       )}
       {...attributes}
@@ -115,6 +123,7 @@ interface SortableTableProps<T extends SortableItem> {
   renderRow: (item: T, index: number) => React.ReactNode;
   isItemDisabled?: (item: T) => boolean;
   className?: string;
+  getRowBgClass?: (item: T) => string;
 }
 
 // Generic sortable table component
@@ -125,6 +134,7 @@ export function SortableTable<T extends SortableItem>({
   renderRow,
   isItemDisabled,
   className,
+  getRowBgClass,
 }: SortableTableProps<T>) {
   // State to track the currently dragged item
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -198,11 +208,14 @@ export function SortableTable<T extends SortableItem>({
           >
             {items.map((item, index) => {
               const isDisabled = isItemDisabled ? isItemDisabled(item) : false;
+              const bgColorClass = getRowBgClass ? getRowBgClass(item) : "";
+              
               return (
                 <SortableRow 
                   key={item.id} 
                   id={item.id} 
                   disabled={isDisabled}
+                  bgColorClass={bgColorClass}
                 >
                   {renderRow(item, index)}
                 </SortableRow>

@@ -59,10 +59,21 @@ const SortableAssignmentList = ({
     handleReorder(assignments);
   };
 
+  // Get background color class based on movement type
+  const getRowBgClass = (item: SortableItem & { 
+    movement: any; 
+    assignment: TerminalAssignment; 
+  }) => {
+    return item.movement?.buy_sell === "buy" 
+      ? "bg-green-900/10 hover:bg-green-900/20" 
+      : "bg-red-900/10 hover:bg-red-900/20";
+  };
+
   return (
     <SortableTable
       items={sortableItems}
       onReorder={handleReorderWrapper}
+      getRowBgClass={getRowBgClass}
       renderHeader={() => (
         <>
           <TableHead 
@@ -159,48 +170,45 @@ const SortableAssignmentList = ({
       )}
       renderRow={(item) => {
         const { movement, assignment } = item;
-        const bgColorClass = movement?.buy_sell === "buy" 
-          ? "bg-green-900/10 hover:bg-green-900/20" 
-          : "bg-red-900/10 hover:bg-red-900/20";
-          
+        
         return (
           <>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={movement?.counterparty} 
                 width={columnWidths.counterparty - 16} 
                 className="font-medium text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={movement?.trade_reference} 
                 width={columnWidths.tradeRef - 16} 
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={movement?.barge_name} 
                 width={columnWidths.bargeName - 16} 
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
                 width={columnWidths.movementDate - 16} 
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
                 width={columnWidths.nominationDate - 16} 
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <span className={`
                 px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
                 ${movement?.customs_status === "T1" 
@@ -210,14 +218,14 @@ const SortableAssignmentList = ({
                 {movement?.customs_status}
               </span>
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <TruncatedCell 
                 text={movement?.sustainability} 
                 width={columnWidths.sustainability - 16} 
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <EditableAssignmentComments
                 assignmentId={assignment.id as string}
                 initialValue={assignment.comments || ''}
@@ -225,7 +233,7 @@ const SortableAssignmentList = ({
                 className="text-[10px]"
               />
             </TableCell>
-            <TableCell className="bg-brand-navy text-[10px] py-2">
+            <TableCell className="py-2 text-[10px]">
               <div className="flex justify-center">
                 <ProductToken 
                   product={movement?.product}
