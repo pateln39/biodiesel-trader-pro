@@ -44,7 +44,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
     }
   }, [open, existingAssignments]);
 
-  const totalAssigned = assignments.reduce((sum, a) => sum + (a.quantity_mt || 0), 0);
+  const totalAssigned = assignments.reduce((sum, a) => sum + Math.abs(a.quantity_mt || 0), 0);
   const remainingQuantity = (movement.actualQuantity || 0) - totalAssigned;
 
   const handleAddAssignment = () => {
@@ -67,7 +67,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   };
 
   const handleSave = () => {
-    if (totalAssigned > (movement.actualQuantity || 0)) {
+    if (totalAssigned > Math.abs(movement.actualQuantity || 0)) {
       toast.error('Total assigned quantity exceeds actual quantity');
       return;
     }
@@ -81,7 +81,14 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       return;
     }
 
-    updateAssignments(assignments);
+    const processedAssignments = assignments.map(assignment => ({
+      ...assignment,
+      quantity_mt: movement.buy_sell === 'sell' 
+        ? -Math.abs(assignment.quantity_mt || 0)
+        : Math.abs(assignment.quantity_mt || 0)
+    }));
+
+    updateAssignments(processedAssignments);
     onOpenChange(false);
   };
 
@@ -110,6 +117,12 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
               <span className="font-semibold">Actual Quantity:</span> {movement.actualQuantity} MT
               <br />
               <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
+              {movement.buy_sell === 'sell' && (
+                <br />
+                <span className="text-xs text-muted-foreground italic">
+                  For sell movements, enter negative quantities (e.g., -300)
+                </span>
+              )}
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -188,7 +201,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
             <Button
               variant="outline"
               onClick={handleAddAssignment}
-              disabled={totalAssigned >= (movement.actualQuantity || 0)}
+              disabled={totalAssigned >= Math.abs(movement.actualQuantity || 0)}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Terminal Assignment
