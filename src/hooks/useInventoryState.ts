@@ -13,6 +13,7 @@ export interface TankMovement {
   movement_date: Date;
   customs_status?: string;
   assignment_id?: string;
+  sort_order?: number;
 }
 
 export const PRODUCT_COLORS = {
@@ -39,6 +40,7 @@ export const useInventoryState = (terminalId?: string) => {
           movements:movements(*)
         `)
         .eq('terminal_id', terminalId)
+        .order('sort_order', { ascending: true, nullsFirst: false })
         .order('assignment_date', { ascending: true });
 
       if (error) {
@@ -51,7 +53,8 @@ export const useInventoryState = (terminalId?: string) => {
         assignment_id: assignment.id,
         assignment_quantity: assignment.quantity_mt,
         assignment_date: assignment.assignment_date,
-        terminal_comments: assignment.comments
+        terminal_comments: assignment.comments,
+        sort_order: assignment.sort_order
       }));
     },
     enabled: !!terminalId
@@ -66,22 +69,30 @@ export const useInventoryState = (terminalId?: string) => {
         .from('tank_movements')
         .select(`
           *,
-          tanks!inner(terminal_id)
+          tanks!inner(terminal_id),
+          movement_terminal_assignments(sort_order)
         `)
-        .eq('tanks.terminal_id', terminalId)
-        .order('movement_date', { ascending: true });
+        .eq('tanks.terminal_id', terminalId);
 
       if (error) {
         console.error('Error fetching tank movements:', error);
         throw error;
       }
 
-      return data.map((tm: any) => ({
+      const processedData = data.map((tm: any) => ({
         ...tm,
         movement_date: new Date(tm.movement_date),
         created_at: new Date(tm.created_at),
-        updated_at: new Date(tm.updated_at)
+        updated_at: new Date(tm.updated_at),
+        sort_order: tm.movement_terminal_assignments?.sort_order || null
       }));
+
+      return processedData.sort((a: any, b: any) => {
+        if (a.sort_order !== null && b.sort_order !== null) {
+          return a.sort_order - b.sort_order;
+        }
+        return a.movement_date.getTime() - b.movement_date.getTime();
+      });
     },
     enabled: !!terminalId
   });
@@ -425,7 +436,7 @@ export const useInventoryState = (terminalId?: string) => {
       
       const { data: assignment, error: assignmentError } = await supabase
         .from('movement_terminal_assignments')
-        .select('movement_id, assignment_date')
+        .select('movement_id, assignment_date, sort_order')
         .eq('id', terminalAssignmentId)
         .single();
         

@@ -1,4 +1,3 @@
-
 import { TankMovement } from './useInventoryState';
 import { Tank } from './useTanks';
 
@@ -76,15 +75,26 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const firstMovement = movements[0];
       return {
         key,
-        // Get date from first movement in group
+        // Get sort_order if available, otherwise use date for sorting
+        sortOrder: firstMovement.sort_order !== undefined ? firstMovement.sort_order : null,
         date: new Date(firstMovement.movement_date).getTime(),
-        // We'll sort based on the associated movement/assignment
+        // We'll track the associated movement/assignment
         movementId: firstMovement.movement_id
       };
     });
     
-    // Sort by date (we're already using sortable assignments in the UI)
-    keysWithOrder.sort((a, b) => a.date - b.date);
+    // Sort primarily by sort_order, falling back to date when sort_order is not available
+    keysWithOrder.sort((a, b) => {
+      // If both have sort_order, use that
+      if (a.sortOrder !== null && b.sortOrder !== null) {
+        return a.sortOrder - b.sortOrder;
+      }
+      // If only one has sort_order, prioritize the one with sort_order
+      if (a.sortOrder !== null) return -1;
+      if (b.sortOrder !== null) return 1;
+      // Otherwise, fall back to date
+      return a.date - b.date;
+    });
     
     // Now we have our keys in the right order
     const sortedKeys = keysWithOrder.map(item => item.key);
