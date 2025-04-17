@@ -46,7 +46,7 @@ interface DragHandleProps {
 export const DragHandle = ({ className, disabled }: DragHandleProps) => {
   return (
     <div className={cn(
-      "flex items-center justify-center", 
+      "flex items-center justify-center h-full", 
       disabled ? "cursor-not-allowed opacity-50" : "cursor-grab", 
       className
     )}>
@@ -97,7 +97,7 @@ export const SortableRow = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "transition-colors data-[state=selected]:bg-muted",
+        "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
         disabled ? "bg-muted text-muted-foreground" : "",
         bgColorClass,
@@ -105,8 +105,8 @@ export const SortableRow = ({
       )}
       {...attributes}
     >
-      <TableCell className="p-0 pl-2">
-        <div className={disabled ? "cursor-not-allowed" : "cursor-grab"} {...(disabled ? {} : listeners)}>
+      <TableCell className="p-0 pl-2 h-10">
+        <div className={cn("h-full flex items-center", disabled ? "cursor-not-allowed" : "cursor-grab")} {...(disabled ? {} : listeners)}>
           <DragHandle disabled={disabled} />
         </div>
       </TableCell>
@@ -196,8 +196,8 @@ export function SortableTable<T extends SortableItem>({
     >
       <Table className={className}>
         <TableHeader>
-          <TableRow>
-            <TableHead className="w-10 p-0"></TableHead>
+          <TableRow className="h-10">
+            <TableHead className="w-10 p-0 h-10"></TableHead>
             {renderHeader()}
           </TableRow>
         </TableHeader>
@@ -216,6 +216,7 @@ export function SortableTable<T extends SortableItem>({
                   id={item.id} 
                   disabled={isDisabled}
                   bgColorClass={bgColorClass}
+                  className="h-10"
                 >
                   {renderRow(item, index)}
                 </SortableRow>
@@ -228,8 +229,8 @@ export function SortableTable<T extends SortableItem>({
       {activeId && createPortal(
         <DragOverlay adjustScale={false}>
           {activeItem && (
-            <TableRow className="border border-primary bg-background shadow-lg opacity-80">
-              <TableCell className="p-0 pl-2">
+            <TableRow className="border border-primary bg-background shadow-lg opacity-80 h-10">
+              <TableCell className="p-0 pl-2 h-10">
                 <DragHandle />
               </TableCell>
               {renderRow(activeItem, items.indexOf(activeItem))}
