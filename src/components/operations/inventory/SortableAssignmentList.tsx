@@ -49,10 +49,20 @@ const SortableAssignmentList = ({
     })
     .filter(Boolean) as any[];
 
+  // Create a wrapper for handleReorder that converts the SortableItems back to TerminalAssignments
+  const handleReorderWrapper = (items: (SortableItem & { 
+    movement: any; 
+    assignment: TerminalAssignment; 
+  })[]) => {
+    // Map the complex items back to just the assignment objects
+    const assignments = items.map(item => item.assignment);
+    handleReorder(assignments);
+  };
+
   return (
     <SortableTable
       items={sortableItems}
-      onReorder={handleReorder}
+      onReorder={handleReorderWrapper}
       renderHeader={() => (
         <>
           <TableHead 

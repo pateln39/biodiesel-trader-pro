@@ -4,16 +4,15 @@ import { toast } from 'sonner';
 import { formatDateForStorage } from '@/utils/dateUtils';
 
 export interface TankMovement {
-  id: string;
+  id?: string;
   movement_id: string;
   tank_id: string;
   quantity_mt: number;
   quantity_m3: number;
   product_at_time: string;
   movement_date: Date;
-  created_at: Date;
-  updated_at: Date;
   customs_status?: string;
+  assignment_id?: string;
 }
 
 export const PRODUCT_COLORS = {

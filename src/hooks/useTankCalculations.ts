@@ -57,6 +57,8 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
     tankMovements.forEach(tm => {
       // Prefer assignment_id if available, otherwise use movement_id
       const groupKey = tm.assignment_id || tm.movement_id;
+      if (!groupKey) return; // Skip if both are undefined
+      
       if (!movementGroups[groupKey]) {
         movementGroups[groupKey] = [];
       }

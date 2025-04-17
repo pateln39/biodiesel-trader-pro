@@ -150,4 +150,4 @@ export const useTerminalAssignments = (movementId: string) => {
   };
 };
 
-export type { TerminalAssignment };
+// Removed duplicate export here
