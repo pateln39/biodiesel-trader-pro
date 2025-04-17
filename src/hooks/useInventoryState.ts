@@ -84,13 +84,15 @@ export const useInventoryState = (terminalId?: string) => {
         movement_date: new Date(tm.movement_date),
         created_at: new Date(tm.created_at),
         updated_at: new Date(tm.updated_at),
-        sort_order: tm.movement_terminal_assignments?.sort_order || null
+        sort_order: tm.sort_order !== null ? tm.sort_order : tm.movement_terminal_assignments?.sort_order || null
       }));
 
       return processedData.sort((a: any, b: any) => {
         if (a.sort_order !== null && b.sort_order !== null) {
           return a.sort_order - b.sort_order;
         }
+        if (a.sort_order !== null) return -1;
+        if (b.sort_order !== null) return 1;
         return a.movement_date.getTime() - b.movement_date.getTime();
       });
     },
@@ -354,6 +356,8 @@ export const useInventoryState = (terminalId?: string) => {
         console.warn('No assignment ID found for movement:', movementId);
       }
 
+      const sortOrder = movement.sort_order;
+
       const { data: tankData, error: tankError } = await supabase
         .from('tanks')
         .select('current_product')
@@ -370,7 +374,8 @@ export const useInventoryState = (terminalId?: string) => {
         product_at_time: tankData.current_product,
         movement_date: movement.assignment_date || new Date().toISOString(),
         customs_status: movement.customs_status,
-        assignment_id: assignmentId
+        assignment_id: assignmentId,
+        sort_order: sortOrder
       };
 
       const { data: existing } = await supabase
@@ -452,7 +457,8 @@ export const useInventoryState = (terminalId?: string) => {
         product_at_time: product || tankData.current_product,
         movement_date: formatDateForStorage(assignmentDate),
         customs_status: customsStatus,
-        assignment_id: terminalAssignmentId
+        assignment_id: terminalAssignmentId,
+        sort_order: assignment.sort_order
       };
 
       const { data: existingMovement } = await supabase

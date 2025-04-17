@@ -64,26 +64,23 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       movementGroups[groupKey].push(tm);
     });
     
-    // Get unique movement/assignment IDs in sorted order by:
-    // 1. First by assignment sort_order if available
-    // 2. Then by movement date
+    // Get unique movement/assignment IDs in sorted order
     const uniqueKeys = Object.keys(movementGroups);
     
-    // Get associated sort orders (from assignments) or dates for sorting
+    // Get associated sort orders and dates for sorting
     const keysWithOrder = uniqueKeys.map(key => {
       const movements = movementGroups[key];
       const firstMovement = movements[0];
       return {
         key,
-        // Get sort_order if available, otherwise use date for sorting
+        // Use the new sort_order field which should be properly synced now
         sortOrder: firstMovement.sort_order !== undefined ? firstMovement.sort_order : null,
         date: new Date(firstMovement.movement_date).getTime(),
-        // We'll track the associated movement/assignment
         movementId: firstMovement.movement_id
       };
     });
     
-    // Sort primarily by sort_order, falling back to date when sort_order is not available
+    // Sort by sort_order first, then by date
     keysWithOrder.sort((a, b) => {
       // If both have sort_order, use that
       if (a.sortOrder !== null && b.sortOrder !== null) {

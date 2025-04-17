@@ -976,6 +976,7 @@ export type Database = {
           product_at_time: string
           quantity_m3: number
           quantity_mt: number
+          sort_order: number | null
           tank_id: string
           updated_at: string
         }
@@ -989,6 +990,7 @@ export type Database = {
           product_at_time: string
           quantity_m3?: number
           quantity_mt?: number
+          sort_order?: number | null
           tank_id: string
           updated_at?: string
         }
@@ -1002,6 +1004,7 @@ export type Database = {
           product_at_time?: string
           quantity_m3?: number
           quantity_mt?: number
+          sort_order?: number | null
           tank_id?: string
           updated_at?: string
         }
