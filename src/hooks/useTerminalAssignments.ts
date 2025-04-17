@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -62,10 +61,10 @@ export const useTerminalAssignments = (movementId: string) => {
         return;
       }
 
-      // Group assignments by terminal_id to determine sort_order
+      // Group assignments by terminal_id
       const assignmentsByTerminal: Record<string, TerminalAssignment[]> = {};
       
-      assignments.forEach((assignment, index) => {
+      assignments.forEach((assignment) => {
         const terminalId = assignment.terminal_id;
         if (!assignmentsByTerminal[terminalId]) {
           assignmentsByTerminal[terminalId] = [];
@@ -73,12 +72,36 @@ export const useTerminalAssignments = (movementId: string) => {
         assignmentsByTerminal[terminalId].push(assignment);
       });
       
+      // For each terminal, get the highest existing sort_order
+      const terminalMaxSortOrders: Record<string, number> = {};
+      
+      for (const terminalId in assignmentsByTerminal) {
+        // Get the highest sort_order for this terminal
+        const { data: maxOrderData, error: maxOrderError } = await supabase
+          .from('movement_terminal_assignments')
+          .select('sort_order')
+          .eq('terminal_id', terminalId)
+          .order('sort_order', { ascending: false })
+          .limit(1);
+        
+        if (maxOrderError) throw maxOrderError;
+        
+        // If there are existing assignments, use the highest sort_order + 1
+        // Otherwise, start from 1
+        terminalMaxSortOrders[terminalId] = maxOrderData && maxOrderData.length > 0 && maxOrderData[0].sort_order
+          ? maxOrderData[0].sort_order
+          : 0;
+      }
+      
       // Prepare all assignments with proper terminal-specific sort_order values
       const assignmentsToInsert = [];
       
       for (const terminalId in assignmentsByTerminal) {
         const terminalAssignments = assignmentsByTerminal[terminalId];
-        terminalAssignments.forEach((assignment, index) => {
+        let currentSortOrder = terminalMaxSortOrders[terminalId];
+        
+        terminalAssignments.forEach((assignment) => {
+          currentSortOrder++;
           assignmentsToInsert.push({
             movement_id: movementId,
             terminal_id: assignment.terminal_id,
@@ -86,7 +109,7 @@ export const useTerminalAssignments = (movementId: string) => {
             // Use formatDateForStorage to ensure consistent date format without timezone issues
             assignment_date: formatDateForStorage(assignment.assignment_date),
             comments: assignment.comments || null,
-            sort_order: index + 1 // Terminal-specific sort_order
+            sort_order: currentSortOrder // Sequential sort_order starting after the highest existing one
           });
         });
       }

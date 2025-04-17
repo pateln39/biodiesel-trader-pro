@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Movement } from '@/types';
 import { useTerminals } from '@/hooks/useTerminals';
@@ -49,17 +48,11 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
   const remainingQuantity = (movement.actualQuantity || 0) - totalAssigned;
 
   const handleAddAssignment = () => {
-    // When adding a new assignment, determine what its sort_order should be
-    const nextSortOrder = assignments.length > 0 
-      ? Math.max(...assignments.map(a => a.sort_order || 0)) + 1 
-      : 1;
-      
     setAssignments([...assignments, {
       terminal_id: '',
       quantity_mt: 0,
       assignment_date: new Date(),
-      comments: '',
-      sort_order: nextSortOrder
+      comments: ''
     }]);
   };
 
@@ -88,13 +81,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
       return;
     }
 
-    // Ensure all assignments have sort_order values before saving
-    const assignmentsWithSortOrder = assignments.map((assignment, index) => ({
-      ...assignment,
-      sort_order: assignment.sort_order || index + 1
-    }));
-
-    updateAssignments(assignmentsWithSortOrder);
+    updateAssignments(assignments);
     onOpenChange(false);
   };
 
