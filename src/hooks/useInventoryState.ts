@@ -13,7 +13,6 @@ export interface TankMovement {
   created_at: Date;
   updated_at: Date;
   customs_status?: string;
-  terminal_assignment_id?: string;
 }
 
 export const PRODUCT_COLORS = {
@@ -428,7 +427,6 @@ export const useInventoryState = (terminalId?: string) => {
       if (assignmentError) throw assignmentError;
 
       const tankMovementData = {
-        terminal_assignment_id: terminalAssignmentId,
         movement_id: assignment.movement_id,
         tank_id: tankId,
         quantity_mt: quantity,
@@ -441,7 +439,7 @@ export const useInventoryState = (terminalId?: string) => {
       const { data: existingMovement } = await supabase
         .from('tank_movements')
         .select('id')
-        .eq('terminal_assignment_id', terminalAssignmentId)
+        .eq('movement_id', assignment.movement_id)
         .eq('tank_id', tankId)
         .maybeSingle();
 
@@ -483,10 +481,18 @@ export const useInventoryState = (terminalId?: string) => {
     }) => {
       console.log('Deleting tank movement:', { terminalAssignmentId, tankId });
       
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('movement_id')
+        .eq('id', terminalAssignmentId)
+        .single();
+        
+      if (assignmentError) throw assignmentError;
+      
       const { error } = await supabase
         .from('tank_movements')
         .delete()
-        .eq('terminal_assignment_id', terminalAssignmentId)
+        .eq('movement_id', assignment.movement_id)
         .eq('tank_id', tankId);
       
       if (error) throw error;

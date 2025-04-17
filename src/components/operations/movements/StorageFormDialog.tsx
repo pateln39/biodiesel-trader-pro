@@ -207,4 +207,3 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
     </Dialog>
   );
 }
-
