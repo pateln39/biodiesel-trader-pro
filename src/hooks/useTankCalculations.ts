@@ -49,31 +49,20 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       tankRunningBalances[tank.id] = { balanceMT: 0, balanceM3: 0 };
     });
 
-    // Create a mapping from terminal_assignment_id to movement_id for easier lookup
-    const assignmentToMovementMap: Record<string, string> = {};
-    
-    // Group tank movements by terminal_assignment_id for easier processing
+    // Group tank movements by movement_id for easier processing
     const movementGroups: Record<string, TankMovement[]> = {};
     
-    // First, group all tank movements by terminal_assignment_id or movement_id if terminal_assignment_id is null
+    // First, group all tank movements by movement_id
     tankMovements.forEach(tm => {
-      const groupKey = tm.terminal_assignment_id || tm.movement_id;
-      if (groupKey) {
-        if (!movementGroups[groupKey]) {
-          movementGroups[groupKey] = [];
-        }
-        movementGroups[groupKey].push(tm);
-        
-        // Store the mapping from assignment to movement
-        if (tm.terminal_assignment_id && tm.movement_id) {
-          assignmentToMovementMap[tm.terminal_assignment_id] = tm.movement_id;
-        }
+      if (!movementGroups[tm.movement_id]) {
+        movementGroups[tm.movement_id] = [];
       }
+      movementGroups[tm.movement_id].push(tm);
     });
     
-    // Get unique group IDs in sorted order by movement date
-    const uniqueGroupIds = Object.keys(movementGroups);
-    const sortedGroupIds = [...uniqueGroupIds].sort((a, b) => {
+    // Get unique movement IDs in sorted order by movement date
+    const uniqueMovementIds = Object.keys(movementGroups);
+    const sortedMovementIds = [...uniqueMovementIds].sort((a, b) => {
       const aMovements = movementGroups[a];
       const bMovements = movementGroups[b];
       
@@ -85,13 +74,9 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       return aDate - bDate;
     });
 
-    sortedGroupIds.forEach(groupId => {
-      const currentMovements = movementGroups[groupId] || [];
+    sortedMovementIds.forEach(movementId => {
+      const currentMovements = movementGroups[movementId] || [];
       let totalMTMovedInStep = 0;
-      
-      // Determine the movement_id associated with this group
-      // If groupId is a terminal_assignment_id, look it up, otherwise use groupId as movement_id
-      const movementId = assignmentToMovementMap[groupId] || groupId;
       
       // Process each tank movement in this step
       currentMovements.forEach(tm => {

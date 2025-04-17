@@ -340,17 +340,6 @@ export const useInventoryState = (terminalId?: string) => {
       const movement = movements.find(m => m.id === movementId);
       if (!movement) throw new Error('Movement not found');
 
-      const { data: terminalAssignment, error: terminalAssignmentError } = await supabase
-        .from('movement_terminal_assignments')
-        .select('id')
-        .eq('movement_id', movementId)
-        .single();
-      
-      if (terminalAssignmentError) {
-        console.error('Error finding terminal assignment:', terminalAssignmentError);
-        throw terminalAssignmentError;
-      }
-
       const { data: tankData, error: tankError } = await supabase
         .from('tanks')
         .select('current_product')
@@ -366,8 +355,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
         movement_date: movement.inventory_movement_date || new Date().toISOString(),
-        customs_status: movement.customs_status,
-        terminal_assignment_id: terminalAssignment.id
+        customs_status: movement.customs_status
       };
 
       const { data: existing } = await supabase
@@ -516,65 +504,6 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  const updateExistingTankMovementsMutation = useMutation({
-    mutationFn: async () => {
-      console.log('Updating existing tank movements to set terminal_assignment_id');
-      
-      const { data: movementsToUpdate, error: fetchError } = await supabase
-        .from('tank_movements')
-        .select('id, movement_id')
-        .is('terminal_assignment_id', null);
-      
-      if (fetchError) throw fetchError;
-      
-      if (!movementsToUpdate || movementsToUpdate.length === 0) {
-        console.log('No tank movements need updating');
-        return { updated: 0 };
-      }
-      
-      console.log(`Found ${movementsToUpdate.length} tank movements to update`);
-      
-      let updatedCount = 0;
-      for (const tm of movementsToUpdate) {
-        const { data: terminalAssignment, error: terminalAssignmentError } = await supabase
-          .from('movement_terminal_assignments')
-          .select('id')
-          .eq('movement_id', tm.movement_id)
-          .maybeSingle();
-        
-        if (terminalAssignmentError || !terminalAssignment) {
-          console.warn(`Could not find terminal assignment for movement ${tm.movement_id}`);
-          continue;
-        }
-        
-        const { error: updateError } = await supabase
-          .from('tank_movements')
-          .update({ terminal_assignment_id: terminalAssignment.id })
-          .eq('id', tm.id);
-        
-        if (updateError) {
-          console.error(`Error updating tank movement ${tm.id}:`, updateError);
-          continue;
-        }
-        
-        updatedCount++;
-      }
-      
-      return { updated: updatedCount };
-    },
-    onSuccess: (result) => {
-      console.log(`Successfully updated ${result.updated} tank movements`);
-      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
-      if (result.updated > 0) {
-        toast.success(`Updated ${result.updated} tank movements`);
-      }
-    },
-    onError: (error: any) => {
-      console.error('Error updating existing tank movements:', error);
-      toast.error(`Failed to update tank movements: ${error.message || 'Unknown error'}`);
-    }
-  });
-
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -633,7 +562,6 @@ export const useInventoryState = (terminalId?: string) => {
     }),
     deleteTankMovement: (terminalAssignmentId: string, tankId: string) => 
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
-    updateExistingTankMovements: () => updateExistingTankMovementsMutation.mutate(),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
