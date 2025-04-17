@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatDateForStorage } from '@/utils/dateUtils';
 
 export interface TankMovement {
   id: string;
@@ -433,7 +434,8 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: product || tankData.current_product,
         movement_date: formatDateForStorage(movementDate),
-        customs_status: customsStatus
+        customs_status: customsStatus,
+        assignment_id: terminalAssignmentId
       };
 
       const { data: existingMovement } = await supabase

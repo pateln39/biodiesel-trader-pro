@@ -309,6 +309,7 @@ export type Database = {
           id: string
           movement_id: string
           quantity_mt: number
+          sort_order: number | null
           terminal_id: string
           updated_at: string
         }
@@ -319,6 +320,7 @@ export type Database = {
           id?: string
           movement_id: string
           quantity_mt: number
+          sort_order?: number | null
           terminal_id: string
           updated_at?: string
         }
@@ -329,6 +331,7 @@ export type Database = {
           id?: string
           movement_id?: string
           quantity_mt?: number
+          sort_order?: number | null
           terminal_id?: string
           updated_at?: string
         }
@@ -964,6 +967,7 @@ export type Database = {
       }
       tank_movements: {
         Row: {
+          assignment_id: string | null
           created_at: string
           customs_status: string | null
           id: string
@@ -976,6 +980,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignment_id?: string | null
           created_at?: string
           customs_status?: string | null
           id?: string
@@ -988,6 +993,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignment_id?: string | null
           created_at?: string
           customs_status?: string | null
           id?: string
@@ -1000,6 +1006,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_movement_terminal_assignment"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "movement_terminal_assignments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tank_movements_movement_id_fkey"
             columns: ["movement_id"]
