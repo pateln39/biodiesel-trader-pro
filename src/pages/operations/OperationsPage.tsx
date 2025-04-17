@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -14,7 +13,7 @@ import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import MovementsFilter from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
-import { initializeAssignmentSortOrder } from '@/utils/cleanupUtils';
+import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -61,6 +60,9 @@ const OperationsPage = () => {
 
         // Initialize sort_order for terminal assignments
         await initializeAssignmentSortOrder();
+        
+        // Fix any duplicate sort orders that might exist
+        await fixDuplicateSortOrders();
       } catch (error) {
         console.error('[OPERATIONS] Error initializing sort_order:', error);
       }
