@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, CleaningServices, Wrench } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus, CleaningService, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState } from '@/hooks/useInventoryState';
@@ -140,7 +140,7 @@ const InventoryPage = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleMaintenance}>
-                  <CleaningServices className="h-4 w-4 mr-2" />
+                  <CleaningService className="h-4 w-4 mr-2" />
                   Cleanup Tank Data
                 </DropdownMenuItem>
               </DropdownMenuContent>
