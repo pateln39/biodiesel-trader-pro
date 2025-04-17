@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,6 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Filter, Thermometer, Database, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useInventoryState } from '@/hooks/useInventoryState';
 import { Button } from '@/components/ui/button';
 import EditableField from '@/components/operations/inventory/EditableField';
@@ -18,8 +18,9 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
 import TankForm from '@/components/operations/inventory/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
-import EditableAssignmentComments from '@/components/operations/inventory/EditableAssignmentComments';
 import { Badge } from '@/components/ui/badge';
+import SortableAssignmentList from '@/components/operations/inventory/SortableAssignmentList';
+import { TruncatedCell } from '@/components/operations/inventory/TruncatedCell';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -61,27 +62,6 @@ const truncatedHeaders = {
   currentStock: "Current Stock",
   currentUllage: "Current Ullage",
 };
-
-const TruncatedCell = ({ text, width, className = "" }) => (
-  <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div 
-          className={cn(
-            "truncate max-w-full", 
-            className
-          )} 
-          style={{ width: `${width}px` }}
-        >
-          {text}
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p className="max-w-xs break-words">{text}</p>
-      </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-);
 
 const InventoryPage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
@@ -172,230 +152,60 @@ const InventoryPage = () => {
                 <ScrollArea 
                   className="flex-shrink-0 z-30 border-r border-white/30" 
                   orientation="horizontal"
-                  style={{ width: `${Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0)}px` }}
+                  style={{ width: `${totalStickyWidth}px` }}
                 >
                   <div style={{ minWidth: `${totalStickyWidth}px` }}>
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={8} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
-                        </TableRow>
-                        <TableRow className="bg-muted/50 border-b border-white/10 h-10">
-                          <TableHead 
-                            className={`w-[${stickyColumnWidths.counterparty}px] bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.counterparty}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.counterparty} 
-                              width={stickyColumnWidths.counterparty - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.tradeRef}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.tradeRef} 
-                              width={stickyColumnWidths.tradeRef - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.bargeName}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.bargeName} 
-                              width={stickyColumnWidths.bargeName - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.movementDate}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.movementDate} 
-                              width={stickyColumnWidths.movementDate - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.nominationDate}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.nominationDate} 
-                              width={stickyColumnWidths.nominationDate - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.customs}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.customs} 
-                              width={stickyColumnWidths.customs - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.sustainability}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.sustainability} 
-                              width={stickyColumnWidths.sustainability - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.comments}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.comments} 
-                              width={stickyColumnWidths.comments - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
-                          <TableHead 
-                            className={`bg-brand-navy text-[10px]`}
-                            style={{ width: `${stickyColumnWidths.quantity}px` }}
-                          >
-                            <TruncatedCell 
-                              text={truncatedHeaders.quantity} 
-                              width={stickyColumnWidths.quantity - 8} 
-                              className="text-[10px] font-medium"
-                            />
-                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       
-                      <TableBody>
-                        {movements.map((movement, index) => {
-                          const bgColorClass = movement.buy_sell === "buy" 
-                            ? "bg-green-900/10 hover:bg-green-900/20" 
-                            : "bg-red-900/10 hover:bg-red-900/20";
-                          
-                          const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
-                          
-                          return (
-                            <TableRow 
-                              key={`scroll-${movement.id}`} 
-                              className={cn("border-b border-white/5 h-10", bgColorClass)}
-                            >
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.counterparty} 
-                                  width={stickyColumnWidths.counterparty - 16} 
-                                  className="font-medium text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.trade_reference} 
-                                  width={stickyColumnWidths.tradeRef - 16} 
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.barge_name} 
-                                  width={stickyColumnWidths.bargeName - 16} 
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.assignment_date ? new Date(movement.assignment_date).toLocaleDateString() : '-'} 
-                                  width={stickyColumnWidths.movementDate - 16} 
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
-                                  width={stickyColumnWidths.nominationDate - 16} 
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <span className={cn(
-                                  "px-1 py-0.5 rounded-full text-[10px] font-medium truncate block",
-                                  movement.customs_status === "T1" 
-                                    ? "bg-green-900/60 text-green-200" 
-                                    : "bg-blue-900/60 text-blue-200"
-                                )} style={{ maxWidth: `${stickyColumnWidths.customs - 16}px` }}>
-                                  {movement.customs_status}
-                                </span>
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <TruncatedCell 
-                                  text={movement.sustainability} 
-                                  width={stickyColumnWidths.sustainability - 16} 
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <EditableAssignmentComments
-                                  assignmentId={movement.assignment_id}
-                                  initialValue={movement.terminal_comments}
-                                  onSave={updateAssignmentComments}
-                                  className="text-[10px]"
-                                />
-                              </TableCell>
-                              <TableCell className="bg-brand-navy text-[10px] py-2">
-                                <div className="flex justify-center">
-                                  <ProductToken 
-                                    product={movement.product}
-                                    value={movement.assignment_quantity?.toString() || '0'}
-                                  />
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
+                      {selectedTerminalId && (
+                        <SortableAssignmentList
+                          terminalId={selectedTerminalId}
+                          movements={movements}
+                          updateAssignmentComments={updateAssignmentComments}
+                          columnWidths={stickyColumnWidths}
+                        />
+                      )}
                     </Table>
                   </div>
                 </ScrollArea>
-                
                 
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">

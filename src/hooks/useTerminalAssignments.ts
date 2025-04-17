@@ -4,12 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDateForStorage } from '@/utils/dateUtils';
 
-interface TerminalAssignment {
+export interface TerminalAssignment {
   id?: string;
   terminal_id: string;
   quantity_mt: number;
   assignment_date: Date;
   comments?: string;
+  sort_order?: number;
 }
 
 export const useTerminalAssignments = (movementId: string) => {
@@ -22,6 +23,7 @@ export const useTerminalAssignments = (movementId: string) => {
         .from('movement_terminal_assignments')
         .select('*')
         .eq('movement_id', movementId)
+        .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -47,6 +49,7 @@ export const useTerminalAssignments = (movementId: string) => {
       if (fetchError) throw fetchError;
       
       // Then delete existing assignments
+      // Note: This will also cascade delete the related tank_movements
       const { error: deleteError } = await supabase
         .from('movement_terminal_assignments')
         .delete()
@@ -86,11 +89,36 @@ export const useTerminalAssignments = (movementId: string) => {
     }
   });
 
+  const deleteAssignmentMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      console.log('Deleting terminal assignment:', assignmentId);
+      
+      // Delete the specific assignment (tank movements will cascade delete)
+      const { error } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      // Invalidate all relevant queries to ensure data is refreshed
+      queryClient.invalidateQueries({ queryKey: ['terminal-assignments', movementId] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      toast.success('Terminal assignment deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Error deleting terminal assignment:', error);
+      toast.error('Failed to delete terminal assignment');
+    }
+  });
+
   const deleteAssignmentsMutation = useMutation({
     mutationFn: async () => {
       console.log('Deleting all terminal assignments for movement:', movementId);
       
-      // Delete the assignments (tank movements will cascade delete due to FK constraint)
+      // Delete all assignments (tank movements will cascade delete)
       const { error } = await supabase
         .from('movement_terminal_assignments')
         .delete()
@@ -116,6 +144,8 @@ export const useTerminalAssignments = (movementId: string) => {
     isLoading,
     updateAssignments: (assignments: TerminalAssignment[]) => 
       updateAssignmentsMutation.mutate(assignments),
+    deleteAssignment: (assignmentId: string) =>
+      deleteAssignmentMutation.mutate(assignmentId),
     deleteAssignments: () => deleteAssignmentsMutation.mutate()
   };
 };

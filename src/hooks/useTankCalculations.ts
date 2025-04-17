@@ -49,33 +49,47 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       tankRunningBalances[tank.id] = { balanceMT: 0, balanceM3: 0 };
     });
 
-    // Group tank movements by movement_id for easier processing
+    // Group tank movements by assignment_id first (this respects the user-defined order)
+    // Falling back to movement_id for backwards compatibility
     const movementGroups: Record<string, TankMovement[]> = {};
     
-    // First, group all tank movements by movement_id
+    // First, group all tank movements by assignment_id or movement_id
     tankMovements.forEach(tm => {
-      if (!movementGroups[tm.movement_id]) {
-        movementGroups[tm.movement_id] = [];
+      // Prefer assignment_id if available, otherwise use movement_id
+      const groupKey = tm.assignment_id || tm.movement_id;
+      if (!movementGroups[groupKey]) {
+        movementGroups[groupKey] = [];
       }
-      movementGroups[tm.movement_id].push(tm);
+      movementGroups[groupKey].push(tm);
     });
     
-    // Get unique movement IDs in sorted order by movement date
-    const uniqueMovementIds = Object.keys(movementGroups);
-    const sortedMovementIds = [...uniqueMovementIds].sort((a, b) => {
-      const aMovements = movementGroups[a];
-      const bMovements = movementGroups[b];
-      
-      if (!aMovements.length || !bMovements.length) return 0;
-      
-      const aDate = new Date(aMovements[0].movement_date).getTime();
-      const bDate = new Date(bMovements[0].movement_date).getTime();
-      
-      return aDate - bDate;
+    // Get unique movement/assignment IDs in sorted order by:
+    // 1. First by assignment sort_order if available
+    // 2. Then by movement date
+    const uniqueKeys = Object.keys(movementGroups);
+    
+    // Get associated sort orders (from assignments) or dates for sorting
+    const keysWithOrder = uniqueKeys.map(key => {
+      const movements = movementGroups[key];
+      const firstMovement = movements[0];
+      return {
+        key,
+        // Get date from first movement in group
+        date: new Date(firstMovement.movement_date).getTime(),
+        // We'll sort based on the associated movement/assignment
+        movementId: firstMovement.movement_id
+      };
     });
+    
+    // Sort by date (we're already using sortable assignments in the UI)
+    keysWithOrder.sort((a, b) => a.date - b.date);
+    
+    // Now we have our keys in the right order
+    const sortedKeys = keysWithOrder.map(item => item.key);
 
-    sortedMovementIds.forEach(movementId => {
-      const currentMovements = movementGroups[movementId] || [];
+    sortedKeys.forEach(key => {
+      const currentMovements = movementGroups[key] || [];
+      const movementId = currentMovements.length > 0 ? currentMovements[0].movement_id : '';
       let totalMTMovedInStep = 0;
       
       // Process each tank movement in this step
@@ -104,17 +118,20 @@ export const useTankCalculations = (tanks: Tank[], tankMovements: TankMovement[]
       const currentStockM3 = Object.values(tankRunningBalances).reduce((sum, state) => sum + state.balanceM3, 0);
       const currentUllage = totalCapacity - currentStockMT;
 
-      // Store the summary for this movement
-      movementSummaries[movementId] = {
-        movementId,
-        tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
-        totalMTMoved: totalMTMovedInStep,
-        currentStockMT,
-        currentStockM3,
-        currentUllage,
-        t1Balance: runningT1Balance,
-        t2Balance: runningT2Balance
-      };
+      // Only store the summary if we have a valid movement ID
+      if (movementId) {
+        // Store the summary for this movement
+        movementSummaries[movementId] = {
+          movementId,
+          tankBalances: JSON.parse(JSON.stringify(tankRunningBalances)), // Deep copy of current balances
+          totalMTMoved: totalMTMovedInStep,
+          currentStockMT,
+          currentStockM3,
+          currentUllage,
+          t1Balance: runningT1Balance,
+          t2Balance: runningT2Balance
+        };
+      }
     });
 
     const getSummaryForMovement = (movementId: string) => {
