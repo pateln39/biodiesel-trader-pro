@@ -57,7 +57,8 @@ export const useInventoryState = (terminalId?: string) => {
         sort_order: assignment.sort_order
       }));
     },
-    enabled: !!terminalId
+    enabled: !!terminalId,
+    staleTime: 0
   });
 
   const { data: tankMovements = [], isLoading: loadingTankMovements } = useQuery({
@@ -96,7 +97,8 @@ export const useInventoryState = (terminalId?: string) => {
         return a.movement_date.getTime() - b.movement_date.getTime();
       });
     },
-    enabled: !!terminalId
+    enabled: !!terminalId,
+    staleTime: 0
   });
 
   const calculateTankBalance = async (tankId: string, movementDate: Date) => {

@@ -34,7 +34,8 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
         assignment_date: new Date(assignment.assignment_date + 'T00:00:00')
       }));
     },
-    enabled: !!(terminalId || movementId)
+    enabled: !!(terminalId || movementId),
+    staleTime: 0 // Set staleTime to 0 to always refetch when needed
   });
 
   const reorderAssignmentMutation = useMutation({
@@ -60,8 +61,10 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
       return { assignmentId, newOrder, terminalId };
     },
     onSuccess: () => {
+      // Immediately invalidate all related queries to ensure fresh data is fetched
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Order updated successfully');
     },
     onError: (error: any) => {
