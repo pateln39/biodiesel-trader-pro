@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +21,11 @@ import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/inventory/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/inventory/TruncatedCell';
-import { cleanupOrphanedTankMovements, initializeAssignmentSortOrder } from '@/utils/cleanupUtils';
+import { 
+  cleanupOrphanedTankMovements, 
+  initializeAssignmentSortOrder, 
+  fixDuplicateSortOrders 
+} from '@/utils/cleanupUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,7 +122,8 @@ const InventoryPage = () => {
   const handleMaintenance = async () => {
     if (selectedTerminalId) {
       await cleanupOrphanedTankMovements(selectedTerminalId);
-      await initializeAssignmentSortOrder();
+      await initializeAssignmentSortOrder(selectedTerminalId);
+      await fixDuplicateSortOrders(selectedTerminalId);
       refetchTanks();
     }
   };

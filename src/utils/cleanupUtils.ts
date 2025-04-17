@@ -61,18 +61,57 @@ export const cleanupOrphanedTankMovements = async (terminalId: string): Promise<
 
 /**
  * Initialize sort_order for movement terminal assignments that have null values
+ * This function now ensures that sort_order values are unique per terminal
  */
-export const initializeAssignmentSortOrder = async (): Promise<void> => {
+export const initializeAssignmentSortOrder = async (terminalId?: string): Promise<void> => {
   try {
-    const { error } = await supabase.rpc('initialize_sort_order', { 
-      p_table_name: 'movement_terminal_assignments' 
-    });
-    
-    if (error) throw error;
-    
-    toast.success('Initialized assignment sort order');
+    if (terminalId) {
+      // Initialize sort order for a specific terminal
+      const { error } = await supabase.rpc('initialize_terminal_sort_order', { 
+        p_terminal_id: terminalId 
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Initialized assignment sort order for selected terminal');
+    } else {
+      // Initialize sort order for all terminals
+      const { error } = await supabase.rpc('initialize_all_terminal_sort_orders');
+      
+      if (error) throw error;
+      
+      toast.success('Initialized assignment sort order for all terminals');
+    }
   } catch (error) {
     console.error('Error initializing assignment sort order:', error);
     toast.error('Failed to initialize assignment sort order');
+  }
+};
+
+/**
+ * Fix duplicate sort_order values within the same terminal
+ */
+export const fixDuplicateSortOrders = async (terminalId?: string): Promise<void> => {
+  try {
+    if (terminalId) {
+      // Fix duplicates for a specific terminal
+      const { error } = await supabase.rpc('fix_duplicate_sort_orders', { 
+        p_terminal_id: terminalId 
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Fixed duplicate sort orders for selected terminal');
+    } else {
+      // Fix duplicates for all terminals
+      const { error } = await supabase.rpc('fix_all_duplicate_sort_orders');
+      
+      if (error) throw error;
+      
+      toast.success('Fixed duplicate sort orders for all terminals');
+    }
+  } catch (error) {
+    console.error('Error fixing duplicate sort orders:', error);
+    toast.error('Failed to fix duplicate sort orders');
   }
 };

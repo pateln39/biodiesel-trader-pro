@@ -38,17 +38,25 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
   });
 
   const reorderAssignmentMutation = useMutation({
-    mutationFn: async ({ assignmentId, newOrder }: { assignmentId: string, newOrder: number }) => {
-      console.log('Reordering assignment:', { assignmentId, newOrder });
+    mutationFn: async ({ 
+      assignmentId, 
+      newOrder, 
+      terminalId 
+    }: { 
+      assignmentId: string, 
+      newOrder: number,
+      terminalId: string
+    }) => {
+      console.log('Reordering assignment:', { assignmentId, newOrder, terminalId });
       
-      const { data, error } = await supabase.rpc('update_sort_order', {
-        p_table_name: 'movement_terminal_assignments',
+      const { data, error } = await supabase.rpc('update_terminal_sort_order', {
         p_id: assignmentId,
-        p_new_sort_order: newOrder
+        p_new_sort_order: newOrder,
+        p_terminal_id: terminalId
       });
       
       if (error) throw error;
-      return { assignmentId, newOrder };
+      return { assignmentId, newOrder, terminalId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
@@ -62,6 +70,14 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
   });
 
   const handleReorder = (items: TerminalAssignment[]) => {
+    // Get the first item's terminal_id (they should all be for the same terminal)
+    const currentTerminalId = items.length > 0 ? items[0].terminal_id : null;
+    
+    if (!currentTerminalId) {
+      console.error('Cannot reorder: missing terminal_id');
+      return assignments;
+    }
+    
     // Apply the new order to the local state
     const updatedAssignments = [...items];
     
@@ -69,7 +85,11 @@ export const useSortableTerminalAssignments = (terminalId?: string, movementId?:
     updatedAssignments.forEach((assignment, index) => {
       const currentIndex = assignments.findIndex(a => a.id === assignment.id);
       if (currentIndex !== index) {
-        reorderAssignmentMutation.mutate({ assignmentId: assignment.id as string, newOrder: index + 1 });
+        reorderAssignmentMutation.mutate({ 
+          assignmentId: assignment.id as string, 
+          newOrder: index + 1,
+          terminalId: currentTerminalId as string
+        });
       }
     });
     

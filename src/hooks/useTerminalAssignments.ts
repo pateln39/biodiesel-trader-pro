@@ -62,31 +62,46 @@ export const useTerminalAssignments = (movementId: string) => {
         return;
       }
 
-      // Prepare assignments with sort_order values
-      const assignmentsWithSortOrder = assignments.map((assignment, index) => ({
-        movement_id: movementId,
-        terminal_id: assignment.terminal_id,
-        quantity_mt: assignment.quantity_mt,
-        // Use formatDateForStorage to ensure consistent date format without timezone issues
-        assignment_date: formatDateForStorage(assignment.assignment_date),
-        comments: assignment.comments || null,
-        sort_order: index + 1 // Add sort_order based on index
-      }));
+      // Group assignments by terminal_id to determine sort_order
+      const assignmentsByTerminal: Record<string, TerminalAssignment[]> = {};
+      
+      assignments.forEach((assignment, index) => {
+        const terminalId = assignment.terminal_id;
+        if (!assignmentsByTerminal[terminalId]) {
+          assignmentsByTerminal[terminalId] = [];
+        }
+        assignmentsByTerminal[terminalId].push(assignment);
+      });
+      
+      // Prepare all assignments with proper terminal-specific sort_order values
+      const assignmentsToInsert = [];
+      
+      for (const terminalId in assignmentsByTerminal) {
+        const terminalAssignments = assignmentsByTerminal[terminalId];
+        terminalAssignments.forEach((assignment, index) => {
+          assignmentsToInsert.push({
+            movement_id: movementId,
+            terminal_id: assignment.terminal_id,
+            quantity_mt: assignment.quantity_mt,
+            // Use formatDateForStorage to ensure consistent date format without timezone issues
+            assignment_date: formatDateForStorage(assignment.assignment_date),
+            comments: assignment.comments || null,
+            sort_order: index + 1 // Terminal-specific sort_order
+          });
+        });
+      }
 
-      // Then insert new assignments
+      // Insert new assignments
       const { error: insertError } = await supabase
         .from('movement_terminal_assignments')
-        .insert(assignmentsWithSortOrder);
+        .insert(assignmentsToInsert);
 
       if (insertError) throw insertError;
-
-      // After insertion, initialize sort order for any null values
-      // This is a fallback in case the insert didn't set sort_order properly
-      await supabase.rpc('initialize_sort_order', { p_table_name: 'movement_terminal_assignments' });
     },
     onSuccess: () => {
       // Invalidate all relevant queries to ensure data is refreshed
       queryClient.invalidateQueries({ queryKey: ['terminal-assignments', movementId] });
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Terminal assignments updated successfully');
@@ -123,6 +138,7 @@ export const useTerminalAssignments = (movementId: string) => {
     onSuccess: () => {
       // Invalidate all relevant queries to ensure data is refreshed
       queryClient.invalidateQueries({ queryKey: ['terminal-assignments', movementId] });
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Terminal assignment deleted successfully');
@@ -169,6 +185,7 @@ export const useTerminalAssignments = (movementId: string) => {
     onSuccess: () => {
       // Invalidate all relevant queries to ensure data is refreshed
       queryClient.invalidateQueries({ queryKey: ['terminal-assignments', movementId] });
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Terminal assignments deleted successfully');
