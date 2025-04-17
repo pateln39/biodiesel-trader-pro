@@ -84,7 +84,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
 
     const processedAssignments = assignments.map(assignment => ({
       ...assignment,
-      quantity_mt: movement.buy_sell === 'sell' 
+      quantity_mt: movement.buySell === 'sell' 
         ? -Math.abs(assignment.quantity_mt || 0)
         : Math.abs(assignment.quantity_mt || 0)
     }));
@@ -118,7 +118,7 @@ export function StorageFormDialog({ movement, open, onOpenChange }: StorageFormD
               <span className="font-semibold">Actual Quantity:</span> {movement.actualQuantity} MT
               <br />
               <span className="font-semibold">Remaining:</span> {remainingQuantity} MT
-              {movement.buy_sell === 'sell' && (
+              {movement.buySell === 'sell' && (
                 <>
                   <br />
                   <span className="text-xs text-muted-foreground italic">
