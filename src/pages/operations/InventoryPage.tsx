@@ -148,7 +148,7 @@ const InventoryPage = () => {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
           <div className="flex items-center space-x-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -181,7 +181,7 @@ const InventoryPage = () => {
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
-              <span>Inventory Movements</span>
+              <span>Storage Movements</span>
               {selectedTerminalId && (
                 <Button variant="outline" size="sm" onClick={handleAddTank}>
                   <Plus className="h-4 w-4 mr-1" />
@@ -190,7 +190,7 @@ const InventoryPage = () => {
               )}
             </CardTitle>
             <CardDescription>
-              Tank inventory management for {terminals.find(t => t.id === selectedTerminalId)?.name || 'selected terminal'}
+              Storage tank management for {terminals.find(t => t.id === selectedTerminalId)?.name || 'selected terminal'}
             </CardDescription>
           </CardHeader>
           <CardContent>
