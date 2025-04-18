@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,19 +8,19 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState } from '@/hooks/useInventoryState';
 import { Button } from '@/components/ui/button';
-import EditableField from '@/components/operations/inventory/EditableField';
-import EditableNumberField from '@/components/operations/inventory/EditableNumberField';
-import EditableDropdownField from '@/components/operations/inventory/EditableDropdownField';
-import ProductToken from '@/components/operations/inventory/ProductToken';
-import ProductLegend from '@/components/operations/inventory/ProductLegend';
+import EditableField from '@/components/operations/storage/EditableField';
+import EditableNumberField from '@/components/operations/storage/EditableNumberField';
+import EditableDropdownField from '@/components/operations/storage/EditableDropdownField';
+import ProductToken from '@/components/operations/storage/ProductToken';
+import ProductLegend from '@/components/operations/storage/ProductLegend';
 import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
-import TerminalTabs from '@/components/operations/inventory/TerminalTabs';
-import TankForm from '@/components/operations/inventory/TankForm';
+import TerminalTabs from '@/components/operations/storage/TerminalTabs';
+import TankForm from '@/components/operations/storage/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
-import SortableAssignmentList from '@/components/operations/inventory/SortableAssignmentList';
-import { TruncatedCell } from '@/components/operations/inventory/TruncatedCell';
+import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
+import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
 import { 
   cleanupOrphanedTankMovements, 
   initializeAssignmentSortOrder, 
