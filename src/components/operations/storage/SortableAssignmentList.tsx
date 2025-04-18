@@ -8,11 +8,11 @@ import {
   SortableTable,
   SortableItem
 } from '@/components/ui/sortable-table';
-import { TruncatedCell } from '@/components/operations/inventory/TruncatedCell';
+import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
 import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
-import EditableAssignmentComments from '@/components/operations/inventory/EditableAssignmentComments';
-import ProductToken from '@/components/operations/inventory/ProductToken';
+import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface SortableAssignmentListProps {
   terminalId: string;
