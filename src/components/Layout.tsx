@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
@@ -6,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-// Custom EET logo component
 const EETLogo = () => {
   return (
     <div className="flex items-center">
@@ -46,7 +44,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       submenu: [
         { path: '/operations/open-trades', label: 'Open Trades', icon: <Ship className="h-4 w-4" /> },
         { path: '/operations/movements', label: 'Movements', icon: <Layers className="h-4 w-4" /> },
-        { path: '/operations/inventory', label: 'Inventory', icon: <Warehouse className="h-4 w-4" /> },
+        { path: '/operations/inventory', label: 'Storage', icon: <Warehouse className="h-4 w-4" /> },
       ],
     },
     { 
@@ -66,19 +64,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
   const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
 
-  // Handle double click outside sidebar to close it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarOpen && 
           sidebarRef.current && 
           !sidebarRef.current.contains(event.target as Node) &&
-          // Ignore clicks on the toggle button
           !(event.target as Element).closest('[data-sidebar-toggle]')) {
         
         const clickTime = new Date().getTime();
         const timeSinceLastClick = clickTime - lastClickTimeRef.current;
         
-        // Check if this is a double-click (time between clicks is less than 300ms)
         if (timeSinceLastClick < 300 && timeSinceLastClick > 0) {
           setSidebarOpen(false);
         }
