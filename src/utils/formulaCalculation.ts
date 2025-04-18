@@ -1,7 +1,7 @@
-
 import { FormulaToken } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
 import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
+import { calculateDailyExposureRate } from '@/utils/exposureUtils';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];
@@ -402,6 +402,36 @@ export function calculateMonthlyPricingDistribution(
   });
   
   return distribution;
+}
+
+/**
+ * Calculate daily exposure rates for a formula
+ */
+export function calculateFormulaWithDailyRates(
+  tokens: FormulaToken[],
+  quantity: number,
+  buySell: 'buy' | 'sell',
+  startDate: Date,
+  endDate: Date
+): {
+  monthlyDistribution: Record<string, Record<string, number>>;
+  dailyExposureRate: Record<string, number>;
+} {
+  const pricingExposure = calculatePricingExposure(tokens, quantity, buySell);
+  const monthlyDistribution = calculateMonthlyPricingDistribution(
+    tokens, quantity, buySell, startDate, endDate
+  );
+  
+  const dailyExposureRate = calculateDailyExposureRate(
+    pricingExposure,
+    startDate,
+    endDate
+  );
+  
+  return {
+    monthlyDistribution,
+    dailyExposureRate
+  };
 }
 
 interface ParseNode {

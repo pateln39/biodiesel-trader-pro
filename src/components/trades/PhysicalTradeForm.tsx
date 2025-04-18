@@ -22,6 +22,7 @@ import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
 import { createEfpFormula, updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
+import { calculateFormulaWithDailyRates } from '@/utils/formulaCalculation';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -179,16 +180,18 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     const newLegs = [...legs];
     newLegs[legIndex].formula = formula;
     if (newLegs[legIndex].pricingPeriodStart && newLegs[legIndex].pricingPeriodEnd) {
-      const monthlyDistribution = calculateMonthlyPricingDistribution(
+      const { monthlyDistribution, dailyExposureRate } = calculateFormulaWithDailyRates(
         formula.tokens, 
         newLegs[legIndex].quantity || 0, 
         newLegs[legIndex].buySell, 
         newLegs[legIndex].pricingPeriodStart, 
         newLegs[legIndex].pricingPeriodEnd
       );
+      
       newLegs[legIndex].formula = {
         ...formula,
-        monthlyDistribution
+        monthlyDistribution,
+        dailyExposureRate
       };
     }
     setLegs(newLegs);
@@ -228,18 +231,25 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
       }
     }
     
-    if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && newLegs[index].formula && newLegs[index].pricingPeriodStart && newLegs[index].pricingPeriodEnd && newLegs[index].pricingType !== 'efp') {
+    if (['formula', 'pricingPeriodStart', 'pricingPeriodEnd', 'buySell', 'quantity'].includes(field) && 
+        newLegs[index].formula && 
+        newLegs[index].pricingPeriodStart && 
+        newLegs[index].pricingPeriodEnd && 
+        newLegs[index].pricingType !== 'efp') {
+      
       const leg = newLegs[index];
-      const monthlyDistribution = calculateMonthlyPricingDistribution(
+      const { monthlyDistribution, dailyExposureRate } = calculateFormulaWithDailyRates(
         leg.formula.tokens, 
         leg.quantity || 0, 
         leg.buySell, 
         leg.pricingPeriodStart, 
         leg.pricingPeriodEnd
       );
+      
       leg.formula = {
         ...leg.formula,
-        monthlyDistribution
+        monthlyDistribution,
+        dailyExposureRate
       };
     }
     

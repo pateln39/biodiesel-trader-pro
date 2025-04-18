@@ -15,15 +15,20 @@ export interface FormulaToken {
 }
 
 // Update the MonthlyDistribution to handle both simple and nested formats
-// Ensure monthCode is in the format "MMM-YY"
 export interface MonthlyDistribution {
   [instrumentOrMonthCode: string]: number | Record<string, number>;
+}
+
+// Add a DailyExposureRate type to store the daily rate per instrument
+export interface DailyExposureRate {
+  [instrument: string]: number;
 }
 
 export interface PricingFormula {
   tokens: FormulaToken[];
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
+  dailyExposureRate?: DailyExposureRate; // Add the daily exposure rate
   result?: number;
 }
 
