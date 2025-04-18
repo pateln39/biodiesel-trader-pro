@@ -39,7 +39,7 @@ export default function ExposurePage() {
     setEndDateFilter(null);
   };
 
-  const columns: ColumnDef<ExposureRowData>[] = [
+  const columns = [
     {
       accessorKey: 'month',
       header: 'Month',
@@ -58,7 +58,7 @@ export default function ExposurePage() {
       accessorKey: 'physical',
       header: 'Physical',
       cell: ({ row }) => {
-        const value = row.getValue<number>('physical');
+        const value = row.getValue('physical');
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -70,7 +70,7 @@ export default function ExposurePage() {
       accessorKey: 'pricing',
       header: 'Pricing',
       cell: ({ row }) => {
-        const value = row.getValue<number>('pricing');
+        const value = row.getValue('pricing');
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -82,7 +82,7 @@ export default function ExposurePage() {
       accessorKey: 'paper',
       header: 'Paper',
       cell: ({ row }) => {
-        const value = row.getValue<number>('paper');
+        const value = row.getValue('paper');
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -94,7 +94,7 @@ export default function ExposurePage() {
       accessorKey: 'net',
       header: 'Net',
       cell: ({ row }) => {
-        const value = row.getValue<number>('net');
+        const value = row.getValue('net');
         return (
           <Badge 
             variant={value > 0 ? 'default' : value < 0 ? 'destructive' : 'outline'}
@@ -105,7 +105,7 @@ export default function ExposurePage() {
         );
       },
     },
-  ];
+  ] as ColumnDef<ExposureRowData>[];
 
   const exposureData = useMemo(() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -161,7 +161,7 @@ export default function ExposurePage() {
       });
     }
     
-    // Process trades from useTrades hook
+    // Process trades from usePaperTrades hook
     if (paperTrades && paperTrades.length > 0) {
       paperTrades.forEach(trade => {
         if (!trade.legs) return;
@@ -175,8 +175,9 @@ export default function ExposurePage() {
             if (typeof distribution === 'object') {
               Object.entries(distribution).forEach(([month, value]) => {
                 if (exposuresByMonth[month] && exposuresByMonth[month][instrument]) {
-                  exposuresByMonth[month][instrument].paper += Number(value);
-                  exposuresByMonth[month][instrument].pricing += Number(value);
+                  const numValue = Number(value);
+                  exposuresByMonth[month][instrument].paper += numValue;
+                  exposuresByMonth[month][instrument].pricing += numValue;
                 }
               });
             }
