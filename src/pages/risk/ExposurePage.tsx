@@ -5,7 +5,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { DataTable } from '@/components/ui/data-table';
-import { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { DateRangeFilter } from '@/components/risk/DateRangeFilter';
 import { 
@@ -23,8 +23,8 @@ interface ExposureRowData {
 }
 
 export default function ExposurePage() {
-  const { physicalPositions, loading: physicalLoading } = usePhysicalPositions();
-  const { trades: paperTrades, loading: paperLoading } = usePaperTrades();
+  const { physicalPositionData, loading: physicalLoading } = usePhysicalPositions();
+  const { paperTrades, isLoading: paperLoading } = usePaperTrades();
   
   // Date range filter state
   const [startDateFilter, setStartDateFilter] = useState<Date | null>(null);
@@ -134,75 +134,35 @@ export default function ExposurePage() {
     });
     
     // Process Physical trades
-    if (physicalPositions && physicalPositions.legs) {
-      physicalPositions.legs.forEach(leg => {
-        // Physical exposure - unaffected by date filters
-        const physicalExposure = leg.physical || {};
-        Object.entries(physicalExposure).forEach(([instrument, value]) => {
-          if (value !== 0 && exposuresByMonth[leg.month] && exposuresByMonth[leg.month][instrument]) {
-            exposuresByMonth[leg.month][instrument].physical += value;
-          }
-        });
-        
-        // Pricing exposure - affected by date filters
-        if (leg.trade && leg.trade.pricingPeriodStart && leg.trade.pricingPeriodEnd) {
-          const pricingStart = new Date(leg.trade.pricingPeriodStart);
-          const pricingEnd = new Date(leg.trade.pricingPeriodEnd);
+    if (physicalPositionData) {
+      // For physical positions, we use the data structure from usePhysicalPositions
+      physicalPositionData.forEach(position => {
+        if (exposuresByMonth[position.month]) {
+          // Map product names to their corresponding instrument names
+          const productToInstrument = {
+            'UCOME': 'Argus UCOME',
+            'RME': 'Argus RME',
+            'FAME0': 'Argus FAME0',
+            'HVO': 'Argus HVO',
+            'UCOME-5': 'Argus UCOME',
+            'RME DC': 'Argus RME',
+          };
           
-          if (leg.trade.pricingType === 'efp') {
-            // Handle EFP trades
-            const efpDesignatedMonth = leg.trade.efpDesignatedMonth;
-            
-            if (!leg.trade.efpAgreedStatus && efpDesignatedMonth) {
-              const proratedExposure = calculateProratedExposure(
-                leg.trade.formula,
-                startDateFilter,
-                endDateFilter,
-                pricingStart,
-                pricingEnd,
-                efpDesignatedMonth,
-                leg.trade.buySell,
-                leg.trade.quantity,
-                true,
-                efpDesignatedMonth
-              );
-              
-              Object.entries(proratedExposure).forEach(([instrument, value]) => {
-                if (exposuresByMonth[efpDesignatedMonth] && exposuresByMonth[efpDesignatedMonth][instrument]) {
-                  exposuresByMonth[efpDesignatedMonth][instrument].pricing += value;
-                }
-              });
+          // Add physical exposure from each product
+          Object.entries(position).forEach(([key, value]) => {
+            if (key !== 'month' && typeof value === 'number' && value !== 0) {
+              const instrument = productToInstrument[key as keyof typeof productToInstrument];
+              if (instrument && exposuresByMonth[position.month][instrument]) {
+                exposuresByMonth[position.month][instrument].physical += value;
+              }
             }
-          } else {
-            // Handle standard trades
-            periods.forEach(period => {
-              const monthDates = getMonthDates(period);
-              if (!monthDates) return;
-              
-              const proratedExposure = calculateProratedExposure(
-                leg.trade?.formula,
-                startDateFilter,
-                endDateFilter,
-                pricingStart,
-                pricingEnd,
-                period,
-                leg.trade.buySell,
-                leg.trade.quantity
-              );
-              
-              Object.entries(proratedExposure).forEach(([instrument, value]) => {
-                if (exposuresByMonth[period] && exposuresByMonth[period][instrument]) {
-                  exposuresByMonth[period][instrument].pricing += value;
-                }
-              });
-            });
-          }
+          });
         }
       });
     }
     
-    // Process Paper trades - unaffected by date filters
-    if (paperTrades) {
+    // Process trades from useTrades hook
+    if (paperTrades && paperTrades.length > 0) {
       paperTrades.forEach(trade => {
         if (!trade.legs) return;
         
@@ -215,8 +175,8 @@ export default function ExposurePage() {
             if (typeof distribution === 'object') {
               Object.entries(distribution).forEach(([month, value]) => {
                 if (exposuresByMonth[month] && exposuresByMonth[month][instrument]) {
-                  exposuresByMonth[month][instrument].paper += value;
-                  exposuresByMonth[month][instrument].pricing += value;
+                  exposuresByMonth[month][instrument].paper += Number(value);
+                  exposuresByMonth[month][instrument].pricing += Number(value);
                 }
               });
             }
@@ -277,7 +237,7 @@ export default function ExposurePage() {
     });
     
     return tableData;
-  }, [physicalPositions, paperTrades, startDateFilter, endDateFilter]);
+  }, [physicalPositionData, paperTrades, startDateFilter, endDateFilter]);
 
   const loading = physicalLoading || paperLoading;
 

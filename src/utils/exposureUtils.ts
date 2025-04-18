@@ -1,6 +1,6 @@
 
 import { ExposureResult, Instrument } from '@/types/common';
-import { DailyExposureRate, PricingFormula } from '@/types/pricing';
+import { DailyExposureRate, PricingFormula, FormulaToken } from '@/types/pricing';
 import { formatMonthCode, countBusinessDays, isBusinessDay } from './dateUtils';
 
 /**
@@ -27,6 +27,24 @@ export function calculateDailyExposureRate(
   });
 
   return dailyRates;
+}
+
+/**
+ * Extract instruments from a formula
+ */
+export function extractInstrumentsFromFormula(formula: PricingFormula): Instrument[] {
+  if (!formula.tokens || formula.tokens.length === 0) {
+    return [];
+  }
+
+  const instruments: Instrument[] = [];
+  formula.tokens.forEach(token => {
+    if (token.type === 'instrument' && typeof token.value === 'string') {
+      instruments.push(token.value as Instrument);
+    }
+  });
+
+  return [...new Set(instruments)]; // Remove duplicates
 }
 
 /**
