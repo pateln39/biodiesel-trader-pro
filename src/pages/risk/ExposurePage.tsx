@@ -58,7 +58,7 @@ export default function ExposurePage() {
       accessorKey: 'physical',
       header: 'Physical',
       cell: ({ row }) => {
-        const value = row.getValue('physical');
+        const value = Number(row.getValue('physical'));
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -70,7 +70,7 @@ export default function ExposurePage() {
       accessorKey: 'pricing',
       header: 'Pricing',
       cell: ({ row }) => {
-        const value = row.getValue('pricing');
+        const value = Number(row.getValue('pricing'));
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -82,7 +82,7 @@ export default function ExposurePage() {
       accessorKey: 'paper',
       header: 'Paper',
       cell: ({ row }) => {
-        const value = row.getValue('paper');
+        const value = Number(row.getValue('paper'));
         return (
           <div className={value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : ''}>
             {value !== 0 ? value.toLocaleString() : '-'}
@@ -94,7 +94,7 @@ export default function ExposurePage() {
       accessorKey: 'net',
       header: 'Net',
       cell: ({ row }) => {
-        const value = row.getValue('net');
+        const value = Number(row.getValue('net'));
         return (
           <Badge 
             variant={value > 0 ? 'default' : value < 0 ? 'destructive' : 'outline'}
