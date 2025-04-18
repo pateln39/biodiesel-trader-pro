@@ -1,10 +1,10 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TradesPage from "./pages/trades/TradesPage";
@@ -16,7 +16,7 @@ import PaperTradeDeletePage from "./pages/trades/PaperTradeDeletePage";
 import OperationsRedirect from "./pages/operations/OperationsRedirect";
 import OpenTradesPage from "./pages/operations/OpenTradesPage";
 import MovementsPage from "./pages/operations/MovementsPage";
-import InventoryPage from "./pages/operations/InventoryPage";
+import StoragePage from "./pages/operations/StoragePage";
 import ExposurePage from "./pages/risk/ExposurePage";
 import AuditLogPage from "./pages/audit/AuditLogPage";
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -56,7 +56,7 @@ const App = () => (
             <Route path="/operations" element={<OperationsRedirect />} />
             <Route path="/operations/open-trades" element={<OpenTradesPage />} />
             <Route path="/operations/movements" element={<MovementsPage />} />
-            <Route path="/operations/inventory" element={<InventoryPage />} />
+            <Route path="/operations/storage" element={<StoragePage />} />
             
             {/* Risk Routes */}
             <Route path="/risk/mtm" element={<MTMPage />} />
