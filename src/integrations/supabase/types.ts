@@ -1299,6 +1299,10 @@ export type Database = {
         Args: { p_table_name: string }
         Returns: undefined
       }
+      initialize_tank_sort_orders: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       initialize_terminal_sort_order: {
         Args: { p_terminal_id: string }
         Returns: undefined
