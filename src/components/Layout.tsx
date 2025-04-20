@@ -55,6 +55,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { path: '/risk/pnl', label: 'PNL', icon: <DollarSign className="h-4 w-4" /> },
         { path: '/risk/exposure', label: 'Exposure', icon: <BarChart className="h-4 w-4" /> },
         { path: '/risk/prices', label: 'Prices', icon: <LineChart className="h-4 w-4" /> },
+        { path: '/risk/inventory-mtm', label: 'Inventory (MTM)', icon: <Package className="h-4 w-4" /> },
       ],
     },
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },

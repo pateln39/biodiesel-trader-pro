@@ -24,6 +24,7 @@ import PricingAdminPage from "./pages/pricing/PricingAdminPage";
 import MTMPage from "./pages/risk/MTMPage";
 import PNLPage from "./pages/risk/PNLPage";
 import PricesPage from "./pages/risk/PricesPage";
+import InventoryMTMPage from "./pages/risk/InventoryMTMPage";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/risk/pnl" element={<PNLPage />} />
             <Route path="/risk/exposure" element={<ExposurePage />} />
             <Route path="/risk/prices" element={<PricesPage />} />
+            <Route path="/risk/inventory-mtm" element={<InventoryMTMPage />} />
             
             {/* Pricing Routes - Admin Section */}
             <Route path="/pricing/admin" element={<PricingAdminPage />} />
