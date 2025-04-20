@@ -23,6 +23,7 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [comments, setComments] = useState(initialValue || '');
+  const [displayedComments, setDisplayedComments] = useState(initialValue || '');
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
 
@@ -30,6 +31,7 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
     setIsLoading(true);
     try {
       await onSave(assignmentId, comments);
+      setDisplayedComments(comments);
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       toast.success('Comments saved successfully');
@@ -42,7 +44,7 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   };
 
   const handleCancel = () => {
-    setComments(initialValue || '');
+    setComments(displayedComments);
     setIsOpen(false);
   };
 
@@ -53,11 +55,13 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
           className={cn(
             "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded flex items-center gap-1 text-[10px]",
             className,
-            initialValue ? "text-purple-300" : "text-muted-foreground"
+            displayedComments ? "text-purple-300" : "text-muted-foreground"
           )}
         >
-          <MessageSquare className="h-3 w-3" />
-          <span className="sr-only">Edit comments</span>
+          <span className="truncate max-w-[120px]">
+            {displayedComments || '-'}
+          </span>
+          <MessageSquare className="h-3 w-3 flex-shrink-0" />
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3">
@@ -95,3 +99,4 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
 };
 
 export default EditableAssignmentComments;
+
