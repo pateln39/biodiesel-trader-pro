@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
@@ -17,7 +16,7 @@ const InventoryMTMTable = () => {
   } = useInventoryMTM();
 
   return (
-    <div className="rounded-md border bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 shadow-lg">
+    <div className="rounded-md border-[3px] border-brand-lime/80 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 shadow-lg">
       <Table>
         <TableHeader>
           <TableRow>
