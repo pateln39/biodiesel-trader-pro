@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
@@ -63,7 +64,7 @@ const InventoryMTMTable = () => {
                   </TableCell>
                 );
               })}
-              <TableCell className="px-4 text-center align-middle font-medium">
+              <TableCell className="px-4 text-center align-middle font-medium bg-gradient-to-r from-brand-navy/90 to-brand-navy/70">
                 <span className={calculateRowTotal(month).color}>
                   {calculateRowTotal(month).value}
                 </span>
