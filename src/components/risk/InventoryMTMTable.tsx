@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
@@ -66,19 +67,22 @@ const InventoryMTMTable = () => {
               <TableCell className="px-4 align-middle border-r border-white">
                 {month}
               </TableCell>
-              {TANK_HEADERS.map((header) => (
-                <TableCell 
-                  key={`${month}-${header}`} 
-                  className="px-4 text-center align-middle"
-                >
-                  <span className={calculateCellValue(month, header).startsWith('-') ? 'text-red-500' : ''}>
-                    {calculateCellValue(month, header)}
-                  </span>
-                </TableCell>
-              ))}
+              {TANK_HEADERS.map((header) => {
+                const { value, color } = calculateCellValue(month, header);
+                return (
+                  <TableCell 
+                    key={`${month}-${header}`} 
+                    className="px-4 text-center align-middle"
+                  >
+                    <span className={color}>
+                      {value}
+                    </span>
+                  </TableCell>
+                );
+              })}
               <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
-                <span className={calculateRowTotal(month).startsWith('-') ? 'text-red-500' : ''}>
-                  {calculateRowTotal(month)}
+                <span className={calculateRowTotal(month).color}>
+                  {calculateRowTotal(month).value}
                 </span>
               </TableCell>
             </TableRow>
@@ -93,19 +97,22 @@ const InventoryMTMTable = () => {
             <TableCell className="px-4 align-middle font-medium border-r border-white">
               Total
             </TableCell>
-            {TANK_HEADERS.map((header) => (
-              <TableCell 
-                key={`total-${header}`} 
-                className="px-4 text-center align-middle font-medium"
-              >
-                <span className={calculateColumnTotal(header).startsWith('-') ? 'text-red-500' : ''}>
-                  {calculateColumnTotal(header)}
-                </span>
-              </TableCell>
-            ))}
+            {TANK_HEADERS.map((header) => {
+              const { value, color } = calculateColumnTotal(header);
+              return (
+                <TableCell 
+                  key={`total-${header}`} 
+                  className="px-4 text-center align-middle font-medium"
+                >
+                  <span className={color}>
+                    {value}
+                  </span>
+                </TableCell>
+              );
+            })}
             <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
-              <span className={calculateGrandTotal().startsWith('-') ? 'text-red-500' : ''}>
-                {calculateGrandTotal()}
+              <span className={calculateGrandTotal().color}>
+                {calculateGrandTotal().value}
               </span>
             </TableCell>
           </TableRow>

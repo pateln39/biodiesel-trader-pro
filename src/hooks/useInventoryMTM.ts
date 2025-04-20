@@ -43,6 +43,13 @@ const aggregateByMonthAndProduct = (data: TankMovement[]) => {
   return aggregated;
 };
 
+const formatNumber = (value: number): string => {
+  if (value === 0) return '-';
+  const roundedValue = Math.round(value);
+  const formattedValue = new Intl.NumberFormat('en-US').format(roundedValue);
+  return value > 0 ? `+${formattedValue}` : formattedValue;
+};
+
 export const useInventoryMTM = () => {
   const { data: tankMovements, isLoading } = useQuery({
     queryKey: ['tank_movements'],
@@ -51,40 +58,48 @@ export const useInventoryMTM = () => {
 
   const aggregatedData = tankMovements ? aggregateByMonthAndProduct(tankMovements) : new Map<string, Map<string, number>>();
 
-  const calculateCellValue = (month: string, product: string): string => {
+  const calculateCellValue = (month: string, product: string): { value: string; color: string } => {
     const monthData = aggregatedData.get(month);
-    if (!monthData) return '-';
+    if (!monthData) return { value: '-', color: 'text-lime-500' };
     const value = monthData.get(product) || 0;
-    if (value === 0) return '-';
-    return value > 0 ? `+${value.toFixed(2)}` : `${value.toFixed(2)}`;
+    return {
+      value: formatNumber(value),
+      color: value > 0 ? 'text-green-500' : value < 0 ? 'text-red-500' : 'text-lime-500'
+    };
   };
 
-  const calculateRowTotal = (month: string): string => {
+  const calculateRowTotal = (month: string): { value: string; color: string } => {
     const monthData = aggregatedData.get(month);
-    if (!monthData) return '-';
+    if (!monthData) return { value: '-', color: 'text-lime-500' };
     const total = Array.from(monthData.values()).reduce((sum, val) => sum + val, 0);
-    if (total === 0) return '-';
-    return total > 0 ? `+${total.toFixed(2)}` : `${total.toFixed(2)}`;
+    return {
+      value: formatNumber(total),
+      color: total > 0 ? 'text-green-500' : total < 0 ? 'text-red-500' : 'text-lime-500'
+    };
   };
 
-  const calculateColumnTotal = (product: string): string => {
+  const calculateColumnTotal = (product: string): { value: string; color: string } => {
     let total = 0;
     aggregatedData.forEach(monthData => {
       total += monthData.get(product) || 0;
     });
-    if (total === 0) return '-';
-    return total > 0 ? `+${total.toFixed(2)}` : `${total.toFixed(2)}`;
+    return {
+      value: formatNumber(total),
+      color: total > 0 ? 'text-green-500' : total < 0 ? 'text-red-500' : 'text-lime-500'
+    };
   };
 
-  const calculateGrandTotal = (): string => {
+  const calculateGrandTotal = (): { value: string; color: string } => {
     let total = 0;
     aggregatedData.forEach(monthData => {
       monthData.forEach(value => {
         total += value;
       });
     });
-    if (total === 0) return '-';
-    return total > 0 ? `+${total.toFixed(2)}` : `${total.toFixed(2)}`;
+    return {
+      value: formatNumber(total),
+      color: total > 0 ? 'text-green-500' : total < 0 ? 'text-red-500' : 'text-lime-500'
+    };
   };
 
   return {
