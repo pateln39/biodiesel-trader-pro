@@ -8,9 +8,10 @@ const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
 
 const InventoryMTMTable = () => {
   // Get months (1 month prior, current month, and 4 months ahead)
-  const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-  const months = getNextMonths(6).slice(0, 6);
+  const currentDate = new Date('2025-04-20'); // Using the current date from the context
+  const months = getNextMonths(6)
+    .slice(0, 6) // Get 6 months total
+    .map(month => month); // This will give us Mar-25 to Aug-25
 
   // Calculate row totals (currently all zero)
   const calculateRowTotal = () => "-";
@@ -22,40 +23,40 @@ const InventoryMTMTable = () => {
     <div className="rounded-md border">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
+          <TableRow>
+            <TableHead className="h-16 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
               Month
             </TableHead>
             <TableHead 
               colSpan={TANK_HEADERS.length} 
-              className="h-12 px-4 text-center align-middle font-medium"
+              className="h-16 px-4 text-center align-middle font-medium"
             >
               Tanks
             </TableHead>
-            <TableHead className="h-12 px-4 text-center align-middle font-medium border-l border-white">
-              Total
+            <TableHead className="h-16 px-4 text-center align-middle font-medium border-l border-white">
+              {/* Empty cell - removed "Total" text */}
             </TableHead>
           </TableRow>
           <TableRow>
-            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
-              {/* Empty cell for Month column */}
+            <TableHead className="h-16 px-4 text-center align-middle border-r border-white">
+              {/* Month header moved here */}
             </TableHead>
             {TANK_HEADERS.map((header) => (
               <TableHead 
                 key={header}
-                className={`h-12 px-4 text-center align-middle font-medium text-white ${PRODUCT_COLORS[header]}`}
+                className={`h-16 px-4 text-center align-middle font-medium text-white ${PRODUCT_COLORS[header]}`}
               >
                 {header}
               </TableHead>
             ))}
-            <TableHead className="h-12 px-4 text-center align-middle font-medium bg-gray-500 text-white border-l border-white">
+            <TableHead className="h-16 px-4 text-center align-middle font-medium bg-gray-500 text-white border-l border-white">
               Total
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {months.map((month) => (
-            <TableRow key={month}>
+            <TableRow key={month} className="h-16">
               <TableCell className="px-4 align-middle border-r border-white">
                 {month}
               </TableCell>
@@ -80,7 +81,7 @@ const InventoryMTMTable = () => {
               {/* Border separator for totals row */}
             </TableCell>
           </TableRow>
-          <TableRow className="bg-muted/50">
+          <TableRow className="bg-muted/50 h-16">
             <TableCell className="px-4 align-middle font-medium border-r border-white">
               Total
             </TableCell>
