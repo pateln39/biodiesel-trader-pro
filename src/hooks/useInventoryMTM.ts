@@ -41,8 +41,18 @@ const getAllMonths = (tankMovements: TankMovement[], currentDate: Date) => {
   
   // Convert to array and sort chronologically
   return Array.from(months).sort((a, b) => {
-    const dateA = new Date(20 + a.slice(-2), "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(a.slice(0, 3)) / 3, 1);
-    const dateB = new Date(20 + b.slice(-2), "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(b.slice(0, 3)) / 3, 1);
+    // Convert month abbreviation to month index (0-11)
+    const monthIndexA = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(a.slice(0, 3)) / 3;
+    const monthIndexB = "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(b.slice(0, 3)) / 3;
+    
+    // Get year from YY format
+    const yearA = parseInt('20' + a.slice(-2));
+    const yearB = parseInt('20' + b.slice(-2));
+    
+    // Create Date objects with the extracted month and year
+    const dateA = new Date(yearA, monthIndexA, 1);
+    const dateB = new Date(yearB, monthIndexB, 1);
+    
     return dateA.getTime() - dateB.getTime();
   });
 };
