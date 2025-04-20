@@ -2,13 +2,14 @@
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { getNextMonths } from '@/utils/dateUtils';
+import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 
 const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
 
 const InventoryMTMTable = () => {
-  // Get months (2 months prior, current month, and 3 months ahead)
+  // Get months (1 month prior, current month, and 4 months ahead)
   const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 2, 1);
+  const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
   const months = getNextMonths(6).slice(0, 6);
 
   // Calculate row totals (currently all zero)
@@ -22,7 +23,7 @@ const InventoryMTMTable = () => {
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
               Month
             </TableHead>
             <TableHead 
@@ -31,23 +32,23 @@ const InventoryMTMTable = () => {
             >
               Tanks
             </TableHead>
-            <TableHead className="h-12 px-4 text-center align-middle font-medium">
+            <TableHead className="h-12 px-4 text-center align-middle font-medium border-l border-white">
               Total
             </TableHead>
           </TableRow>
           <TableRow>
-            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+            <TableHead className="h-12 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
               {/* Empty cell for Month column */}
             </TableHead>
             {TANK_HEADERS.map((header) => (
               <TableHead 
                 key={header}
-                className="h-12 px-4 text-center align-middle font-medium bg-green-600 text-white"
+                className={`h-12 px-4 text-center align-middle font-medium text-white ${PRODUCT_COLORS[header]}`}
               >
                 {header}
               </TableHead>
             ))}
-            <TableHead className="h-12 px-4 text-center align-middle font-medium bg-gray-500 text-white">
+            <TableHead className="h-12 px-4 text-center align-middle font-medium bg-gray-500 text-white border-l border-white">
               Total
             </TableHead>
           </TableRow>
@@ -55,7 +56,7 @@ const InventoryMTMTable = () => {
         <TableBody>
           {months.map((month) => (
             <TableRow key={month}>
-              <TableCell className="px-4 align-middle">
+              <TableCell className="px-4 align-middle border-r border-white">
                 {month}
               </TableCell>
               {TANK_HEADERS.map((header) => (
@@ -66,13 +67,21 @@ const InventoryMTMTable = () => {
                   -
                 </TableCell>
               ))}
-              <TableCell className="px-4 text-center align-middle font-medium">
+              <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
                 {calculateRowTotal()}
               </TableCell>
             </TableRow>
           ))}
+          <TableRow>
+            <TableCell 
+              colSpan={TANK_HEADERS.length + 2} 
+              className="border-t border-white"
+            >
+              {/* Border separator for totals row */}
+            </TableCell>
+          </TableRow>
           <TableRow className="bg-muted/50">
-            <TableCell className="px-4 align-middle font-medium">
+            <TableCell className="px-4 align-middle font-medium border-r border-white">
               Total
             </TableCell>
             {TANK_HEADERS.map((header) => (
@@ -83,7 +92,7 @@ const InventoryMTMTable = () => {
                 {calculateColumnTotal()}
               </TableCell>
             ))}
-            <TableCell className="px-4 text-center align-middle font-medium">
+            <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
               {calculateColumnTotal()}
             </TableCell>
           </TableRow>
