@@ -49,7 +49,7 @@ export const useInventoryMTM = () => {
     queryFn: fetchTankMovements,
   });
 
-  const aggregatedData = tankMovements ? aggregateByMonthAndProduct(tankMovements) : new Map();
+  const aggregatedData = tankMovements ? aggregateByMonthAndProduct(tankMovements) : new Map<string, Map<string, number>>();
 
   const calculateCellValue = (month: string, product: string): string => {
     const monthData = aggregatedData.get(month);
