@@ -1,7 +1,7 @@
-
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
+import { useInventoryMTM } from '@/hooks/useInventoryMTM';
 
 const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
 
@@ -20,14 +20,16 @@ const InventoryMTMTable = () => {
     monthDate.setMonth(startDate.getMonth() + i);
     const monthCode = monthDate.toLocaleDateString('en-US', { month: 'short' }) + '-' + 
                      monthDate.getFullYear().toString().slice(2);
-    months.push(monthCode);
+    months.push(monthCode.toUpperCase());
   }
 
-  // Calculate row totals (currently all zero)
-  const calculateRowTotal = () => "-";
-
-  // Calculate column totals (currently all zero)
-  const calculateColumnTotal = () => "-";
+  const { 
+    isLoading, 
+    calculateCellValue, 
+    calculateRowTotal, 
+    calculateColumnTotal, 
+    calculateGrandTotal 
+  } = useInventoryMTM();
 
   return (
     <div className="rounded-md border">
@@ -69,11 +71,15 @@ const InventoryMTMTable = () => {
                   key={`${month}-${header}`} 
                   className="px-4 text-center align-middle"
                 >
-                  -
+                  <span className={calculateCellValue(month, header).startsWith('-') ? 'text-red-500' : ''}>
+                    {calculateCellValue(month, header)}
+                  </span>
                 </TableCell>
               ))}
               <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
-                {calculateRowTotal()}
+                <span className={calculateRowTotal(month).startsWith('-') ? 'text-red-500' : ''}>
+                  {calculateRowTotal(month)}
+                </span>
               </TableCell>
             </TableRow>
           ))}
@@ -81,9 +87,7 @@ const InventoryMTMTable = () => {
             <TableCell 
               colSpan={TANK_HEADERS.length + 2} 
               className="border-t border-white"
-            >
-              {/* Border separator for totals row */}
-            </TableCell>
+            />
           </TableRow>
           <TableRow className="bg-muted/50 h-16">
             <TableCell className="px-4 align-middle font-medium border-r border-white">
@@ -94,11 +98,15 @@ const InventoryMTMTable = () => {
                 key={`total-${header}`} 
                 className="px-4 text-center align-middle font-medium"
               >
-                {calculateColumnTotal()}
+                <span className={calculateColumnTotal(header).startsWith('-') ? 'text-red-500' : ''}>
+                  {calculateColumnTotal(header)}
+                </span>
               </TableCell>
             ))}
             <TableCell className="px-4 text-center align-middle font-medium border-l border-white">
-              {calculateColumnTotal()}
+              <span className={calculateGrandTotal().startsWith('-') ? 'text-red-500' : ''}>
+                {calculateGrandTotal()}
+              </span>
             </TableCell>
           </TableRow>
         </TableBody>
