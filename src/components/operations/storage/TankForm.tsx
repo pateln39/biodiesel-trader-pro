@@ -108,21 +108,25 @@ const TankForm: React.FC<TankFormProps> = ({
           .eq('id', tank.id);
 
         if (error) throw error;
+        toast.success('Tank updated');
       } else {
         // Create new tank
         const { error } = await supabase
           .from('tanks')
           .insert(tankData);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating tank:', error);
+          throw error;
+        }
+        toast.success('Tank created');
       }
 
-      toast.success(tank ? 'Tank updated' : 'Tank created');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error saving tank:', error);
-      toast.error('Failed to save tank');
+      toast.error(`Failed to save tank: ${error.message || 'Unknown error'}`);
     }
   };
 
