@@ -210,24 +210,22 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankProductMutation = useMutation({
     mutationFn: async ({ tankId, product }: { tankId: string, product: string }) => {
-      console.log('Attempting to update tank product:', { tankId, product });
+      const { data: tank } = await supabase
+        .from('tanks')
+        .select('display_order')
+        .eq('id', tankId)
+        .single();
       
       const { data, error } = await supabase
         .from('tanks')
-        .update({ current_product: product })
+        .update({ 
+          current_product: product,
+          display_order: tank?.display_order 
+        })
         .eq('id', tankId)
         .select();
       
-      if (error) {
-        console.error('Detailed error updating tank product:', {
-          message: error.message,
-          details: error.details,
-          code: error.code
-        });
-        throw error;
-      }
-      
-      console.log('Tank product update response:', data);
+      if (error) throw error;
       return { tankId, product };
     },
     onSuccess: () => {
@@ -242,24 +240,22 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankSpecMutation = useMutation({
     mutationFn: async ({ tankId, spec }: { tankId: string, spec: string }) => {
-      console.log('Attempting to update tank spec:', { tankId, spec });
+      const { data: tank } = await supabase
+        .from('tanks')
+        .select('display_order')
+        .eq('id', tankId)
+        .single();
       
       const { data, error } = await supabase
         .from('tanks')
-        .update({ spec })
+        .update({ 
+          spec,
+          display_order: tank?.display_order 
+        })
         .eq('id', tankId)
         .select();
       
-      if (error) {
-        console.error('Detailed error updating tank spec:', {
-          message: error.message,
-          details: error.details,
-          code: error.code
-        });
-        throw error;
-      }
-      
-      console.log('Tank spec update response:', data);
+      if (error) throw error;
       return { tankId, spec };
     },
     onSuccess: () => {
@@ -274,24 +270,22 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankHeatingMutation = useMutation({
     mutationFn: async ({ tankId, isHeatingEnabled }: { tankId: string, isHeatingEnabled: boolean }) => {
-      console.log('Attempting to update tank heating:', { tankId, isHeatingEnabled });
+      const { data: tank } = await supabase
+        .from('tanks')
+        .select('display_order')
+        .eq('id', tankId)
+        .single();
       
       const { data, error } = await supabase
         .from('tanks')
-        .update({ is_heating_enabled: isHeatingEnabled })
+        .update({ 
+          is_heating_enabled: isHeatingEnabled,
+          display_order: tank?.display_order 
+        })
         .eq('id', tankId)
         .select();
       
-      if (error) {
-        console.error('Detailed error updating tank heating:', {
-          message: error.message,
-          details: error.details,
-          code: error.code
-        });
-        throw error;
-      }
-      
-      console.log('Tank heating update response:', data);
+      if (error) throw error;
       return { tankId, isHeatingEnabled };
     },
     onSuccess: () => {
@@ -306,28 +300,24 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankCapacityMutation = useMutation({
     mutationFn: async ({ tankId, capacityMt }: { tankId: string, capacityMt: number }) => {
-      console.log('Attempting to update tank capacity:', { tankId, capacityMt });
+      const { data: tank } = await supabase
+        .from('tanks')
+        .select('display_order')
+        .eq('id', tankId)
+        .single();
       
       const capacityM3 = capacityMt * 1.1;
       const { data, error } = await supabase
         .from('tanks')
         .update({ 
           capacity_mt: capacityMt,
-          capacity_m3: capacityM3
+          capacity_m3: capacityM3,
+          display_order: tank?.display_order 
         })
         .eq('id', tankId)
         .select();
       
-      if (error) {
-        console.error('Detailed error updating tank capacity:', {
-          message: error.message,
-          details: error.details,
-          code: error.code
-        });
-        throw error;
-      }
-      
-      console.log('Tank capacity update response:', data);
+      if (error) throw error;
       return { tankId, capacityMt };
     },
     onSuccess: () => {
@@ -531,7 +521,11 @@ export const useInventoryState = (terminalId?: string) => {
 
   const updateTankNumber = useMutation({
     mutationFn: async ({ tankId, tankNumber }: { tankId: string, tankNumber: string }) => {
-      console.log('Attempting to update tank number:', { tankId, tankNumber });
+      const { data: tank } = await supabase
+        .from('tanks')
+        .select('display_order')
+        .eq('id', tankId)
+        .single();
       
       const { data: existingTank, error: checkError } = await supabase
         .from('tanks')
@@ -551,7 +545,10 @@ export const useInventoryState = (terminalId?: string) => {
       
       const { data, error } = await supabase
         .from('tanks')
-        .update({ tank_number: tankNumber })
+        .update({ 
+          tank_number: tankNumber,
+          display_order: tank?.display_order 
+        })
         .eq('id', tankId)
         .select();
       
