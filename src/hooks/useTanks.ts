@@ -31,7 +31,7 @@ export const useTanks = (terminalId?: string) => {
         .from('tanks')
         .select('*')
         .eq('terminal_id', terminalId)
-        .order('display_order', { nullsLast: true });
+        .order('display_order', { ascending: true, nullsLast: true });
 
       if (error) {
         console.error('Error fetching tanks:', error);
