@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { getNextMonths } from '@/utils/dateUtils';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 
 const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
@@ -35,22 +34,16 @@ const InventoryMTMTable = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="h-16 px-4 text-left align-middle font-medium text-muted-foreground border-r border-white">
-              Month
-            </TableHead>
             <TableHead 
-              colSpan={TANK_HEADERS.length} 
+              colSpan={TANK_HEADERS.length + 1} 
               className="h-16 px-4 text-center align-middle font-medium"
             >
               Tanks
             </TableHead>
-            <TableHead className="h-16 px-4 text-center align-middle font-medium border-l border-white">
-              {/* Empty cell - removed "Total" text */}
-            </TableHead>
           </TableRow>
           <TableRow>
-            <TableHead className="h-16 px-4 text-center align-middle border-r border-white">
-              {/* Month header moved here */}
+            <TableHead className="h-16 px-4 text-left align-middle border-r border-white">
+              Month
             </TableHead>
             {TANK_HEADERS.map((header) => (
               <TableHead 
