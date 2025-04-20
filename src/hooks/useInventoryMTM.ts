@@ -3,12 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
-interface MTMData {
-  month: string;
-  product: string;
-  total_quantity: number;
-}
-
 interface TankMovement {
   movement_date: string;
   product_at_time: string;
@@ -23,6 +17,34 @@ const fetchTankMovements = async (): Promise<TankMovement[]> => {
 
   if (error) throw error;
   return data;
+};
+
+const getAllMonths = (tankMovements: TankMovement[], currentDate: Date) => {
+  const months = new Set<string>();
+  
+  // Add all months from movements
+  tankMovements.forEach(movement => {
+    const month = format(new Date(movement.movement_date), 'MMM-yy').toUpperCase();
+    months.add(month);
+  });
+  
+  // Add default range (previous month, current month, and 4 months ahead)
+  const startDate = new Date(currentDate);
+  startDate.setMonth(currentDate.getMonth() - 1);
+  
+  for (let i = 0; i < 6; i++) {
+    const monthDate = new Date(startDate);
+    monthDate.setMonth(startDate.getMonth() + i);
+    const monthCode = format(monthDate, 'MMM-yy').toUpperCase();
+    months.add(monthCode);
+  }
+  
+  // Convert to array and sort chronologically
+  return Array.from(months).sort((a, b) => {
+    const dateA = new Date(20 + a.slice(-2), "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(a.slice(0, 3)) / 3, 1);
+    const dateB = new Date(20 + b.slice(-2), "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".indexOf(b.slice(0, 3)) / 3, 1);
+    return dateA.getTime() - dateB.getTime();
+  });
 };
 
 const aggregateByMonthAndProduct = (data: TankMovement[]) => {
@@ -56,6 +78,8 @@ export const useInventoryMTM = () => {
     queryFn: fetchTankMovements,
   });
 
+  const currentDate = new Date('2025-04-20');
+  const months = tankMovements ? getAllMonths(tankMovements, currentDate) : [];
   const aggregatedData = tankMovements ? aggregateByMonthAndProduct(tankMovements) : new Map<string, Map<string, number>>();
 
   const calculateCellValue = (month: string, product: string): { value: string; color: string } => {
@@ -104,6 +128,7 @@ export const useInventoryMTM = () => {
 
   return {
     isLoading,
+    months,
     calculateCellValue,
     calculateRowTotal,
     calculateColumnTotal,

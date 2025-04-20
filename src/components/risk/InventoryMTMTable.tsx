@@ -7,25 +7,9 @@ import { useInventoryMTM } from '@/hooks/useInventoryMTM';
 const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
 
 const InventoryMTMTable = () => {
-  // Get months (1 month prior, current month, and 4 months ahead)
-  const currentDate = new Date('2025-04-20');
-  const months = [];
-  
-  // Start from previous month (March 2025)
-  const startDate = new Date(currentDate);
-  startDate.setMonth(currentDate.getMonth() - 1);
-  
-  // Generate 6 months starting from March 2025
-  for (let i = 0; i < 6; i++) {
-    const monthDate = new Date(startDate);
-    monthDate.setMonth(startDate.getMonth() + i);
-    const monthCode = monthDate.toLocaleDateString('en-US', { month: 'short' }) + '-' + 
-                     monthDate.getFullYear().toString().slice(2);
-    months.push(monthCode.toUpperCase());
-  }
-
   const { 
     isLoading, 
+    months,
     calculateCellValue, 
     calculateRowTotal, 
     calculateColumnTotal, 
