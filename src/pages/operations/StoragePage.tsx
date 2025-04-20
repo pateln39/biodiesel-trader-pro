@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +73,7 @@ const truncatedHeaders = {
   currentUllage: "Current Ullage",
 };
 
-const InventoryPage = () => {
+const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
@@ -94,7 +93,8 @@ const InventoryPage = () => {
     updateTankProduct,
     updateTankSpec,
     updateTankHeating,
-    updateTankCapacity
+    updateTankCapacity,
+    updateTankNumber,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -307,7 +307,15 @@ const InventoryPage = () => {
                                 colSpan={3} 
                                 className="text-center text-[10px] border-r border-white/30"
                               >
-                                Tank {tank.tank_number}
+                                <div className="flex items-center justify-center">
+                                  <span className="mr-1">Tank</span>
+                                  <EditableField
+                                    initialValue={tank.tank_number}
+                                    onSave={(value) => updateTankNumber(tank.id, value)}
+                                    className="text-[10px] text-center"
+                                    truncate={false}
+                                  />
+                                </div>
                               </TableHead>
                             ))}
                             
@@ -639,4 +647,4 @@ const InventoryPage = () => {
   );
 };
 
-export default InventoryPage;
+export default StoragePage;

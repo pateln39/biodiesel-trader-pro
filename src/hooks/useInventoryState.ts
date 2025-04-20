@@ -529,6 +529,45 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const updateTankNumber = useMutation({
+    mutationFn: async ({ tankId, tankNumber }: { tankId: string, tankNumber: string }) => {
+      console.log('Attempting to update tank number:', { tankId, tankNumber });
+      
+      const { data: existingTank, error: checkError } = await supabase
+        .from('tanks')
+        .select('id')
+        .eq('terminal_id', terminalId)
+        .eq('tank_number', tankNumber)
+        .neq('id', tankId)
+        .single();
+      
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+      
+      if (existingTank) {
+        throw new Error('Tank number already exists');
+      }
+      
+      const { data, error } = await supabase
+        .from('tanks')
+        .update({ tank_number: tankNumber })
+        .eq('id', tankId)
+        .select();
+      
+      if (error) throw error;
+      return { tankId, tankNumber };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tanks'] });
+      toast.success('Tank number updated');
+    },
+    onError: (error: any) => {
+      console.error('Error updating tank number:', error);
+      toast.error(error.message || 'Failed to update tank number');
+    }
+  });
+
   const productOptions = [
     { label: 'UCOME', value: 'UCOME' },
     { label: 'RME', value: 'RME' },
@@ -539,8 +578,8 @@ export const useInventoryState = (terminalId?: string) => {
   ];
 
   const heatingOptions = [
-    { label: 'Enabled', value: 'true' },
-    { label: 'Disabled', value: 'false' }
+    { label: 'Yes', value: 'true' },
+    { label: 'No', value: 'false' }
   ];
 
   return {
@@ -587,6 +626,8 @@ export const useInventoryState = (terminalId?: string) => {
     }),
     deleteTankMovement: (terminalAssignmentId: string, tankId: string) => 
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
+    updateTankNumber: (tankId: string, tankNumber: string) => 
+      updateTankNumber.mutate({ tankId, tankNumber }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
