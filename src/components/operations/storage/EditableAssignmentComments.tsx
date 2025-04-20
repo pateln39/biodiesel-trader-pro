@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, X, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface EditableAssignmentCommentsProps {
   assignmentId: string;
@@ -23,12 +24,17 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [comments, setComments] = useState(initialValue || '');
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
       await onSave(assignmentId, comments);
       setIsOpen(false);
+      // Invalidate all queries that might contain this data
+      await queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      await queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['movements'] });
       toast.success('Comments saved successfully');
     } catch (error) {
       toast.error('Failed to save comments');
