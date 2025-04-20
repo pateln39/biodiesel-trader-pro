@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -33,7 +32,6 @@ export const useTanks = (terminalId?: string) => {
         .eq('terminal_id', terminalId)
         .order('display_order', { ascending: true });
 
-      // Perform a second query to get tanks with null display_order at the end
       if (error) {
         console.error('Error fetching tanks:', error);
         throw error;

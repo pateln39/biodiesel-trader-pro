@@ -1291,6 +1291,10 @@ export type Database = {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
       }
+      get_next_tank_display_order: {
+        Args: { terminal_id: string }
+        Returns: number
+      }
       initialize_all_terminal_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
