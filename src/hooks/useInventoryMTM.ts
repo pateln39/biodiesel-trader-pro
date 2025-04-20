@@ -9,7 +9,13 @@ interface MTMData {
   total_quantity: number;
 }
 
-const fetchTankMovements = async () => {
+interface TankMovement {
+  movement_date: string;
+  product_at_time: string;
+  quantity_mt: number;
+}
+
+const fetchTankMovements = async (): Promise<TankMovement[]> => {
   const { data, error } = await supabase
     .from('tank_movements')
     .select('movement_date, product_at_time, quantity_mt')
@@ -19,7 +25,7 @@ const fetchTankMovements = async () => {
   return data;
 };
 
-const aggregateByMonthAndProduct = (data: any[]) => {
+const aggregateByMonthAndProduct = (data: TankMovement[]) => {
   const aggregated = new Map<string, Map<string, number>>();
 
   data.forEach(movement => {
