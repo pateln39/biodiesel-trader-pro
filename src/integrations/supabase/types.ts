@@ -1292,7 +1292,7 @@ export type Database = {
         Returns: string
       }
       get_next_tank_display_order: {
-        Args: { terminal_id: string }
+        Args: { terminal_id_param: string }
         Returns: number
       }
       initialize_all_terminal_sort_orders: {

@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, X, Edit } from 'lucide-react';
+import { Check, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface EditableAssignmentCommentsProps {
   assignmentId: string;
@@ -23,12 +24,14 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [comments, setComments] = useState(initialValue || '');
   const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
       await onSave(assignmentId, comments);
       setIsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       toast.success('Comments saved successfully');
     } catch (error) {
       toast.error('Failed to save comments');
@@ -48,12 +51,13 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
       <PopoverTrigger asChild>
         <div
           className={cn(
-            "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded flex items-center",
-            className
+            "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded flex items-center gap-1 text-[10px]",
+            className,
+            initialValue ? "text-purple-300" : "text-muted-foreground"
           )}
         >
-          <span className="truncate max-w-[80px] text-[10px]">{initialValue || '-'}</span>
-          <Edit className="h-3 w-3 ml-1 opacity-50" />
+          <MessageSquare className="h-3 w-3" />
+          <span className="sr-only">Edit comments</span>
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-3">
