@@ -1,3 +1,4 @@
+
 import { BrowserRouter } from 'react-router-dom';
 import './App.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -29,8 +30,8 @@ function App() {
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-            <KeyboardShortcutsProvider>
+          <KeyboardShortcutsProvider>
+            <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
               <div className="app">
                 <Routes>
                   <Route path="/" element={<OperationsPage />} />
@@ -43,8 +44,8 @@ function App() {
                 <Toaster />
                 <KeyboardShortcutGuide />
               </div>
-            </KeyboardShortcutsProvider>
-          </ThemeProvider>
+            </ThemeProvider>
+          </KeyboardShortcutsProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>
