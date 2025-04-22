@@ -9,6 +9,7 @@ interface KeyboardNavigableCellProps {
   children: React.ReactNode;
   className?: string;
   onEdit?: () => void;
+  panel: 'left' | 'right';
 }
 
 const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
@@ -16,7 +17,8 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
   columnName,
   children,
   className,
-  onEdit
+  onEdit,
+  panel
 }) => {
   const { 
     shortcutMode, 
@@ -24,25 +26,23 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     selectedColumnName,
     setShortcutMode,
     setSelectedRowId,
-    setSelectedCellIndex,
     setSelectedColumnName,
     setIsEditMode,
-    announceShortcutMode
+    setCurrentPanel
   } = useKeyboardShortcuts();
 
   const isSelected = selectedRowId === rowId && selectedColumnName === columnName;
   
   const handleClick = () => {
-    if (shortcutMode === 'none' || shortcutMode === 'selection') {
+    if (shortcutMode === 'none' || shortcutMode !== 'editing') {
       setShortcutMode('cellNavigation');
       setSelectedRowId(rowId);
       setSelectedColumnName(columnName);
-      announceShortcutMode('cellNavigation');
+      setCurrentPanel(panel);
     } else if (shortcutMode === 'cellNavigation' && isSelected && onEdit) {
       onEdit();
       setShortcutMode('editing');
       setIsEditMode(true);
-      announceShortcutMode('editing');
     }
   };
 
@@ -58,6 +58,9 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       role="button"
       tabIndex={0}
       aria-selected={isSelected}
+      data-row-id={rowId}
+      data-column-name={columnName}
+      data-panel={panel}
     >
       {children}
     </div>

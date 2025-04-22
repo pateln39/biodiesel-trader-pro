@@ -7,17 +7,17 @@ export const useStoragePageInit = (movements: any[]) => {
     setShortcutMode,
     setSelectedRowId,
     setSelectedColumnName,
-    announceShortcutMode,
-    shortcutMode
+    shortcutMode,
+    setCurrentPanel
   } = useKeyboardShortcuts();
 
   useEffect(() => {
     // Initialize keyboard navigation when page loads and there are movements
     if (movements.length > 0 && shortcutMode === 'none') {
-      setShortcutMode('selection');
       setSelectedRowId(movements[0].assignment_id);
       setSelectedColumnName('counterparty');
-      announceShortcutMode('selection');
+      setCurrentPanel('left');
+      setShortcutMode('cellNavigation');
     }
   }, [movements]);
 };
