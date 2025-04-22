@@ -40,8 +40,12 @@ const EditableField: React.FC<EditableFieldProps> = ({
   // Listen for Enter and Escape keys in the input field
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
       handleSave();
     } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
       handleCancel();
     }
   };

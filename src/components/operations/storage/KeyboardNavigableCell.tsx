@@ -73,6 +73,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'Enter':
         if (onEnter) {
           e.preventDefault();
+          e.stopPropagation();
           onEnter();
           if (allowEditing) {
             setIsEditing(true);
@@ -83,6 +84,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'Escape':
         if (onEscape) {
           e.preventDefault();
+          e.stopPropagation();
           onEscape();
         }
         break;
@@ -131,7 +133,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       ref={cellRef}
       className={cn(
         className,
-        isActive && "ring-2 ring-brand-lime ring-inset",
+        isActive && "ring-[3px] ring-brand-lime ring-inset",
         isEditing && "ring-2 ring-blue-500 ring-inset"
       )}
       tabIndex={isActive ? 0 : -1}

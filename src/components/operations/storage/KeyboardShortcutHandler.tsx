@@ -53,8 +53,8 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     if (sidebarOpen) return;
 
     // Global shortcuts (regardless of current mode)
-    if (e.altKey) {
-      switch (e.key) {
+    if (e.altKey && !e.ctrlKey) {
+      switch (e.key.toLowerCase()) {
         case 't': // Alt+T: Add Tank
           if (!e.shiftKey) {
             e.preventDefault();
@@ -62,15 +62,21 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
             return;
           }
           break;
-        case 'T': // Alt+Shift+T: Add Terminal
+        case 'n': // Alt+N: Add Terminal
           e.preventDefault();
           onAddTerminal();
           return;
-        case 'ArrowLeft': // Alt+Left: Previous Terminal
+      }
+    }
+
+    // Terminal navigation with Ctrl + Arrow keys
+    if (e.ctrlKey && !e.altKey) {
+      switch (e.key) {
+        case 'ArrowLeft': // Ctrl+Left: Previous Terminal
           e.preventDefault();
           onNavigateTerminal('prev');
           return;
-        case 'ArrowRight': // Alt+Right: Next Terminal
+        case 'ArrowRight': // Ctrl+Right: Next Terminal
           e.preventDefault();
           onNavigateTerminal('next');
           return;
