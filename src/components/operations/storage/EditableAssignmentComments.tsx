@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { Check, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useKeyboardShortcuts } from '@/context/KeyboardShortcutsContext';
 
 interface EditableAssignmentCommentsProps {
   assignmentId: string;
@@ -27,9 +26,6 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const [displayedComments, setDisplayedComments] = useState(initialValue || '');
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { registerShortcut, unregisterShortcut } = useKeyboardShortcuts();
-  const componentId = useRef(`comments-${assignmentId}`).current;
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -52,42 +48,6 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
     setIsOpen(false);
   };
 
-  // Register keyboard shortcuts when the popover is open
-  useEffect(() => {
-    if (isOpen) {
-      // Ctrl+Enter to save (common in comment fields)
-      registerShortcut(`${componentId}-save`, {
-        key: 'Enter',
-        ctrl: true,
-        description: 'Save comments',
-        action: handleSave,
-        scope: 'form-editing'
-      });
-      
-      // Escape key to cancel
-      registerShortcut(`${componentId}-cancel`, {
-        key: 'Escape',
-        description: 'Cancel comment editing',
-        action: handleCancel,
-        scope: 'form-editing'
-      });
-      
-      // Focus the textarea
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    } else {
-      // Unregister shortcuts when closed
-      unregisterShortcut(`${componentId}-save`);
-      unregisterShortcut(`${componentId}-cancel`);
-    }
-    
-    return () => {
-      unregisterShortcut(`${componentId}-save`);
-      unregisterShortcut(`${componentId}-cancel`);
-    };
-  }, [isOpen, comments, displayedComments, assignmentId, componentId]);
-
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
@@ -107,44 +67,30 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
       <PopoverContent className="w-80 p-3">
         <div className="space-y-2">
           <Textarea
-            ref={textareaRef}
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             placeholder="Add comments..."
             className="w-full min-h-[100px] text-xs"
             autoFocus
-            onKeyDown={(e) => {
-              // Save on Ctrl+Enter
-              if (e.key === 'Enter' && e.ctrlKey) {
-                e.preventDefault();
-                handleSave();
-              }
-              // Allow normal Enter for new lines
-            }}
           />
-          <div className="flex justify-between items-center">
-            <div className="text-xs text-muted-foreground">
-              <kbd className="px-1.5 py-0.5 bg-muted border rounded text-xs">Ctrl+Enter</kbd> to save
-            </div>
-            <div className="flex space-x-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isLoading}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={isLoading}
-              >
-                <Check className="h-4 w-4 mr-1" />
-                Save
-              </Button>
-            </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={isLoading}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              Save
+            </Button>
           </div>
         </div>
       </PopoverContent>
@@ -153,3 +99,4 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
 };
 
 export default EditableAssignmentComments;
+
