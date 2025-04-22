@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -31,10 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { KeyboardShortcutsProvider, useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
-import { useStorageKeyboardShortcuts } from '@/hooks/useStorageKeyboardShortcuts';
-import { toast } from 'sonner';
-import { useStoragePageInit } from '@/hooks/useStoragePageInit';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -103,86 +99,11 @@ const StoragePage = () => {
     updateTankNumber,
   } = useInventoryState(selectedTerminalId);
 
-  // Get the KeyboardShortcuts context
-  const {
-    setShortcutMode,
-    setSelectedRowId,
-    setSelectedColumnName,
-    setIsEditMode,
-    shortcutMode
-  } = useKeyboardShortcuts();
-
-  // Callbacks for keyboard shortcuts
-  const handleEditCell = (rowId: string, columnName: string) => {
-    // This function is called when a user presses Enter on a cell
-    // For now, just show a toast
-    toast.info(`Editing cell: ${columnName}`);
-  };
-
-  const handleSaveCellEdit = () => {
-    // This function is called when a user presses Enter in edit mode
-    // For now, just show a toast
-    toast.success('Cell edit saved');
-  };
-
-  const handleCancelCellEdit = () => {
-    // This function is called when a user presses Escape in edit mode
-    toast.info('Edit cancelled');
-  };
-
-  // Column names for keyboard navigation
-  const leftPanelColumnNames = [
-    'counterparty', 'tradeRef', 'bargeName', 'movementDate', 
-    'nominationDate', 'customs', 'sustainability', 'comments', 'quantity'
-  ];
-  
-  // Right panel column names
-  const rightPanelColumnNames = [
-    'tank-movement', 'tank-balance'
-  ];
-
-  // Define which columns are editable
-  const editableColumnNames = ['comments'];
-
-  // Set up keyboard shortcuts
-  useStorageKeyboardShortcuts({
-    rows: movements.map(m => ({ id: m.assignment_id })),
-    onEditCell: handleEditCell,
-    onSaveCellEdit: handleSaveCellEdit,
-    onCancelCellEdit: handleCancelCellEdit,
-    terminals,
-    selectedTerminalId,
-    onTerminalChange: setSelectedTerminalId,
-    onAddTerminal: () => {
-      setIsNewTerminal(true);
-      setSelectedTank(undefined);
-      setIsTankFormOpen(true);
-    },
-    onAddTank: () => {
-      setIsNewTerminal(false);
-      setSelectedTank(undefined);
-      setIsTankFormOpen(true);
-    },
-    leftPanelColumns: leftPanelColumnNames,
-    rightPanelColumns: rightPanelColumnNames,
-    editableCellNames: editableColumnNames
-  });
-
   React.useEffect(() => {
     if (terminals.length > 0 && !selectedTerminalId) {
       setSelectedTerminalId(terminals[0].id);
     }
   }, [terminals, selectedTerminalId]);
-
-  // If page unmounts, reset shortcut mode
-  useEffect(() => {
-    return () => {
-      setShortcutMode('none');
-      setSelectedRowId(null);
-      setSelectedColumnName(null);
-      setIsEditMode(false);
-    };
-  }, []);
 
   const handleAddTerminal = () => {
     setIsNewTerminal(true);
@@ -226,32 +147,12 @@ const StoragePage = () => {
     });
   }, [movements]);
 
-  // Initialize the page
-  useStoragePageInit(movements);
-
-  // Show help with keyboard shortcuts
-  const showShortcutsHelp = () => {
-    toast.info(
-      'Keyboard Shortcuts', 
-      { 
-        description: 
-          'Arrow keys: Navigate cells\n' +
-          'Enter: Edit/Save\n' +
-          'Escape: Cancel/Exit mode'
-      }
-    );
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={showShortcutsHelp} className="mr-2">
-              <span className="mr-1">⌨️</span>
-              Keyboard Shortcuts
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="mr-2">
@@ -379,8 +280,6 @@ const StoragePage = () => {
                                     PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
                                   )}
                                   truncate={false}
-                                  columnName="tankProduct"
-                                  rowId={tank.id}
                                 />
                               </TableHead>
                             ))}
@@ -417,8 +316,6 @@ const StoragePage = () => {
                                     onSave={(value) => updateTankNumber(tank.id, value)}
                                     className="text-[10px] text-center"
                                     truncate={false}
-                                    columnName="tankNumber"
-                                    rowId={tank.id}
                                   />
                                 </div>
                               </TableHead>
@@ -444,8 +341,6 @@ const StoragePage = () => {
                                       initialValue={tank.capacity_mt}
                                       onSave={(value) => updateTankCapacity(tank.id, value)}
                                       className="text-[10px] w-20"
-                                      columnName="tankCapacity"
-                                      rowId={tank.id}
                                     /> MT
                                     <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
                                   </div>
@@ -549,8 +444,6 @@ const StoragePage = () => {
                                     onSave={(value) => updateTankSpec(tank.id, value)}
                                     className="text-[10px]"
                                     maxWidth={100}
-                                    columnName="tankSpec"
-                                    rowId={tank.id}
                                   />
                                 </div>
                               </TableHead>
@@ -579,8 +472,6 @@ const StoragePage = () => {
                                       onSave={(value) => updateTankHeating(tank.id, value)}
                                       className="text-[10px]"
                                       truncate={false}
-                                      columnName="tankHeating"
-                                      rowId={tank.id}
                                     />
                                   </div>
                                 </div>
@@ -677,10 +568,7 @@ const StoragePage = () => {
                             return (
                               <TableRow 
                                 key={`scroll-${movement.id}`} 
-                                className={cn(
-                                  "border-b border-white/5 h-10", 
-                                  bgColorClass
-                                )}
+                                className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
                                 {tanks.map((tank) => {
                                   const tankMovement = tankMovements.find(
@@ -695,8 +583,6 @@ const StoragePage = () => {
                                           onSave={(value) => updateTankMovement(movement.id, tank.id, value)}
                                           className="text-[10px] w-16"
                                           product={tankMovement?.product_at_time || tank.current_product}
-                                          columnName={`tank-${tank.id}-quantity`}
-                                          rowId={movement.id}
                                         />
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2">
@@ -773,13 +659,4 @@ const StoragePage = () => {
   );
 };
 
-// Wrap the StoragePage with KeyboardShortcutsProvider
-const StoragePageWithKeyboardShortcuts = () => {
-  return (
-    <KeyboardShortcutsProvider>
-      <StoragePage />
-    </KeyboardShortcutsProvider>
-  );
-};
-
-export default StoragePageWithKeyboardShortcuts;
+export default StoragePage;

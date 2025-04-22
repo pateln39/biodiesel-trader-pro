@@ -1,12 +1,10 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProductToken from './ProductToken';
-import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 
 interface EditableNumberFieldProps {
   initialValue: number;
@@ -14,8 +12,6 @@ interface EditableNumberFieldProps {
   className?: string;
   placeholder?: string;
   product?: string;
-  rowId?: string;
-  columnName?: string;
 }
 
 const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
@@ -23,118 +19,59 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
   onSave,
   className,
   placeholder = 'Enter value...',
-  product,
-  rowId,
-  columnName
+  product
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue.toString());
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const { 
-    shortcutMode, 
-    selectedRowId, 
-    selectedColumnName,
-    isEditMode,
-    setShortcutMode,
-    setIsEditMode
-  } = useKeyboardShortcuts();
-
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isOpen]);
-
-  // If this is the selected cell and we're in edit mode, open the popover
-  useEffect(() => {
-    if (rowId && columnName && selectedRowId === rowId && selectedColumnName === columnName && isEditMode) {
-      setIsOpen(true);
-    }
-  }, [rowId, columnName, selectedRowId, selectedColumnName, isEditMode]);
-
-  const handleSave = (e?: React.FormEvent) => {
-    e?.preventDefault();
+  const handleSave = () => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onSave(numValue);
       setIsOpen(false);
-      
-      if (isEditMode) {
-        setShortcutMode('cellNavigation');
-        setIsEditMode(false);
-      }
     }
   };
 
   const handleCancel = () => {
     setValue(initialValue.toString());
     setIsOpen(false);
-    
-    if (isEditMode) {
-      setShortcutMode('cellNavigation');
-      setIsEditMode(false);
-    }
   };
 
-  // Handle keyboard commands while editing
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleSave();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        handleCancel();
-      }
-      e.stopPropagation();
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, value]);
+  // Format display value based on whether it's an M3 value
+  const formattedValue = product && initialValue.toString().includes('M³') 
+    ? Number(initialValue).toFixed(2)
+    : initialValue;
+
+  // Display as token if product is provided, otherwise just show the number
+  const displayValue = (
+    product ? (
+      <ProductToken 
+        product={product} 
+        value={formattedValue.toString()}
+        className={className}
+      />
+    ) : (
+      <span className={className}>{formattedValue}</span>
+    )
+  );
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <div 
-          className={cn(
-            "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded",
-            isOpen ? "bg-muted/50" : "",
-            rowId && selectedRowId === rowId && selectedColumnName === columnName && shortcutMode === 'cellNavigation' 
-              ? "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]" 
-              : ""
-          )}
-          data-row-id={rowId}
-          data-column-name={columnName}
-          role="button"
-          tabIndex={0}
-        >
-          {product ? (
-            <ProductToken 
-              product={product} 
-              value={initialValue.toString()}
-              className={className}
-            />
-          ) : (
-            <span className={className}>{initialValue}</span>
-          )}
+      <PopoverTrigger asChild>
+        <div className="cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded">
+          {displayValue}
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3">
-        <form onSubmit={handleSave} className="space-y-2">
+        <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <Input
-              ref={inputRef}
               type="number"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={placeholder}
               className="w-full"
-              onClick={(e) => e.stopPropagation()}
+              autoFocus
             />
             {product && (
               <ProductToken 
@@ -145,21 +82,16 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
             )}
           </div>
           <div className="flex justify-end space-x-2">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              type="button"
-              onClick={handleCancel}
-            >
+            <Button size="sm" variant="outline" onClick={handleCancel}>
               <X className="h-4 w-4 mr-1" />
               Cancel
             </Button>
-            <Button size="sm" type="submit">
+            <Button size="sm" onClick={handleSave}>
               <Check className="h-4 w-4 mr-1" />
               Save
             </Button>
           </div>
-        </form>
+        </div>
       </PopoverContent>
     </Popover>
   );
