@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -653,7 +654,7 @@ const StoragePage = () => {
                                         width={65}
                                         className="text-[10px] text-center mx-auto"
                                       />
-                                    </TableHead>
+                                    </KeyboardNavigableCell>
                                   </TableHead>
                                   <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">
                                     <KeyboardNavigableCell 
