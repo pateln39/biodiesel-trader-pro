@@ -30,6 +30,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue.toString());
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   const { 
     shortcutMode, 
@@ -37,8 +38,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     selectedColumnName,
     isEditMode,
     setShortcutMode,
-    setIsEditMode,
-    announceShortcutMode
+    setIsEditMode
   } = useKeyboardShortcuts();
 
   useEffect(() => {
@@ -57,6 +57,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
 
   const handleSave = (e?: React.FormEvent) => {
     e?.preventDefault();
+    e?.stopPropagation();
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onSave(numValue);
@@ -65,45 +66,45 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
       if (isEditMode) {
         setShortcutMode('cellNavigation');
         setIsEditMode(false);
-        announceShortcutMode('cellNavigation');
+      }
+      
+      // Refocus the trigger element
+      if (triggerRef.current) {
+        triggerRef.current.focus();
       }
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     setValue(initialValue.toString());
     setIsOpen(false);
     
     if (isEditMode) {
       setShortcutMode('cellNavigation');
       setIsEditMode(false);
-      announceShortcutMode('cellNavigation');
+    }
+    
+    // Refocus the trigger element
+    if (triggerRef.current) {
+      triggerRef.current.focus();
     }
   };
 
-  // Handle keyboard commands while editing
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleSave();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        handleCancel();
-      }
-      e.stopPropagation();
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, value]);
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+    <Popover 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          handleCancel();
+        }
+        setIsOpen(open);
+      }}
+    >
+      <PopoverTrigger asChild>
         <div 
+          ref={triggerRef}
           className={cn(
             "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded",
             isOpen ? "bg-muted/50" : "",
@@ -115,6 +116,10 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
           data-column-name={columnName}
           role="button"
           tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
         >
           {product ? (
             <ProductToken 
@@ -127,8 +132,12 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-3">
-        <form onSubmit={handleSave} className="space-y-2">
+      <PopoverContent className="w-72 p-3" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <form 
+          onSubmit={handleSave}
+          onClick={(e) => e.stopPropagation()}
+          className="space-y-2"
+        >
           <div className="flex items-center space-x-2">
             <Input
               ref={inputRef}
@@ -137,7 +146,6 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
               onChange={(e) => setValue(e.target.value)}
               placeholder={placeholder}
               className="w-full"
-              onClick={(e) => e.stopPropagation()}
             />
             {product && (
               <ProductToken 
