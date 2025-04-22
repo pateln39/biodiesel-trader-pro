@@ -222,6 +222,14 @@ const StoragePage = () => {
                     <div style={{ minWidth: `${totalStickyWidth}px` }}>
                       <Table>
                         <TableHeader>
+                          {/* Add empty row matching heating row height */}
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-1.5} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px] font-bold">&nbsp;</div>
+                              </KeyboardNavigableCell>
+                            </TableHead>
+                          </TableRow>
                           {/* Match the number of empty header rows in left panel to right panel */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                             <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
