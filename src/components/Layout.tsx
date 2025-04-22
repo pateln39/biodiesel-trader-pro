@@ -23,6 +23,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
   
+  // New state for keyboard navigation
+  const [highlightedItemPath, setHighlightedItemPath] = useState<string | null>(null);
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };
@@ -64,6 +67,75 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
   const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
+
+  // Function to find next navigable item
+  const findNextNavigableItem = (menuItems: any[], currentPath: string | null): string => {
+    const allPaths = menuItems.flatMap(item => 
+      item.submenu 
+        ? item.submenu.map(subItem => subItem.path)
+        : [item.path]
+    ).filter(Boolean);
+
+    if (!currentPath || !allPaths.includes(currentPath)) {
+      return allPaths[0];
+    }
+
+    const currentIndex = allPaths.indexOf(currentPath);
+    return allPaths[(currentIndex + 1) % allPaths.length];
+  };
+
+  // Function to find previous navigable item
+  const findPrevNavigableItem = (menuItems: any[], currentPath: string | null): string => {
+    const allPaths = menuItems.flatMap(item => 
+      item.submenu 
+        ? item.submenu.map(subItem => subItem.path)
+        : [item.path]
+    ).filter(Boolean);
+
+    if (!currentPath || !allPaths.includes(currentPath)) {
+      return allPaths[allPaths.length - 1];
+    }
+
+    const currentIndex = allPaths.indexOf(currentPath);
+    return allPaths[(currentIndex - 1 + allPaths.length) % allPaths.length];
+  };
+
+  // Keyboard shortcuts and navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle sidebar with Cmd/Ctrl + B
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+
+      if (!sidebarOpen) return;
+
+      // Navigation when sidebar is open
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setHighlightedItemPath(current => findNextNavigableItem(menuItems, current));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setHighlightedItemPath(current => findPrevNavigableItem(menuItems, current));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (highlightedItemPath) {
+            window.location.href = highlightedItemPath;
+          }
+          break;
+        case 'Escape':
+          setHighlightedItemPath(null);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen, menuItems]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -174,11 +246,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                         <Link
                           key={subItem.path}
                           to={subItem.path}
-                          className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                          className={cn(
+                            "flex items-center space-x-3 p-2 rounded-md transition-colors",
                             isActive(subItem.path)
-                              ? 'bg-primary/10 text-primary'
-                              : 'hover:bg-primary/5'
-                          }`}
+                              ? "bg-primary/10 text-primary"
+                              : "hover:bg-primary/5",
+                            highlightedItemPath === subItem.path && 
+                              "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
+                          )}
                         >
                           {subItem.icon}
                           <span>{subItem.label}</span>
@@ -191,11 +266,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
+                  className={cn(
+                    "flex items-center space-x-3 p-3 rounded-md transition-colors",
                     isActive(item.path)
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-primary/5'
-                  }`}
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-primary/5",
+                    highlightedItemPath === item.path && 
+                      "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
+                  )}
                 >
                   {item.icon}
                   <span>{item.label}</span>
