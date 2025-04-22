@@ -631,7 +631,7 @@ const StoragePage = () => {
                                   {Math.round(movementSummary.currentUllage)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(movementSummary.currentStockMT - movementSummary.totalMTMoved)}
+                                  {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
                                 </TableCell>
                               </TableRow>
                             );
