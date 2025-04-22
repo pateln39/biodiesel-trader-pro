@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'sonner';
 
@@ -18,6 +17,7 @@ interface KeyboardShortcutsContextType {
   shortcutsEnabled: boolean;
   setShortcutsEnabled: (enabled: boolean) => void;
   announceShortcutMode: (mode: ShortcutMode) => void;
+  focusCell: (cellElement: HTMLElement | null) => void;
 }
 
 export const KeyboardShortcutsContext = createContext<KeyboardShortcutsContextType | undefined>(undefined);
@@ -41,6 +41,31 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
   const [selectedColumnName, setSelectedColumnName] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true);
+
+  const focusCell = (cellElement: HTMLElement | null) => {
+    if (cellElement) {
+      cellElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'nearest',
+        inline: 'nearest'
+      });
+      cellElement.focus();
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseClick = () => {
+      if (shortcutMode !== 'none' && shortcutMode !== 'editing') {
+        setShortcutMode('none');
+        setSelectedRowId(null);
+        setSelectedColumnName(null);
+        setSelectedCellIndex(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseClick);
+    return () => document.removeEventListener('mousedown', handleMouseClick);
+  }, [shortcutMode]);
 
   const announceShortcutMode = (mode: ShortcutMode) => {
     switch (mode) {
@@ -74,7 +99,8 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
         setIsEditMode,
         shortcutsEnabled,
         setShortcutsEnabled,
-        announceShortcutMode
+        announceShortcutMode,
+        focusCell
       }}
     >
       {children}

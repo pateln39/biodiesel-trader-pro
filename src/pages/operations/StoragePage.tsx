@@ -34,6 +34,7 @@ import {
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 import { useStorageKeyboardShortcuts } from '@/hooks/useStorageKeyboardShortcuts';
 import { toast } from 'sonner';
+import { useStoragePageInit } from '@/hooks/useStoragePageInit';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -235,6 +236,9 @@ const StoragePage = () => {
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
+
+  // Initialize the page
+  useStoragePageInit(movements);
 
   // Show help with keyboard shortcuts
   const showShortcutsHelp = () => {

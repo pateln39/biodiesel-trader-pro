@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 import { useNavigate } from 'react-router-dom';
@@ -47,7 +46,8 @@ export const useStorageKeyboardShortcuts = ({
     isEditMode,
     setIsEditMode,
     shortcutsEnabled,
-    announceShortcutMode
+    announceShortcutMode,
+    focusCell
   } = useKeyboardShortcuts();
   
   const navigate = useNavigate();
@@ -68,6 +68,11 @@ export const useStorageKeyboardShortcuts = ({
       if (shortcutHandledRef.current) {
         shortcutHandledRef.current = false;
         return;
+      }
+
+      // Prevent default arrow key scrolling
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
       }
 
       // Global shortcuts (available in any mode)
@@ -115,7 +120,60 @@ export const useStorageKeyboardShortcuts = ({
         return;
       }
 
-      // Selection mode shortcuts
+      // Cell navigation mode
+      if (shortcutMode === 'cellNavigation') {
+        const currentIndex = columnNames.indexOf(selectedColumnName || '');
+        
+        switch (e.key) {
+          case 'ArrowLeft':
+            if (currentIndex > 0) {
+              const newColumnName = columnNames[currentIndex - 1];
+              setSelectedColumnName(newColumnName);
+              
+              // Find and focus the cell
+              const cell = document.querySelector(
+                `[data-row-id="${selectedRowId}"][data-column-name="${newColumnName}"]`
+              ) as HTMLElement;
+              focusCell(cell);
+            }
+            break;
+            
+          case 'ArrowRight':
+            if (currentIndex < columnNames.length - 1) {
+              const newColumnName = columnNames[currentIndex + 1];
+              setSelectedColumnName(newColumnName);
+              
+              // Find and focus the cell
+              const cell = document.querySelector(
+                `[data-row-id="${selectedRowId}"][data-column-name="${newColumnName}"]`
+              ) as HTMLElement;
+              focusCell(cell);
+            }
+            break;
+            
+          case 'Enter':
+            e.preventDefault();
+            if (selectedRowId && selectedColumnName && editableCellNames.includes(selectedColumnName)) {
+              onEditCell(selectedRowId, selectedColumnName);
+              setIsEditMode(true);
+              setShortcutMode('editing');
+              announceShortcutMode('editing');
+            }
+            shortcutHandledRef.current = true;
+            break;
+            
+          case 'Escape':
+            e.preventDefault();
+            setShortcutMode('selection');
+            setSelectedCellIndex(null);
+            setSelectedColumnName(null);
+            announceShortcutMode('selection');
+            shortcutHandledRef.current = true;
+            break;
+        }
+      }
+
+      // Row selection mode
       if (shortcutMode === 'selection') {
         const rowIndex = selectedRowId ? rows.findIndex(row => row.id === selectedRowId) : -1;
         
@@ -163,7 +221,6 @@ export const useStorageKeyboardShortcuts = ({
             break;
         }
         
-        // Move rows with Alt+Up/Down
         if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && rowIndex !== -1) {
           e.preventDefault();
           
@@ -172,57 +229,15 @@ export const useStorageKeyboardShortcuts = ({
             : Math.min(rows.length - 1, rowIndex + 1);
             
           if (newIndex !== rowIndex) {
+            const tempRows = [...rows];
+            const [movedRow] = tempRows.splice(rowIndex, 1);
+            tempRows.splice(newIndex, 0, movedRow);
+            
             onMoveRow(rowIndex, newIndex);
             setSelectedRowId(rows[newIndex].id);
-            toast.info(`Moved row ${e.key === 'ArrowUp' ? 'up' : 'down'}`);
           }
           
           shortcutHandledRef.current = true;
-        }
-      }
-      
-      // Cell navigation mode shortcuts
-      else if (shortcutMode === 'cellNavigation') {
-        switch (e.key) {
-          case 'ArrowLeft':
-            e.preventDefault();
-            if (selectedCellIndex !== null && selectedCellIndex > 0) {
-              const newIndex = selectedCellIndex - 1;
-              setSelectedCellIndex(newIndex);
-              setSelectedColumnName(columnNames[newIndex]);
-            }
-            shortcutHandledRef.current = true;
-            break;
-            
-          case 'ArrowRight':
-            e.preventDefault();
-            if (selectedCellIndex !== null && selectedCellIndex < columnNames.length - 1) {
-              const newIndex = selectedCellIndex + 1;
-              setSelectedCellIndex(newIndex);
-              setSelectedColumnName(columnNames[newIndex]);
-            }
-            shortcutHandledRef.current = true;
-            break;
-            
-          case 'Enter':
-            e.preventDefault();
-            if (selectedRowId && selectedColumnName && editableCellNames.includes(selectedColumnName)) {
-              onEditCell(selectedRowId, selectedColumnName);
-              setIsEditMode(true);
-              setShortcutMode('editing');
-              announceShortcutMode('editing');
-            }
-            shortcutHandledRef.current = true;
-            break;
-            
-          case 'Escape':
-            e.preventDefault();
-            setShortcutMode('selection');
-            setSelectedCellIndex(null);
-            setSelectedColumnName(null);
-            announceShortcutMode('selection');
-            shortcutHandledRef.current = true;
-            break;
         }
       }
       
@@ -277,7 +292,8 @@ export const useStorageKeyboardShortcuts = ({
     onAddTerminal,
     onAddTank,
     columnNames,
-    announceShortcutMode
+    announceShortcutMode,
+    focusCell
   ]);
 
   // Return some useful utilities
