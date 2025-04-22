@@ -37,8 +37,7 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     selectedColumnName,
     isEditMode,
     setShortcutMode,
-    setIsEditMode,
-    announceShortcutMode
+    setIsEditMode
   } = useKeyboardShortcuts();
 
   useEffect(() => {
@@ -65,7 +64,6 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
       if (isEditMode) {
         setShortcutMode('cellNavigation');
         setIsEditMode(false);
-        announceShortcutMode('cellNavigation');
       }
     }
   };
@@ -77,7 +75,6 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
     if (isEditMode) {
       setShortcutMode('cellNavigation');
       setIsEditMode(false);
-      announceShortcutMode('cellNavigation');
     }
   };
 

@@ -34,7 +34,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
   const isSelected = selectedRowId === rowId && selectedColumnName === columnName;
   
   const handleClick = () => {
-    if (shortcutMode === 'none' || shortcutMode !== 'editing') {
+    if (shortcutMode === 'none' || shortcutMode === 'cellNavigation') {
       setShortcutMode('cellNavigation');
       setSelectedRowId(rowId);
       setSelectedColumnName(columnName);

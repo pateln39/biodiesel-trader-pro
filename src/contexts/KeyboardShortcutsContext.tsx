@@ -18,6 +18,8 @@ interface KeyboardShortcutsContextType {
   focusCell: (cellElement: HTMLElement | null) => void;
   currentPanel: 'left' | 'right' | null;
   setCurrentPanel: (panel: 'left' | 'right' | null) => void;
+  // Add empty announceShortcutMode function to fix type errors
+  announceShortcutMode: (mode: ShortcutMode) => void;
 }
 
 export const KeyboardShortcutsContext = createContext<KeyboardShortcutsContextType | undefined>(undefined);
@@ -41,6 +43,12 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
   const [isEditMode, setIsEditMode] = useState(false);
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true);
   const [currentPanel, setCurrentPanel] = useState<'left' | 'right' | null>(null);
+
+  // Add empty function implementation for announceShortcutMode
+  const announceShortcutMode = (mode: ShortcutMode) => {
+    // This function is kept empty to avoid UI toast notifications
+    // as requested by the user
+  };
 
   const focusCell = (cellElement: HTMLElement | null) => {
     if (cellElement) {
@@ -81,7 +89,8 @@ export const KeyboardShortcutsProvider: React.FC<KeyboardShortcutsProviderProps>
         setShortcutsEnabled,
         focusCell,
         currentPanel,
-        setCurrentPanel
+        setCurrentPanel,
+        announceShortcutMode
       }}
     >
       {children}

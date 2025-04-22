@@ -40,15 +40,16 @@ const SortableAssignmentList = ({
     setShortcutMode,
     setSelectedRowId,
     setSelectedColumnName,
-    announceShortcutMode
+    setCurrentPanel
   } = useKeyboardShortcuts();
 
   // Auto-select first row when the page loads
   useEffect(() => {
     if (sortableItems.length > 0 && !selectedRowId) {
       setSelectedRowId(sortableItems[0].id);
-      setShortcutMode('selection');
-      announceShortcutMode('selection');
+      setSelectedColumnName('counterparty');
+      setCurrentPanel('left');
+      setShortcutMode('cellNavigation');
     }
   }, []);
 
@@ -93,15 +94,12 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
-    const isSelected = selectedRowId === item.id && shortcutMode === 'selection';
-    
+    // Remove selection mode check, only check for cell navigation
     const baseClass = item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
       
-    return isSelected 
-      ? `${baseClass} outline outline-2 outline-offset-0 outline-brand-lime`
-      : baseClass;
+    return baseClass;
   };
 
   return (
@@ -212,6 +210,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="counterparty"
+                panel="left"
               >
                 <TruncatedCell 
                   text={movement?.counterparty} 
@@ -224,6 +223,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="tradeRef"
+                panel="left"
               >
                 <TruncatedCell 
                   text={movement?.trade_reference} 
@@ -236,6 +236,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="bargeName"
+                panel="left"
               >
                 <TruncatedCell 
                   text={movement?.barge_name} 
@@ -248,6 +249,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="movementDate"
+                panel="left"
               >
                 <TruncatedCell 
                   text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
@@ -260,6 +262,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="nominationDate"
+                panel="left"
               >
                 <TruncatedCell 
                   text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
@@ -272,6 +275,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="customs"
+                panel="left"
               >
                 <span className={`
                   px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
@@ -287,6 +291,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="sustainability"
+                panel="left"
               >
                 <TruncatedCell 
                   text={movement?.sustainability} 
@@ -308,6 +313,7 @@ const SortableAssignmentList = ({
               <KeyboardNavigableCell
                 rowId={item.id}
                 columnName="quantity"
+                panel="left"
               >
                 <div className="flex justify-center">
                   <ProductToken 

@@ -113,21 +113,6 @@ const StoragePage = () => {
   } = useKeyboardShortcuts();
 
   // Callbacks for keyboard shortcuts
-  const handleMoveRow = (fromIndex: number, toIndex: number) => {
-    if (selectedTerminalId) {
-      // TODO: Implement row reordering logic
-      // This would need to be added to the backend service
-      toast.info(`Moving row from ${fromIndex} to ${toIndex}`);
-    }
-  };
-
-  const handleSaveRowOrder = () => {
-    if (selectedTerminalId) {
-      // TODO: Implement save row order logic
-      toast.success('Row order saved');
-    }
-  };
-
   const handleEditCell = (rowId: string, columnName: string) => {
     // This function is called when a user presses Enter on a cell
     // For now, just show a toast
@@ -150,6 +135,11 @@ const StoragePage = () => {
     'counterparty', 'tradeRef', 'bargeName', 'movementDate', 
     'nominationDate', 'customs', 'sustainability', 'comments', 'quantity'
   ];
+  
+  // Right panel column names
+  const rightPanelColumnNames = [
+    'tank-movement', 'tank-balance'
+  ];
 
   // Define which columns are editable
   const editableColumnNames = ['comments'];
@@ -157,8 +147,6 @@ const StoragePage = () => {
   // Set up keyboard shortcuts
   useStorageKeyboardShortcuts({
     rows: movements.map(m => ({ id: m.assignment_id })),
-    onMoveRow: handleMoveRow,
-    onSaveRowOrder: handleSaveRowOrder,
     onEditCell: handleEditCell,
     onSaveCellEdit: handleSaveCellEdit,
     onCancelCellEdit: handleCancelCellEdit,
@@ -175,7 +163,8 @@ const StoragePage = () => {
       setSelectedTank(undefined);
       setIsTankFormOpen(true);
     },
-    columnNames: leftPanelColumnNames,
+    leftPanelColumns: leftPanelColumnNames,
+    rightPanelColumns: rightPanelColumnNames,
     editableCellNames: editableColumnNames
   });
 
@@ -246,11 +235,7 @@ const StoragePage = () => {
       'Keyboard Shortcuts', 
       { 
         description: 
-          'Alt+S: Selection mode\n' +
-          'Alt+T: Add terminal\n' +
-          'Alt+N: Add tank\n' +
-          'Ctrl+Left/Right: Switch terminals\n' +
-          'Arrow keys: Navigate\n' +
+          'Arrow keys: Navigate cells\n' +
           'Enter: Edit/Save\n' +
           'Escape: Cancel/Exit mode'
       }
@@ -689,17 +674,12 @@ const StoragePage = () => {
                             
                             const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                             
-                            // Check if this row is selected
-                            const isSelected = shortcutMode === 'selection' && selectedTerminalId;
-                            
                             return (
                               <TableRow 
                                 key={`scroll-${movement.id}`} 
                                 className={cn(
                                   "border-b border-white/5 h-10", 
-                                  bgColorClass,
-                                  isSelected && 
-                                    "outline outline-2 outline-offset-0 outline-brand-lime"
+                                  bgColorClass
                                 )}
                               >
                                 {tanks.map((tank) => {

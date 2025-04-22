@@ -34,7 +34,9 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
     shortcutMode, 
     selectedRowId, 
     selectedColumnName,
-    isEditMode
+    isEditMode,
+    setShortcutMode,
+    setIsEditMode
   } = useKeyboardShortcuts();
 
   // If this is the selected cell and we're in edit mode, open the popover
@@ -52,6 +54,11 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       toast.success('Comments saved successfully');
+      
+      if (isEditMode) {
+        setShortcutMode('cellNavigation');
+        setIsEditMode(false);
+      }
     } catch (error) {
       toast.error('Failed to save comments');
       console.error('Error saving comments:', error);
@@ -63,6 +70,11 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const handleCancel = () => {
     setComments(displayedComments);
     setIsOpen(false);
+    
+    if (isEditMode) {
+      setShortcutMode('cellNavigation');
+      setIsEditMode(false);
+    }
   };
 
   // Handle keyboard commands while editing
@@ -96,6 +108,7 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
           )}
           data-row-id={rowId}
           data-column-name="comments"
+          data-panel="left"
         >
           <span className="truncate max-w-[120px]">
             {displayedComments || '-'}
