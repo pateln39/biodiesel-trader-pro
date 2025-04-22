@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -348,10 +347,16 @@ const StoragePage = () => {
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex justify-center items-center">
-                                      <Database className="h-4 w-4 mr-1" />
-                                      <span className="font-bold">Tank {tank.tank_number}</span>
-                                    </div>
+                                    <EditableDropdownField
+                                      initialValue={tank.current_product}
+                                      options={productOptions}
+                                      onSave={(value) => updateTankProduct(tank.id, value)}
+                                      className={cn(
+                                        "text-[10px] font-bold text-center w-full",
+                                        PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
+                                      )}
+                                      truncate={false}
+                                    />
                                   </KeyboardNavigableCell>
                                 </TableHead>
                               ))}
@@ -366,7 +371,9 @@ const StoragePage = () => {
                                   panel="right" 
                                   className="h-full w-full"
                                 >
-                                  <div></div>
+                                  <div className="text-[10px] font-bold text-center w-full">
+                                    Summary
+                                  </div>
                                 </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead 
@@ -379,7 +386,9 @@ const StoragePage = () => {
                                   panel="right" 
                                   className="h-full w-full"
                                 >
-                                  <div>Summary</div>
+                                  <div className="text-[10px] font-bold text-center w-full">
+                                    Balances
+                                  </div>
                                 </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
@@ -398,12 +407,13 @@ const StoragePage = () => {
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex justify-center">
+                                    <div className="flex items-center justify-center">
+                                      <span className="mr-1">Tank</span>
                                       <EditableField
                                         initialValue={tank.tank_number}
                                         onSave={(value) => updateTankNumber(tank.id, value)}
-                                        className="text-[10px] font-medium text-center"
-                                        maxWidth={100}
+                                        className="text-[10px] text-center"
+                                        truncate={false}
                                       />
                                     </div>
                                   </KeyboardNavigableCell>
@@ -419,9 +429,7 @@ const StoragePage = () => {
                                   col={tanks.length * 3} 
                                   panel="right" 
                                   className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
+                                ></KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
                             
@@ -439,14 +447,40 @@ const StoragePage = () => {
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex flex-col items-center">
-                                      <span className="text-[9px] text-muted-foreground">Capacity (MT):</span>
-                                      <EditableNumberField
-                                        initialValue={tank.capacity_mt}
-                                        onSave={(value) => updateTankCapacity(tank.id, value)}
-                                        className="text-[10px] font-medium text-center"
-                                      />
+                                    <div className="flex justify-between items-center px-2">
+                                      <span>Capacity: </span>
+                                      <div className="flex items-center">
+                                        <EditableNumberField
+                                          initialValue={tank.capacity_mt}
+                                          onSave={(value) => updateTankCapacity(tank.id, value)}
+                                          className="text-[10px] w-20"
+                                        /> MT
+                                        <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
+                                      </div>
                                     </div>
+                                    {(() => {
+                                      const utilization = calculateTankUtilization(tank);
+                                      return (
+                                        <>
+                                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                            <div 
+                                              className="bg-brand-lime h-2 rounded-full" 
+                                              style={{ 
+                                                width: `${Math.min(utilization.utilizationMT, 100)}%` 
+                                              }}
+                                            ></div>
+                                          </div>
+                                          <div className="flex justify-between px-2 mt-1">
+                                            <span className="text-[9px] text-muted-foreground">
+                                              {Math.round(utilization.currentBalance)} MT
+                                            </span>
+                                            <span className="text-[9px] text-muted-foreground">
+                                              {Math.round(utilization.utilizationMT)}%
+                                            </span>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                   </KeyboardNavigableCell>
                                 </TableHead>
                               ))}
@@ -461,7 +495,9 @@ const StoragePage = () => {
                                   panel="right" 
                                   className="h-full w-full"
                                 >
-                                  <div></div>
+                                  <div className="flex items-center h-full px-2">
+                                    <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
+                                  </div>
                                 </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
@@ -474,18 +510,41 @@ const StoragePage = () => {
                                   className="text-[10px] border-r border-white/30"
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-3} 
+                                    row={-4} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex flex-col items-center">
-                                      <span className="text-[9px] text-muted-foreground">Capacity (M³):</span>
-                                      <div className="text-[10px] font-medium text-center">
-                                        {tank.capacity_m3.toFixed(2)}
+                                    <div className="flex justify-between items-center px-2">
+                                      <span>Capacity:</span>
+                                      <div className="flex items-center">
+                                        {tank.capacity_m3.toFixed(2)} M³
                                       </div>
                                     </div>
+                                    {(() => {
+                                      const utilization = calculateTankUtilization(tank);
+                                      return (
+                                        <>
+                                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                            <div 
+                                              className="bg-brand-blue h-2 rounded-full" 
+                                              style={{ 
+                                                width: `${Math.min(utilization.utilizationM3, 100)}%` 
+                                              }}
+                                            ></div>
+                                          </div>
+                                          <div className="flex justify-between px-2 mt-1">
+                                            <span className="text-[9px] text-muted-foreground">
+                                              {utilization.balanceM3.toFixed(2)} M³
+                                            </span>
+                                            <span className="text-[9px] text-muted-foreground">
+                                              {Math.round(utilization.utilizationM3)}%
+                                            </span>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                   </KeyboardNavigableCell>
                                 </TableHead>
                               ))}
@@ -495,12 +554,14 @@ const StoragePage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <KeyboardNavigableCell 
-                                  row={-3} 
+                                  row={-4} 
                                   col={tanks.length * 3} 
                                   panel="right" 
                                   className="h-full w-full"
                                 >
-                                  <div></div>
+                                  <div className="flex items-center h-full px-2">
+                                    <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
+                                  </div>
                                 </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
@@ -513,19 +574,19 @@ const StoragePage = () => {
                                   className="text-[10px] border-r border-white/30"
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-2} 
+                                    row={-1} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex justify-center items-center">
-                                      <span className="text-[9px] text-muted-foreground mr-1">Spec:</span>
+                                    <div className="flex justify-between px-2">
+                                      <span className="text-muted-foreground">Spec:</span>
                                       <EditableField
-                                        initialValue={tank.spec || ''}
+                                        initialValue={tank.spec}
                                         onSave={(value) => updateTankSpec(tank.id, value)}
-                                        className="text-[10px] font-medium"
-                                        placeholder="Add spec..."
+                                        className="text-[10px]"
+                                        maxWidth={100}
                                       />
                                     </div>
                                   </KeyboardNavigableCell>
@@ -535,16 +596,7 @@ const StoragePage = () => {
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-2} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
+                              ></TableHead>
                             </TableRow>
                             
                             <TableRow className="bg-muted/40 border-b border-white/10 h-8">
@@ -561,15 +613,18 @@ const StoragePage = () => {
                                     className="h-full w-full"
                                     allowEditing={true}
                                   >
-                                    <div className="flex justify-center items-center">
-                                      <Thermometer className="h-3 w-3 mr-1" />
-                                      <EditableDropdownField
-                                        initialValue={tank.is_heating_enabled.toString()}
-                                        options={heatingOptions}
-                                        onSave={(value) => updateTankHeating(tank.id, value)}
-                                        className="text-[10px] font-medium"
-                                        maxWidth={50}
-                                      />
+                                    <div className="flex justify-between px-2">
+                                      <span className="text-muted-foreground">Heating:</span>
+                                      <div className="flex items-center">
+                                        <Thermometer className="h-3 w-3 mr-1 text-red-400" />
+                                        <EditableDropdownField
+                                          initialValue={tank.is_heating_enabled ? "true" : "false"}
+                                          options={heatingOptions}
+                                          onSave={(value) => updateTankHeating(tank.id, value)}
+                                          className="text-[10px]"
+                                          truncate={false}
+                                        />
+                                      </div>
                                     </div>
                                   </KeyboardNavigableCell>
                                 </TableHead>
@@ -578,16 +633,7 @@ const StoragePage = () => {
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-1} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
+                              ></TableHead>
                             </TableRow>
                             
                             <TableRow className="bg-muted/50 border-b border-white/10 h-10">
@@ -729,7 +775,6 @@ const StoragePage = () => {
                                             panel="right" 
                                             className="h-full w-full"
                                           >
-                                            <div></div>
                                             {tankMovement?.quantity_m3 ? (tankMovement.quantity_m3).toFixed(2) : '0.00'}
                                           </KeyboardNavigableCell>
                                         </TableCell>
@@ -740,7 +785,6 @@ const StoragePage = () => {
                                             panel="right" 
                                             className="h-full w-full"
                                           >
-                                            <div></div>
                                             {movementSummary.tankBalances[tank.id]?.balanceMT || 0}
                                           </KeyboardNavigableCell>
                                         </TableCell>
