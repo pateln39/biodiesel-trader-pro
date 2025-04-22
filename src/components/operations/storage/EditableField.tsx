@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableFieldProps {
   initialValue: string;
@@ -25,19 +26,52 @@ const EditableField: React.FC<EditableFieldProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { startEditing, endEditing } = useKeyboardNavigationContext();
+
+  useEffect(() => {
+    // Update value if initialValue changes
+    setValue(initialValue);
+  }, [initialValue]);
 
   const handleSave = () => {
     onSave(value);
     setIsOpen(false);
+    endEditing();
   };
 
   const handleCancel = () => {
     setValue(initialValue);
     setIsOpen(false);
+    endEditing();
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      startEditing();
+    } else {
+      endEditing();
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    
+    switch (e.key) {
+      case 'Enter':
+        e.preventDefault();
+        handleSave();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        handleCancel();
+        break;
+    }
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <div 
           className={cn(
@@ -46,6 +80,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
             className
           )}
           style={truncate ? { maxWidth: `${maxWidth}px` } : undefined}
+          data-editable-trigger="true"
         >
           {initialValue || '-'}
         </div>
@@ -53,11 +88,13 @@ const EditableField: React.FC<EditableFieldProps> = ({
       <PopoverContent className="w-72 p-3">
         <div className="space-y-2">
           <Input
+            ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             className="w-full"
             autoFocus
+            onKeyDown={handleKeyDown}
           />
           <div className="flex justify-end space-x-2">
             <Button size="sm" variant="outline" onClick={handleCancel}>
