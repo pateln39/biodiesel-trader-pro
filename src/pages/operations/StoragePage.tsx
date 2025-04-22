@@ -78,6 +78,14 @@ const truncatedHeaders = {
   difference: "Total (MT) - Qty (MT)",
 };
 
+const tankDetailRowTitles = [
+  { key: "tank_number", label: "Tank No." },
+  { key: "spec", label: "Spec" },
+  { key: "heating", label: "Heating" },
+  { key: "capacity_mt", label: "Capacity (MT)" },
+  { key: "capacity_m3", label: "Capacity (M³)" }
+];
+
 const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
@@ -213,6 +221,7 @@ const StoragePage = () => {
             <CardContent>
               <div className="relative border rounded-md overflow-hidden" ref={contentRef}>
                 <div className="flex">
+                  {/* Left Panel */}
                   <ScrollArea 
                     className="flex-shrink-0 z-30 border-r border-white/30" 
                     orientation="horizontal"
@@ -230,7 +239,22 @@ const StoragePage = () => {
                             </TableHead>
                           </TableRow>
                         </TableHeader>
-                        
+                        {/* Add empty rows at the top to align with right panel tank detail rows */}
+                        <TableBody>
+                          {tankDetailRowTitles.map((_, idx) => (
+                            <TableRow key={`left-empty-${idx}`} className="h-10">
+                              {Object.keys(stickyColumnWidths).map((k, colIdx) => (
+                                <TableCell 
+                                  key={`left-empty-cell-${idx}-${colIdx}`} 
+                                  className="bg-transparent border-none h-10 p-0" 
+                                  style={{ width: stickyColumnWidths[k] }}>
+                                  {/* Empty cell for alignment */}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                        {/* Assignment list follows underneath empty rows */}
                         {selectedTerminalId && (
                           <SortableAssignmentList
                             terminalId={selectedTerminalId}
@@ -243,6 +267,7 @@ const StoragePage = () => {
                     </div>
                   </ScrollArea>
                   
+                  {/* Right Panel */}
                   <div className="overflow-hidden flex-grow">
                     <ScrollArea className="h-[700px]" orientation="horizontal" ref={rightPanelRef}>
                       <div className="min-w-[1800px]">
@@ -252,6 +277,102 @@ const StoragePage = () => {
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
                                   key={`${tank.id}-header`}
+                                  colSpan={3} 
+                                  className={cn(
+                                    "text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                                  )}
+                                >
+                                  {/* Moved only the product selector to below */}
+                                </TableHead>
+                              ))}
+                              
+                              <TableHead 
+                                colSpan={1} 
+                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                              >
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <div className="text-[10px] font-bold text-center w-full">
+                                    Summary
+                                  </div>
+                                </KeyboardNavigableCell>
+                              </TableHead>
+                              <TableHead 
+                                colSpan={5} 
+                                className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                              >
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 1} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <div className="text-[10px] font-bold text-center w-full">
+                                    Balances
+                                  </div>
+                                </KeyboardNavigableCell>
+                              </TableHead>
+                            </TableRow>
+
+                            {/* Tank details rows: Renewed here */}
+                            {tankDetailRowTitles.map((detail, detailIdx) => (
+                              <TableRow key={`tank-detail-${detailIdx}`} className="bg-muted/40 border-b border-white/10 h-10">
+                                {tanks.map((tank, tankIndex) => (
+                                  <React.Fragment key={`${tank.id}-detail-${detail.key}`}>
+                                    <TableHead className="text-center text-[10px]" colSpan={3}>
+                                      {detail.key === "tank_number" && (
+                                        <div className="font-semibold text-[10px]">{tank.tank_number || "-"}</div>
+                                      )}
+                                      {detail.key === "spec" && (
+                                        <EditableField
+                                          initialValue={tank.spec || ""}
+                                          onSave={(value) => updateTankSpec(tank.id, value)}
+                                          className="text-[10px] font-normal text-center"
+                                          truncate={false}
+                                        />
+                                      )}
+                                      {detail.key === "heating" && (
+                                        <EditableDropdownField
+                                          initialValue={tank.is_heating_enabled ? "Enabled" : "Disabled"}
+                                          options={heatingOptions}
+                                          onSave={(value) => updateTankHeating(tank.id, value === "Enabled")}
+                                          className="text-[10px] font-normal text-center"
+                                          truncate={false}
+                                        />
+                                      )}
+                                      {detail.key === "capacity_mt" && (
+                                        <EditableNumberField
+                                          initialValue={tank.capacity_mt}
+                                          onSave={(value) => updateTankCapacity(tank.id, value, "capacity_mt")}
+                                          className="text-[10px] font-normal text-center w-full"
+                                        />
+                                      )}
+                                      {detail.key === "capacity_m3" && (
+                                        <EditableNumberField
+                                          initialValue={tank.capacity_m3}
+                                          onSave={(value) => updateTankCapacity(tank.id, value, "capacity_m3")}
+                                          className="text-[10px] font-normal text-center w-full"
+                                        />
+                                      )}
+                                    </TableHead>
+                                  </React.Fragment>
+                                ))}
+                                {/* Spacer cells for summary/balance columns to preserve header alignment */}
+                                {Array(rightColumnCount - tanks.length * 3).fill(null).map((_, i) => (
+                                  <TableHead key={`detail-spacer-${detail.key}-${i}`} className="bg-transparent p-0 m-0 border-0"></TableHead>
+                                ))}
+                              </TableRow>
+                            ))}
+
+                            {/* Product selector row (as before) */}
+                            <TableRow className="bg-muted/50 border-b border-white/10 h-10">
+                              {tanks.map((tank, tankIndex) => (
+                                <TableHead 
+                                  key={`${tank.id}-header-product`}
                                   colSpan={3} 
                                   className={cn(
                                     "text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
