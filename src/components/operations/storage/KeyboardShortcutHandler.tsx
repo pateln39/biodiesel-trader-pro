@@ -128,7 +128,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
       activeElement.tagName === 'INPUT' || 
       activeElement.tagName === 'TEXTAREA' || 
       activeElement.tagName === 'SELECT' ||
-      activeElement.isContentEditable
+      activeElement.hasAttribute('contenteditable')
     );
 
     if (isInputActive && e.key !== 'Escape') {

@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -233,7 +232,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
@@ -246,7 +247,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
@@ -259,7 +262,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
@@ -272,7 +277,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
@@ -285,7 +292,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
@@ -298,7 +307,9 @@ const StoragePage = () => {
                                 col={0} 
                                 panel="left" 
                                 className="h-full w-full"
-                              ></KeyboardNavigableCell>
+                              >
+                                <div></div>
+                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                         </TableHeader>

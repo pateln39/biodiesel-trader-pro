@@ -99,8 +99,8 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3">
         <div className="space-y-2" onKeyDown={handleKeyDown}>
-          <Select value={value} onValueChange={setValue} autoFocus>
-            <SelectTrigger className="w-full">
+          <Select value={value} onValueChange={setValue}>
+            <SelectTrigger className="w-full" autoFocus>
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>

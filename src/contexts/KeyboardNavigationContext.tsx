@@ -7,7 +7,7 @@ type Panel = 'left' | 'right' | 'none';
 interface CellPosition {
   row: number; // Negative for header rows, 0+ for data rows
   col: number;
-  panel: Panel;
+  panel: 'left' | 'right'; // Changed from Panel to only allow 'left' or 'right'
 }
 
 interface KeyboardNavigationContextType {
