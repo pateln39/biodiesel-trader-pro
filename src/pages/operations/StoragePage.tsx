@@ -53,6 +53,7 @@ const summaryColumnWidths = {
   t2Balance: 80,
   currentStock: 100,
   currentUllage: 100,
+  difference: 100,
 };
 
 const truncatedHeaders = {
@@ -71,6 +72,7 @@ const truncatedHeaders = {
   t2Balance: "T2",
   currentStock: "Current Stock",
   currentUllage: "Current Ullage",
+  difference: "Total - Qty",
 };
 
 const StoragePage = () => {
@@ -545,6 +547,13 @@ const StoragePage = () => {
                                 className="text-[10px] text-center mx-auto"
                               />
                             </TableHead>
+                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.difference}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.difference}
+                                width={summaryColumnWidths.difference - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         
@@ -620,6 +629,9 @@ const StoragePage = () => {
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
                                   {Math.round(movementSummary.currentUllage)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {Math.round(movementSummary.currentStockMT - movementSummary.totalMTMoved)}
                                 </TableCell>
                               </TableRow>
                             );
