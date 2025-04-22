@@ -47,8 +47,6 @@ const stickyColumnWidths = {
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
 const summaryColumnWidths = {
-  totalMT: 80,
-  totalM3: 80,
   t1Balance: 80,
   t2Balance: 80,
   currentStock: 100,
@@ -66,8 +64,6 @@ const truncatedHeaders = {
   sustainability: "Sustain.",
   comments: "Comments",
   quantity: "Qty (MT)",
-  totalMT: "Total (MT)",
-  totalM3: "Total (M³)",
   t1Balance: "T1",
   t2Balance: "T2",
   currentStock: "Current Stock",
@@ -505,20 +501,6 @@ const StoragePage = () => {
                               </React.Fragment>
                             ))}
                             
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.totalMT}
-                                width={summaryColumnWidths.totalMT - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalM3}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.totalM3}
-                                width={summaryColumnWidths.totalM3 - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
                             <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t1Balance}px` }}>
                               <TruncatedCell
                                 text={truncatedHeaders.t1Balance}
