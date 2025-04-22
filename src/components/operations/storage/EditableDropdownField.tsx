@@ -48,6 +48,17 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
     setIsOpen(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
   // Register keyboard shortcuts when the popover is open
   useEffect(() => {
     if (isOpen) {
@@ -104,31 +115,23 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3">
         <div className="space-y-2">
-          <Select 
-            value={value} 
-            onValueChange={setValue}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSave();
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                handleCancel();
-              }
-            }}
-          >
-            <SelectTrigger ref={selectRef} className="w-full focus:ring-2">
-              <SelectValue placeholder={placeholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div onKeyDown={handleKeyDown}>
+            <Select 
+              value={value} 
+              onValueChange={setValue}
+            >
+              <SelectTrigger ref={selectRef} className="w-full focus:ring-2">
+                <SelectValue placeholder={placeholder} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex justify-between items-center">
             <div className="text-xs text-muted-foreground">
               <span className="inline-block mr-2">
