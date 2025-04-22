@@ -72,7 +72,7 @@ const truncatedHeaders = {
   t2Balance: "T2",
   currentStock: "Current Stock",
   currentUllage: "Current Ullage",
-  difference: "Total - Qty",
+  difference: "Total (MT) - Qty (MT)",
 };
 
 const StoragePage = () => {
