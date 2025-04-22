@@ -1,11 +1,10 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableFieldProps {
   initialValue: string;
@@ -26,56 +25,19 @@ const EditableField: React.FC<EditableFieldProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { shortcutMode, exitEditMode } = useKeyboardNavigationContext();
-
-  // Focus the input when the popover opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isOpen]);
-
-  // Listen for Enter and Escape keys in the input field
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      e.stopPropagation();
-      handleSave();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      handleCancel();
-    }
-  };
 
   const handleSave = () => {
     onSave(value);
     setIsOpen(false);
-    exitEditMode();
   };
 
   const handleCancel = () => {
     setValue(initialValue);
     setIsOpen(false);
-    exitEditMode();
   };
 
-  // If the component is triggered to open via keyboard navigation
-  useEffect(() => {
-    if (shortcutMode === 'editing' && !isOpen) {
-      setIsOpen(true);
-    }
-  }, [shortcutMode, isOpen]);
-
   return (
-    <Popover open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if (!open) {
-        exitEditMode();
-      }
-    }}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div 
           className={cn(
@@ -91,12 +53,11 @@ const EditableField: React.FC<EditableFieldProps> = ({
       <PopoverContent className="w-72 p-3">
         <div className="space-y-2">
           <Input
-            ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             className="w-full"
-            onKeyDown={handleKeyDown}
+            autoFocus
           />
           <div className="flex justify-end space-x-2">
             <Button size="sm" variant="outline" onClick={handleCancel}>

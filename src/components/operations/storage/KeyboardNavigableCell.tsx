@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { useKeyboardNavigationContext, ShortcutMode } from '@/contexts/KeyboardNavigationContext';
-import { cn } from '@/lib/utils';
+import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
+
+type ShortcutMode = 'editing' | 'cellNavigation';
 
 interface KeyboardNavigableCellProps {
   children: React.ReactNode;
@@ -11,8 +12,6 @@ interface KeyboardNavigableCellProps {
   onArrow?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   className?: string;
   allowEditing?: boolean;
-  cellPosition?: { row: number; col: number; panel: 'left' | 'right' | 'headerLeft' | 'headerRight' | null };
-  isActive?: boolean;
 }
 
 const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
@@ -23,44 +22,17 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
   onArrow,
   className,
   allowEditing = false,
-  cellPosition,
-  isActive = false,
 }) => {
   const cellRef = useRef<HTMLDivElement>(null);
-  const { 
-    shortcutMode, 
-    setShortcutMode,
-    selectedCell,
-    navigateToCell,
-    enterEditMode,
-    exitEditMode
-  } = useKeyboardNavigationContext();
-  
+  const { shortcutMode, setShortcutMode } = useKeyboardNavigationContext();
   const [isEditing, setIsEditing] = useState(false);
 
   // Focus the cell when selected
   useEffect(() => {
-    if (cellRef.current && isActive && shortcutMode === 'cellNavigation') {
+    if (cellRef.current && shortcutMode === 'cellNavigation') {
       cellRef.current.focus();
-      
-      // Scroll into view if needed, but only if not already visible
-      const rect = cellRef.current.getBoundingClientRect();
-      const isVisible = (
-        rect.top >= 0 &&
-        rect.left >= 0 &&
-        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-      );
-      
-      if (!isVisible) {
-        cellRef.current.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'nearest', 
-          inline: 'nearest' 
-        });
-      }
     }
-  }, [isActive, shortcutMode]);
+  }, [shortcutMode]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // If we're in editing mode, let the child component handle keyboard events
@@ -73,18 +45,16 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'Enter':
         if (onEnter) {
           e.preventDefault();
-          e.stopPropagation();
           onEnter();
           if (allowEditing) {
             setIsEditing(true);
-            enterEditMode();
+            setShortcutMode('editing');
           }
         }
         break;
       case 'Escape':
         if (onEscape) {
           e.preventDefault();
-          e.stopPropagation();
           onEscape();
         }
         break;
@@ -97,16 +67,12 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'ArrowUp':
       case 'ArrowDown':
       case 'ArrowLeft':
-      case 'ArrowRight': {
-        // Stop propagation to prevent default scrolling
-        e.preventDefault();
-        
+      case 'ArrowRight':
         if (onArrow) {
-          const direction = e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right';
-          onArrow(direction);
+          e.preventDefault();
+          onArrow(e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right');
         }
         break;
-      }
       default:
         break;
     }
@@ -117,32 +83,17 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     if (allowEditing && onEnter) {
       onEnter();
       setIsEditing(true);
-      enterEditMode();
-    }
-  };
-
-  // Handle single click to activate this cell for navigation
-  const handleClick = () => {
-    if (cellPosition) {
-      navigateToCell(cellPosition);
+      setShortcutMode('editing');
     }
   };
 
   return (
     <div
       ref={cellRef}
-      className={cn(
-        className,
-        isActive && "ring-[3px] ring-brand-lime ring-inset",
-        isEditing && "ring-2 ring-blue-500 ring-inset"
-      )}
-      tabIndex={isActive ? 0 : -1}
+      className={className}
+      tabIndex={0}
       onKeyDown={handleKeyDown}
-      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      data-row={cellPosition?.row}
-      data-col={cellPosition?.col}
-      data-panel={cellPosition?.panel}
     >
       {children}
     </div>

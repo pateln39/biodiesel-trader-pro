@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableDropdownFieldProps {
   initialValue: string;
@@ -34,26 +33,15 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const { shortcutMode, exitEditMode } = useKeyboardNavigationContext();
-
-  // Focus the select trigger when the popover opens
-  useEffect(() => {
-    if (isOpen && triggerRef.current) {
-      triggerRef.current.focus();
-    }
-  }, [isOpen]);
 
   const handleSave = () => {
     onSave(value);
     setIsOpen(false);
-    exitEditMode();
   };
 
   const handleCancel = () => {
     setValue(initialValue);
     setIsOpen(false);
-    exitEditMode();
   };
 
   const getLabel = (val: string) => {
@@ -61,29 +49,8 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
     return option ? option.label : val;
   };
 
-  // Handle keyboard shortcuts inside the dropdown
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
-    }
-  };
-
-  // If the component is triggered to open via keyboard navigation
-  useEffect(() => {
-    if (shortcutMode === 'editing' && !isOpen) {
-      setIsOpen(true);
-    }
-  }, [shortcutMode, isOpen]);
-
   return (
-    <Popover open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if (!open) {
-        exitEditMode();
-      }
-    }}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div 
           className={cn(
@@ -92,7 +59,6 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
             className
           )}
           style={truncate ? { maxWidth: `${maxWidth}px` } : undefined}
-          onKeyDown={handleKeyDown}
         >
           {getLabel(initialValue) || placeholder}
         </div>
@@ -100,10 +66,10 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
       <PopoverContent className="w-72 p-3">
         <div className="space-y-2">
           <Select value={value} onValueChange={setValue}>
-            <SelectTrigger ref={triggerRef} className="w-full">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent onKeyDown={handleKeyDown}>
+            <SelectContent>
               {options.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
