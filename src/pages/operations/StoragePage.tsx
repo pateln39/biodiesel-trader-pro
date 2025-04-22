@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -223,78 +222,39 @@ const StoragePage = () => {
                     <div style={{ minWidth: `${totalStickyWidth}px` }}>
                       <Table>
                         <TableHeader>
+                          {/* Match the number of empty header rows in left panel to right panel */}
                           <TableRow className="bg-muted/50 border-b border-white/10 h-12">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-6} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px] font-bold">Movement Information</div>
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-6} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px] font-bold">&nbsp;</div> {/* <-- Just space, no label */}
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-5} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Trade Details</div>
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-5} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px]">&nbsp;</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-4} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Shipment Information</div>
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-4} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px]">&nbsp;</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-3} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Assignment Details</div>
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-3} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px]">&nbsp;</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
                           <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-2} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Status Information</div>
+                            <TableHead colSpan={9} className="bg-brand-navy text-[10px]">
+                              <KeyboardNavigableCell row={-2} col={0} panel="left" className="h-full w-full">
+                                <div className="text-[10px]">&nbsp;</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
@@ -562,6 +522,7 @@ const StoragePage = () => {
                               </TableHead>
                             </TableRow>
                             
+                            {/* The remaining rows are unchanged */}
                             {/* Spec row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                               {tanks.map((tank, tankIndex) => (
@@ -933,16 +894,6 @@ const StoragePage = () => {
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
                                       col={tanks.length * 3 + 5} 
-                                      panel="right" 
-                                      className="h-full w-full"
-                                    >
-                                      {Math.round(movementSummary.currentUllage)}
-                                    </KeyboardNavigableCell>
-                                  </TableCell>
-                                  <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                    <KeyboardNavigableCell 
-                                      row={rowIndex} 
-                                      col={tanks.length * 3 + 6} 
                                       panel="right" 
                                       className="h-full w-full"
                                     >
