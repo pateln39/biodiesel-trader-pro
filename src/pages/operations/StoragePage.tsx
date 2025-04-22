@@ -1,3 +1,4 @@
+
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -233,7 +234,7 @@ const StoragePage = () => {
                                 panel="left" 
                                 className="h-full w-full"
                               >
-                                <div></div>
+                                <div className="text-[10px] font-bold">Movement Information</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
@@ -248,7 +249,7 @@ const StoragePage = () => {
                                 panel="left" 
                                 className="h-full w-full"
                               >
-                                <div></div>
+                                <div className="text-[10px]">Trade Details</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
@@ -263,7 +264,7 @@ const StoragePage = () => {
                                 panel="left" 
                                 className="h-full w-full"
                               >
-                                <div></div>
+                                <div className="text-[10px]">Shipment Information</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
@@ -278,7 +279,7 @@ const StoragePage = () => {
                                 panel="left" 
                                 className="h-full w-full"
                               >
-                                <div></div>
+                                <div className="text-[10px]">Assignment Details</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
@@ -293,25 +294,11 @@ const StoragePage = () => {
                                 panel="left" 
                                 className="h-full w-full"
                               >
-                                <div></div>
+                                <div className="text-[10px]">Status Information</div>
                               </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
-                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-1} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div></div>
-                              </KeyboardNavigableCell>
-                            </TableHead>
-                          </TableRow>
+                          {/* The SortableAssignmentList component now renders the header row with KeyboardNavigableCells */}
                         </TableHeader>
                         
                         {selectedTerminalId && (
@@ -331,6 +318,7 @@ const StoragePage = () => {
                       <div className="min-w-[1800px]">
                         <Table>
                           <TableHeader>
+                            {/* Tank product row */}
                             <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -361,6 +349,7 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Summary and Balances headers */}
                               <TableHead 
                                 colSpan={1} 
                                 className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
@@ -393,6 +382,7 @@ const StoragePage = () => {
                               </TableHead>
                             </TableRow>
                             
+                            {/* Tank number row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -420,6 +410,7 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Summary column headers for tank number row */}
                               <TableHead 
                                 colSpan={6} 
                                 className="text-center text-[10px] border-r border-white/30"
@@ -429,10 +420,13 @@ const StoragePage = () => {
                                   col={tanks.length * 3} 
                                   panel="right" 
                                   className="h-full w-full"
-                                ></KeyboardNavigableCell>
+                                >
+                                  <div></div>
+                                </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
                             
+                            {/* Capacity MT row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -485,6 +479,7 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Summary for capacity MT row */}
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
@@ -502,6 +497,7 @@ const StoragePage = () => {
                               </TableHead>
                             </TableRow>
                             
+                            {/* Capacity M3 row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -510,11 +506,10 @@ const StoragePage = () => {
                                   className="text-[10px] border-r border-white/30"
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-4} 
+                                    row={-3} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
-                                    allowEditing={true}
                                   >
                                     <div className="flex justify-between items-center px-2">
                                       <span>Capacity:</span>
@@ -549,12 +544,13 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Summary for capacity M3 row */}
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <KeyboardNavigableCell 
-                                  row={-4} 
+                                  row={-3} 
                                   col={tanks.length * 3} 
                                   panel="right" 
                                   className="h-full w-full"
@@ -566,6 +562,7 @@ const StoragePage = () => {
                               </TableHead>
                             </TableRow>
                             
+                            {/* Spec row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -574,7 +571,7 @@ const StoragePage = () => {
                                   className="text-[10px] border-r border-white/30"
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-1} 
+                                    row={-2} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
@@ -593,12 +590,23 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Empty space for spec row */}
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
-                              ></TableHead>
+                              >
+                                <KeyboardNavigableCell 
+                                  row={-2} 
+                                  col={tanks.length * 3} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <div></div>
+                                </KeyboardNavigableCell>
+                              </TableHead>
                             </TableRow>
                             
+                            {/* Heating row */}
                             <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
@@ -607,7 +615,7 @@ const StoragePage = () => {
                                   className="text-[10px] border-r border-white/30"
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-1} 
+                                    row={-1.5} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
@@ -630,12 +638,23 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
+                              {/* Empty space for heating row */}
                               <TableHead 
                                 colSpan={6} 
                                 className="text-[10px] border-r border-white/30"
-                              ></TableHead>
+                              >
+                                <KeyboardNavigableCell 
+                                  row={-1.5} 
+                                  col={tanks.length * 3} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <div></div>
+                                </KeyboardNavigableCell>
+                              </TableHead>
                             </TableRow>
                             
+                            {/* Column headers row */}
                             <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                               {tanks.map((tank, tankIndex) => (
                                 <React.Fragment key={tank.id}>
@@ -680,54 +699,104 @@ const StoragePage = () => {
                                 </React.Fragment>
                               ))}
                               
+                              {/* Summary column headers */}
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.totalMT}
-                                  width={summaryColumnWidths.totalMT - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.totalMT}
+                                    width={summaryColumnWidths.totalMT - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalM3}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.totalM3}
-                                  width={summaryColumnWidths.totalM3 - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 1} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.totalM3}
+                                    width={summaryColumnWidths.totalM3 - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t1Balance}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.t1Balance}
-                                  width={summaryColumnWidths.t1Balance - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 2} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.t1Balance}
+                                    width={summaryColumnWidths.t1Balance - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t2Balance}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.t2Balance}
-                                  width={summaryColumnWidths.t2Balance - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 3} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.t2Balance}
+                                    width={summaryColumnWidths.t2Balance - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.currentStock}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.currentStock}
-                                  width={summaryColumnWidths.currentStock - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 4} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.currentStock}
+                                    width={summaryColumnWidths.currentStock - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.currentUllage}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.currentUllage}
-                                  width={summaryColumnWidths.currentUllage - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 5} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.currentUllage}
+                                    width={summaryColumnWidths.currentUllage - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                               <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.difference}px` }}>
-                                <TruncatedCell
-                                  text={truncatedHeaders.difference}
-                                  width={summaryColumnWidths.difference - 8}
-                                  className="text-[10px] text-center mx-auto"
-                                />
+                                <KeyboardNavigableCell 
+                                  row={-1} 
+                                  col={tanks.length * 3 + 6} 
+                                  panel="right" 
+                                  className="h-full w-full"
+                                >
+                                  <TruncatedCell
+                                    text={truncatedHeaders.difference}
+                                    width={summaryColumnWidths.difference - 8}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
                           </TableHeader>
@@ -792,43 +861,93 @@ const StoragePage = () => {
                                     );
                                   })}
                                   
+                                  {/* Summary cells */}
                                   <TableCell className="text-center text-[10px] py-2">
-                                    {(() => {
-                                      const totalMTMoved = Math.round(movementSummary.totalMTMoved);
-                                      const movementQuantity = Math.round(movement.assignment_quantity || 0);
-                                      
-                                      return (
-                                        <div className="flex items-center justify-center space-x-1">
-                                          <span>{totalMTMoved}</span>
-                                          {totalMTMoved !== movementQuantity && (
-                                            <Badge 
-                                              variant="outline" 
-                                              className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
-                                            >
-                                              !
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      );
-                                    })()}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {(() => {
+                                        const totalMTMoved = Math.round(movementSummary.totalMTMoved);
+                                        const movementQuantity = Math.round(movement.assignment_quantity || 0);
+                                        
+                                        return (
+                                          <div className="flex items-center justify-center space-x-1">
+                                            <span>{totalMTMoved}</span>
+                                            {totalMTMoved !== movementQuantity && (
+                                              <Badge 
+                                                variant="outline" 
+                                                className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                              >
+                                                !
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2">
-                                    {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 1} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
-                                    {Math.round(movementSummary.t1Balance)}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 2} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.t1Balance)}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
-                                    {Math.round(movementSummary.t2Balance)}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 3} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.t2Balance)}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2 font-medium">
-                                    {Math.round(movementSummary.currentStockMT)}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 4} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.currentStockMT)}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                    {Math.round(movementSummary.currentUllage)}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 5} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.currentUllage)}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                   <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                    {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 6} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                    </KeyboardNavigableCell>
                                   </TableCell>
                                 </TableRow>
                               );

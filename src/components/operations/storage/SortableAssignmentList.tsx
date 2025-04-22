@@ -13,6 +13,7 @@ import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import KeyboardNavigableCell from '@/components/operations/storage/KeyboardNavigableCell';
 
 interface SortableAssignmentListProps {
   terminalId: string;
@@ -80,166 +81,293 @@ const SortableAssignmentList = ({
             className={`w-[${columnWidths.counterparty}px] h-10`}
             style={{ width: `${columnWidths.counterparty}px` }}
           >
-            <TruncatedCell 
-              text="Counterparty" 
-              width={columnWidths.counterparty - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={0} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Counterparty" 
+                width={columnWidths.counterparty - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.tradeRef}px] h-10`}
             style={{ width: `${columnWidths.tradeRef}px` }}
           >
-            <TruncatedCell 
-              text="Trade Ref" 
-              width={columnWidths.tradeRef - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={1} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Trade Ref" 
+                width={columnWidths.tradeRef - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.bargeName}px] h-10`}
             style={{ width: `${columnWidths.bargeName}px` }}
           >
-            <TruncatedCell 
-              text="Barge" 
-              width={columnWidths.bargeName - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={2} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Barge" 
+                width={columnWidths.bargeName - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.movementDate}px] h-10`}
             style={{ width: `${columnWidths.movementDate}px` }}
           >
-            <TruncatedCell 
-              text="Move Date" 
-              width={columnWidths.movementDate - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={3} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Move Date" 
+                width={columnWidths.movementDate - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.nominationDate}px] h-10`}
             style={{ width: `${columnWidths.nominationDate}px` }}
           >
-            <TruncatedCell 
-              text="Nom. Valid" 
-              width={columnWidths.nominationDate - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={4} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Nom. Valid" 
+                width={columnWidths.nominationDate - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.customs}px] h-10`}
             style={{ width: `${columnWidths.customs}px` }}
           >
-            <TruncatedCell 
-              text="Customs" 
-              width={columnWidths.customs - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={5} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Customs" 
+                width={columnWidths.customs - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.sustainability}px] h-10`}
             style={{ width: `${columnWidths.sustainability}px` }}
           >
-            <TruncatedCell 
-              text="Sustain." 
-              width={columnWidths.sustainability - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={6} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Sustain." 
+                width={columnWidths.sustainability - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.comments}px] h-10`}
             style={{ width: `${columnWidths.comments}px` }}
           >
-            <TruncatedCell 
-              text="Comments" 
-              width={columnWidths.comments - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={7} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Comments" 
+                width={columnWidths.comments - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
           <TableHead 
             className={`w-[${columnWidths.quantity}px] h-10`}
             style={{ width: `${columnWidths.quantity}px` }}
           >
-            <TruncatedCell 
-              text="Qty (MT)" 
-              width={columnWidths.quantity - 8} 
-              className="text-[10px] font-medium"
-            />
+            <KeyboardNavigableCell 
+              row={-1} 
+              col={8} 
+              panel="left" 
+              className="h-full w-full"
+            >
+              <TruncatedCell 
+                text="Qty (MT)" 
+                width={columnWidths.quantity - 8} 
+                className="text-[10px] font-medium"
+              />
+            </KeyboardNavigableCell>
           </TableHead>
         </>
       )}
-      renderRow={(item) => {
+      renderRow={(item, index) => {
         const { movement, assignment } = item;
         
         return (
           <>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.counterparty} 
-                width={columnWidths.counterparty - 16} 
-                className="font-medium text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.trade_reference} 
-                width={columnWidths.tradeRef - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.barge_name} 
-                width={columnWidths.bargeName - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
-                width={columnWidths.movementDate - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
-                width={columnWidths.nominationDate - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <span className={`
-                px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
-                ${movement?.customs_status === "T1" 
-                  ? "bg-green-900/60 text-green-200" 
-                  : "bg-blue-900/60 text-blue-200"}
-              `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status}
-              </span>
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.sustainability} 
-                width={columnWidths.sustainability - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <EditableAssignmentComments
-                assignmentId={assignment.id as string}
-                initialValue={assignment.comments || ''}
-                onSave={updateAssignmentComments}
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <div className="flex justify-center">
-                <ProductToken 
-                  product={movement?.product}
-                  value={assignment?.quantity_mt?.toString() || '0'}
+              <KeyboardNavigableCell 
+                row={index} 
+                col={0} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={movement?.counterparty} 
+                  width={columnWidths.counterparty - 16} 
+                  className="font-medium text-[10px]"
                 />
-              </div>
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={1} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={movement?.trade_reference} 
+                  width={columnWidths.tradeRef - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={2} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={movement?.barge_name} 
+                  width={columnWidths.bargeName - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={3} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
+                  width={columnWidths.movementDate - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={4} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
+                  width={columnWidths.nominationDate - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={5} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <span className={`
+                  px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
+                  ${movement?.customs_status === "T1" 
+                    ? "bg-green-900/60 text-green-200" 
+                    : "bg-blue-900/60 text-blue-200"}
+                `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
+                  {movement?.customs_status}
+                </span>
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={6} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <TruncatedCell 
+                  text={movement?.sustainability} 
+                  width={columnWidths.sustainability - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={7} 
+                panel="left" 
+                className="h-full w-full"
+                allowEditing={true}
+              >
+                <EditableAssignmentComments
+                  assignmentId={assignment.id as string}
+                  initialValue={assignment.comments || ''}
+                  onSave={updateAssignmentComments}
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <KeyboardNavigableCell 
+                row={index} 
+                col={8} 
+                panel="left" 
+                className="h-full w-full"
+              >
+                <div className="flex justify-center">
+                  <ProductToken 
+                    product={movement?.product}
+                    value={assignment?.quantity_mt?.toString() || '0'}
+                  />
+                </div>
+              </KeyboardNavigableCell>
             </TableCell>
           </>
         );

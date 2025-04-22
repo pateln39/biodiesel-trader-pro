@@ -54,6 +54,9 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     const totalRightCols = rightColumnCount;
     const totalRows = rowCount;
 
+    console.log(`Starting navigation: panel=${panel}, row=${row}, col=${col}, direction=${direction}`);
+    console.log(`Counts: leftCols=${totalLeftCols}, rightCols=${totalRightCols}, rows=${totalRows}, headerRows=${headerRowCount}`);
+
     switch (direction) {
       case 'up':
         // Allow navigation into header rows (negative indices)
@@ -88,20 +91,38 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
         break;
     }
 
-    setSelectedCell({ row, col, panel });
-    scrollCellIntoView({ row, col, panel });
+    console.log(`New cell: panel=${panel}, row=${row}, col=${col}`);
+    
+    // Verify the cell exists before setting it
+    const cellExists = document.querySelector(`[data-gridcell="${panel}-${row}-${col}"]`);
+    if (cellExists) {
+      setSelectedCell({ row, col, panel });
+      scrollCellIntoView({ row, col, panel });
+    } else {
+      console.log(`Cell not found: ${panel}-${row}-${col}`);
+    }
   }, [selectedCell, setSelectedCell, leftColumnCount, rightColumnCount, rowCount, headerRowCount]);
 
   const scrollCellIntoView = useCallback((cell: { row: number, col: number, panel: 'left' | 'right' }) => {
+    console.log(`Attempting to scroll cell into view: ${cell.panel}-${cell.row}-${cell.col}`);
     const cellElement = document.querySelector(`[data-gridcell="${cell.panel}-${cell.row}-${cell.col}"]`) as HTMLElement;
-    if (!cellElement) return;
+    if (!cellElement) {
+      console.log(`Cell element not found: ${cell.panel}-${cell.row}-${cell.col}`);
+      return;
+    }
 
     const containerRef = cell.panel === 'left' ? leftPanelRef : rightPanelRef;
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      console.log(`Container not found for panel: ${cell.panel}`);
+      return;
+    }
 
     const containerRect = container.getBoundingClientRect();
     const cellRect = cellElement.getBoundingClientRect();
+
+    console.log(`Container: ${containerRect.top}, ${containerRect.bottom}, ${containerRect.left}, ${containerRect.right}`);
+    console.log(`Cell: ${cellRect.top}, ${cellRect.bottom}, ${cellRect.left}, ${cellRect.right}`);
 
     // Only scroll if cell is not fully visible
     const isVerticallyVisible = 
@@ -113,6 +134,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
       cellRect.right <= containerRect.right;
 
     if (!isVerticallyVisible || !isHorizontallyVisible) {
+      console.log(`Scrolling cell into view: ${cell.panel}-${cell.row}-${cell.col}`);
       cellElement.scrollIntoView({ 
         behavior: 'smooth', 
         block: 'nearest', 

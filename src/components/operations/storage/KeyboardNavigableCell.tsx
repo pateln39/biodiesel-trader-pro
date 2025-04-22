@@ -35,6 +35,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     setSelectedCell,
     setShortcutMode,
     startEditing,
+    handleEnter,
   } = useKeyboardNavigationContext();
 
   // Check if this cell is the currently selected one
@@ -58,11 +59,16 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     // Handle keyboard shortcuts in cell navigation mode
     switch (e.key) {
       case 'Enter':
-        if (onEnter && isSelected) {
+        if (isSelected) {
           e.preventDefault();
-          onEnter();
-          if (allowEditing) {
+          if (allowEditing && onEnter) {
+            onEnter();
             startEditing();
+          } else if (allowEditing) {
+            // Use the default enter handler if onEnter is not provided but cell is editable
+            handleEnter();
+          } else if (onEnter) {
+            onEnter();
           }
         }
         break;
@@ -105,6 +111,9 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     if (allowEditing && onEnter) {
       onEnter();
       startEditing();
+    } else if (allowEditing) {
+      // Use the default enter handler if onEnter is not provided but cell is editable
+      handleEnter();
     }
   };
 
