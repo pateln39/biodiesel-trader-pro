@@ -94,7 +94,7 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
-    // Remove selection mode check, only check for cell navigation
+    // Only check for cell navigation
     const baseClass = item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
