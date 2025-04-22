@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,13 +17,13 @@ const EETLogo = () => {
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
   const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
   
-  // New state for keyboard navigation
   const [highlightedItemPath, setHighlightedItemPath] = useState<string | null>(null);
 
   const isActive = (path: string) => {
@@ -68,7 +68,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
   const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
 
-  // Function to find next navigable item
   const findNextNavigableItem = (menuItems: any[], currentPath: string | null): string => {
     const allPaths = menuItems.flatMap(item => 
       item.submenu 
@@ -84,7 +83,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return allPaths[(currentIndex + 1) % allPaths.length];
   };
 
-  // Function to find previous navigable item
   const findPrevNavigableItem = (menuItems: any[], currentPath: string | null): string => {
     const allPaths = menuItems.flatMap(item => 
       item.submenu 
@@ -100,10 +98,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return allPaths[(currentIndex - 1 + allPaths.length) % allPaths.length];
   };
 
-  // Keyboard shortcuts and navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle sidebar with Cmd/Ctrl + B
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
         toggleSidebar();
@@ -111,7 +107,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
       if (!sidebarOpen) return;
 
-      // Navigation when sidebar is open
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
@@ -124,7 +119,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         case 'Enter':
           e.preventDefault();
           if (highlightedItemPath) {
-            window.location.href = highlightedItemPath;
+            navigate(highlightedItemPath);
+            setHighlightedItemPath(null);
           }
           break;
         case 'Escape':
@@ -135,7 +131,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen, menuItems]);
+  }, [sidebarOpen, menuItems, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
