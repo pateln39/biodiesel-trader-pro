@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   TableHead, 
   TableCell,
@@ -13,6 +13,8 @@ import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
+import KeyboardNavigableCell from '@/components/operations/storage/KeyboardNavigableCell';
 
 interface SortableAssignmentListProps {
   terminalId: string;
@@ -31,6 +33,33 @@ const SortableAssignmentList = ({
     assignments, 
     handleReorder 
   } = useSortableTerminalAssignments(terminalId);
+
+  const {
+    selectedRowId,
+    shortcutMode,
+    setShortcutMode,
+    setSelectedRowId,
+    setSelectedColumnName,
+    announceShortcutMode
+  } = useKeyboardShortcuts();
+
+  // Auto-select first row when the page loads
+  useEffect(() => {
+    if (sortableItems.length > 0 && !selectedRowId) {
+      setSelectedRowId(sortableItems[0].id);
+      setShortcutMode('selection');
+      announceShortcutMode('selection');
+    }
+  }, []);
+
+  // Define column names for keyboard navigation
+  const columnNames = [
+    'counterparty', 'tradeRef', 'bargeName', 'movementDate', 
+    'nominationDate', 'customs', 'sustainability', 'comments', 'quantity'
+  ];
+
+  // Define which columns are editable
+  const editableColumns = ['comments'];
 
   // Combine movement data with assignment data
   const sortableItems: (SortableItem & { 
@@ -64,9 +93,15 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
-    return item.movement?.buy_sell === "buy" 
+    const isSelected = selectedRowId === item.id && shortcutMode === 'selection';
+    
+    const baseClass = item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
+      
+    return isSelected 
+      ? `${baseClass} outline outline-2 outline-offset-0 outline-brand-lime`
+      : baseClass;
   };
 
   return (
@@ -174,56 +209,91 @@ const SortableAssignmentList = ({
         return (
           <>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.counterparty} 
-                width={columnWidths.counterparty - 16} 
-                className="font-medium text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="counterparty"
+              >
+                <TruncatedCell 
+                  text={movement?.counterparty} 
+                  width={columnWidths.counterparty - 16} 
+                  className="font-medium text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.trade_reference} 
-                width={columnWidths.tradeRef - 16} 
-                className="text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="tradeRef"
+              >
+                <TruncatedCell 
+                  text={movement?.trade_reference} 
+                  width={columnWidths.tradeRef - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.barge_name} 
-                width={columnWidths.bargeName - 16} 
-                className="text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="bargeName"
+              >
+                <TruncatedCell 
+                  text={movement?.barge_name} 
+                  width={columnWidths.bargeName - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
-                width={columnWidths.movementDate - 16} 
-                className="text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="movementDate"
+              >
+                <TruncatedCell 
+                  text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
+                  width={columnWidths.movementDate - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
-                width={columnWidths.nominationDate - 16} 
-                className="text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="nominationDate"
+              >
+                <TruncatedCell 
+                  text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
+                  width={columnWidths.nominationDate - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <span className={`
-                px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
-                ${movement?.customs_status === "T1" 
-                  ? "bg-green-900/60 text-green-200" 
-                  : "bg-blue-900/60 text-blue-200"}
-              `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status}
-              </span>
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="customs"
+              >
+                <span className={`
+                  px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
+                  ${movement?.customs_status === "T1" 
+                    ? "bg-green-900/60 text-green-200" 
+                    : "bg-blue-900/60 text-blue-200"}
+                `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
+                  {movement?.customs_status}
+                </span>
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.sustainability} 
-                width={columnWidths.sustainability - 16} 
-                className="text-[10px]"
-              />
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="sustainability"
+              >
+                <TruncatedCell 
+                  text={movement?.sustainability} 
+                  width={columnWidths.sustainability - 16} 
+                  className="text-[10px]"
+                />
+              </KeyboardNavigableCell>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
               <EditableAssignmentComments
@@ -231,15 +301,21 @@ const SortableAssignmentList = ({
                 initialValue={assignment.comments || ''}
                 onSave={updateAssignmentComments}
                 className="text-[10px]"
+                rowId={item.id}
               />
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              <div className="flex justify-center">
-                <ProductToken 
-                  product={movement?.product}
-                  value={assignment?.quantity_mt?.toString() || '0'}
-                />
-              </div>
+              <KeyboardNavigableCell
+                rowId={item.id}
+                columnName="quantity"
+              >
+                <div className="flex justify-center">
+                  <ProductToken 
+                    product={movement?.product}
+                    value={assignment?.quantity_mt?.toString() || '0'}
+                  />
+                </div>
+              </KeyboardNavigableCell>
             </TableCell>
           </>
         );
