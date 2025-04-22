@@ -1,4 +1,3 @@
-
 import React, { useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -159,7 +158,7 @@ const StoragePage = () => {
   const leftColumnCount = Object.keys(stickyColumnWidths).length;
   const rightColumnCount = tanks.length * 3 + Object.keys(summaryColumnWidths).length;
   const rowCount = movements.length;
-  const headerRowCount = 6;
+  const headerRowCount = 1;
 
   return (
     <Layout>
@@ -223,82 +222,13 @@ const StoragePage = () => {
                     <div style={{ minWidth: `${totalStickyWidth}px` }}>
                       <Table>
                         <TableHeader>
-                          <TableRow className="bg-muted/50 border-b border-white/10 h-12">
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                             <TableHead 
                               colSpan={9} 
                               className="bg-brand-navy text-[10px]"
                             >
-                              <KeyboardNavigableCell 
-                                row={-6} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px] font-bold">Movement Information</div>
-                              </KeyboardNavigableCell>
                             </TableHead>
                           </TableRow>
-                          <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-5} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Trade Details</div>
-                              </KeyboardNavigableCell>
-                            </TableHead>
-                          </TableRow>
-                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-4} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Shipment Information</div>
-                              </KeyboardNavigableCell>
-                            </TableHead>
-                          </TableRow>
-                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-3} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Assignment Details</div>
-                              </KeyboardNavigableCell>
-                            </TableHead>
-                          </TableRow>
-                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                            <TableHead 
-                              colSpan={9} 
-                              className="bg-brand-navy text-[10px]"
-                            >
-                              <KeyboardNavigableCell 
-                                row={-2} 
-                                col={0} 
-                                panel="left" 
-                                className="h-full w-full"
-                              >
-                                <div className="text-[10px]">Status Information</div>
-                              </KeyboardNavigableCell>
-                            </TableHead>
-                          </TableRow>
-                          {/* The SortableAssignmentList component now renders the header row with KeyboardNavigableCells */}
                         </TableHeader>
                         
                         {selectedTerminalId && (
@@ -318,8 +248,7 @@ const StoragePage = () => {
                       <div className="min-w-[1800px]">
                         <Table>
                           <TableHeader>
-                            {/* Tank product row */}
-                            <TableRow className="bg-muted/50 border-b border-white/10 h-12">
+                            <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                               {tanks.map((tank, tankIndex) => (
                                 <TableHead 
                                   key={`${tank.id}-header`}
@@ -329,7 +258,7 @@ const StoragePage = () => {
                                   )}
                                 >
                                   <KeyboardNavigableCell 
-                                    row={-6} 
+                                    row={-1} 
                                     col={tankIndex * 3} 
                                     panel="right" 
                                     className="h-full w-full"
@@ -349,13 +278,12 @@ const StoragePage = () => {
                                 </TableHead>
                               ))}
                               
-                              {/* Summary and Balances headers */}
                               <TableHead 
                                 colSpan={1} 
                                 className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                               >
                                 <KeyboardNavigableCell 
-                                  row={-6} 
+                                  row={-1} 
                                   col={tanks.length * 3} 
                                   panel="right" 
                                   className="h-full w-full"
@@ -370,7 +298,7 @@ const StoragePage = () => {
                                 className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                               >
                                 <KeyboardNavigableCell 
-                                  row={-6} 
+                                  row={-1} 
                                   col={tanks.length * 3 + 1} 
                                   panel="right" 
                                   className="h-full w-full"
@@ -381,280 +309,6 @@ const StoragePage = () => {
                                 </KeyboardNavigableCell>
                               </TableHead>
                             </TableRow>
-                            
-                            {/* Tank number row */}
-                            <TableRow className="bg-muted/40 border-b border-white/10 h-10">
-                              {tanks.map((tank, tankIndex) => (
-                                <TableHead 
-                                  key={`${tank.id}-tank-number`}
-                                  colSpan={3} 
-                                  className="text-center text-[10px] border-r border-white/30"
-                                >
-                                  <KeyboardNavigableCell 
-                                    row={-5} 
-                                    col={tankIndex * 3} 
-                                    panel="right" 
-                                    className="h-full w-full"
-                                    allowEditing={true}
-                                  >
-                                    <div className="flex items-center justify-center">
-                                      <span className="mr-1">Tank</span>
-                                      <EditableField
-                                        initialValue={tank.tank_number}
-                                        onSave={(value) => updateTankNumber(tank.id, value)}
-                                        className="text-[10px] text-center"
-                                        truncate={false}
-                                      />
-                                    </div>
-                                  </KeyboardNavigableCell>
-                                </TableHead>
-                              ))}
-                              
-                              {/* Summary column headers for tank number row */}
-                              <TableHead 
-                                colSpan={6} 
-                                className="text-center text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-5} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
-                            </TableRow>
-                            
-                            {/* Capacity MT row */}
-                            <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                              {tanks.map((tank, tankIndex) => (
-                                <TableHead 
-                                  key={`${tank.id}-capacity`}
-                                  colSpan={3} 
-                                  className="text-[10px] border-r border-white/30"
-                                >
-                                  <KeyboardNavigableCell 
-                                    row={-4} 
-                                    col={tankIndex * 3} 
-                                    panel="right" 
-                                    className="h-full w-full"
-                                    allowEditing={true}
-                                  >
-                                    <div className="flex justify-between items-center px-2">
-                                      <span>Capacity: </span>
-                                      <div className="flex items-center">
-                                        <EditableNumberField
-                                          initialValue={tank.capacity_mt}
-                                          onSave={(value) => updateTankCapacity(tank.id, value)}
-                                          className="text-[10px] w-20"
-                                        /> MT
-                                        <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
-                                      </div>
-                                    </div>
-                                    {(() => {
-                                      const utilization = calculateTankUtilization(tank);
-                                      return (
-                                        <>
-                                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                            <div 
-                                              className="bg-brand-lime h-2 rounded-full" 
-                                              style={{ 
-                                                width: `${Math.min(utilization.utilizationMT, 100)}%` 
-                                              }}
-                                            ></div>
-                                          </div>
-                                          <div className="flex justify-between px-2 mt-1">
-                                            <span className="text-[9px] text-muted-foreground">
-                                              {Math.round(utilization.currentBalance)} MT
-                                            </span>
-                                            <span className="text-[9px] text-muted-foreground">
-                                              {Math.round(utilization.utilizationMT)}%
-                                            </span>
-                                          </div>
-                                        </>
-                                      );
-                                    })()}
-                                  </KeyboardNavigableCell>
-                                </TableHead>
-                              ))}
-                              
-                              {/* Summary for capacity MT row */}
-                              <TableHead 
-                                colSpan={6} 
-                                className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-4} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div className="flex items-center h-full px-2">
-                                    <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
-                                  </div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
-                            </TableRow>
-                            
-                            {/* Capacity M3 row */}
-                            <TableRow className="bg-muted/40 border-b border-white/10 h-14">
-                              {tanks.map((tank, tankIndex) => (
-                                <TableHead 
-                                  key={`${tank.id}-capacity-m3`}
-                                  colSpan={3} 
-                                  className="text-[10px] border-r border-white/30"
-                                >
-                                  <KeyboardNavigableCell 
-                                    row={-3} 
-                                    col={tankIndex * 3} 
-                                    panel="right" 
-                                    className="h-full w-full"
-                                  >
-                                    <div className="flex justify-between items-center px-2">
-                                      <span>Capacity:</span>
-                                      <div className="flex items-center">
-                                        {tank.capacity_m3.toFixed(2)} M³
-                                      </div>
-                                    </div>
-                                    {(() => {
-                                      const utilization = calculateTankUtilization(tank);
-                                      return (
-                                        <>
-                                          <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                            <div 
-                                              className="bg-brand-blue h-2 rounded-full" 
-                                              style={{ 
-                                                width: `${Math.min(utilization.utilizationM3, 100)}%` 
-                                              }}
-                                            ></div>
-                                          </div>
-                                          <div className="flex justify-between px-2 mt-1">
-                                            <span className="text-[9px] text-muted-foreground">
-                                              {utilization.balanceM3.toFixed(2)} M³
-                                            </span>
-                                            <span className="text-[9px] text-muted-foreground">
-                                              {Math.round(utilization.utilizationM3)}%
-                                            </span>
-                                          </div>
-                                        </>
-                                      );
-                                    })()}
-                                  </KeyboardNavigableCell>
-                                </TableHead>
-                              ))}
-                              
-                              {/* Summary for capacity M3 row */}
-                              <TableHead 
-                                colSpan={6} 
-                                className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-3} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div className="flex items-center h-full px-2">
-                                    <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
-                                  </div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
-                            </TableRow>
-                            
-                            {/* Spec row */}
-                            <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                              {tanks.map((tank, tankIndex) => (
-                                <TableHead 
-                                  key={`${tank.id}-spec`}
-                                  colSpan={3} 
-                                  className="text-[10px] border-r border-white/30"
-                                >
-                                  <KeyboardNavigableCell 
-                                    row={-2} 
-                                    col={tankIndex * 3} 
-                                    panel="right" 
-                                    className="h-full w-full"
-                                    allowEditing={true}
-                                  >
-                                    <div className="flex justify-between px-2">
-                                      <span className="text-muted-foreground">Spec:</span>
-                                      <EditableField
-                                        initialValue={tank.spec}
-                                        onSave={(value) => updateTankSpec(tank.id, value)}
-                                        className="text-[10px]"
-                                        maxWidth={100}
-                                      />
-                                    </div>
-                                  </KeyboardNavigableCell>
-                                </TableHead>
-                              ))}
-                              
-                              {/* Empty space for spec row */}
-                              <TableHead 
-                                colSpan={6} 
-                                className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-2} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
-                            </TableRow>
-                            
-                            {/* Heating row */}
-                            <TableRow className="bg-muted/40 border-b border-white/10 h-8">
-                              {tanks.map((tank, tankIndex) => (
-                                <TableHead 
-                                  key={`${tank.id}-heating`}
-                                  colSpan={3} 
-                                  className="text-[10px] border-r border-white/30"
-                                >
-                                  <KeyboardNavigableCell 
-                                    row={-1.5} 
-                                    col={tankIndex * 3} 
-                                    panel="right" 
-                                    className="h-full w-full"
-                                    allowEditing={true}
-                                  >
-                                    <div className="flex justify-between px-2">
-                                      <span className="text-muted-foreground">Heating:</span>
-                                      <div className="flex items-center">
-                                        <Thermometer className="h-3 w-3 mr-1 text-red-400" />
-                                        <EditableDropdownField
-                                          initialValue={tank.is_heating_enabled ? "true" : "false"}
-                                          options={heatingOptions}
-                                          onSave={(value) => updateTankHeating(tank.id, value)}
-                                          className="text-[10px]"
-                                          truncate={false}
-                                        />
-                                      </div>
-                                    </div>
-                                  </KeyboardNavigableCell>
-                                </TableHead>
-                              ))}
-                              
-                              {/* Empty space for heating row */}
-                              <TableHead 
-                                colSpan={6} 
-                                className="text-[10px] border-r border-white/30"
-                              >
-                                <KeyboardNavigableCell 
-                                  row={-1.5} 
-                                  col={tanks.length * 3} 
-                                  panel="right" 
-                                  className="h-full w-full"
-                                >
-                                  <div></div>
-                                </KeyboardNavigableCell>
-                              </TableHead>
-                            </TableRow>
-                            
-                            {/* Column headers row */}
                             <TableRow className="bg-muted/50 border-b border-white/10 h-10">
                               {tanks.map((tank, tankIndex) => (
                                 <React.Fragment key={tank.id}>
@@ -699,7 +353,6 @@ const StoragePage = () => {
                                 </React.Fragment>
                               ))}
                               
-                              {/* Summary column headers */}
                               <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
                                 <KeyboardNavigableCell 
                                   row={-1} 
@@ -861,7 +514,6 @@ const StoragePage = () => {
                                     );
                                   })}
                                   
-                                  {/* Summary cells */}
                                   <TableCell className="text-center text-[10px] py-2">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -985,7 +637,7 @@ const StoragePage = () => {
           leftColumnCount={leftColumnCount}
           rightColumnCount={rightColumnCount}
           rowCount={rowCount}
-          headerRowCount={headerRowCount}
+          headerRowCount={1}
         />
       </KeyboardNavigationProvider>
     </Layout>
