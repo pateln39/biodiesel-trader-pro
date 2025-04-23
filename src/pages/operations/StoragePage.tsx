@@ -31,9 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import StorageHeader from "@/components/operations/storage/StorageHeader";
-import StorageSummaryTable from "@/components/operations/storage/StorageSummaryTable";
-import StorageTankHeaderTable from "@/components/operations/storage/StorageTankHeaderTable";
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -153,14 +150,37 @@ const StoragePage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <StorageHeader onMaintenance={handleMaintenance} />
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
+          <div className="flex items-center space-x-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="mr-2">
+                  <Wrench className="h-4 w-4 mr-1" />
+                  Maintenance
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleMaintenance}>
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Cleanup Tank Data
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Filter className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filter</span>
+          </div>
+        </div>
+        
         <ProductLegend />
+        
         <TerminalTabs
           terminals={terminals}
           selectedTerminalId={selectedTerminalId}
           onTerminalChange={setSelectedTerminalId}
           onAddTerminal={handleAddTerminal}
         />
+        
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
@@ -236,25 +256,389 @@ const StoragePage = () => {
                     </Table>
                   </div>
                 </ScrollArea>
+                
                 <div className="overflow-hidden flex-grow">
                   <ScrollArea className="h-[700px]" orientation="horizontal">
-                    <StorageSummaryTable
-                      tanks={tanks}
-                      productOptions={productOptions}
-                      heatingOptions={heatingOptions}
-                      PRODUCT_COLORS={PRODUCT_COLORS}
-                      updateTankProduct={updateTankProduct}
-                      updateTankCapacity={updateTankCapacity}
-                      updateTankNumber={updateTankNumber}
-                      updateTankSpec={updateTankSpec}
-                      updateTankHeating={updateTankHeating}
-                      calculateTankUtilization={calculateTankUtilization}
-                      calculateSummary={calculateSummary}
-                      summaryColumnWidths={summaryColumnWidths}
-                      truncatedHeaders={truncatedHeaders}
-                      tankMovements={tankMovements}
-                      movements={movements}
-                    />
+                    <div className="min-w-[1800px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-12">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-header`}
+                                colSpan={3} 
+                                className={cn(
+                                  "text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                                )}
+                              >
+                                <EditableDropdownField
+                                  initialValue={tank.current_product}
+                                  options={productOptions}
+                                  onSave={(value) => updateTankProduct(tank.id, value)}
+                                  className={cn(
+                                    "text-[10px] font-bold text-center w-full",
+                                    PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
+                                  )}
+                                  truncate={false}
+                                />
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={1} 
+                              className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                            >
+                              <div className="text-[10px] font-bold text-center w-full">
+                                Summary
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              colSpan={5} 
+                              className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
+                            >
+                              <div className="text-[10px] font-bold text-center w-full">
+                                Balances
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-10">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-tank-number`}
+                                colSpan={3} 
+                                className="text-center text-[10px] border-r border-white/30"
+                              >
+                                <div className="flex items-center justify-center">
+                                  <span className="mr-1">Tank</span>
+                                  <EditableField
+                                    initialValue={tank.tank_number}
+                                    onSave={(value) => updateTankNumber(tank.id, value)}
+                                    className="text-[10px] text-center"
+                                    truncate={false}
+                                  />
+                                </div>
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-center text-[10px] border-r border-white/30"
+                            ></TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-capacity`}
+                                colSpan={3} 
+                                className="text-[10px] border-r border-white/30"
+                              >
+                                <div className="flex justify-between items-center px-2">
+                                  <span>Capacity: </span>
+                                  <div className="flex items-center">
+                                    <EditableNumberField
+                                      initialValue={tank.capacity_mt}
+                                      onSave={(value) => updateTankCapacity(tank.id, value)}
+                                      className="text-[10px] w-20"
+                                    /> MT
+                                    <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
+                                  </div>
+                                </div>
+                                {(() => {
+                                  const utilization = calculateTankUtilization(tank);
+                                  return (
+                                    <>
+                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                        <div 
+                                          className="bg-brand-lime h-2 rounded-full" 
+                                          style={{ 
+                                            width: `${Math.min(utilization.utilizationMT, 100)}%` 
+                                          }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between px-2 mt-1">
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.currentBalance)} MT
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.utilizationMT)}%
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            >
+                              <div className="flex items-center h-full px-2">
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-14">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-capacity-m3`}
+                                colSpan={3} 
+                                className="text-[10px] border-r border-white/30"
+                              >
+                                <div className="flex justify-between items-center px-2">
+                                  <span>Capacity:</span>
+                                  <div className="flex items-center">
+                                    {tank.capacity_m3.toFixed(2)} M³
+                                  </div>
+                                </div>
+                                {(() => {
+                                  const utilization = calculateTankUtilization(tank);
+                                  return (
+                                    <>
+                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
+                                        <div 
+                                          className="bg-brand-blue h-2 rounded-full" 
+                                          style={{ 
+                                            width: `${Math.min(utilization.utilizationM3, 100)}%` 
+                                          }}
+                                        ></div>
+                                      </div>
+                                      <div className="flex justify-between px-2 mt-1">
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {utilization.balanceM3.toFixed(2)} M³
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground">
+                                          {Math.round(utilization.utilizationM3)}%
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            >
+                              <div className="flex items-center h-full px-2">
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
+                              </div>
+                            </TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-spec`}
+                                colSpan={3} 
+                                className="text-[10px] border-r border-white/30"
+                              >
+                                <div className="flex justify-between px-2">
+                                  <span className="text-muted-foreground">Spec:</span>
+                                  <EditableField
+                                    initialValue={tank.spec}
+                                    onSave={(value) => updateTankSpec(tank.id, value)}
+                                    className="text-[10px]"
+                                    maxWidth={100}
+                                  />
+                                </div>
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            ></TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/40 border-b border-white/10 h-8">
+                            {tanks.map((tank) => (
+                              <TableHead 
+                                key={`${tank.id}-heating`}
+                                colSpan={3} 
+                                className="text-[10px] border-r border-white/30"
+                              >
+                                <div className="flex justify-between px-2">
+                                  <span className="text-muted-foreground">Heating:</span>
+                                  <div className="flex items-center">
+                                    <Thermometer className="h-3 w-3 mr-1 text-red-400" />
+                                    <EditableDropdownField
+                                      initialValue={tank.is_heating_enabled ? "true" : "false"}
+                                      options={heatingOptions}
+                                      onSave={(value) => updateTankHeating(tank.id, value)}
+                                      className="text-[10px]"
+                                      truncate={false}
+                                    />
+                                  </div>
+                                </div>
+                              </TableHead>
+                            ))}
+                            
+                            <TableHead 
+                              colSpan={6} 
+                              className="text-[10px] border-r border-white/30"
+                            ></TableHead>
+                          </TableRow>
+                          
+                          <TableRow className="bg-muted/50 border-b border-white/10 h-10">
+                            {tanks.map((tank) => (
+                              <React.Fragment key={tank.id}>
+                                <TableHead className="text-center text-[10px]">
+                                  <TruncatedCell
+                                    text="Movement (MT)"
+                                    width={65}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </TableHead>
+                                <TableHead className="text-center text-[10px]">
+                                  <TruncatedCell
+                                    text="Movement (M³)"
+                                    width={65}
+                                    className="text-[10px] text-center mx-auto"
+                                  />
+                                </TableHead>
+                                <TableHead className="text-center text-[10px] bg-brand-navy border-r border-white/30">Balance</TableHead>
+                              </React.Fragment>
+                            ))}
+                            
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.totalMT}
+                                width={summaryColumnWidths.totalMT - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalM3}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.totalM3}
+                                width={summaryColumnWidths.totalM3 - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t1Balance}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.t1Balance}
+                                width={summaryColumnWidths.t1Balance - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t2Balance}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.t2Balance}
+                                width={summaryColumnWidths.t2Balance - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.currentStock}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.currentStock}
+                                width={summaryColumnWidths.currentStock - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.currentUllage}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.currentUllage}
+                                width={summaryColumnWidths.currentUllage - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.difference}px` }}>
+                              <TruncatedCell
+                                text={truncatedHeaders.difference}
+                                width={summaryColumnWidths.difference - 8}
+                                className="text-[10px] text-center mx-auto"
+                              />
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        
+                        <TableBody>
+                          {sortedMovements.map((movement, index) => {
+                            const bgColorClass = movement.buy_sell === "buy" 
+                              ? "bg-green-900/10 hover:bg-green-900/20" 
+                              : "bg-red-900/10 hover:bg-red-900/20";
+                            
+                            const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
+                            
+                            return (
+                              <TableRow 
+                                key={`scroll-${movement.id}`} 
+                                className={cn("border-b border-white/5 h-10", bgColorClass)}
+                              >
+                                {tanks.map((tank) => {
+                                  const tankMovement = tankMovements.find(
+                                    tm => tm.movement_id === movement.id && tm.tank_id === tank.id
+                                  );
+                                  
+                                  return (
+                                    <React.Fragment key={`${movement.id}-${tank.id}`}>
+                                      <TableCell className="text-center text-[10px] py-2">
+                                        <EditableNumberField
+                                          initialValue={tankMovement?.quantity_mt || 0}
+                                          onSave={(value) => updateTankMovement(movement.id, tank.id, value)}
+                                          className="text-[10px] w-16"
+                                          product={tankMovement?.product_at_time || tank.current_product}
+                                        />
+                                      </TableCell>
+                                      <TableCell className="text-center text-[10px] py-2">
+                                        {tankMovement?.quantity_m3 ? (tankMovement.quantity_m3).toFixed(2) : '0.00'}
+                                      </TableCell>
+                                      <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
+                                        {movementSummary.tankBalances[tank.id]?.balanceMT || 0}
+                                      </TableCell>
+                                    </React.Fragment>
+                                  );
+                                })}
+                                
+                                <TableCell className="text-center text-[10px] py-2">
+                                  {(() => {
+                                    const totalMTMoved = Math.round(movementSummary.totalMTMoved);
+                                    const movementQuantity = Math.round(movement.assignment_quantity || 0);
+                                    
+                                    return (
+                                      <div className="flex items-center justify-center space-x-1">
+                                        <span>{totalMTMoved}</span>
+                                        {totalMTMoved !== movementQuantity && (
+                                          <Badge 
+                                            variant="outline" 
+                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                          >
+                                            !
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2">
+                                  {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
+                                  {Math.round(movementSummary.t1Balance)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
+                                  {Math.round(movementSummary.t2Balance)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium">
+                                  {Math.round(movementSummary.currentStockMT)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {Math.round(movementSummary.currentUllage)}
+                                </TableCell>
+                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </ScrollArea>
                 </div>
               </div>
