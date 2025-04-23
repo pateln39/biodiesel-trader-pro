@@ -6,9 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { parseFormula } from './formulaCalculation';
 import { isDateRangeInFuture, parseMonthCodeToDbDate } from './mtmUtils';
 
-export type PricingPeriodTypeLocal = 'historical' | 'current' | 'future';
+export type PricingPeriodType = 'historical' | 'current' | 'future';
 
-export interface PriceDetailLocal {
+export interface PriceDetail {
   instruments: Record<string, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
   fixedComponents?: { value: number; displayValue: string }[];
@@ -405,7 +405,7 @@ export const calculateTradeLegPrice = async (
   startDate: Date,
   endDate: Date,
   mtmFutureMonth?: string
-): Promise<{ price: number; periodType: PricingPeriodTypeLocal; priceDetails: PriceDetailLocal }> => {
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
   console.log('calculateTradeLegPrice called with params:', { formulaOrLeg, startDate, endDate, mtmFutureMonth });
   
   const effectiveMtmFutureMonth = mtmFutureMonth || 
@@ -431,14 +431,14 @@ const calculateFutureTradeLegPrice = async (
   startDate: Date,
   endDate: Date,
   mtmFutureMonth: string
-): Promise<{ price: number; periodType: PricingPeriodTypeLocal; priceDetails: PriceDetailLocal }> => {
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
   console.log(`calculateFutureTradeLegPrice called with month: ${mtmFutureMonth}`);
   
-  const periodType: PricingPeriodTypeLocal = 'future';
+  const periodType: PricingPeriodType = 'future';
   
   console.log(`Using month code: ${mtmFutureMonth}`);
   
-  const priceDetails: PriceDetailLocal = {
+  const priceDetails: PriceDetail = {
     instruments: {},
     evaluatedPrice: 0,
     fixedComponents: []
@@ -580,9 +580,9 @@ const calculateEfpTradeLegPrice = async (
   leg: PhysicalTradeLeg,
   startDate: Date,
   endDate: Date
-): Promise<{ price: number; periodType: PricingPeriodTypeLocal; priceDetails: PriceDetailLocal }> => {
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
   const now = new Date();
-  let periodType: PricingPeriodTypeLocal = 'current';
+  let periodType: PricingPeriodType = 'current';
   
   if (endDate < now) {
     periodType = 'historical';
@@ -590,7 +590,7 @@ const calculateEfpTradeLegPrice = async (
     periodType = 'future';
   }
   
-  const priceDetails: PriceDetailLocal = {
+  const priceDetails: PriceDetail = {
     instruments: {},
     evaluatedPrice: 0,
     fixedComponents: []
@@ -654,9 +654,9 @@ const calculateStandardTradeLegPrice = async (
   formula: PricingFormula,
   startDate: Date,
   endDate: Date
-): Promise<{ price: number; periodType: PricingPeriodTypeLocal; priceDetails: PriceDetailLocal }> => {
+): Promise<{ price: number; periodType: PricingPeriodType; priceDetails: PriceDetail }> => {
   const now = new Date();
-  let periodType: PricingPeriodTypeLocal = 'current';
+  let periodType: PricingPeriodType = 'current';
   
   if (endDate < now) {
     periodType = 'historical';
@@ -666,7 +666,7 @@ const calculateStandardTradeLegPrice = async (
   
   const instruments = extractInstrumentsFromFormula(formula);
   
-  const priceDetails: PriceDetailLocal = {
+  const priceDetails: PriceDetail = {
     instruments: {},
     evaluatedPrice: 0
   };
