@@ -3,18 +3,25 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-xs", className)}
-      {...props}
-    />
-  </div>
-))
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  /**
+   * Width of the table
+   */
+  width?: string | number;
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, width = "100%", ...props }, ref) => (
+    <div className="relative w-full overflow-auto">
+      <table
+        ref={ref}
+        className={cn("w-full caption-bottom text-xs", className)}
+        style={{ width: width }}
+        {...props}
+      />
+    </div>
+  )
+)
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
@@ -52,46 +59,71 @@ const TableFooter = React.forwardRef<
 ))
 TableFooter.displayName = "TableFooter"
 
-const TableRow = React.forwardRef<
-  HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
-  <tr
-    ref={ref}
-    className={cn(
-      "transition-colors data-[state=selected]:bg-muted",
-      className
-    )}
-    {...props}
-  />
-))
+interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  /**
+   * Whether the row should have hover styles applied
+   */
+  hover?: boolean;
+  /**
+   * Whether the row is selected
+   */
+  selected?: boolean;
+}
+
+const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
+  ({ className, hover = true, selected = false, ...props }, ref) => (
+    <tr
+      ref={ref}
+      className={cn(
+        "transition-colors",
+        hover && "hover:bg-muted/50",
+        selected && "bg-muted data-[state=selected]:bg-muted",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 TableRow.displayName = "TableRow"
 
-const TableHead = React.forwardRef<
-  HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "h-8 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-      className
-    )}
-    {...props}
-  />
-))
+interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  /**
+   * Whether the head cell contains a checkbox
+   */
+  hasCheckbox?: boolean;
+}
+
+const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
+  ({ className, hasCheckbox = false, ...props }, ref) => (
+    <th
+      ref={ref}
+      className={cn(
+        "h-8 px-2 text-left align-middle font-medium text-muted-foreground",
+        hasCheckbox && "pr-0",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 TableHead.displayName = "TableHead"
 
-const TableCell = React.forwardRef<
-  HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={cn("p-2 align-middle [&:has([role=checkbox])]:pr-0", className)}
-    {...props}
-  />
-))
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  /**
+   * Whether the cell contains a checkbox
+   */
+  hasCheckbox?: boolean;
+}
+
+const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
+  ({ className, hasCheckbox = false, ...props }, ref) => (
+    <td
+      ref={ref}
+      className={cn("p-2 align-middle", hasCheckbox && "pr-0", className)}
+      {...props}
+    />
+  )
+)
 TableCell.displayName = "TableCell"
 
 const TableCaption = React.forwardRef<

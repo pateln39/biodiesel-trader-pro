@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useCallback, useMemo } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -8,7 +9,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState } from '@/hooks/useInventoryState';
 import { Button } from '@/components/ui/button';
 import EditableField from '@/components/operations/storage/EditableField';
-import EditableNumberField from '@/components/operations/storage/EditableNumberField';
 import EditableDropdownField from '@/components/operations/storage/EditableDropdownField';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import ProductLegend from '@/components/operations/storage/ProductLegend';
@@ -17,7 +17,6 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
-import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
 import { 
@@ -31,7 +30,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import TankHeaderCell from '@/components/operations/storage/TankHeaderCell';
+import TankCapacityM3Cell from '@/components/operations/storage/TankCapacityM3Cell';
+import TankSpecRow from '@/components/operations/storage/TankSpecRow';
+import TankMovementCell from '@/components/operations/storage/TankMovementCell';
+import MovementQuantityIndicator from '@/components/operations/storage/MovementQuantityIndicator';
+import { TableColumnWidth, SummaryColumnWidth, TableHeaderLabels } from '@/types/storage';
 
+// Constants for labels
 const LABEL_COUNTERPARTY = "Counterparty";
 const LABEL_TRADE_REF = "Trade Ref";
 const LABEL_BARGE = "Barge";
@@ -56,11 +62,13 @@ const LABEL_SUMMARY = "Summary";
 const LABEL_BALANCES = "Balances";
 const LABEL_TOTAL_CAPACITY = "Total Capacity:";
 
+// Constants for styling
 const HEADER_FONT_SIZE = "text-[10px]";
 const CAPACITY_WIDTH = 100;
 const HEATING_WIDTH = 100;
 
-const stickyColumnWidths = {
+// Column widths configuration
+const stickyColumnWidths: TableColumnWidth = {
   counterparty: 110,
   tradeRef: 80,
   bargeName: 90,
@@ -74,7 +82,7 @@ const stickyColumnWidths = {
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
 
-const summaryColumnWidths = {
+const summaryColumnWidths: SummaryColumnWidth = {
   totalMT: 80,
   totalM3: 80,
   t1Balance: 80,
@@ -84,7 +92,7 @@ const summaryColumnWidths = {
   difference: 100,
 };
 
-const truncatedHeaders = {
+const truncatedHeaders: TableHeaderLabels = {
   counterparty: LABEL_COUNTERPARTY,
   tradeRef: LABEL_TRADE_REF,
   bargeName: LABEL_BARGE,
@@ -103,12 +111,17 @@ const truncatedHeaders = {
   difference: LABEL_DIFFERENCE,
 };
 
-const StoragePage = () => {
+/**
+ * StoragePage component for managing terminal storage tanks and movements
+ */
+const StoragePage: React.FC = () => {
+  // State
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
 
+  // Hooks
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
   const { 
@@ -127,41 +140,45 @@ const StoragePage = () => {
     updateTankNumber,
   } = useInventoryState(selectedTerminalId);
 
+  // Set initial terminal when terminals are loaded
   React.useEffect(() => {
     if (terminals.length > 0 && !selectedTerminalId) {
       setSelectedTerminalId(terminals[0].id);
     }
   }, [terminals, selectedTerminalId]);
 
-  const handleAddTerminal = () => {
+  // Event handlers
+  const handleAddTerminal = useCallback(() => {
     setIsNewTerminal(true);
     setSelectedTank(undefined);
     setIsTankFormOpen(true);
-  };
+  }, []);
 
-  const handleAddTank = () => {
+  const handleAddTank = useCallback(() => {
     setIsNewTerminal(false);
     setSelectedTank(undefined);
     setIsTankFormOpen(true);
-  };
+  }, []);
 
-  const handleTankFormSuccess = () => {
+  const handleTankFormSuccess = useCallback(() => {
     refetchTanks();
-  };
+  }, [refetchTanks]);
 
-  const handleMaintenance = async () => {
+  const handleMaintenance = useCallback(async () => {
     if (selectedTerminalId) {
       await cleanupOrphanedTankMovements(selectedTerminalId);
       await initializeAssignmentSortOrder(selectedTerminalId);
       await fixDuplicateSortOrders(selectedTerminalId);
       refetchTanks();
     }
-  };
+  }, [selectedTerminalId, refetchTanks]);
 
+  // Calculate tank utilization and summary
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
   
-  const sortedMovements = React.useMemo(() => {
+  // Sort movements by sort_order or date
+  const sortedMovements = useMemo(() => {
     return [...movements].sort((a, b) => {
       if (a.sort_order !== null && b.sort_order !== null) {
         return a.sort_order - b.sort_order;
@@ -174,6 +191,13 @@ const StoragePage = () => {
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
+
+  // Helper function to get background color class for movement rows
+  const getMovementRowBgClass = useCallback((buySell?: string) => {
+    return buySell === "buy" 
+      ? "bg-green-900/10 hover:bg-green-900/20" 
+      : "bg-red-900/10 hover:bg-red-900/20";
+  }, []);
 
   return (
     <Layout>
@@ -362,40 +386,12 @@ const StoragePage = () => {
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
-                                <div className="flex justify-between items-center px-2">
-                                  <span>{LABEL_CAPACITY}</span>
-                                  <div className="flex items-center">
-                                    <EditableNumberField
-                                      initialValue={tank.capacity_mt}
-                                      onSave={(value) => updateTankCapacity(tank.id, value)}
-                                      className="text-[10px] w-20"
-                                    /> MT
-                                    <Database className="h-3 w-3 text-brand-lime/70 ml-2" />
-                                  </div>
-                                </div>
-                                {(() => {
-                                  const utilization = calculateTankUtilization(tank);
-                                  return (
-                                    <>
-                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                        <div 
-                                          className="bg-brand-lime h-2 rounded-full" 
-                                          style={{ 
-                                            width: `${Math.min(utilization.utilizationMT, 100)}%` 
-                                          }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex justify-between px-2 mt-1">
-                                        <span className="text-[9px] text-muted-foreground">
-                                          {Math.round(utilization.currentBalance)} MT
-                                        </span>
-                                        <span className="text-[9px] text-muted-foreground">
-                                          {Math.round(utilization.utilizationMT)}%
-                                        </span>
-                                      </div>
-                                    </>
-                                  );
-                                })()}
+                                <TankHeaderCell 
+                                  tank={tank} 
+                                  utilization={calculateTankUtilization(tank)} 
+                                  updateTankCapacity={updateTankCapacity}
+                                  headerFontSize={HEADER_FONT_SIZE}
+                                />
                               </TableHead>
                             ))}
                             
@@ -416,35 +412,10 @@ const StoragePage = () => {
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
-                                <div className="flex justify-between items-center px-2">
-                                  <span>{LABEL_CAPACITY}</span>
-                                  <div className="flex items-center">
-                                    {tank.capacity_m3.toFixed(2)} M³
-                                  </div>
-                                </div>
-                                {(() => {
-                                  const utilization = calculateTankUtilization(tank);
-                                  return (
-                                    <>
-                                      <div className="w-full bg-gray-700 rounded-full h-2 mt-1 mx-2">
-                                        <div 
-                                          className="bg-brand-blue h-2 rounded-full" 
-                                          style={{ 
-                                            width: `${Math.min(utilization.utilizationM3, 100)}%` 
-                                          }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex justify-between px-2 mt-1">
-                                        <span className="text-[9px] text-muted-foreground">
-                                          {utilization.balanceM3.toFixed(2)} M³
-                                        </span>
-                                        <span className="text-[9px] text-muted-foreground">
-                                          {Math.round(utilization.utilizationM3)}%
-                                        </span>
-                                      </div>
-                                    </>
-                                  );
-                                })()}
+                                <TankCapacityM3Cell
+                                  tank={tank}
+                                  utilization={calculateTankUtilization(tank)}
+                                />
                               </TableHead>
                             ))}
                             
@@ -465,15 +436,13 @@ const StoragePage = () => {
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
-                                <div className="flex justify-between px-2">
-                                  <span className="text-muted-foreground">{LABEL_SPEC}</span>
-                                  <EditableField
-                                    initialValue={tank.spec}
-                                    onSave={(value) => updateTankSpec(tank.id, value)}
-                                    className="text-[10px]"
-                                    maxWidth={100}
-                                  />
-                                </div>
+                                <TankSpecRow
+                                  tank={tank}
+                                  updateTankSpec={updateTankSpec}
+                                  updateTankHeating={updateTankHeating}
+                                  heatingOptions={heatingOptions}
+                                  isSpecRow={true}
+                                />
                               </TableHead>
                             ))}
                             
@@ -490,19 +459,13 @@ const StoragePage = () => {
                                 colSpan={3} 
                                 className="text-[10px] border-r border-white/30"
                               >
-                                <div className="flex justify-between px-2">
-                                  <span className="text-muted-foreground">{LABEL_HEATING}</span>
-                                  <div className="flex items-center">
-                                    <Thermometer className="h-3 w-3 mr-1 text-red-400" />
-                                    <EditableDropdownField
-                                      initialValue={tank.is_heating_enabled ? "true" : "false"}
-                                      options={heatingOptions}
-                                      onSave={(value) => updateTankHeating(tank.id, value)}
-                                      className="text-[10px]"
-                                      truncate={false}
-                                    />
-                                  </div>
-                                </div>
+                                <TankSpecRow
+                                  tank={tank}
+                                  updateTankSpec={updateTankSpec}
+                                  updateTankHeating={updateTankHeating}
+                                  heatingOptions={heatingOptions}
+                                  isSpecRow={false}
+                                />
                               </TableHead>
                             ))}
                             
@@ -533,64 +496,29 @@ const StoragePage = () => {
                               </React.Fragment>
                             ))}
                             
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalMT}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.totalMT}
-                                width={summaryColumnWidths.totalMT - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.totalM3}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.totalM3}
-                                width={summaryColumnWidths.totalM3 - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t1Balance}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.t1Balance}
-                                width={summaryColumnWidths.t1Balance - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.t2Balance}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.t2Balance}
-                                width={summaryColumnWidths.t2Balance - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px]" style={{ width: `${summaryColumnWidths.currentStock}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.currentStock}
-                                width={summaryColumnWidths.currentStock - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.currentUllage}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.currentUllage}
-                                width={summaryColumnWidths.currentUllage - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
-                            <TableHead className="text-center text-[10px] border-r border-white/30" style={{ width: `${summaryColumnWidths.difference}px` }}>
-                              <TruncatedCell
-                                text={truncatedHeaders.difference}
-                                width={summaryColumnWidths.difference - 8}
-                                className="text-[10px] text-center mx-auto"
-                              />
-                            </TableHead>
+                            {/* Summary column headers */}
+                            {Object.entries(summaryColumnWidths).map(([key, width]) => (
+                              <TableHead 
+                                key={`summary-header-${key}`}
+                                className={cn(
+                                  "text-center text-[10px]",
+                                  key === 'currentUllage' || key === 'difference' ? "border-r border-white/30" : ""
+                                )}
+                                style={{ width: `${width}px` }}
+                              >
+                                <TruncatedCell
+                                  text={truncatedHeaders[key as keyof TableHeaderLabels]}
+                                  width={width - 8}
+                                  className="text-[10px] text-center mx-auto"
+                                />
+                              </TableHead>
+                            ))}
                           </TableRow>
                         </TableHeader>
                         
                         <TableBody>
-                          {sortedMovements.map((movement, index) => {
-                            const bgColorClass = movement.buy_sell === "buy" 
-                              ? "bg-green-900/10 hover:bg-green-900/20" 
-                              : "bg-red-900/10 hover:bg-red-900/20";
-                            
+                          {sortedMovements.map((movement) => {
+                            const bgColorClass = getMovementRowBgClass(movement.buy_sell);
                             const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                             
                             return (
@@ -606,11 +534,12 @@ const StoragePage = () => {
                                   return (
                                     <React.Fragment key={`${movement.id}-${tank.id}`}>
                                       <TableCell className="text-center text-[10px] py-2">
-                                        <EditableNumberField
-                                          initialValue={tankMovement?.quantity_mt || 0}
-                                          onSave={(value) => updateTankMovement(movement.id, tank.id, value)}
-                                          className="text-[10px] w-16"
-                                          product={tankMovement?.product_at_time || tank.current_product}
+                                        <TankMovementCell
+                                          tankMovement={tankMovement}
+                                          movementId={movement.id}
+                                          tankId={tank.id}
+                                          tankProduct={tank.current_product}
+                                          updateTankMovement={updateTankMovement}
                                         />
                                       </TableCell>
                                       <TableCell className="text-center text-[10px] py-2">
@@ -623,25 +552,12 @@ const StoragePage = () => {
                                   );
                                 })}
                                 
+                                {/* Summary cells */}
                                 <TableCell className="text-center text-[10px] py-2">
-                                  {(() => {
-                                    const totalMTMoved = Math.round(movementSummary.totalMTMoved);
-                                    const movementQuantity = Math.round(movement.assignment_quantity || 0);
-                                    
-                                    return (
-                                      <div className="flex items-center justify-center space-x-1">
-                                        <span>{totalMTMoved}</span>
-                                        {totalMTMoved !== movementQuantity && (
-                                          <Badge 
-                                            variant="outline" 
-                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
-                                          >
-                                            !
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
+                                  <MovementQuantityIndicator 
+                                    totalMTMoved={movementSummary.totalMTMoved}
+                                    assignmentQuantity={movement.assignment_quantity || 0}
+                                  />
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
                                   {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
