@@ -20,3 +20,47 @@ export interface ProductRelationship {
   default_opposite: string | null;
   created_at?: string;
 }
+
+// Define PaperTrade interface
+export interface PaperTrade {
+  id: string;
+  tradeReference: string;
+  counterparty: string;
+  created_at: Date;
+  updated_at: Date;
+  legs: PaperTradeLeg[];
+}
+
+// Define PaperTradeLeg interface
+export interface PaperTradeLeg {
+  id: string;
+  paper_trade_id: string;
+  leg_reference: string;
+  legReference?: string; // For compatibility with existing code
+  buy_sell: BuySell;
+  buySell?: BuySell; // For compatibility with existing code
+  product: string;
+  quantity: number;
+  period: string;
+  relationshipType: PaperRelationshipType;
+  rightSide?: {
+    product: string;
+    price?: number;
+  };
+  price?: number;
+  calculatedPrice?: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// Export FormulaToken and PricingFormula interfaces that were missing
+export interface FormulaToken {
+  type: 'operator' | 'number' | 'instrument' | 'fixed';
+  value: string | number;
+  display?: string;
+}
+
+export interface PricingFormula {
+  tokens: FormulaToken[];
+  formula: string;
+}

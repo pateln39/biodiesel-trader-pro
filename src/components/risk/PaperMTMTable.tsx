@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, AlertTriangle } from 'lucide-react';
 import { PaperTrade } from '@/types/paper';
+import { PaperTradeLeg } from '@/types/trade';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { PaperMTMPosition, calculatePaperTradePrice, calculatePaperMTMPrice, calculatePaperMTMValue, getMonthDates, getPeriodType } from '@/utils/paperTradeMTMUtils';

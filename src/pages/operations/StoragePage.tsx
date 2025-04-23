@@ -1,5 +1,4 @@
-
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -19,6 +18,9 @@ import TankForm from '@/components/operations/storage/TankForm';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
+import NavigableCell from '@/components/operations/storage/NavigableCell';
+import NavigableRow from '@/components/operations/storage/NavigableRow';
+import { useCellNavigation, CellPosition } from '@/hooks/useCellNavigation';
 import { 
   cleanupOrphanedTankMovements, 
   initializeAssignmentSortOrder, 
@@ -37,7 +39,6 @@ import TankMovementCell from '@/components/operations/storage/TankMovementCell';
 import MovementQuantityIndicator from '@/components/operations/storage/MovementQuantityIndicator';
 import { TableColumnWidth, SummaryColumnWidth, TableHeaderLabels } from '@/types/storage';
 
-// Constants for labels
 const LABEL_COUNTERPARTY = "Counterparty";
 const LABEL_TRADE_REF = "Trade Ref";
 const LABEL_BARGE = "Barge";
@@ -62,12 +63,10 @@ const LABEL_SUMMARY = "Summary";
 const LABEL_BALANCES = "Balances";
 const LABEL_TOTAL_CAPACITY = "Total Capacity:";
 
-// Constants for styling
 const HEADER_FONT_SIZE = "text-[10px]";
 const CAPACITY_WIDTH = 100;
 const HEATING_WIDTH = 100;
 
-// Column widths configuration
 const stickyColumnWidths: TableColumnWidth = {
   counterparty: 110,
   tradeRef: 80,
@@ -111,17 +110,13 @@ const truncatedHeaders: TableHeaderLabels = {
   difference: LABEL_DIFFERENCE,
 };
 
-/**
- * StoragePage component for managing terminal storage tanks and movements
- */
 const StoragePage: React.FC = () => {
-  // State
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
+  const rightScrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Hooks
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
   const { 
@@ -140,14 +135,49 @@ const StoragePage: React.FC = () => {
     updateTankNumber,
   } = useInventoryState(selectedTerminalId);
 
-  // Set initial terminal when terminals are loaded
   React.useEffect(() => {
     if (terminals.length > 0 && !selectedTerminalId) {
       setSelectedTerminalId(terminals[0].id);
     }
   }, [terminals, selectedTerminalId]);
 
-  // Event handlers
+  const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
+  const summaryCalculator = calculateSummary();
+
+  const sortedMovements = useMemo(() => {
+    return [...movements].sort((a, b) => {
+      if (a.sort_order !== null && b.sort_order !== null) {
+        return a.sort_order - b.sort_order;
+      }
+      if (a.sort_order !== null) return -1;
+      if (b.sort_order !== null) return 1;
+      
+      const dateA = new Date(a.assignment_date || a.created_at);
+      const dateB = new Date(b.assignment_date || b.created_at);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [movements]);
+
+  const leftColCount = Object.keys(stickyColumnWidths).length;
+  const rightColCount = tanks.length * 3 + Object.keys(summaryColumnWidths).length;
+
+  const {
+    activeCell,
+    setActiveCell,
+    registerCellRef,
+    focusCell,
+    handleKeyDown
+  } = useCellNavigation({
+    leftColCount,
+    rightColCount,
+    rowCount: sortedMovements.length,
+    scrollAreaRef: rightScrollAreaRef
+  });
+
+  const handleCellFocus = useCallback((position: CellPosition) => {
+    setActiveCell(position);
+  }, [setActiveCell]);
+
   const handleAddTerminal = useCallback(() => {
     setIsNewTerminal(true);
     setSelectedTank(undefined);
@@ -173,31 +203,15 @@ const StoragePage: React.FC = () => {
     }
   }, [selectedTerminalId, refetchTanks]);
 
-  // Calculate tank utilization and summary
-  const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
-  const summaryCalculator = calculateSummary();
-  
-  // Sort movements by sort_order or date
-  const sortedMovements = useMemo(() => {
-    return [...movements].sort((a, b) => {
-      if (a.sort_order !== null && b.sort_order !== null) {
-        return a.sort_order - b.sort_order;
-      }
-      if (a.sort_order !== null) return -1;
-      if (b.sort_order !== null) return 1;
-      
-      const dateA = new Date(a.assignment_date || a.created_at);
-      const dateB = new Date(b.assignment_date || b.created_at);
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [movements]);
-
-  // Helper function to get background color class for movement rows
   const getMovementRowBgClass = useCallback((buySell?: string) => {
     return buySell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
   }, []);
+
+  const isCellActive = useCallback((row: number, col: number, zone: 'left' | 'right') => {
+    return activeCell?.row === row && activeCell?.col === col && activeCell?.zone === zone;
+  }, [activeCell]);
 
   return (
     <Layout>
@@ -310,7 +324,11 @@ const StoragePage: React.FC = () => {
                 </ScrollArea>
                 
                 <div className="overflow-hidden flex-grow">
-                  <ScrollArea className="h-[700px]" orientation="horizontal">
+                  <ScrollArea 
+                    ref={rightScrollAreaRef}
+                    className="h-[700px]" 
+                    orientation="horizontal"
+                  >
                     <div className="min-w-[1800px]">
                       <Table>
                         <TableHeader>
@@ -328,7 +346,7 @@ const StoragePage: React.FC = () => {
                                   options={productOptions}
                                   onSave={(value) => updateTankProduct(tank.id, value)}
                                   className={cn(
-                                    `${HEADER_FONT_SIZE} font-bold text-center w-full`,
+                                    `text-[10px] font-bold text-center w-full`,
                                     PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
                                   )}
                                   truncate={false}
@@ -340,16 +358,16 @@ const StoragePage: React.FC = () => {
                               colSpan={1} 
                               className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                             >
-                              <div className={`${HEADER_FONT_SIZE} font-bold text-center w-full`}>
-                                {LABEL_SUMMARY}
+                              <div className="text-[10px] font-bold text-center w-full">
+                                {truncatedHeaders.totalMT}
                               </div>
                             </TableHead>
                             <TableHead 
                               colSpan={5} 
                               className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                             >
-                              <div className={`${HEADER_FONT_SIZE} font-bold text-center w-full`}>
-                                {LABEL_BALANCES}
+                              <div className="text-[10px] font-bold text-center w-full">
+                                {truncatedHeaders.currentStock}
                               </div>
                             </TableHead>
                           </TableRow>
@@ -362,7 +380,7 @@ const StoragePage: React.FC = () => {
                                 className="text-center text-[10px] border-r border-white/30"
                               >
                                 <div className="flex items-center justify-center">
-                                  <span className="mr-1">{LABEL_TANK}</span>
+                                  <span className="mr-1">Tank</span>
                                   <EditableField
                                     initialValue={tank.tank_number}
                                     onSave={(value) => updateTankNumber(tank.id, value)}
@@ -390,7 +408,7 @@ const StoragePage: React.FC = () => {
                                   tank={tank} 
                                   utilization={calculateTankUtilization(tank)} 
                                   updateTankCapacity={updateTankCapacity}
-                                  headerFontSize={HEADER_FONT_SIZE}
+                                  headerFontSize="text-[10px]"
                                 />
                               </TableHead>
                             ))}
@@ -400,7 +418,7 @@ const StoragePage: React.FC = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>{LABEL_TOTAL_CAPACITY} {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -424,7 +442,7 @@ const StoragePage: React.FC = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>{LABEL_TOTAL_CAPACITY} {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
+                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -496,8 +514,7 @@ const StoragePage: React.FC = () => {
                               </React.Fragment>
                             ))}
                             
-                            {/* Summary column headers */}
-                            {Object.entries(summaryColumnWidths).map(([key, width]) => (
+                            {Object.entries(summaryColumnWidths).map(([key, width], index) => (
                               <TableHead 
                                 key={`summary-header-${key}`}
                                 className={cn(
@@ -517,23 +534,36 @@ const StoragePage: React.FC = () => {
                         </TableHeader>
                         
                         <TableBody>
-                          {sortedMovements.map((movement) => {
+                          {sortedMovements.map((movement, rowIndex) => {
                             const bgColorClass = getMovementRowBgClass(movement.buy_sell);
                             const movementSummary = summaryCalculator.getSummaryForMovement(movement.id);
                             
                             return (
-                              <TableRow 
-                                key={`scroll-${movement.id}`} 
+                              <NavigableRow 
+                                key={`scroll-${movement.id}`}
+                                row={rowIndex}
+                                onKeyDown={handleKeyDown}
+                                activeCell={activeCell}
                                 className={cn("border-b border-white/5 h-10", bgColorClass)}
                               >
-                                {tanks.map((tank) => {
+                                {tanks.map((tank, tankIndex) => {
                                   const tankMovement = tankMovements.find(
                                     tm => tm.movement_id === movement.id && tm.tank_id === tank.id
                                   );
                                   
+                                  const colBase = tankIndex * 3;
+                                  
                                   return (
                                     <React.Fragment key={`${movement.id}-${tank.id}`}>
-                                      <TableCell className="text-center text-[10px] py-2">
+                                      <NavigableCell 
+                                        row={rowIndex}
+                                        col={colBase}
+                                        zone="right"
+                                        isActive={isCellActive(rowIndex, colBase, 'right')}
+                                        onCellFocus={handleCellFocus}
+                                        registerCellRef={registerCellRef}
+                                        className="text-center py-2"
+                                      >
                                         <TankMovementCell
                                           tankMovement={tankMovement}
                                           movementId={movement.id}
@@ -541,43 +571,87 @@ const StoragePage: React.FC = () => {
                                           tankProduct={tank.current_product}
                                           updateTankMovement={updateTankMovement}
                                         />
-                                      </TableCell>
-                                      <TableCell className="text-center text-[10px] py-2">
+                                      </NavigableCell>
+                                      <NavigableCell 
+                                        row={rowIndex}
+                                        col={colBase + 1}
+                                        zone="right"
+                                        isActive={isCellActive(rowIndex, colBase + 1, 'right')}
+                                        onCellFocus={handleCellFocus}
+                                        registerCellRef={registerCellRef}
+                                        className="text-center text-[10px] py-2"
+                                      >
                                         {tankMovement?.quantity_m3 ? (tankMovement.quantity_m3).toFixed(2) : '0.00'}
-                                      </TableCell>
-                                      <TableCell className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30">
+                                      </NavigableCell>
+                                      <NavigableCell 
+                                        row={rowIndex}
+                                        col={colBase + 2}
+                                        zone="right"
+                                        isActive={isCellActive(rowIndex, colBase + 2, 'right')}
+                                        onCellFocus={handleCellFocus}
+                                        registerCellRef={registerCellRef}
+                                        className="text-center text-[10px] py-2 bg-brand-navy border-r border-white/30"
+                                      >
                                         {movementSummary.tankBalances[tank.id]?.balanceMT || 0}
-                                      </TableCell>
+                                      </NavigableCell>
                                     </React.Fragment>
                                   );
                                 })}
                                 
-                                {/* Summary cells */}
-                                <TableCell className="text-center text-[10px] py-2">
-                                  <MovementQuantityIndicator 
-                                    totalMTMoved={movementSummary.totalMTMoved}
-                                    assignmentQuantity={movement.assignment_quantity || 0}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2">
-                                  {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
-                                  {Math.round(movementSummary.t1Balance)}
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
-                                  {Math.round(movementSummary.t2Balance)}
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium">
-                                  {Math.round(movementSummary.currentStockMT)}
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(movementSummary.currentUllage)}
-                                </TableCell>
-                                <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
-                                </TableCell>
-                              </TableRow>
+                                {Object.keys(summaryColumnWidths).map((key, index) => {
+                                  const colOffset = tanks.length * 3;
+                                  let content = null;
+                                  
+                                  switch(key) {
+                                    case 'totalMT':
+                                      content = (
+                                        <MovementQuantityIndicator 
+                                          totalMTMoved={movementSummary.totalMTMoved}
+                                          assignmentQuantity={movement.assignment_quantity || 0}
+                                        />
+                                      );
+                                      break;
+                                    case 'totalM3':
+                                      content = (movementSummary.totalMTMoved * 1.1).toFixed(2);
+                                      break;
+                                    case 't1Balance':
+                                      content = <span className="font-medium text-green-400">{Math.round(movementSummary.t1Balance)}</span>;
+                                      break;
+                                    case 't2Balance':
+                                      content = <span className="font-medium text-blue-400">{Math.round(movementSummary.t2Balance)}</span>;
+                                      break;
+                                    case 'currentStock':
+                                      content = <span className="font-medium">{Math.round(movementSummary.currentStockMT)}</span>;
+                                      break;
+                                    case 'currentUllage':
+                                      content = <span className="font-medium">{Math.round(movementSummary.currentUllage)}</span>;
+                                      break;
+                                    case 'difference':
+                                      content = <span className="font-medium">
+                                        {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                      </span>;
+                                      break;
+                                  }
+                                  
+                                  return (
+                                    <NavigableCell 
+                                      key={`${movement.id}-summary-${key}`}
+                                      row={rowIndex}
+                                      col={colOffset + index}
+                                      zone="right"
+                                      isActive={isCellActive(rowIndex, colOffset + index, 'right')}
+                                      onCellFocus={handleCellFocus}
+                                      registerCellRef={registerCellRef}
+                                      className={cn(
+                                        "text-center text-[10px] py-2",
+                                        (key === 'currentUllage' || key === 'difference') && "border-r border-white/30"
+                                      )}
+                                    >
+                                      {content}
+                                    </NavigableCell>
+                                  );
+                                })}
+                              </NavigableRow>
                             );
                           })}
                         </TableBody>

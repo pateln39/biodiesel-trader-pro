@@ -1,4 +1,5 @@
-import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula, Instrument } from '@/types';
+import { MTMPriceDetail, PricingFormula } from '@/types';
+
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
