@@ -1,5 +1,4 @@
-import { PaperTrade } from '@/types/paper';
-import { PaperTradeLeg } from '@/types/trade';
+import { PaperTrade, PaperTradeLeg } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { parseForwardMonth } from './dateParsingUtils';
 import { mapProductToCanonical, mapProductToInstrumentCode } from './productMapping';
@@ -10,23 +9,18 @@ import { toast } from 'sonner';
  * For FP trades: simply the price entered by the user
  * For DIFF/SPREAD trades: the difference between left price and right price
  */
-export const calculatePaperTradePrice = (leg: PaperTradeLeg) => {
-  // Handle both camelCase and snake_case properties
-  const relationshipType = leg.relationshipType;
-  let price = 0;
-
-  if (relationshipType === 'FP' && typeof leg.price === 'number') {
-    price = leg.price;
-  } else if (relationshipType === 'DIFF' && leg.rightSide?.price !== undefined) {
-    price = leg.rightSide.price;
-  } else if (typeof leg.calculatedPrice === 'number') {
-    price = leg.calculatedPrice;
-  } else {
-    console.warn(`No price found for leg ${leg.leg_reference || leg.legReference}`);
-    price = 0;
+export const calculatePaperTradePrice = (leg: PaperTradeLeg): number => {
+  if (!leg) return 0;
+  
+  // For FP trades, just return the price
+  if (leg.relationshipType === 'FP') {
+    return leg.price || 0;
   }
-
-  return price;
+  
+  // For DIFF and SPREAD trades, return the difference between left and right prices
+  const leftPrice = leg.price || 0;
+  const rightPrice = leg.rightSide?.price || 0;
+  return leftPrice - rightPrice;
 };
 
 /**

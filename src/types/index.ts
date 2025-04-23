@@ -1,19 +1,13 @@
-
 // Export from type modules
 export * from './pricing';
 export * from './physical';
+export * from './paper';
 export * from './common';
-export * from './trade';
-
-// Explicitly import and re-export from paper to avoid ambiguity
-import { PaperParentTrade, PaperTradeRightSide } from './paper';
-export type { PaperParentTrade, PaperTradeRightSide };
 
 // Add or update the Movement interface
 export interface Movement {
   id: string;
   referenceNumber?: string;
-  reference_number?: string; // Adding snake_case version for compatibility
   tradeLegId?: string;
   parentTradeId?: string;
   tradeReference?: string;
@@ -78,21 +72,6 @@ import {
   ExposureResult
 } from './common';
 import { PricingFormula, PricingComponent } from './pricing';
-import { FormulaToken } from './trade';
-
-// Add missing export for MTMPriceDetail
-export interface PriceDetail {
-  date: string;
-  price: number;
-  instrument_id: string;
-  instrument_code?: string;
-}
-
-export interface MTMPriceDetail extends PriceDetail {
-  mtm_price: number;
-  delta: number;
-  mtm_date?: string;
-}
 
 // Re-export specific types explicitly to avoid ambiguities
 export type {
@@ -113,6 +92,5 @@ export type {
   DbParentTrade,
   DbTradeLeg,
   Instrument,
-  ExposureResult,
-  FormulaToken
+  ExposureResult
 };

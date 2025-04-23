@@ -614,27 +614,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                     <div className="mb-2">
                       <Label className="font-medium">Price Formula</Label>
                     </div>
-                    {leg.pricingType === 'standard' ? <FormulaBuilder 
-                      instruments={['Argus UCOME', 'Argus RME', 'Argus FAME0', 'ICE Gasoil']} 
-                      formula={leg.formula || createEmptyFormula()} 
-                      onAddToken={(token) => {
-                        const updatedFormula = {
-                          ...leg.formula || createEmptyFormula(),
-                          tokens: [...(leg.formula?.tokens || []), token]
-                        };
-                        handleFormulaChange(updatedFormula, legIndex);
-                      }}
-                      onRemoveToken={(index) => {
-                        const updatedFormula = {
-                          ...leg.formula || createEmptyFormula(),
-                          tokens: (leg.formula?.tokens || []).filter((_, i) => i !== index)
-                        };
-                        handleFormulaChange(updatedFormula, legIndex);
-                      }}
-                      onUpdateFormulaString={(formulaString) => {
-                        console.log("Formula string updated:", formulaString);
-                      }}
-                    /> : <div className="text-muted-foreground text-sm italic">
+                    {leg.pricingType === 'standard' ? <FormulaBuilder value={leg.formula || createEmptyFormula()} onChange={formula => handleFormulaChange(formula, legIndex)} tradeQuantity={leg.quantity || 0} buySell={leg.buySell} selectedProduct={leg.product} formulaType="price" otherFormula={leg.mtmFormula || createEmptyFormula()} /> : <div className="text-muted-foreground text-sm italic">
                         Standard formula pricing is disabled when EFP pricing is selected.
                       </div>}
                   </TabsContent>
@@ -650,27 +630,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                     <div className="mb-2">
                       <Label className="font-medium">MTM Pricing Formula</Label>
                     </div>
-                    <FormulaBuilder 
-                      instruments={['Argus UCOME', 'Argus RME', 'Argus FAME0', 'ICE Gasoil']}
-                      formula={leg.mtmFormula || createEmptyFormula()}
-                      onAddToken={(token) => {
-                        const updatedFormula = {
-                          ...leg.mtmFormula || createEmptyFormula(),
-                          tokens: [...(leg.mtmFormula?.tokens || []), token]
-                        };
-                        handleMtmFormulaChange(updatedFormula, legIndex);
-                      }}
-                      onRemoveToken={(index) => {
-                        const updatedFormula = {
-                          ...leg.mtmFormula || createEmptyFormula(),
-                          tokens: (leg.mtmFormula?.tokens || []).filter((_, i) => i !== index)
-                        };
-                        handleMtmFormulaChange(updatedFormula, legIndex);
-                      }}
-                      onUpdateFormulaString={(formulaString) => {
-                        console.log("MTM Formula string updated:", formulaString);
-                      }}
-                    />
+                    <FormulaBuilder value={leg.mtmFormula || createEmptyFormula()} onChange={formula => handleMtmFormulaChange(formula, legIndex)} tradeQuantity={leg.quantity || 0} buySell={leg.buySell} selectedProduct={leg.product} formulaType="mtm" otherFormula={leg.formula || createEmptyFormula()} />
                   </TabsContent>
                 </Tabs>
               </div>

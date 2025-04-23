@@ -25,12 +25,9 @@ export interface PaperTradeRightSide {
 export interface PaperTradeLeg {
   id: string;
   paperTradeId: string;
-  paper_trade_id: string; // Changed to required for compatibility
   legReference: string;
-  leg_reference: string; // Changed to required for compatibility
   buySell: BuySell;
-  buy_sell: BuySell; // Changed to required for compatibility
-  product: string;
+  product: Product;
   quantity: number;
   period: string;
   price: number;
@@ -47,8 +44,6 @@ export interface PaperTradeLeg {
     pricing?: Record<string, number>;
     paper?: Record<string, number>;
   };
-  created_at: Date; // Required for compatibility
-  updated_at: Date; // Required for compatibility
 }
 
 // Complete paper trade with parent and legs
@@ -63,6 +58,4 @@ export interface PaperTrade {
   buySell: BuySell;
   product: Product;
   legs: PaperTradeLeg[];
-  created_at: Date; // Changed to required for compatibility
-  updated_at: Date; // Changed to required for compatibility
 }

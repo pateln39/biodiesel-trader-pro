@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -58,19 +59,11 @@ const PaperMTMTable: React.FC = () => {
             
             console.log(`Processing leg ${leg.legReference} with product ${leg.product}, period ${leg.period}`);
             
-            // Convert leg to appropriate format for the calculation functions
-            const calculationLeg = {
-              ...leg,
-              paper_trade_id: leg.paperTradeId || leg.paper_trade_id,
-              leg_reference: leg.legReference || leg.leg_reference,
-              buy_sell: leg.buySell || leg.buy_sell
-            };
-            
             // Calculate trade price (fixed price or difference)
-            const tradePrice = calculatePaperTradePrice(calculationLeg);
+            const tradePrice = calculatePaperTradePrice(leg);
             
             // Calculate MTM price based on period type
-            const mtmPrice = await calculatePaperMTMPrice(calculationLeg, today);
+            const mtmPrice = await calculatePaperMTMPrice(leg, today);
             
             if (mtmPrice === null) {
               console.warn(`Could not calculate MTM price for leg ${leg.legReference}`);
@@ -89,8 +82,8 @@ const PaperMTMTable: React.FC = () => {
             positions.push({
               legId: leg.id,
               tradeRef: trade.tradeReference,
-              legReference: leg.legReference || leg.leg_reference,
-              buySell: leg.buySell || leg.buy_sell,
+              legReference: leg.legReference,
+              buySell: leg.buySell,
               product: leg.product,
               quantity: leg.quantity,
               period: leg.period,
@@ -103,8 +96,8 @@ const PaperMTMTable: React.FC = () => {
             });
           } catch (error) {
             console.error(`Error calculating MTM for paper leg ${leg.id}:`, error);
-            toast.error(`Error calculating MTM for paper leg ${leg.legReference || leg.leg_reference}`);
-            errors.push(leg.legReference || leg.leg_reference);
+            toast.error(`Error calculating MTM for paper leg ${leg.legReference}`);
+            errors.push(leg.legReference);
           }
         }
       }
