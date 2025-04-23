@@ -8,16 +8,7 @@ import { Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TruncatedCell } from './TruncatedCell';
 import { Badge } from '@/components/ui/badge';
-
-interface Tank {
-  id: string;
-  tank_number: string;
-  current_product: string;
-  capacity_mt: number;
-  capacity_m3: number;
-  is_heating_enabled: boolean;
-  spec: string;
-}
+import { Tank } from '@/hooks/useTanks'; // Import the Tank type from useTanks
 
 interface StorageSummaryTableProps {
   tanks: Tank[];
