@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,14 +17,12 @@ const EETLogo = () => {
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
   const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
-  const [highlightedItemPath, setHighlightedItemPath] = useState<string | null>(null);
-
+  
   const isActive = (path: string) => {
     return location.pathname === path;
   };
@@ -66,66 +64,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
   const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
-
-  const findNextNavigableItem = (menuItems: any[], currentPath: string | null): string => {
-    const allPaths = menuItems.flatMap(item => 
-      item.submenu 
-        ? item.submenu.map(subItem => subItem.path)
-        : [item.path]
-    ).filter(Boolean);
-
-    if (!currentPath || !allPaths.includes(currentPath)) {
-      return allPaths[0];
-    }
-
-    const currentIndex = allPaths.indexOf(currentPath);
-    return allPaths[(currentIndex + 1) % allPaths.length];
-  };
-
-  const findPrevNavigableItem = (menuItems: any[], currentPath: string | null): string => {
-    const allPaths = menuItems.flatMap(item => 
-      item.submenu 
-        ? item.submenu.map(subItem => subItem.path)
-        : [item.path]
-    ).filter(Boolean);
-
-    if (!currentPath || !allPaths.includes(currentPath)) {
-      return allPaths[allPaths.length - 1];
-    }
-
-    const currentIndex = allPaths.indexOf(currentPath);
-    return allPaths[(currentIndex - 1 + allPaths.length) % allPaths.length];
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!sidebarOpen) return;
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault();
-          setHighlightedItemPath(current => findNextNavigableItem(menuItems, current));
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          setHighlightedItemPath(current => findPrevNavigableItem(menuItems, current));
-          break;
-        case 'Enter':
-          e.preventDefault();
-          if (highlightedItemPath) {
-            navigate(highlightedItemPath);
-            setHighlightedItemPath(null);
-          }
-          break;
-        case 'Escape':
-          setHighlightedItemPath(null);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen, menuItems, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -236,14 +174,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                         <Link
                           key={subItem.path}
                           to={subItem.path}
-                          className={cn(
-                            "flex items-center space-x-3 p-2 rounded-md transition-colors",
+                          className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
                             isActive(subItem.path)
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-primary/5",
-                            highlightedItemPath === subItem.path && 
-                              "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
-                          )}
+                              ? 'bg-primary/10 text-primary'
+                              : 'hover:bg-primary/5'
+                          }`}
                         >
                           {subItem.icon}
                           <span>{subItem.label}</span>
@@ -256,14 +191,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={cn(
-                    "flex items-center space-x-3 p-3 rounded-md transition-colors",
+                  className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
                     isActive(item.path)
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-primary/5",
-                    highlightedItemPath === item.path && 
-                      "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
-                  )}
+                      ? 'bg-primary/10 text-primary'
+                      : 'hover:bg-primary/5'
+                  }`}
                 >
                   {item.icon}
                   <span>{item.label}</span>

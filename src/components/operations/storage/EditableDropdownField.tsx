@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, KeyboardEvent } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableDropdownFieldProps {
   initialValue: string;
@@ -34,47 +33,15 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue);
-  const { startEditing, endEditing } = useKeyboardNavigationContext();
-
-  useEffect(() => {
-    // Update value if initialValue changes
-    setValue(initialValue);
-  }, [initialValue]);
 
   const handleSave = () => {
     onSave(value);
     setIsOpen(false);
-    endEditing();
   };
 
   const handleCancel = () => {
     setValue(initialValue);
     setIsOpen(false);
-    endEditing();
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      startEditing();
-    } else {
-      endEditing();
-    }
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    
-    switch (e.key) {
-      case 'Enter':
-        e.preventDefault();
-        handleSave();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        handleCancel();
-        break;
-    }
   };
 
   const getLabel = (val: string) => {
@@ -83,7 +50,7 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div 
           className={cn(
@@ -92,15 +59,14 @@ const EditableDropdownField: React.FC<EditableDropdownFieldProps> = ({
             className
           )}
           style={truncate ? { maxWidth: `${maxWidth}px` } : undefined}
-          data-editable-trigger="true"
         >
           {getLabel(initialValue) || placeholder}
         </div>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3">
-        <div className="space-y-2" onKeyDown={handleKeyDown}>
+        <div className="space-y-2">
           <Select value={value} onValueChange={setValue}>
-            <SelectTrigger className="w-full" autoFocus>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>

@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,6 @@ import { Check, X, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableAssignmentCommentsProps {
   assignmentId: string;
@@ -26,15 +25,7 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const [comments, setComments] = useState(initialValue || '');
   const [displayedComments, setDisplayedComments] = useState(initialValue || '');
   const [isLoading, setIsLoading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
-  const { startEditing, endEditing } = useKeyboardNavigationContext();
-
-  useEffect(() => {
-    // Update comments if initialValue changes
-    setComments(initialValue || '');
-    setDisplayedComments(initialValue || '');
-  }, [initialValue]);
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -42,7 +33,6 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
       await onSave(assignmentId, comments);
       setDisplayedComments(comments);
       setIsOpen(false);
-      endEditing();
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
       toast.success('Comments saved successfully');
     } catch (error) {
@@ -56,36 +46,10 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
   const handleCancel = () => {
     setComments(displayedComments);
     setIsOpen(false);
-    endEditing();
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      startEditing();
-    } else {
-      endEditing();
-    }
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Don't stop propagation for Tab key to allow navigating inside textarea
-    if (e.key !== 'Tab') {
-      e.stopPropagation();
-    }
-    
-    // Capture Ctrl+Enter for save in textarea
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      handleCancel();
-    }
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div
           className={cn(
@@ -93,7 +57,6 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
             className,
             displayedComments ? "text-purple-300" : "text-muted-foreground"
           )}
-          data-editable-trigger="true"
         >
           <span className="truncate max-w-[120px]">
             {displayedComments || '-'}
@@ -104,13 +67,11 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
       <PopoverContent className="w-80 p-3">
         <div className="space-y-2">
           <Textarea
-            ref={textareaRef}
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             placeholder="Add comments..."
             className="w-full min-h-[100px] text-xs"
             autoFocus
-            onKeyDown={handleKeyDown}
           />
           <div className="flex justify-end space-x-2">
             <Button
@@ -138,3 +99,4 @@ const EditableAssignmentComments: React.FC<EditableAssignmentCommentsProps> = ({
 };
 
 export default EditableAssignmentComments;
+

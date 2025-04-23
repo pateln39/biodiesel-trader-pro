@@ -1,12 +1,10 @@
-
-import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ProductToken from './ProductToken';
-import { useKeyboardNavigationContext } from '@/contexts/KeyboardNavigationContext';
 
 interface EditableNumberFieldProps {
   initialValue: number;
@@ -25,51 +23,18 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState(initialValue.toString());
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { startEditing, endEditing } = useKeyboardNavigationContext();
-
-  useEffect(() => {
-    // Update value if initialValue changes
-    setValue(initialValue.toString());
-  }, [initialValue]);
 
   const handleSave = () => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       onSave(numValue);
       setIsOpen(false);
-      endEditing();
     }
   };
 
   const handleCancel = () => {
     setValue(initialValue.toString());
     setIsOpen(false);
-    endEditing();
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open) {
-      startEditing();
-    } else {
-      endEditing();
-    }
-  };
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    
-    switch (e.key) {
-      case 'Enter':
-        e.preventDefault();
-        handleSave();
-        break;
-      case 'Escape':
-        e.preventDefault();
-        handleCancel();
-        break;
-    }
   };
 
   // Format display value based on whether it's an M3 value
@@ -91,9 +56,9 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
   );
 
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <div className="cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded" data-editable-trigger="true">
+        <div className="cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded">
           {displayValue}
         </div>
       </PopoverTrigger>
@@ -101,14 +66,12 @@ const EditableNumberField: React.FC<EditableNumberFieldProps> = ({
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <Input
-              ref={inputRef}
               type="number"
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={placeholder}
               className="w-full"
               autoFocus
-              onKeyDown={handleKeyDown}
             />
             {product && (
               <ProductToken 
