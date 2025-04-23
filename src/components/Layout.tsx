@@ -23,7 +23,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
-  
   const [highlightedItemPath, setHighlightedItemPath] = useState<string | null>(null);
 
   const isActive = (path: string) => {
@@ -100,11 +99,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault();
-        toggleSidebar();
-      }
-
       if (!sidebarOpen) return;
 
       switch (e.key) {
