@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
@@ -23,19 +24,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
-  
+
   const [highlightedItemPath, setHighlightedItemPath] = useState<string | null>(null);
 
   const isActive = (path: string) => {
     return location.pathname === path;
-  };
-
-  const isRiskSection = () => {
-    return location.pathname.startsWith('/risk');
-  };
-
-  const isOperationsSection = () => {
-    return location.pathname.startsWith('/operations');
   };
 
   const menuItems = [
@@ -64,45 +57,45 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },
   ];
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
-  const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
-
-  const findNextNavigableItem = (menuItems: any[], currentPath: string | null): string => {
-    const allPaths = menuItems.flatMap(item => 
-      item.submenu 
-        ? item.submenu.map(subItem => subItem.path)
-        : [item.path]
-    ).filter(Boolean);
-
-    if (!currentPath || !allPaths.includes(currentPath)) {
-      return allPaths[0];
+  // Identify menu keys for keynav (basically a flat list + submenu headers as pseudo-paths)
+  // We'll use special keys "submenu:Operations", "submenu:Risk" for those headers.
+  const flattenedMenuKeys: string[] = [];
+  menuItems.forEach((item) => {
+    if (item.submenu) {
+      flattenedMenuKeys.push(`submenu:${item.label}`);
+      item.submenu.forEach((sub) => flattenedMenuKeys.push(sub.path));
+    } else if (item.path) {
+      flattenedMenuKeys.push(item.path);
     }
+  });
 
-    const currentIndex = allPaths.indexOf(currentPath);
-    return allPaths[(currentIndex + 1) % allPaths.length];
+  // Find the index of the highlighted item in the flattened list
+  const getHighlightedIndex = () =>
+    highlightedItemPath
+      ? flattenedMenuKeys.findIndex((x) => x === highlightedItemPath)
+      : -1;
+
+  const findNextNavigableItem = (currentPath: string | null): string => {
+    const idx = flattenedMenuKeys.indexOf(currentPath || '');
+    return flattenedMenuKeys[(idx + 1) % flattenedMenuKeys.length];
   };
 
-  const findPrevNavigableItem = (menuItems: any[], currentPath: string | null): string => {
-    const allPaths = menuItems.flatMap(item => 
-      item.submenu 
-        ? item.submenu.map(subItem => subItem.path)
-        : [item.path]
-    ).filter(Boolean);
+  const findPrevNavigableItem = (currentPath: string | null): string => {
+    const idx = flattenedMenuKeys.indexOf(currentPath || '');
+    return flattenedMenuKeys[(idx - 1 + flattenedMenuKeys.length) % flattenedMenuKeys.length];
+  };
 
-    if (!currentPath || !allPaths.includes(currentPath)) {
-      return allPaths[allPaths.length - 1];
-    }
-
-    const currentIndex = allPaths.indexOf(currentPath);
-    return allPaths[(currentIndex - 1 + allPaths.length) % allPaths.length];
+  // Open/close a submenu by label
+  const toggleSubmenuByLabel = (label: string) => {
+    if (label === "Risk") setRiskSubmenuOpen((prev) => !prev);
+    else if (label === "Operations") setOperationsSubmenuOpen((prev) => !prev);
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
-        toggleSidebar();
+        setSidebarOpen((prev) => !prev);
       }
 
       if (!sidebarOpen) return;
@@ -110,19 +103,33 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
-          setHighlightedItemPath(current => findNextNavigableItem(menuItems, current));
+          setHighlightedItemPath((current) => {
+            if (!current) return flattenedMenuKeys[0];
+            return findNextNavigableItem(current);
+          });
           break;
         case 'ArrowUp':
           e.preventDefault();
-          setHighlightedItemPath(current => findPrevNavigableItem(menuItems, current));
+          setHighlightedItemPath((current) => {
+            if (!current) return flattenedMenuKeys[flattenedMenuKeys.length - 1];
+            return findPrevNavigableItem(current);
+          });
           break;
-        case 'Enter':
+        case 'Enter': {
           e.preventDefault();
           if (highlightedItemPath) {
+            if (highlightedItemPath.startsWith("submenu:")) {
+              // It's a submenu header. Toggle submenu.
+              const submenuLabel = highlightedItemPath.replace("submenu:", "");
+              toggleSubmenuByLabel(submenuLabel);
+              return;
+            }
+            // Else: navigate
             navigate(highlightedItemPath);
             setHighlightedItemPath(null);
           }
           break;
+        }
         case 'Escape':
           setHighlightedItemPath(null);
           break;
@@ -131,32 +138,36 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen, menuItems, navigate]);
+    // eslint-disable-next-line
+  }, [sidebarOpen, highlightedItemPath, riskSubmenuOpen, operationsSubmenuOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarOpen && 
-          sidebarRef.current && 
-          !sidebarRef.current.contains(event.target as Node) &&
-          !(event.target as Element).closest('[data-sidebar-toggle]')) {
-        
+        sidebarRef.current && 
+        !sidebarRef.current.contains(event.target as Node) &&
+        !(event.target as Element).closest('[data-sidebar-toggle]')
+      ) {
         const clickTime = new Date().getTime();
         const timeSinceLastClick = clickTime - lastClickTimeRef.current;
-        
+
         if (timeSinceLastClick < 300 && timeSinceLastClick > 0) {
           setSidebarOpen(false);
         }
-        
+
         lastClickTimeRef.current = clickTime;
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [sidebarOpen]);
+
+  // Helper: is the item currently highlighted (for either links or submenus)
+  const isHighlighted = (pathOrKey: string) => highlightedItemPath === pathOrKey;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -166,7 +177,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={toggleSidebar}
+              onClick={() => setSidebarOpen((prev) => !prev)}
               data-sidebar-toggle="true"
               className="text-primary-foreground hover:bg-primary/90"
             >
@@ -209,56 +220,65 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
         >
           <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
-            {menuItems.map((item, index) => (
-              item.submenu ? (
-                <div key={index} className="space-y-1">
-                  <Collapsible
-                    open={
-                      (item.label === 'Risk' && riskSubmenuOpen) || 
-                      (item.label === 'Operations' && operationsSubmenuOpen)
-                    }
-                    onOpenChange={
-                      item.label === 'Risk' 
-                        ? toggleRiskSubmenu 
-                        : toggleOperationsSubmenu
-                    }
-                    className="rounded-md transition-colors"
-                  >
-                    <CollapsibleTrigger asChild>
-                      <button className="flex items-center justify-between w-full p-3 font-medium">
-                        <div className="flex items-center space-x-3">
-                          {item.icon}
-                          <span>{item.label}</span>
-                        </div>
-                        {(item.label === 'Risk' && riskSubmenuOpen) || 
-                         (item.label === 'Operations' && operationsSubmenuOpen) ? 
-                          <ChevronDown className="h-4 w-4" /> : 
-                          <ChevronRight className="h-4 w-4" />
-                        }
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-8 space-y-1 animate-accordion-down">
-                      {item.submenu.map((subItem) => (
-                        <Link
-                          key={subItem.path}
-                          to={subItem.path}
+            {/* Render menu, adding highlight/keyboard nav for submenu headers */}
+            {menuItems.map((item, index) => {
+              if (item.submenu) {
+                const submenuKey = `submenu:${item.label}`;
+                const open = (item.label === 'Risk' && riskSubmenuOpen) || (item.label === 'Operations' && operationsSubmenuOpen);
+
+                return (
+                  <div key={item.label} className="space-y-1">
+                    <Collapsible
+                      open={open}
+                      onOpenChange={() => toggleSubmenuByLabel(item.label)}
+                      className="rounded-md transition-colors"
+                    >
+                      <CollapsibleTrigger asChild>
+                        <button
                           className={cn(
-                            "flex items-center space-x-3 p-2 rounded-md transition-colors",
-                            isActive(subItem.path)
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-primary/5",
-                            highlightedItemPath === subItem.path && 
+                            "flex items-center justify-between w-full p-3 font-medium rounded-md transition-colors focus:outline-none",
+                            isHighlighted(submenuKey) &&
                               "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
                           )}
+                          tabIndex={0}
+                          onMouseEnter={() => setHighlightedItemPath(submenuKey)}
+                          onFocus={() => setHighlightedItemPath(submenuKey)}
                         >
-                          {subItem.icon}
-                          <span>{subItem.label}</span>
-                        </Link>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              ) : (
+                          <div className="flex items-center space-x-3">
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </div>
+                          {open ?  <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pl-8 space-y-1 animate-accordion-down">
+                        {item.submenu.map((subItem) => (
+                          <Link
+                            key={subItem.path}
+                            to={subItem.path}
+                            className={cn(
+                              "flex items-center space-x-3 p-2 rounded-md transition-colors",
+                              isActive(subItem.path)
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-primary/5",
+                              isHighlighted(subItem.path) && 
+                                "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
+                            )}
+                            tabIndex={0}
+                            onMouseEnter={() => setHighlightedItemPath(subItem.path)}
+                            onFocus={() => setHighlightedItemPath(subItem.path)}
+                          >
+                            {subItem.icon}
+                            <span>{subItem.label}</span>
+                          </Link>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                );
+              }
+              // Regular menu item
+              return (
                 <Link
                   key={item.path}
                   to={item.path}
@@ -267,15 +287,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     isActive(item.path)
                       ? "bg-primary/10 text-primary"
                       : "hover:bg-primary/5",
-                    highlightedItemPath === item.path && 
+                    isHighlighted(item.path) && 
                       "outline outline-2 outline-offset-2 outline-brand-lime ring-2 ring-brand-lime shadow-[0_0_15px_rgba(180,211,53,0.7)]"
                   )}
+                  tabIndex={0}
+                  onMouseEnter={() => setHighlightedItemPath(item.path)}
+                  onFocus={() => setHighlightedItemPath(item.path)}
                 >
                   {item.icon}
                   <span>{item.label}</span>
                 </Link>
-              )
-            ))}
+              );
+            })}
           </nav>
         </aside>
 
