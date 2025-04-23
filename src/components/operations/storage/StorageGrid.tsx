@@ -9,7 +9,7 @@ import EditableField from '@/components/operations/storage/EditableField';
 import EditableNumberField from '@/components/operations/storage/EditableNumberField';
 import KeyboardNavigableCell from '@/components/operations/storage/KeyboardNavigableCell';
 import ProductLegend from '@/components/operations/storage/ProductLegend';
-import TruncatedCell from '@/components/operations/storage/TruncatedCell';
+import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
 import { Thermometer, Database, Plus, Wrench, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
