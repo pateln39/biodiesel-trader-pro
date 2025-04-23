@@ -830,7 +830,6 @@ const StoragePage = () => {
                                     );
                                   })}
                                   
-                                  {/* 7 Summary cells - Match table header order */}
                                   {/* 1. Total MT */}
                                   <TableCell className="text-center text-[10px] py-2">
                                     <KeyboardNavigableCell 
@@ -839,24 +838,17 @@ const StoragePage = () => {
                                       panel="right" 
                                       className="h-full w-full"
                                     >
-                                      {(() => {
-                                        const totalMTMoved = Math.round(movementSummary.totalMTMoved);
-                                        const movementQuantity = Math.round(movement.assignment_quantity || 0);
-                                        
-                                        return (
-                                          <div className="flex items-center justify-center space-x-1">
-                                            <span>{totalMTMoved}</span>
-                                            {totalMTMoved !== movementQuantity && (
-                                              <Badge 
-                                                variant="outline" 
-                                                className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
-                                              >
-                                                !
-                                              </Badge>
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
+                                      <div className="flex items-center justify-center space-x-1">
+                                        <span>{Math.round(movementSummary.totalMTMoved)}</span>
+                                        {Math.round(movementSummary.totalMTMoved) !== Math.round(movement.assignment_quantity || 0) && (
+                                          <Badge 
+                                            variant="outline" 
+                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                          >
+                                            !
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </KeyboardNavigableCell>
                                   </TableCell>
                                   {/* 2. Total M3 */}
