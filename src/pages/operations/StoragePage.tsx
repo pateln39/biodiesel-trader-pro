@@ -830,7 +830,8 @@ const StoragePage = () => {
                                     );
                                   })}
                                   
-                                  {/* Summary cells */}
+                                  {/* 7 Summary cells - Match table header order */}
+                                  {/* 1. Total MT */}
                                   <TableCell className="text-center text-[10px] py-2">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -858,6 +859,7 @@ const StoragePage = () => {
                                       })()}
                                     </KeyboardNavigableCell>
                                   </TableCell>
+                                  {/* 2. Total M3 */}
                                   <TableCell className="text-center text-[10px] py-2">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -868,6 +870,7 @@ const StoragePage = () => {
                                       {(movementSummary.totalMTMoved * 1.1).toFixed(2)}
                                     </KeyboardNavigableCell>
                                   </TableCell>
+                                  {/* 3. T1 */}
                                   <TableCell className="text-center text-[10px] py-2 font-medium text-green-400">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -878,6 +881,7 @@ const StoragePage = () => {
                                       {Math.round(movementSummary.t1Balance)}
                                     </KeyboardNavigableCell>
                                   </TableCell>
+                                  {/* 4. T2 */}
                                   <TableCell className="text-center text-[10px] py-2 font-medium text-blue-400">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -888,6 +892,7 @@ const StoragePage = () => {
                                       {Math.round(movementSummary.t2Balance)}
                                     </KeyboardNavigableCell>
                                   </TableCell>
+                                  {/* 5. Current Stock */}
                                   <TableCell className="text-center text-[10px] py-2 font-medium">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
@@ -898,10 +903,22 @@ const StoragePage = () => {
                                       {Math.round(movementSummary.currentStockMT)}
                                     </KeyboardNavigableCell>
                                   </TableCell>
-                                  <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                  {/* 6. Current Ullage */}
+                                  <TableCell className="text-center text-[10px] py-2 font-medium">
                                     <KeyboardNavigableCell 
                                       row={rowIndex} 
                                       col={tanks.length * 3 + 5} 
+                                      panel="right" 
+                                      className="h-full w-full"
+                                    >
+                                      {Math.round(movementSummary.currentUllage)}
+                                    </KeyboardNavigableCell>
+                                  </TableCell>
+                                  {/* 7. Difference (Total - Qty) */}
+                                  <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
+                                    <KeyboardNavigableCell 
+                                      row={rowIndex} 
+                                      col={tanks.length * 3 + 6} 
                                       panel="right" 
                                       className="h-full w-full"
                                     >
