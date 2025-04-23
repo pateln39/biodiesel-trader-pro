@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
@@ -15,14 +16,40 @@ const EETLogo = () => {
   );
 };
 
+// Sidebar storage keys
+const RISK_SUBMENU_KEY = 'sidebar-risk-submenu-open';
+const OPERATIONS_SUBMENU_KEY = 'sidebar-operations-submenu-open';
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
-  const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastClickTimeRef = useRef<number>(0);
+
+  // Load initial state from localStorage with path-based fallbacks
+  const pathHasRisk = location.pathname.includes('/risk/');
+  const pathHasOperations = location.pathname.includes('/operations/');
+  
+  const initialRiskOpen = localStorage.getItem(RISK_SUBMENU_KEY) !== null 
+    ? localStorage.getItem(RISK_SUBMENU_KEY) === 'true'
+    : pathHasRisk; // Default to open if on a risk path
+    
+  const initialOperationsOpen = localStorage.getItem(OPERATIONS_SUBMENU_KEY) !== null 
+    ? localStorage.getItem(OPERATIONS_SUBMENU_KEY) === 'true'
+    : pathHasOperations; // Default to open if on an operations path
+  
+  const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(initialRiskOpen);
+  const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(initialOperationsOpen);
+
+  // Persist submenu state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(RISK_SUBMENU_KEY, String(riskSubmenuOpen));
+  }, [riskSubmenuOpen]);
+
+  useEffect(() => {
+    localStorage.setItem(OPERATIONS_SUBMENU_KEY, String(operationsSubmenuOpen));
+  }, [operationsSubmenuOpen]);
 
   // Stores an index of the currently highlighted menu entry, which can be either parent or subitem
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
