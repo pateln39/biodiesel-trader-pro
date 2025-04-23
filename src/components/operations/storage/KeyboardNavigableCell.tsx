@@ -61,6 +61,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'Enter':
         if (isSelected) {
           e.preventDefault();
+          e.stopPropagation(); // Stop event propagation
           if (allowEditing && onEnter) {
             onEnter();
             startEditing();
@@ -75,12 +76,14 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'Escape':
         if (onEscape && isSelected) {
           e.preventDefault();
+          e.stopPropagation(); // Stop event propagation
           onEscape();
         }
         break;
       case 'Tab':
         if (onTab && isSelected) {
           e.preventDefault();
+          e.stopPropagation(); // Stop event propagation
           onTab(e.shiftKey);
         }
         break;
@@ -90,6 +93,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
       case 'ArrowRight':
         if (onArrow && isSelected) {
           e.preventDefault();
+          e.stopPropagation(); // Stop event propagation
           onArrow(e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right');
         }
         break;
@@ -98,7 +102,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
     // Select this cell and activate navigation mode if not already active
     setSelectedCell({ row, col, panel });
     if (shortcutMode !== 'cellNavigation') {
@@ -107,7 +111,7 @@ const KeyboardNavigableCell: React.FC<KeyboardNavigableCellProps> = ({
   };
 
   // Handle double click to enter editing mode
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
     if (allowEditing && onEnter) {
       onEnter();
       startEditing();

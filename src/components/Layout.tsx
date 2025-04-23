@@ -1,9 +1,17 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { 
+  Sidebar, 
+  SidebarContent, 
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar 
+} from '@/components/ui/sidebar';
 
 const EETLogo = () => {
   return (
@@ -15,10 +23,11 @@ const EETLogo = () => {
   );
 };
 
-const Layout = ({ children }: { children: React.ReactNode }) => {
+// Inner layout component that uses the sidebar context
+const LayoutInner = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { open, toggleSidebar } = useSidebar();
   const [riskSubmenuOpen, setRiskSubmenuOpen] = useState(true);
   const [operationsSubmenuOpen, setOperationsSubmenuOpen] = useState(true);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -64,7 +73,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },
   ];
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
   const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
 
@@ -100,12 +108,20 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault();
-        toggleSidebar();
+      // Skip navigation if we're in a grid cell (check for data-gridcell attribute in ancestors)
+      const activeElement = document.activeElement;
+      const isInGridCell = activeElement && activeElement.closest('[data-gridcell]');
+      
+      // Return early if we're in a grid cell, in an input field, or if the grid is focused
+      if (isInGridCell || 
+          activeElement?.tagName === 'INPUT' || 
+          activeElement?.tagName === 'TEXTAREA' || 
+          activeElement?.tagName === 'SELECT' ||
+          document.querySelector('[data-keyboard-navigation-active="true"]')) {
+        return;
       }
 
-      if (!sidebarOpen) return;
+      if (!open) return;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -131,11 +147,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarOpen, menuItems, navigate]);
+  }, [open, menuItems, navigate, highlightedItemPath]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (sidebarOpen && 
+      if (open && 
           sidebarRef.current && 
           !sidebarRef.current.contains(event.target as Node) &&
           !(event.target as Element).closest('[data-sidebar-toggle]')) {
@@ -144,7 +160,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         const timeSinceLastClick = clickTime - lastClickTimeRef.current;
         
         if (timeSinceLastClick < 300 && timeSinceLastClick > 0) {
-          setSidebarOpen(false);
+          toggleSidebar();
         }
         
         lastClickTimeRef.current = clickTime;
@@ -156,22 +172,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [sidebarOpen]);
+  }, [open, toggleSidebar]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-gradient-to-b from-brand-navy via-brand-navy/75 to-brand-lime/25 text-primary-foreground shadow-md z-20 border-b-[1px] border-brand-lime/70">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={toggleSidebar}
-              data-sidebar-toggle="true"
+            <SidebarTrigger 
               className="text-primary-foreground hover:bg-primary/90"
-            >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+              data-sidebar-toggle="true"
+            />
             <div className="flex items-center gap-2">
               <EETLogo />
               <span className="font-bold text-xl">BioDiesel CTRM</span>
@@ -201,14 +212,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       <div className="flex flex-1">
-        <aside 
+        <Sidebar 
           ref={sidebarRef}
           className={cn(
             "fixed inset-y-0 left-0 pt-16 z-10 bg-gradient-to-br from-brand-navy via-brand-navy to-[#122d42] shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
-            sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
         >
-          <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
+          <SidebarContent className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
             {menuItems.map((item, index) => (
               item.submenu ? (
                 <div key={index} className="space-y-1">
@@ -276,19 +286,28 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </Link>
               )
             ))}
-          </nav>
-        </aside>
+          </SidebarContent>
+        </Sidebar>
 
         <main 
           className={cn(
             "flex-1 p-6 bg-background overflow-auto transition-all duration-300 ease-in-out",
-            sidebarOpen ? "ml-64" : "ml-0"
+            open ? "ml-64" : "ml-0"
           )}
         >
           {children}
         </main>
       </div>
     </div>
+  );
+};
+
+// Wrapper component that provides the sidebar context
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <SidebarProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </SidebarProvider>
   );
 };
 

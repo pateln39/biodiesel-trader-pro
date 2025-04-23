@@ -144,6 +144,11 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
   }, [leftPanelRef, rightPanelRef]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Set a data attribute on the grid to indicate that keyboard navigation is active
+    if (gridRef.current) {
+      gridRef.current.setAttribute('data-keyboard-navigation-active', 'true');
+    }
+
     // Skip all keyboard handling if there's an active input/select element
     const activeElement = document.activeElement;
     const isInputActive = activeElement && (
@@ -160,18 +165,21 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     // Global shortcut handlers (always active)
     if (e.altKey && e.key === 't') {
       e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent other handlers
       onAddTank();
       return;
     }
 
     if (e.altKey && e.key === 'n') {
       e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent other handlers
       onAddTerminal();
       return;
     }
 
     if (e.ctrlKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent other handlers
       if (!selectedTerminalId || terminals.length <= 1) return;
       
       const currentIndex = terminals.findIndex(t => t.id === selectedTerminalId);
@@ -188,6 +196,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     // Escape handler
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent other handlers
       handleEscape();
       return;
     }
@@ -196,6 +205,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     if (!isEditing && shortcutMode === 'none' && 
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
+      e.stopPropagation(); // Stop event propagation to prevent other handlers
       setShortcutMode('cellNavigation');
       // Start with first cell if none selected
       if (!selectedCell) {
@@ -209,6 +219,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     if (shortcutMode === 'cellNavigation' && !isEditing) {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
+        e.stopPropagation(); // Stop event propagation to prevent other handlers
         handleArrowNavigation(e.key.replace('Arrow', '').toLowerCase() as 'up' | 'down' | 'left' | 'right');
       }
     }
@@ -224,7 +235,8 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     onAddTerminal,
     onTerminalChange,
     terminals,
-    selectedTerminalId
+    selectedTerminalId,
+    gridRef
   ]);
 
   // Add global keyboard listener
@@ -232,10 +244,14 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     const mainRef = gridRef.current;
     if (!mainRef) return;
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, { capture: true }); // Use capture phase to handle events before they reach other handlers
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      // Clean up the data attribute when unmounting
+      if (gridRef.current) {
+        gridRef.current.removeAttribute('data-keyboard-navigation-active');
+      }
     };
   }, [gridRef, handleKeyDown]);
 
@@ -249,6 +265,11 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
       if (childContainer && !childContainer.contains(e.target as Node)) {
         setShortcutMode('none');
         setSelectedCell(null);
+        
+        // Remove the data attribute when navigation is deactivated
+        if (gridRef.current) {
+          gridRef.current.removeAttribute('data-keyboard-navigation-active');
+        }
       }
     };
 
@@ -256,7 +277,7 @@ const KeyboardShortcutHandler: React.FC<KeyboardShortcutHandlerProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [childrenRef, shortcutMode, isEditing, setShortcutMode, setSelectedCell]);
+  }, [childrenRef, shortcutMode, isEditing, setShortcutMode, setSelectedCell, gridRef]);
 
   return null; // This is a behavior-only component
 };
