@@ -7,7 +7,7 @@ export * from './trade';
 
 // Explicitly import and re-export from paper to avoid ambiguity
 import { PaperParentTrade, PaperTradeRightSide } from './paper';
-export { PaperParentTrade, PaperTradeRightSide };
+export type { PaperParentTrade, PaperTradeRightSide };
 
 // Add or update the Movement interface
 export interface Movement {

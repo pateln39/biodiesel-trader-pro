@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -117,18 +118,7 @@ const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   };
 
   const handleTokenClick = (token: FormulaToken) => {
-    // Updated type checking to work with the unified FormulaToken type
-    if (
-      token.type === "instrument" ||
-      token.type === "number" ||
-      token.type === "fixedValue" ||
-      token.type === "percentage" ||
-      token.type === "operator" ||
-      token.type === "openBracket" ||
-      token.type === "closeBracket"
-    ) {
-      onAddToken(token);
-    }
+    onAddToken(token);
   };
 
   const formulaDisplay = useMemo(() => {
