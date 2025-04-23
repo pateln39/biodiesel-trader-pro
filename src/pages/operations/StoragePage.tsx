@@ -32,6 +32,34 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+const LABEL_COUNTERPARTY = "Counterparty";
+const LABEL_TRADE_REF = "Trade Ref";
+const LABEL_BARGE = "Barge";
+const LABEL_MOVE_DATE = "Move Date";
+const LABEL_NOM_VALID = "Nom. Valid";
+const LABEL_CUSTOMS = "Customs";
+const LABEL_SUSTAIN = "Sustain.";
+const LABEL_COMMENTS = "Comments";
+const LABEL_QTY_MT = "Qty (MT)";
+const LABEL_TOTAL_MT = "Total (MT)";
+const LABEL_TOTAL_M3 = "Total (M³)";
+const LABEL_T1 = "T1";
+const LABEL_T2 = "T2";
+const LABEL_CURRENT_STOCK = "Current Stock";
+const LABEL_CURRENT_ULLAGE = "Current Ullage";
+const LABEL_DIFFERENCE = "Total (MT) - Qty (MT)";
+const LABEL_TANK = "Tank";
+const LABEL_CAPACITY = "Capacity:";
+const LABEL_SPEC = "Spec:";
+const LABEL_HEATING = "Heating:";
+const LABEL_SUMMARY = "Summary";
+const LABEL_BALANCES = "Balances";
+const LABEL_TOTAL_CAPACITY = "Total Capacity:";
+
+const HEADER_FONT_SIZE = "text-[10px]";
+const CAPACITY_WIDTH = 100;
+const HEATING_WIDTH = 100;
+
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
@@ -57,22 +85,22 @@ const summaryColumnWidths = {
 };
 
 const truncatedHeaders = {
-  counterparty: "Counterparty",
-  tradeRef: "Trade Ref",
-  bargeName: "Barge",
-  movementDate: "Move Date",
-  nominationDate: "Nom. Valid",
-  customs: "Customs",
-  sustainability: "Sustain.",
-  comments: "Comments",
-  quantity: "Qty (MT)",
-  totalMT: "Total (MT)",
-  totalM3: "Total (M³)",
-  t1Balance: "T1",
-  t2Balance: "T2",
-  currentStock: "Current Stock",
-  currentUllage: "Current Ullage",
-  difference: "Total (MT) - Qty (MT)",
+  counterparty: LABEL_COUNTERPARTY,
+  tradeRef: LABEL_TRADE_REF,
+  bargeName: LABEL_BARGE,
+  movementDate: LABEL_MOVE_DATE,
+  nominationDate: LABEL_NOM_VALID,
+  customs: LABEL_CUSTOMS,
+  sustainability: LABEL_SUSTAIN,
+  comments: LABEL_COMMENTS,
+  quantity: LABEL_QTY_MT,
+  totalMT: LABEL_TOTAL_MT,
+  totalM3: LABEL_TOTAL_M3,
+  t1Balance: LABEL_T1,
+  t2Balance: LABEL_T2,
+  currentStock: LABEL_CURRENT_STOCK,
+  currentUllage: LABEL_CURRENT_ULLAGE,
+  difference: LABEL_DIFFERENCE,
 };
 
 const StoragePage = () => {
@@ -276,7 +304,7 @@ const StoragePage = () => {
                                   options={productOptions}
                                   onSave={(value) => updateTankProduct(tank.id, value)}
                                   className={cn(
-                                    "text-[10px] font-bold text-center w-full",
+                                    `${HEADER_FONT_SIZE} font-bold text-center w-full`,
                                     PRODUCT_COLORS[tank.current_product]?.split(' ')[0]
                                   )}
                                   truncate={false}
@@ -288,16 +316,16 @@ const StoragePage = () => {
                               colSpan={1} 
                               className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                             >
-                              <div className="text-[10px] font-bold text-center w-full">
-                                Summary
+                              <div className={`${HEADER_FONT_SIZE} font-bold text-center w-full`}>
+                                {LABEL_SUMMARY}
                               </div>
                             </TableHead>
                             <TableHead 
                               colSpan={5} 
                               className="text-center border-r border-white/30 bg-gradient-to-br from-brand-navy/90 to-brand-navy/70 text-white font-bold text-[10px]"
                             >
-                              <div className="text-[10px] font-bold text-center w-full">
-                                Balances
+                              <div className={`${HEADER_FONT_SIZE} font-bold text-center w-full`}>
+                                {LABEL_BALANCES}
                               </div>
                             </TableHead>
                           </TableRow>
@@ -310,7 +338,7 @@ const StoragePage = () => {
                                 className="text-center text-[10px] border-r border-white/30"
                               >
                                 <div className="flex items-center justify-center">
-                                  <span className="mr-1">Tank</span>
+                                  <span className="mr-1">{LABEL_TANK}</span>
                                   <EditableField
                                     initialValue={tank.tank_number}
                                     onSave={(value) => updateTankNumber(tank.id, value)}
@@ -335,7 +363,7 @@ const StoragePage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity: </span>
+                                  <span>{LABEL_CAPACITY}</span>
                                   <div className="flex items-center">
                                     <EditableNumberField
                                       initialValue={tank.capacity_mt}
@@ -376,7 +404,7 @@ const StoragePage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
+                                <span>{LABEL_TOTAL_CAPACITY} {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_mt, 0).toFixed(2)} MT</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -389,7 +417,7 @@ const StoragePage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between items-center px-2">
-                                  <span>Capacity:</span>
+                                  <span>{LABEL_CAPACITY}</span>
                                   <div className="flex items-center">
                                     {tank.capacity_m3.toFixed(2)} M³
                                   </div>
@@ -425,7 +453,7 @@ const StoragePage = () => {
                               className="text-[10px] border-r border-white/30"
                             >
                               <div className="flex items-center h-full px-2">
-                                <span>Total Capacity: {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
+                                <span>{LABEL_TOTAL_CAPACITY} {Object.values(tanks).reduce((sum, tank) => sum + tank.capacity_m3, 0).toFixed(2)} M³</span>
                               </div>
                             </TableHead>
                           </TableRow>
@@ -438,7 +466,7 @@ const StoragePage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
-                                  <span className="text-muted-foreground">Spec:</span>
+                                  <span className="text-muted-foreground">{LABEL_SPEC}</span>
                                   <EditableField
                                     initialValue={tank.spec}
                                     onSave={(value) => updateTankSpec(tank.id, value)}
@@ -463,7 +491,7 @@ const StoragePage = () => {
                                 className="text-[10px] border-r border-white/30"
                               >
                                 <div className="flex justify-between px-2">
-                                  <span className="text-muted-foreground">Heating:</span>
+                                  <span className="text-muted-foreground">{LABEL_HEATING}</span>
                                   <div className="flex items-center">
                                     <Thermometer className="h-3 w-3 mr-1 text-red-400" />
                                     <EditableDropdownField
