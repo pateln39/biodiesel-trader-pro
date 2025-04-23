@@ -20,3 +20,33 @@ export interface ProductRelationship {
   default_opposite: string | null;
   created_at?: string;
 }
+
+// Paper trade specific interfaces
+export interface PaperTrade {
+  id: string;
+  trade_reference: string;
+  counterparty: string;
+  broker?: string;
+  created_at: Date;
+  updated_at: Date;
+  tradeReference?: string; // UI friendly version
+  legs: PaperTradeLeg[];
+}
+
+export interface PaperTradeLeg {
+  id: string;
+  paper_trade_id: string;
+  leg_reference: string;
+  quantity: number;
+  price?: number;
+  buy_sell: BuySell;
+  product: Product;
+  period?: string;
+  broker?: string;
+  instrument?: string;
+  trading_period?: string;
+  pricing_period_start?: Date;
+  pricing_period_end?: Date;
+  created_at: Date;
+  updated_at: Date;
+}

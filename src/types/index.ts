@@ -1,8 +1,35 @@
 
 // Re-export all types for convenience
 export * from './storage';
-export * from './physical';
 export * from './common';
+
+// Explicitly re-export and rename types from physical to avoid naming conflicts
+export type {
+  PhysicalTradeType,
+  PhysicalTrade,
+  PhysicalTradeLeg,
+} from './physical';
+
+// Re-export pricing-related types
+export type {
+  FormulaNode,
+  FormulaToken,
+  PricingFormula,
+  MonthlyDistribution,
+  PriceDetail,
+  MTMPriceDetail,
+  FixedComponent,
+  PricingComponent,
+  OperatorType,
+  PartialExposureResult,
+  PartialPricingFormula,
+} from './pricing';
+
+// Re-export paper trade types
+export type {
+  PaperTrade,
+  PaperTradeLeg,
+} from './trade';
 
 export interface Movement {
   id: string;
@@ -46,6 +73,7 @@ export interface Movement {
   coaReceivedChecked?: boolean;
   coaSentChecked?: boolean;
   eadChecked?: boolean;
+  referenceNumber?: string;  // Add this property which was missing
   // Database properties (snake_case)
   trade_leg_id?: string;
   parent_trade_id?: string;
@@ -79,7 +107,7 @@ export interface Movement {
   quantity?: number;
 }
 
-// Add MovementSummary interface to ensure its exported
+// Add MovementSummary interface to ensure it's exported
 export interface MovementSummary {
   movementId: string;
   tankBalances: Record<string, { balanceMT: number, balanceM3: number }>;
