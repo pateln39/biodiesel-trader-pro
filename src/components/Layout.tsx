@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, BarChart, LineChart, DollarSign, ChevronDown, ChevronRight, Layers, Ship, Warehouse } from 'lucide-react';
@@ -83,6 +84,19 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     }
   }, [flatMenu, highlightIndex]);
 
+  // Track the previous pathname to close the sidebar after navigation with keyboard
+  const prevPathRef = useRef<string>(location.pathname);
+
+  useEffect(() => {
+    // If pathname changed programmatically (keyboard Enter), close sidebar and clear highlight
+    if (location.pathname !== prevPathRef.current) {
+      setSidebarOpen(false);
+      setHighlightIndex(null);
+    }
+    prevPathRef.current = location.pathname;
+  }, [location.pathname]);
+
+
   // Keyboard navigation changes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -125,10 +139,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           if (item.type === 'item' || item.type === 'child') {
             if (item.path) {
               navigate(item.path);
-              setSidebarOpen(false); // Close sidebar after navigation
-              setHighlightIndex(null);
+              // Sidebar will auto-close on navigation by effect above
+              // setSidebarOpen(false); // No need, handled by useEffect
             }
           } else if (item.type === 'parent') {
+            // Toggle submenu expand/collapse for parents
             if (item.label === 'Risk') {
               setRiskSubmenuOpen((open) => !open);
             } else if (item.label === 'Operations') {
@@ -361,3 +376,4 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default Layout;
+
