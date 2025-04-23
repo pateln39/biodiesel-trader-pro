@@ -1,5 +1,5 @@
 
-import { Movement } from '@/hooks/useInventoryState';
+import { Movement } from '@/types';
 
 export interface TankUtilization {
   currentBalance: number;
@@ -34,6 +34,7 @@ export interface TableColumnWidth {
   sustainability: number;
   comments: number;
   quantity: number;
+  [key: string]: number; // Add index signature to allow string indexing
 }
 
 export interface SummaryColumnWidth {
@@ -44,6 +45,7 @@ export interface SummaryColumnWidth {
   currentStock: number;
   currentUllage: number;
   difference: number;
+  [key: string]: number; // Add index signature for consistency
 }
 
 export interface TableHeaderLabels {
@@ -63,4 +65,5 @@ export interface TableHeaderLabels {
   currentStock: string;
   currentUllage: string;
   difference: string;
+  [key: string]: string; // Add index signature for consistency
 }
