@@ -29,6 +29,8 @@ export interface PaperTrade {
   created_at: Date;
   updated_at: Date;
   legs: PaperTradeLeg[];
+  broker?: string;
+  tradeType?: "paper";
 }
 
 // Define PaperTradeLeg interface
@@ -51,16 +53,22 @@ export interface PaperTradeLeg {
   calculatedPrice?: number;
   created_at: Date;
   updated_at: Date;
+  paperTradeId?: string; // Additional compatibility field
+  broker?: string;
+  instrument?: string;
+  formula?: Record<string, any>;
+  mtmFormula?: Record<string, any>;
 }
 
 // Export FormulaToken and PricingFormula interfaces that were missing
 export interface FormulaToken {
-  type: 'operator' | 'number' | 'instrument' | 'fixed';
+  type: 'operator' | 'number' | 'instrument' | 'fixed' | 'fixedValue' | 'percentage' | 'openBracket' | 'closeBracket' | 'parenthesis' | 'variable';
   value: string | number;
   display?: string;
+  id?: string;
 }
 
 export interface PricingFormula {
   tokens: FormulaToken[];
-  formula: string;
+  formula?: string;
 }

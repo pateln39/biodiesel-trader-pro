@@ -1,4 +1,6 @@
-import { MTMPriceDetail, PricingFormula } from '@/types';
+import { PhysicalTradeLeg, PriceDetail, MTMPriceDetail, PricingPeriodType, FixedComponent } from './priceCalculationTypes';
+import { Instrument } from '@/types/common';
+import { PricingFormula } from '@/types/pricing';
 
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
@@ -12,7 +14,7 @@ export type PricingPeriodType = 'historical' | 'current' | 'future';
 export interface PriceDetail {
   instruments: Record<string, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
-  fixedComponents?: { value: number; displayValue: string }[];
+  fixedComponents?: FixedComponent[];
 }
 
 const MOCK_PRICES: Record<string, number> = {
@@ -835,3 +837,5 @@ export const applyPricingFormula = (
     return instrumentCount > 0 ? totalPrice / instrumentCount : 0;
   }
 };
+
+export type { PricingPeriodType, PriceDetail, MTMPriceDetail };

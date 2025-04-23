@@ -12,6 +12,7 @@ export interface FormulaToken {
   id?: string;
   type: "instrument" | "fixedValue" | "operator" | "percentage" | "openBracket" | "closeBracket" | "parenthesis" | "number" | "variable";
   value: string | number;
+  display?: string;
 }
 
 // Update the MonthlyDistribution to handle both simple and nested formats
@@ -50,12 +51,25 @@ export interface PriceDetail {
   instruments: Record<Instrument, { average: number; prices: { date: Date; price: number }[] }>;
   evaluatedPrice: number;
   fixedComponents?: FixedComponent[];
+  // Include compatibility fields with the index.ts PriceDetail
+  date?: string;
+  price?: number;
+  instrument_id?: string;
+  instrument_code?: string;
 }
 
 export interface MTMPriceDetail {
   instruments: Record<Instrument, { price: number; date: Date | null }>;
   evaluatedPrice: number;
   fixedComponents?: FixedComponent[];
+  // Include compatibility fields with the index.ts MTMPriceDetail
+  date?: string;
+  price?: number;
+  mtm_price?: number;
+  delta?: number;
+  mtm_date?: string;
+  instrument_id?: string;
+  instrument_code?: string;
 }
 
 // Add PricingComponent interface which is referenced in imports but was missing

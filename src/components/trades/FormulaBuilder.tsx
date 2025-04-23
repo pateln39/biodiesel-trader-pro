@@ -1,449 +1,216 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X } from 'lucide-react';
-import { FormulaToken, Instrument, PricingFormula } from '@/types';
-import { 
-  createInstrumentToken,
-  createFixedValueToken,
-  createPercentageToken,
-  createOperatorToken,
-  createOpenBracketToken,
-  createCloseBracketToken,
-  formulaToString
-} from '@/utils/formulaUtils';
-import { 
-  canAddTokenType, 
-  calculateExposures,
-  calculatePhysicalExposure,
-  calculatePricingExposure,
-  createEmptyExposureResult
-} from '@/utils/formulaCalculation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+// Use the FormulaToken type directly from pricing to avoid ambiguity
+import { FormulaToken } from '@/types/pricing';
+import { formulaToDisplayString } from '@/utils/formulaUtils';
 
 interface FormulaBuilderProps {
-  value: PricingFormula;
-  onChange: (formula: PricingFormula) => void;
-  tradeQuantity: number;
-  buySell?: 'buy' | 'sell';
-  selectedProduct?: string;
-  formulaType: 'price' | 'mtm';
-  otherFormula?: PricingFormula;
+  instruments: string[];
+  formula: {
+    tokens: FormulaToken[];
+  };
+  onAddToken: (token: FormulaToken) => void;
+  onRemoveToken: (index: number) => void;
+  onUpdateFormulaString: (formulaString: string) => void;
 }
 
-const FormulaBuilder: React.FC<FormulaBuilderProps> = ({ 
-  value, 
-  onChange,
-  tradeQuantity,
-  buySell = 'buy',
-  selectedProduct,
-  formulaType,
-  otherFormula
+const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
+  instruments,
+  formula,
+  onAddToken,
+  onRemoveToken,
+  onUpdateFormulaString,
 }) => {
-  const [selectedInstrument, setSelectedInstrument] = useState<Instrument>('Argus UCOME');
-  const [fixedValue, setFixedValue] = useState<string>('0');
-  const [percentageValue, setPercentageValue] = useState<string>('0');
+  const [numberInput, setNumberInput] = useState<string>('');
+  const [operator, setOperator] = useState<string>('+');
 
   useEffect(() => {
-    if (value.tokens.length > 0 && tradeQuantity !== 0) {
-      if (formulaType === 'price') {
-        const pricingExposure = calculatePricingExposure(value.tokens, tradeQuantity, buySell);
-        const physicalExposure = otherFormula && otherFormula.tokens.length > 0 
-          ? calculatePhysicalExposure(otherFormula.tokens, tradeQuantity, buySell)
-          : createEmptyExposureResult().physical;
-        
-        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
-          onChange({
-            ...value,
-            exposures: {
-              physical: physicalExposure,
-              pricing: pricingExposure
-            }
-          });
-        }
-      } 
-      else if (formulaType === 'mtm') {
-        const physicalExposure = calculatePhysicalExposure(value.tokens, tradeQuantity, buySell);
-        const pricingExposure = otherFormula && otherFormula.tokens.length > 0
-          ? calculatePricingExposure(otherFormula.tokens, tradeQuantity, buySell)
-          : createEmptyExposureResult().pricing;
-        
-        if (JSON.stringify({ physical: physicalExposure, pricing: pricingExposure }) !== JSON.stringify(value.exposures)) {
-          onChange({
-            ...value,
-            exposures: {
-              physical: physicalExposure,
-              pricing: pricingExposure
-            }
-          });
-        }
-      }
-    }
-  }, [value.tokens, otherFormula?.tokens, tradeQuantity, buySell, formulaType]);
+    onUpdateFormulaString(formulaToDisplayString(formula.tokens));
+  }, [formula.tokens, onUpdateFormulaString]);
 
-  const handleAddInstrument = () => {
-    if (!canAddTokenType(value.tokens, 'instrument')) return;
-    const newToken = createInstrumentToken(selectedInstrument);
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
+  const handleAddNumber = () => {
+    if (numberInput) {
+      const numberToken: FormulaToken = {
+        type: 'number',
+        value: numberInput,
+      };
+      onAddToken(numberToken);
+      setNumberInput('');
+    }
   };
 
-  const handleAddFixedValue = () => {
-    if (!canAddTokenType(value.tokens, 'fixedValue')) return;
-    const newToken = createFixedValueToken(Number(fixedValue) || 0);
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
+  const handleAddOperator = () => {
+    const operatorToken: FormulaToken = {
+      type: 'operator',
+      value: operator,
+    };
+    onAddToken(operatorToken);
   };
 
   const handleAddPercentage = () => {
-    if (!canAddTokenType(value.tokens, 'percentage')) return;
-    const newToken = createPercentageToken(Number(percentageValue) || 0);
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
-  };
-
-  const handleAddOpenBracket = () => {
-    if (!canAddTokenType(value.tokens, 'openBracket')) return;
-    const newToken = createOpenBracketToken();
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
-  };
-
-  const handleAddCloseBracket = () => {
-    if (!canAddTokenType(value.tokens, 'closeBracket')) return;
-    const newToken = createCloseBracketToken();
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
-  };
-
-  const handleAddOperator = (operator: string) => {
-    if (!canAddTokenType(value.tokens, 'operator')) return;
-    const newToken = createOperatorToken(operator);
-    const newTokens = [...value.tokens, newToken];
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
-  };
-
-  const handleRemoveToken = (tokenId: string) => {
-    const newTokens = value.tokens.filter(token => token.id !== tokenId);
-    onChange({
-      tokens: newTokens,
-      exposures: calculateExposures(newTokens, tradeQuantity, buySell, selectedProduct)
-    });
-  };
-
-  const resetFormula = () => {
-    onChange({
-      tokens: [],
-      exposures: {
-        physical: {
-          'Argus UCOME': 0,
-          'Argus RME': 0,
-          'Argus FAME0': 0,
-          'Platts LSGO': 0,
-          'Platts Diesel': 0,
-          'Argus HVO': 0,
-          'ICE GASOIL FUTURES': 0,
-          'ICE GASOIL FUTURES (EFP)': 0
-        },
-        pricing: {
-          'Argus UCOME': 0,
-          'Argus RME': 0,
-          'Argus FAME0': 0,
-          'Platts LSGO': 0,
-          'Platts Diesel': 0,
-          'Argus HVO': 0,
-          'ICE GASOIL FUTURES': 0,
-          'ICE GASOIL FUTURES (EFP)': 0
-        }
-      }
-    });
-  };
-
-  const getTokenColorClasses = (token: FormulaToken): { background: string; text: string } => {
-    switch (token.type) {
-      case 'instrument':
-        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
-      case 'percentage':
-        return { background: 'bg-[#1A1F2C]', text: 'text-green-300' };
-      case 'fixedValue':
-        return { background: 'bg-[#1A1F2C]', text: 'text-blue-300' };
-      case 'operator':
-        return { background: 'bg-[#1A1F2C]', text: 'text-yellow-300' };
-      case 'openBracket':
-      case 'closeBracket':
-        return { background: 'bg-[#1A1F2C]', text: 'text-gray-300' };
-      default:
-        return { background: 'bg-[#1A1F2C]', text: 'text-white' };
+    if (numberInput) {
+      const percentageToken: FormulaToken = {
+        type: 'percentage',
+        value: numberInput,
+      };
+      onAddToken(percentageToken);
+      setNumberInput('');
     }
   };
 
-  const getTokenDisplay = (token: FormulaToken): string => {
-    if (token.type === 'percentage') {
-      return `${token.value}%`;
+  const handleAddFixedValue = () => {
+    if (numberInput) {
+      const fixedValueToken: FormulaToken = {
+        type: 'fixedValue',
+        value: numberInput,
+      };
+      onAddToken(fixedValueToken);
+      setNumberInput('');
     }
-    return String(token.value);
   };
 
-  const formatExposure = (value: number): string => {
-    return Math.round(value).toLocaleString('en-US');
+  const handleAddOpenParenthesis = () => {
+    const openParenthesisToken: FormulaToken = {
+      type: 'openBracket',
+      value: '(',
+    };
+    onAddToken(openParenthesisToken);
   };
 
-  const getExposureColorClass = (value: number): string => {
-    if (value > 0) return 'text-green-600 border-green-200 bg-green-50';
-    if (value < 0) return 'text-red-600 border-red-200 bg-red-50';
-    return '';
+  const handleAddCloseParenthesis = () => {
+    const closeParenthesisToken: FormulaToken = {
+      type: 'closeBracket',
+      value: ')',
+    };
+    onAddToken(closeParenthesisToken);
   };
+
+  const renderToken = (token: FormulaToken) => {
+    if (token.type === "instrument") {
+      return (
+        <Badge variant="secondary" className="mr-1">
+          {token.value.toString()}
+        </Badge>
+      );
+    } else if (token.type === "number" || token.type === "fixedValue") {
+      return (
+        <Badge variant="outline" className="mr-1">
+          {token.value.toString()}
+        </Badge>
+      );
+    } else if (token.type === "operator") {
+      return <span className="mx-1">{token.value}</span>;
+    } else if (token.type === "percentage") {
+      return (
+        <Badge variant="outline" className="mr-1">
+          {token.value}%
+        </Badge>
+      );
+    } else if (token.type === "openBracket" || token.type === "closeBracket") {
+      return <span className="mx-1">{token.value}</span>;
+    }
+    return <span className="mx-1">{token.value}</span>;
+  };
+
+  const handleTokenClick = (token: FormulaToken) => {
+    // Updated type checking to work with the unified FormulaToken type
+    if (
+      token.type === "instrument" ||
+      token.type === "number" ||
+      token.type === "fixedValue" ||
+      token.type === "percentage" ||
+      token.type === "operator" ||
+      token.type === "openBracket" ||
+      token.type === "closeBracket"
+    ) {
+      onAddToken(token);
+    }
+  };
+
+  const formulaDisplay = useMemo(() => {
+    return formula.tokens.map((token, index) => (
+      <span key={index} className="mr-1">
+        {renderToken(token)}
+      </span>
+    ));
+  }, [formula.tokens]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label className="text-base font-medium">
-          {formulaType === 'price' ? 'Pricing Formula' : 'MTM Formula'}
-        </Label>
-        <Button 
-          type="button" 
-          variant="outline" 
-          size="sm" 
-          onClick={resetFormula}
-        >
-          Reset Formula
+    <div className="flex flex-col space-y-4">
+      <div>
+        <h3 className="text-sm font-medium">Formula</h3>
+        <div className="flex items-center flex-wrap mt-2">
+          {formulaDisplay}
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Input
+          type="number"
+          placeholder="Enter number"
+          value={numberInput}
+          onChange={(e) => setNumberInput(e.target.value)}
+          className="w-24"
+        />
+        <Button size="sm" onClick={handleAddNumber}>
+          Add Number
+        </Button>
+        <Button size="sm" onClick={handleAddPercentage}>
+          Add %
+        </Button>
+        <Button size="sm" onClick={handleAddFixedValue}>
+          Add Fixed Value
         </Button>
       </div>
-      
-      <Card className="border border-muted">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 flex-wrap min-h-[2.5rem]">
-            {value.tokens.length > 0 ? (
-              value.tokens.map((token) => {
-                const { background, text } = getTokenColorClasses(token);
-                return (
-                  <Badge 
-                    key={token.id} 
-                    variant="outline" 
-                    className={`text-sm py-1 px-3 flex items-center gap-2 ${background} ${text}`}
-                  >
-                    {getTokenDisplay(token)}
-                    <button 
-                      onClick={() => handleRemoveToken(token.id)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                );
-              })
-            ) : (
-              <div className="text-muted-foreground">No formula defined</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2 flex-1 min-w-[150px]">
-          <Label>Operators & Brackets</Label>
-          <div className="flex gap-2 flex-wrap">
-            <Button 
-              type="button" 
-              onClick={() => handleAddOperator('+')} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'operator')}
-            >
-              +
-            </Button>
-            <Button 
-              type="button" 
-              onClick={() => handleAddOperator('-')} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'operator')}
-            >
-              -
-            </Button>
-            <Button 
-              type="button" 
-              onClick={() => handleAddOperator('*')} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'operator')}
-            >
-              ×
-            </Button>
-            <Button 
-              type="button" 
-              onClick={() => handleAddOperator('/')} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'operator')}
-            >
-              ÷
-            </Button>
-            <Button 
-              type="button" 
-              onClick={handleAddOpenBracket} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'openBracket')}
-            >
-              (
-            </Button>
-            <Button 
-              type="button" 
-              onClick={handleAddCloseBracket} 
-              size="sm" 
-              variant="outline"
-              disabled={!canAddTokenType(value.tokens, 'closeBracket')}
-            >
-              )
-            </Button>
-          </div>
-        </div>
+
+      <div className="flex items-center space-x-2">
+        <select
+          value={operator}
+          onChange={(e) => setOperator(e.target.value)}
+          className="border rounded px-2 py-1 text-sm"
+        >
+          <option>+</option>
+          <option>-</option>
+          <option>*</option>
+          <option>/</option>
+        </select>
+        <Button size="sm" onClick={handleAddOperator}>
+          Add Operator
+        </Button>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label>Add Instrument</Label>
-          <div className="flex gap-2">
-            <Select 
-              value={selectedInstrument} 
-              onValueChange={(value) => setSelectedInstrument(value as Instrument)}
-            >
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Select instrument" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Argus UCOME">Argus UCOME</SelectItem>
-                <SelectItem value="Argus RME">Argus RME</SelectItem>
-                <SelectItem value="Argus FAME0">Argus FAME0</SelectItem>
-                <SelectItem value="Argus HVO">Argus HVO</SelectItem>
-                <SelectItem value="Platts LSGO">Platts LSGO</SelectItem>
-                <SelectItem value="Platts Diesel">Platts Diesel</SelectItem>
-                <SelectItem value="ICE GASOIL FUTURES">ICE GASOIL FUTURES</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              type="button" 
-              onClick={handleAddInstrument} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'instrument')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label>Add Fixed Value</Label>
-          <div className="flex gap-2">
-            <Input 
-              type="number"
-              value={fixedValue}
-              onChange={(e) => setFixedValue(e.target.value)}
-              className="flex-1"
-            />
-            <Button 
-              type="button" 
-              onClick={handleAddFixedValue} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'fixedValue')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label>Add Percentage</Label>
-          <div className="flex gap-2 items-center">
-            <div className="flex-1 flex items-center">
-              <Input 
-                type="number"
-                value={percentageValue}
-                onChange={(e) => setPercentageValue(e.target.value)}
-                className="flex-1"
-              />
-              <div className="pl-2 pr-1">%</div>
-            </div>
-            <Button 
-              type="button" 
-              onClick={handleAddPercentage} 
-              size="sm"
-              disabled={!canAddTokenType(value.tokens, 'percentage')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+
+      <div className="flex items-center space-x-2">
+        <Button size="sm" onClick={handleAddOpenParenthesis}>
+          Add (
+        </Button>
+        <Button size="sm" onClick={handleAddCloseParenthesis}>
+          Add )
+        </Button>
       </div>
-      
-      <div className="mt-4 space-y-4">
-        <div>
-          <Label className="text-base font-medium">Physical Exposure</Label>
-          <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
-            {Object.entries(value.exposures.physical).map(([instrument, exposure]) => {
-              if (exposure === 0) return null;
-              
-              return (
-                <Badge 
-                  key={instrument} 
-                  variant="outline" 
-                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
-                >
-                  {instrument}: {formatExposure(exposure)} MT
-                </Badge>
-              );
-            })}
-            
-            {!Object.values(value.exposures.physical).some(v => v !== 0) && (
-              <div className="text-muted-foreground">No physical exposures</div>
-            )}
+
+      <div>
+        <h3 className="text-sm font-medium">Instruments</h3>
+        <ScrollArea className="h-32 w-full rounded-md border">
+          <div className="flex flex-wrap p-2">
+            {instruments.map((instrument) => (
+              <Button
+                key={instrument}
+                size="sm"
+                variant="outline"
+                className="mr-1 mb-1"
+                onClick={() =>
+                  handleTokenClick({ type: 'instrument', value: instrument })
+                }
+              >
+                {instrument}
+              </Button>
+            ))}
           </div>
-        </div>
-        
-        <div>
-          <Label className="text-base font-medium">Pricing Exposure</Label>
-          <div className="mt-2 flex flex-wrap gap-2 min-h-[2.5rem]">
-            {Object.entries(value.exposures.pricing).map(([instrument, exposure]) => {
-              if (exposure === 0) return null;
-              
-              return (
-                <Badge 
-                  key={instrument} 
-                  variant="outline" 
-                  className={`text-sm py-1 px-3 ${getExposureColorClass(exposure)}`}
-                >
-                  {instrument}: {formatExposure(exposure)} MT
-                </Badge>
-              );
-            })}
-            
-            {!Object.values(value.exposures.pricing).some(v => v !== 0) && (
-              <div className="text-muted-foreground">No pricing exposures</div>
-            )}
-          </div>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );

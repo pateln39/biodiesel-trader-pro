@@ -1,12 +1,10 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, AlertTriangle } from 'lucide-react';
-import { PaperTrade } from '@/types/paper';
-import { PaperTradeLeg } from '@/types/trade';
+import { PaperTrade, PaperTradeLeg } from '@/types/paper';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { PaperMTMPosition, calculatePaperTradePrice, calculatePaperMTMPrice, calculatePaperMTMValue, getMonthDates, getPeriodType } from '@/utils/paperTradeMTMUtils';

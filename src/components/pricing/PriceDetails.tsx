@@ -19,7 +19,8 @@ import {
   applyPricingFormula 
 } from '@/utils/priceCalculationUtils';
 import { format } from 'date-fns';
-import { Instrument, PricingFormula, PriceDetail, MTMPriceDetail } from '@/types';
+import { Instrument } from '@/types/common';
+import { PricingFormula, PriceDetail as PricingPriceDetail, MTMPriceDetail as PricingMTMPriceDetail } from '@/types/pricing';
 import { formulaToDisplayString } from '@/utils/formulaUtils';
 import { PhysicalTradeLeg } from '@/types/physical';
 
@@ -60,12 +61,12 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
   const [priceData, setPriceData] = useState<{
     price: number;
     periodType: PricingPeriodType;
-    priceDetails: PriceDetail;
+    priceDetails: PricingPriceDetail;
   } | null>(null);
   
   const [mtmPriceData, setMtmPriceData] = useState<{
     price: number;
-    priceDetails: MTMPriceDetail;
+    priceDetails: PricingMTMPriceDetail;
   } | null>(null);
   
   const [mtmValue, setMtmValue] = useState<number>(0);
@@ -100,7 +101,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             efpAgreedStatus,
             efpFixedValue,
             mtmFutureMonth
-          };
+          } as PhysicalTradeLeg;
           
           // Calculate trade price for EFP
           const tradePriceResult = await calculateTradeLegPrice(
@@ -109,7 +110,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             validEndDate,
             mtmFutureMonth
           );
-          setPriceData(tradePriceResult);
+          setPriceData(tradePriceResult as any);
           
           // Use mtmFormula if available, otherwise use the EFP leg
           const formulaToUse = mtmFormula || efpLeg;
@@ -122,7 +123,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
           
           setMtmPriceData({
             price: mtmPriceResult.price,
-            priceDetails: mtmPriceResult.details
+            priceDetails: mtmPriceResult.details as any
           });
           
           const mtmVal = calculateMTMValue(
@@ -141,7 +142,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
             validEndDate,
             mtmFutureMonth
           );
-          setPriceData(tradePriceResult);
+          setPriceData(tradePriceResult as any);
           
           const formulaToUse = mtmFormula || formula;
           const mtmPriceResult = await calculateMTMPrice(
@@ -152,7 +153,7 @@ const PriceDetails: React.FC<PriceDetailsProps> = ({
           );
           setMtmPriceData({
             price: mtmPriceResult.price,
-            priceDetails: mtmPriceResult.details
+            priceDetails: mtmPriceResult.details as any
           });
             
           const mtmVal = calculateMTMValue(
