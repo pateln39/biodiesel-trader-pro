@@ -1,3 +1,4 @@
+
 import React, { RefObject } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
@@ -788,4 +789,73 @@ const StorageGrid: React.FC<StorageGridProps> = ({
                               </KeyboardNavigableCell>
                             </TableCell>
                             {/* 3. T1 */}
-                            <TableCell className="text-center text-[10px]
+                            <TableCell className="text-center text-[10px] py-2">
+                              <KeyboardNavigableCell 
+                                row={rowIndex} 
+                                col={tanks.length * 3 + 2} 
+                                panel="right" 
+                                className="h-full w-full"
+                              >
+                                {movementSummary.t1Balance || 0}
+                              </KeyboardNavigableCell>
+                            </TableCell>
+                            {/* 4. T2 */}
+                            <TableCell className="text-center text-[10px] py-2">
+                              <KeyboardNavigableCell 
+                                row={rowIndex} 
+                                col={tanks.length * 3 + 3} 
+                                panel="right" 
+                                className="h-full w-full"
+                              >
+                                {movementSummary.t2Balance || 0}
+                              </KeyboardNavigableCell>
+                            </TableCell>
+                            {/* 5. Current Stock */}
+                            <TableCell className="text-center text-[10px] py-2">
+                              <KeyboardNavigableCell 
+                                row={rowIndex} 
+                                col={tanks.length * 3 + 4} 
+                                panel="right" 
+                                className="h-full w-full"
+                              >
+                                {movementSummary.currentStockMT}
+                              </KeyboardNavigableCell>
+                            </TableCell>
+                            {/* 6. Current Ullage */}
+                            <TableCell className="text-center text-[10px] py-2 border-r border-white/30">
+                              <KeyboardNavigableCell 
+                                row={rowIndex} 
+                                col={tanks.length * 3 + 5} 
+                                panel="right" 
+                                className="h-full w-full"
+                              >
+                                {movementSummary.currentUllage}
+                              </KeyboardNavigableCell>
+                            </TableCell>
+                            {/* 7. Difference (Total MT - Quantity) */}
+                            <TableCell className="text-center text-[10px] py-2 border-r border-white/30">
+                              <KeyboardNavigableCell 
+                                row={rowIndex} 
+                                col={tanks.length * 3 + 6} 
+                                panel="right" 
+                                className="h-full w-full"
+                              >
+                                {Math.round(movementSummary.totalMTMoved) - Math.round(movement.assignment_quantity || 0)}
+                              </KeyboardNavigableCell>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default StorageGrid;
