@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
+import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -27,8 +28,10 @@ export const usePhysicalTrades = () => {
         console.log('[PHYSICAL] Syncing physical exposures from formula to mtmFormula');
         console.log('Original physical exposures:', validatedFormula.exposures.physical);
         
-        // Ensure mtmFormula has an exposures object
-        validatedMtmFormula.exposures = validatedMtmFormula.exposures || {};
+        // Ensure mtmFormula has a properly structured exposures object
+        if (!validatedMtmFormula.exposures) {
+          validatedMtmFormula.exposures = createEmptyExposureResult();
+        }
         
         // Sync the physical exposures
         validatedMtmFormula.exposures.physical = { ...validatedFormula.exposures.physical };
@@ -36,7 +39,7 @@ export const usePhysicalTrades = () => {
         console.log('Synced mtmFormula physical exposures:', validatedMtmFormula.exposures.physical);
       }
 
-      // Update parent trade with synced formulas
+      // Update parent trade with synced formulas - convert to JSON for Supabase
       const { data, error: tradeUpdateError } = await supabase
         .from('trade_legs')
         .update({
@@ -46,8 +49,8 @@ export const usePhysicalTrades = () => {
           loading_period_end: updatedTrade.loadingPeriodEnd,
           pricing_period_start: updatedTrade.pricingPeriodStart,
           pricing_period_end: updatedTrade.pricingPeriodEnd,
-          pricing_formula: validatedFormula,
-          mtm_formula: validatedMtmFormula,
+          pricing_formula: validatedFormula as any, // Type assertion to avoid JSON compatibility issue
+          mtm_formula: validatedMtmFormula as any, // Type assertion to avoid JSON compatibility issue
           buy_sell: updatedTrade.buySell,
           product: updatedTrade.product,
           sustainability: updatedTrade.sustainability,
