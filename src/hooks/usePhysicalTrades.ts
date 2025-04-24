@@ -2,7 +2,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade } from '@/types';
+import { PhysicalTrade, PricingFormula } from '@/types';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -68,10 +68,14 @@ export const usePhysicalTrades = () => {
       // Verify the update was successful by checking the returned data
       if (updatedData && updatedData[0]) {
         const result = updatedData[0];
-        console.log('[PHYSICAL] Trade updated successfully. Verifying formulas:', {
-          pricingExposures: result.pricing_formula?.exposures,
-          mtmExposures: result.mtm_formula?.exposures
-        });
+        console.log('[PHYSICAL] Trade updated successfully. Verifying formulas:');
+        
+        // Safely access deeply nested properties with type checking
+        const pricingFormula = result.pricing_formula as PricingFormula | null;
+        const mtmFormula = result.mtm_formula as PricingFormula | null;
+        
+        console.log('[PHYSICAL] Pricing formula exposures:', pricingFormula?.exposures || 'No exposures found');
+        console.log('[PHYSICAL] MTM formula exposures:', mtmFormula?.exposures || 'No exposures found');
       }
 
       return updatedTrade;
@@ -91,4 +95,3 @@ export const usePhysicalTrades = () => {
     updatePhysicalTrade
   };
 };
-
