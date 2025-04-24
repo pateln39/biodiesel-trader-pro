@@ -10,17 +10,33 @@ export const usePhysicalTrades = () => {
     mutationFn: async (updatedTrade: any) => {
       console.log('[PHYSICAL] Updating trade:', updatedTrade);
 
-      // Validate and ensure proper formula structure
-      const validatedFormula = updatedTrade.formula ? { ...updatedTrade.formula } : null;
-      const validatedMtmFormula = updatedTrade.mtmFormula ? { ...updatedTrade.mtmFormula } : null;
+      // First validate and ensure proper formula structure for both formulas
+      const validatedFormula = updatedTrade.formula 
+        ? validateAndParsePricingFormula(updatedTrade.formula)
+        : null;
+      
+      // Create a deep copy of the mtm formula to avoid reference issues
+      const validatedMtmFormula = updatedTrade.mtmFormula 
+        ? validateAndParsePricingFormula(updatedTrade.mtmFormula)
+        : validatedFormula 
+          ? { ...validatedFormula }
+          : null;
 
-      // Make sure we sync exposures between formula and mtmFormula
-      if (validatedFormula && validatedFormula.exposures && validatedMtmFormula) {
-        console.log('[PHYSICAL] Syncing exposures from formula to mtmFormula');
-        validatedMtmFormula.exposures = { ...validatedFormula.exposures };
+      // If we have valid formulas, ensure the physical exposures are synced
+      if (validatedFormula?.exposures?.physical && validatedMtmFormula) {
+        console.log('[PHYSICAL] Syncing physical exposures from formula to mtmFormula');
+        console.log('Original physical exposures:', validatedFormula.exposures.physical);
+        
+        // Ensure mtmFormula has an exposures object
+        validatedMtmFormula.exposures = validatedMtmFormula.exposures || {};
+        
+        // Sync the physical exposures
+        validatedMtmFormula.exposures.physical = { ...validatedFormula.exposures.physical };
+        
+        console.log('Synced mtmFormula physical exposures:', validatedMtmFormula.exposures.physical);
       }
 
-      // Update parent trade
+      // Update parent trade with synced formulas
       const { data, error: tradeUpdateError } = await supabase
         .from('trade_legs')
         .update({
@@ -30,10 +46,8 @@ export const usePhysicalTrades = () => {
           loading_period_end: updatedTrade.loadingPeriodEnd,
           pricing_period_start: updatedTrade.pricingPeriodStart,
           pricing_period_end: updatedTrade.pricingPeriodEnd,
-          formula: validatedFormula,
-          // Ensure mtm_formula gets the same exposure values as formula
+          pricing_formula: validatedFormula,
           mtm_formula: validatedMtmFormula,
-          // Update other fields...
           buy_sell: updatedTrade.buySell,
           product: updatedTrade.product,
           sustainability: updatedTrade.sustainability,
@@ -47,7 +61,6 @@ export const usePhysicalTrades = () => {
           efp_fixed_value: updatedTrade.efpFixedValue,
           efp_designated_month: updatedTrade.efpDesignatedMonth,
           pricing_type: updatedTrade.pricingType,
-          pricing_formula: validatedFormula,
           comments: updatedTrade.comments,
           contract_status: updatedTrade.contractStatus,
           mtm_future_month: updatedTrade.mtmFutureMonth,
@@ -65,7 +78,6 @@ export const usePhysicalTrades = () => {
         console.log('[PHYSICAL] Trade updated successfully:', updatedTradeData);
         
         // Validate that the formulas were correctly synced
-        // Access the correct property names from Supabase response
         const returnedFormula = updatedTradeData.pricing_formula 
           ? validateAndParsePricingFormula(updatedTradeData.pricing_formula)
           : null;
@@ -74,8 +86,16 @@ export const usePhysicalTrades = () => {
           ? validateAndParsePricingFormula(updatedTradeData.mtm_formula) 
           : null;
 
+        // Log the validation results
         console.log('[PHYSICAL] Updated formula:', returnedFormula);
         console.log('[PHYSICAL] Updated mtmFormula:', returnedMtmFormula);
+        
+        // Verify physical exposures are synced
+        if (returnedFormula?.exposures?.physical && returnedMtmFormula?.exposures?.physical) {
+          console.log('[PHYSICAL] Verifying physical exposures sync:');
+          console.log('Formula physical:', returnedFormula.exposures.physical);
+          console.log('MtmFormula physical:', returnedMtmFormula.exposures.physical);
+        }
       }
 
       return updatedTrade;
