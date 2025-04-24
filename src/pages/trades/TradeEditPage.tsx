@@ -12,6 +12,7 @@ import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Prod
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { usePhysicalTrades } from '@/hooks/usePhysicalTrades';
 
 const TradeEditPage = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const TradeEditPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [tradeData, setTradeData] = useState<PhysicalTrade | null>(null);
   const queryClient = useQueryClient();
+  const { updatePhysicalTrade } = usePhysicalTrades();
 
   useEffect(() => {
     const fetchTradeData = async () => {
@@ -151,48 +153,19 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
-      // For physical trades, we need to update all legs
+      // Use updatePhysicalTrade hook for each leg to ensure proper formula syncing
       for (const leg of updatedTradeData.legs) {
-        const legData = {
-          parent_trade_id: id,
-          buy_sell: leg.buySell,
-          product: leg.product,
-          sustainability: leg.sustainability,
-          inco_term: leg.incoTerm,
+        console.log('[EDIT] Processing leg update:', leg);
+        
+        // Call updatePhysicalTrade for each leg
+        await updatePhysicalTrade({
+          ...leg,
+          id: leg.id, // Make sure to pass the leg ID
+          // Include any additional fields needed by updatePhysicalTrade
           quantity: leg.quantity,
-          tolerance: leg.tolerance,
-          loading_period_start: formatDateForStorage(leg.loadingPeriodStart),
-          loading_period_end: formatDateForStorage(leg.loadingPeriodEnd),
-          pricing_period_start: formatDateForStorage(leg.pricingPeriodStart),
-          pricing_period_end: formatDateForStorage(leg.pricingPeriodEnd),
-          unit: leg.unit,
-          payment_term: leg.paymentTerm,
-          credit_status: leg.creditStatus,
-          customs_status: leg.customsStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
-          pricing_type: leg.pricingType,
-          mtm_future_month: leg.mtmFutureMonth,
-          updated_at: new Date().toISOString()
-        };
-
-        if (leg.pricingType === 'efp') {
-          Object.assign(legData, {
-            efp_premium: leg.efpPremium,
-            efp_agreed_status: leg.efpAgreedStatus,
-            efp_fixed_value: leg.efpFixedValue,
-            efp_designated_month: leg.efpDesignatedMonth,
-          });
-        }
-
-        const { error: legUpdateError } = await supabase
-          .from('trade_legs')
-          .update(legData)
-          .eq('id', leg.id);
-          
-        if (legUpdateError) {
-          throw new Error(`Error updating trade leg: ${legUpdateError.message}`);
-        }
+          formula: leg.formula,
+          mtmFormula: leg.mtmFormula,
+        });
       }
 
       // Force invalidate the trades query cache to ensure fresh data

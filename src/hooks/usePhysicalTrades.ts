@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -10,6 +9,8 @@ export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
     mutationFn: async (updatedTrade: any) => {
       console.log('[PHYSICAL] Updating trade:', updatedTrade);
+      console.log('[PHYSICAL] Original formula:', updatedTrade.formula);
+      console.log('[PHYSICAL] Original mtmFormula:', updatedTrade.mtmFormula);
 
       // First validate and ensure proper formula structure for both formulas
       const validatedFormula = updatedTrade.formula 
@@ -80,7 +81,7 @@ export const usePhysicalTrades = () => {
       if (updatedTradeData) {
         console.log('[PHYSICAL] Trade updated successfully:', updatedTradeData);
         
-        // Validate that the formulas were correctly synced
+        // Add detailed validation checks for formula sync
         const returnedFormula = updatedTradeData.pricing_formula 
           ? validateAndParsePricingFormula(updatedTradeData.pricing_formula)
           : null;
@@ -89,15 +90,28 @@ export const usePhysicalTrades = () => {
           ? validateAndParsePricingFormula(updatedTradeData.mtm_formula) 
           : null;
 
-        // Log the validation results
-        console.log('[PHYSICAL] Updated formula:', returnedFormula);
-        console.log('[PHYSICAL] Updated mtmFormula:', returnedMtmFormula);
+        // Log formula details
+        console.log('[PHYSICAL] Updated formula details:', {
+          hasFormula: !!returnedFormula,
+          formulaExposures: returnedFormula?.exposures,
+          hasMtmFormula: !!returnedMtmFormula,
+          mtmFormulaExposures: returnedMtmFormula?.exposures
+        });
         
-        // Verify physical exposures are synced
+        // Verify physical exposures are synced and log any discrepancies
         if (returnedFormula?.exposures?.physical && returnedMtmFormula?.exposures?.physical) {
-          console.log('[PHYSICAL] Verifying physical exposures sync:');
-          console.log('Formula physical:', returnedFormula.exposures.physical);
-          console.log('MtmFormula physical:', returnedMtmFormula.exposures.physical);
+          const physicalMatches = JSON.stringify(returnedFormula.exposures.physical) === 
+                                JSON.stringify(returnedMtmFormula.exposures.physical);
+          
+          console.log('[PHYSICAL] Physical exposures sync status:', {
+            synced: physicalMatches,
+            formula: returnedFormula.exposures.physical,
+            mtmFormula: returnedMtmFormula.exposures.physical
+          });
+          
+          if (!physicalMatches) {
+            console.warn('[PHYSICAL] Warning: Physical exposures are not synced after update!');
+          }
         }
       }
 
