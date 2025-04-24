@@ -32,7 +32,7 @@ export const usePhysicalTrades = () => {
         validatedMtmFormula = createEmptyFormula();
       }
 
-      // Calculate physical exposures based on MTM formula tokens
+      // Calculate physical and pricing exposures based on MTM formula tokens
       const mtmExposures = calculateExposures(
         validatedMtmFormula.tokens || [], 
         updatedTrade.quantity, 
