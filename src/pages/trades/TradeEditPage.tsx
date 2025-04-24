@@ -8,10 +8,9 @@ import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PricingType, CustomsStatus } from '@/types';
+import { PhysicalTrade } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { formatDateForStorage } from '@/utils/dateUtils';
 import { usePhysicalTrades } from '@/hooks/usePhysicalTrades';
 
 const TradeEditPage = () => {
@@ -153,16 +152,17 @@ const TradeEditPage = () => {
         throw new Error(`Error updating parent trade: ${parentUpdateError.message}`);
       }
 
-      // Use updatePhysicalTrade hook for each leg to ensure proper formula syncing
+      // Use updatePhysicalTrade hook for each leg to ensure proper exposure calculation
       for (const leg of updatedTradeData.legs) {
         console.log('[EDIT] Processing leg update:', leg);
         
-        // Call updatePhysicalTrade for each leg
+        // Call updatePhysicalTrade for each leg, ensuring all necessary data is passed
         await updatePhysicalTrade({
           ...leg,
-          id: leg.id, // Make sure to pass the leg ID
-          // Include any additional fields needed by updatePhysicalTrade
+          id: leg.id,
           quantity: leg.quantity,
+          buySell: leg.buySell,
+          product: leg.product,
           formula: leg.formula,
           mtmFormula: leg.mtmFormula,
         });
