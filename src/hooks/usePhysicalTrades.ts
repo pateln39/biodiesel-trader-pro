@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,36 +15,46 @@ export const usePhysicalTrades = () => {
       if (updatedTrade.formula) {
         validatedFormula = validateAndParsePricingFormula(updatedTrade.formula);
       } else {
-        // Create an empty formula with the proper structure instead of trying to cast ExposureResult
         validatedFormula = createEmptyFormula();
       }
       
       // Create a deep copy of the formula for MTM to avoid reference issues
       let validatedMtmFormula: PricingFormula;
       if (updatedTrade.mtmFormula) {
+        // Keep existing MTM formula tokens and structure
         validatedMtmFormula = validateAndParsePricingFormula(updatedTrade.mtmFormula);
+        
+        // Recalculate exposures with new quantity while preserving formula structure
+        const mtmExposures = calculateExposures(
+          validatedMtmFormula.tokens || [], 
+          updatedTrade.quantity, 
+          updatedTrade.buySell,
+          updatedTrade.product
+        );
+
+        console.log('[PHYSICAL] Calculated MTM exposures with new quantity:', mtmExposures);
+        
+        // Update MTM formula exposures
+        validatedMtmFormula.exposures = mtmExposures;
       } else if (validatedFormula) {
         // Deep clone the validatedFormula for mtmFormula
         validatedMtmFormula = JSON.parse(JSON.stringify(validatedFormula));
+        
+        // Calculate exposures for the cloned MTM formula
+        const mtmExposures = calculateExposures(
+          validatedMtmFormula.tokens || [], 
+          updatedTrade.quantity, 
+          updatedTrade.buySell,
+          updatedTrade.product
+        );
+        
+        validatedMtmFormula.exposures = mtmExposures;
       } else {
         // Create an empty formula with the proper structure
         validatedMtmFormula = createEmptyFormula();
       }
 
-      // Calculate physical and pricing exposures based on MTM formula tokens
-      const mtmExposures = calculateExposures(
-        validatedMtmFormula.tokens || [], 
-        updatedTrade.quantity, 
-        updatedTrade.buySell,
-        updatedTrade.product
-      );
-
-      console.log('[PHYSICAL] Calculated MTM exposures:', mtmExposures);
-
-      // Update MTM formula exposures
-      validatedMtmFormula.exposures = mtmExposures;
-
-      // Sync physical exposures from MTM formula to pricing formula
+      // Now sync physical exposures from MTM formula to pricing formula
       if (validatedFormula && validatedMtmFormula.exposures?.physical) {
         if (!validatedFormula.exposures) {
           validatedFormula.exposures = createEmptyExposureResult();
