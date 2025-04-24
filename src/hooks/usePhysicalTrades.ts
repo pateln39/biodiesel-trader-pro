@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { createEmptyExposureResult, calculateExposures } from '@/utils/formulaCalculation';
+import { createEmptyExposureResult, calculateExposures, calculatePhysicalExposure } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -12,18 +12,25 @@ export const usePhysicalTrades = () => {
       console.log('[PHYSICAL] Updating trade:', updatedTrade);
 
       // First validate and ensure proper formula structure for both formulas
-      const validatedFormula = updatedTrade.formula 
-        ? validateAndParsePricingFormula(updatedTrade.formula)
-        : createEmptyExposureResult();
+      let validatedFormula: PricingFormula;
+      if (updatedTrade.formula) {
+        validatedFormula = validateAndParsePricingFormula(updatedTrade.formula);
+      } else {
+        validatedFormula = createEmptyExposureResult() as PricingFormula;
+      }
       
-      // Create a deep copy of the mtm formula to avoid reference issues
-      const validatedMtmFormula = updatedTrade.mtmFormula 
-        ? validateAndParsePricingFormula(updatedTrade.mtmFormula)
-        : validatedFormula 
-          ? { ...validatedFormula }
-          : createEmptyExposureResult();
+      // Create a deep copy of the formula for MTM to avoid reference issues
+      let validatedMtmFormula: PricingFormula;
+      if (updatedTrade.mtmFormula) {
+        validatedMtmFormula = validateAndParsePricingFormula(updatedTrade.mtmFormula);
+      } else if (validatedFormula) {
+        // Deep clone the validatedFormula for mtmFormula
+        validatedMtmFormula = JSON.parse(JSON.stringify(validatedFormula));
+      } else {
+        validatedMtmFormula = createEmptyExposureResult() as PricingFormula;
+      }
 
-      // Calculate physical exposures based on MTM formula
+      // Calculate physical exposures based on MTM formula tokens
       const mtmExposures = calculateExposures(
         validatedMtmFormula.tokens || [], 
         updatedTrade.quantity, 
@@ -31,11 +38,17 @@ export const usePhysicalTrades = () => {
         updatedTrade.product
       );
 
+      console.log('[PHYSICAL] Calculated MTM exposures:', mtmExposures);
+
       // Update MTM formula exposures
       validatedMtmFormula.exposures = mtmExposures;
 
       // Sync physical exposures from MTM formula to pricing formula
       if (validatedFormula && validatedMtmFormula.exposures?.physical) {
+        if (!validatedFormula.exposures) {
+          validatedFormula.exposures = createEmptyExposureResult();
+        }
+        
         validatedFormula.exposures = {
           ...validatedFormula.exposures,
           physical: { ...validatedMtmFormula.exposures.physical }
@@ -56,8 +69,8 @@ export const usePhysicalTrades = () => {
           loading_period_end: updatedTrade.loadingPeriodEnd,
           pricing_period_start: updatedTrade.pricingPeriodStart,
           pricing_period_end: updatedTrade.pricingPeriodEnd,
-          pricing_formula: validatedFormula,
-          mtm_formula: validatedMtmFormula,
+          pricing_formula: validatedFormula as any,
+          mtm_formula: validatedMtmFormula as any,
           buy_sell: updatedTrade.buySell,
           product: updatedTrade.product,
           sustainability: updatedTrade.sustainability,
