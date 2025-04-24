@@ -1,119 +1,45 @@
+
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, PricingFormula, FormulaToken } from '@/types';
+import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { createEmptyExposureResult, calculateExposures, parseFormula } from '@/utils/formulaCalculation';
+import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
     mutationFn: async (updatedTrade: any) => {
       console.log('[PHYSICAL] Updating trade:', updatedTrade);
-      
+
       // First validate and ensure proper formula structure for both formulas
-      const validatedPricingFormula = updatedTrade.formula 
+      const validatedFormula = updatedTrade.formula 
         ? validateAndParsePricingFormula(updatedTrade.formula)
         : null;
       
       // Create a deep copy of the mtm formula to avoid reference issues
       const validatedMtmFormula = updatedTrade.mtmFormula 
         ? validateAndParsePricingFormula(updatedTrade.mtmFormula)
-        : null;
+        : validatedFormula 
+          ? { ...validatedFormula }
+          : null;
 
-      console.log('[PHYSICAL] Validated pricing formula:', validatedPricingFormula);
-      console.log('[PHYSICAL] Validated MTM formula:', validatedMtmFormula);
-
-      // Now calculate the appropriate exposure types for each formula
-      
-      // For pricing formula - only calculate pricing exposures
-      if (validatedPricingFormula?.tokens?.length > 0) {
-        console.log('[PHYSICAL] Calculating pricing exposures from pricing formula');
+      // If we have valid formulas, ensure the physical exposures are synced
+      if (validatedFormula?.exposures?.physical && validatedMtmFormula) {
+        console.log('[PHYSICAL] Syncing physical exposures from formula to mtmFormula');
+        console.log('Original physical exposures:', validatedFormula.exposures.physical);
         
-        // Ensure we have a properly structured exposures object
-        if (!validatedPricingFormula.exposures) {
-          validatedPricingFormula.exposures = createEmptyExposureResult();
-        }
-        
-        // Calculate pricing exposure based on pricing formula
-        const pricingExposure = calculateExposures(
-          validatedPricingFormula.tokens,
-          updatedTrade.quantity,
-          updatedTrade.buySell,
-          updatedTrade.product
-        ).pricing;
-        
-        console.log('[PHYSICAL] Calculated pricing exposures:', pricingExposure);
-        
-        // Only keep the pricing exposures in the pricing formula
-        validatedPricingFormula.exposures = {
-          pricing: pricingExposure,
-          physical: {} // Empty physical exposures for pricing formula
-        };
-      }
-      
-      // For MTM formula - only calculate physical exposures
-      if (validatedMtmFormula?.tokens?.length > 0) {
-        console.log('[PHYSICAL] Calculating physical exposures from MTM formula');
-        
-        // Ensure we have a properly structured exposures object
+        // Ensure mtmFormula has a properly structured exposures object
         if (!validatedMtmFormula.exposures) {
           validatedMtmFormula.exposures = createEmptyExposureResult();
         }
         
-        // Calculate physical exposure based on MTM formula
-        const physicalExposure = calculateExposures(
-          validatedMtmFormula.tokens,
-          updatedTrade.quantity,
-          updatedTrade.buySell,
-          updatedTrade.product
-        ).physical;
+        // Sync the physical exposures
+        validatedMtmFormula.exposures.physical = { ...validatedFormula.exposures.physical };
         
-        console.log('[PHYSICAL] Calculated physical exposures from MTM formula:', physicalExposure);
-        
-        // Only keep the physical exposures in the MTM formula
-        validatedMtmFormula.exposures = {
-          physical: physicalExposure,
-          pricing: {} // Empty pricing exposures for MTM formula
-        };
+        console.log('Synced mtmFormula physical exposures:', validatedMtmFormula.exposures.physical);
       }
-      // If MTM formula is null/empty but pricing formula exists, use pricing formula tokens
-      // to calculate physical exposure as a fallback
-      else if (!validatedMtmFormula?.tokens?.length && validatedPricingFormula?.tokens?.length > 0) {
-        console.log('[PHYSICAL] Using pricing formula to calculate physical exposures for empty MTM formula');
-        
-        // Create empty MTM formula if it doesn't exist
-        if (!validatedMtmFormula) {
-          validatedMtmFormula = {
-            tokens: [],
-            exposures: createEmptyExposureResult()
-          };
-        }
-        
-        // Calculate physical exposure based on pricing formula
-        const physicalExposure = calculateExposures(
-          validatedPricingFormula.tokens,
-          updatedTrade.quantity,
-          updatedTrade.buySell,
-          updatedTrade.product
-        ).physical;
-        
-        console.log('[PHYSICAL] Calculated fallback physical exposures:', physicalExposure);
-        
-        // Only store physical exposures in the MTM formula
-        validatedMtmFormula.exposures = {
-          physical: physicalExposure,
-          pricing: {} // Empty pricing exposures
-        };
-      }
-      
-      console.log('[PHYSICAL] Final pricing formula exposures:', 
-        validatedPricingFormula?.exposures
-      );
-      console.log('[PHYSICAL] Final MTM formula exposures:', 
-        validatedMtmFormula?.exposures
-      );
 
-      // Update parent trade with the properly structured formulas
+      // Update parent trade with synced formulas - convert to JSON for Supabase
       const { data, error: tradeUpdateError } = await supabase
         .from('trade_legs')
         .update({
@@ -123,7 +49,7 @@ export const usePhysicalTrades = () => {
           loading_period_end: updatedTrade.loadingPeriodEnd,
           pricing_period_start: updatedTrade.pricingPeriodStart,
           pricing_period_end: updatedTrade.pricingPeriodEnd,
-          pricing_formula: validatedPricingFormula as any, // Type assertion to avoid JSON compatibility issue
+          pricing_formula: validatedFormula as any, // Type assertion to avoid JSON compatibility issue
           mtm_formula: validatedMtmFormula as any, // Type assertion to avoid JSON compatibility issue
           buy_sell: updatedTrade.buySell,
           product: updatedTrade.product,
@@ -154,8 +80,8 @@ export const usePhysicalTrades = () => {
       if (updatedTradeData) {
         console.log('[PHYSICAL] Trade updated successfully:', updatedTradeData);
         
-        // Add detailed validation checks for the updated trade
-        const returnedPricingFormula = updatedTradeData.pricing_formula 
+        // Validate that the formulas were correctly synced
+        const returnedFormula = updatedTradeData.pricing_formula 
           ? validateAndParsePricingFormula(updatedTradeData.pricing_formula)
           : null;
         
@@ -163,18 +89,16 @@ export const usePhysicalTrades = () => {
           ? validateAndParsePricingFormula(updatedTradeData.mtm_formula) 
           : null;
 
-        // Log formula details
-        console.log('[PHYSICAL] Updated pricing formula details:', {
-          hasFormula: !!returnedPricingFormula,
-          formulaTokens: returnedPricingFormula?.tokens,
-          formulaExposures: returnedPricingFormula?.exposures
-        });
+        // Log the validation results
+        console.log('[PHYSICAL] Updated formula:', returnedFormula);
+        console.log('[PHYSICAL] Updated mtmFormula:', returnedMtmFormula);
         
-        console.log('[PHYSICAL] Updated MTM formula details:', {
-          hasFormula: !!returnedMtmFormula,
-          formulaTokens: returnedMtmFormula?.tokens,
-          formulaExposures: returnedMtmFormula?.exposures
-        });
+        // Verify physical exposures are synced
+        if (returnedFormula?.exposures?.physical && returnedMtmFormula?.exposures?.physical) {
+          console.log('[PHYSICAL] Verifying physical exposures sync:');
+          console.log('Formula physical:', returnedFormula.exposures.physical);
+          console.log('MtmFormula physical:', returnedMtmFormula.exposures.physical);
+        }
       }
 
       return updatedTrade;
