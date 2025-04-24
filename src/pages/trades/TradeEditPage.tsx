@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +9,17 @@ import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { PhysicalTrade, BuySell, IncoTerm, Unit, PaymentTerm, CreditStatus, Product, PricingType, CustomsStatus } from '@/types';
+import { 
+  PhysicalTrade, 
+  BuySell, 
+  IncoTerm, 
+  Unit, 
+  PaymentTerm, 
+  CreditStatus, 
+  Product, 
+  PricingType, 
+  CustomsStatus 
+} from '@/types';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
