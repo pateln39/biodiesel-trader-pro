@@ -3,8 +3,8 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
-import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
-import { createEmptyExposureResult, calculateExposures, calculatePhysicalExposure } from '@/utils/formulaCalculation';
+import { validateAndParsePricingFormula, createEmptyFormula } from '@/utils/formulaUtils';
+import { createEmptyExposureResult, calculateExposures } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -16,7 +16,8 @@ export const usePhysicalTrades = () => {
       if (updatedTrade.formula) {
         validatedFormula = validateAndParsePricingFormula(updatedTrade.formula);
       } else {
-        validatedFormula = createEmptyExposureResult() as PricingFormula;
+        // Create an empty formula with the proper structure instead of trying to cast ExposureResult
+        validatedFormula = createEmptyFormula();
       }
       
       // Create a deep copy of the formula for MTM to avoid reference issues
@@ -27,7 +28,8 @@ export const usePhysicalTrades = () => {
         // Deep clone the validatedFormula for mtmFormula
         validatedMtmFormula = JSON.parse(JSON.stringify(validatedFormula));
       } else {
-        validatedMtmFormula = createEmptyExposureResult() as PricingFormula;
+        // Create an empty formula with the proper structure
+        validatedMtmFormula = createEmptyFormula();
       }
 
       // Calculate physical exposures based on MTM formula tokens
