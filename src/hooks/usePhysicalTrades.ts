@@ -65,8 +65,9 @@ export const usePhysicalTrades = () => {
         console.log('[PHYSICAL] Trade updated successfully:', updatedTradeData);
         
         // Validate that the formulas were correctly synced
-        const returnedFormula = updatedTradeData.formula 
-          ? validateAndParsePricingFormula(updatedTradeData.formula)
+        // Access the correct property names from Supabase response
+        const returnedFormula = updatedTradeData.pricing_formula 
+          ? validateAndParsePricingFormula(updatedTradeData.pricing_formula)
           : null;
         
         const returnedMtmFormula = updatedTradeData.mtm_formula 
