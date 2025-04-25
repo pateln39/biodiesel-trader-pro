@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -91,6 +91,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
   filterOptions,
   availableOptions = defaultAvailableOptions,
   onFilterChange,
+  // For backward compatibility
   selectedStatuses = [],
   onStatusesChange
 }) => {
@@ -98,7 +99,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     if (filterOptions) {
       return { ...filterOptions };
     } else {
-      // For backward compatibility, initialize with just status filter
       return {
         status: [...(selectedStatuses || [])],
         product: [],
@@ -121,7 +121,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
       if (filterOptions) {
         setTempFilters({ ...filterOptions });
       } else if (selectedStatuses) {
-        // For backward compatibility
         setTempFilters(prev => ({ ...prev, status: [...selectedStatuses] }));
       }
     }
@@ -151,7 +150,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     if (onFilterChange) {
       onFilterChange(tempFilters);
     } else if (onStatusesChange) {
-      // For backward compatibility
       onStatusesChange(tempFilters.status);
     }
     onOpenChange(false);
@@ -178,12 +176,26 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     if (onFilterChange) {
       onFilterChange(resetFilters);
     } else if (onStatusesChange) {
-      // For backward compatibility
       onStatusesChange([]);
     }
     
     onOpenChange(false);
   };
+
+  const filterCategories = [
+    { id: 'status', label: 'Status' },
+    { id: 'product', label: 'Product' },
+    { id: 'buySell', label: 'Buy/Sell' },
+    { id: 'incoTerm', label: 'Incoterm' },
+    { id: 'sustainability', label: 'Sustainability' },
+    { id: 'counterparty', label: 'Counterparty' },
+    { id: 'creditStatus', label: 'Credit Status' },
+    { id: 'customsStatus', label: 'Customs Status' },
+    { id: 'loadport', label: 'Load Port' },
+    { id: 'loadportInspector', label: 'Load Port Inspector' },
+    { id: 'disport', label: 'Discharge Port' },
+    { id: 'disportInspector', label: 'Discharge Port Inspector' }
+  ] as const;
 
   // Calculate total number of active filters across all categories
   const totalActiveFilters = Object.values(tempFilters).reduce(
@@ -191,24 +203,68 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     0
   );
 
-  // For backward compatibility: focus only on status
-  const statusCategory = {
-    id: 'status' as keyof FilterOptions,
-    label: 'Status',
-    options: availableOptions.status,
-    selectedOptions: tempFilters.status,
-    onChange: (values: string[]) => {
-      setTempFilters(prev => ({ ...prev, status: values }));
-    }
+  const FilterGroup: React.FC<{
+    category: keyof FilterOptions;
+    label: string;
+  }> = ({ category, label }) => {
+    const options = availableOptions[category];
+    const selectedOptions = tempFilters[category];
+    const allSelected = options.length > 0 && selectedOptions.length === options.length;
+    const hasSelected = selectedOptions.length > 0;
+    const indeterminate = hasSelected && !allSelected;
+
+    if (options.length === 0) return null;
+
+    return (
+      <AccordionItem value={category}>
+        <AccordionTrigger className="px-4 hover:no-underline">
+          <div className="flex items-center justify-between flex-1 pr-4">
+            <span>{label}</span>
+            {hasSelected && (
+              <Badge variant="secondary" className="ml-auto mr-4">
+                {selectedOptions.length}
+              </Badge>
+            )}
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pt-2">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id={`select-all-${category}`}
+                checked={allSelected}
+                className={indeterminate ? "opacity-80" : ""}
+                onCheckedChange={(checked) => handleSelectAll(category, !!checked)}
+              />
+              <Label 
+                htmlFor={`select-all-${category}`}
+                className="text-sm font-medium cursor-pointer"
+              >
+                Select All
+              </Label>
+            </div>
+            <div className="space-y-2 pl-1">
+              {options.map((option) => (
+                <div key={`${category}-${option}`} className="flex items-center space-x-2">
+                  <Checkbox 
+                    id={`${category}-${option}`}
+                    checked={selectedOptions.includes(option)}
+                    onCheckedChange={() => handleToggleOption(category, option)}
+                  />
+                  <Label 
+                    htmlFor={`${category}-${option}`}
+                    className="cursor-pointer"
+                  >
+                    {option.charAt(0).toUpperCase() + option.slice(1)}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    );
   };
-
-  // Check if all status options are selected
-  const allSelected = availableOptions.status.length > 0 && 
-    tempFilters.status.length === availableOptions.status.length;
-
-  // Check if some options are selected (not all and not none)
-  const indeterminate = tempFilters.status.length > 0 && 
-    tempFilters.status.length < availableOptions.status.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -225,48 +281,15 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
         </DialogHeader>
         
         <ScrollArea className="pr-4 max-h-[60vh]">
-          <div className="py-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 pb-2">
-                  <Checkbox 
-                    id="select-all-status" 
-                    checked={allSelected}
-                    className={indeterminate ? "opacity-80" : ""}
-                    onCheckedChange={(checked) => handleSelectAll('status', !!checked)}
-                  />
-                  <Label 
-                    htmlFor="select-all-status"
-                    className="cursor-pointer font-medium text-sm"
-                  >
-                    Select All
-                  </Label>
-                </div>
-                
-                <div className="space-y-1 pl-1">
-                  {availableOptions.status.length > 0 ? (
-                    availableOptions.status.map((option) => (
-                      <div key={`status-${option}`} className="flex items-center space-x-2 py-1">
-                        <Checkbox 
-                          id={`status-${option}`} 
-                          checked={tempFilters.status.includes(option)}
-                          onCheckedChange={() => handleToggleOption('status', option)}
-                        />
-                        <Label 
-                          htmlFor={`status-${option}`}
-                          className="cursor-pointer"
-                        >
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </Label>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-muted-foreground italic">No options available</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <Accordion type="multiple" className="w-full">
+            {filterCategories.map(({ id, label }) => (
+              <FilterGroup 
+                key={id} 
+                category={id} 
+                label={label}
+              />
+            ))}
+          </Accordion>
         </ScrollArea>
         
         <DialogFooter>
@@ -299,3 +322,4 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
 };
 
 export default MovementsFilter;
+
