@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +10,6 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { PaperMTMPosition, calculatePaperTradePrice, calculatePaperMTMPrice, calculatePaperMTMValue, getMonthDates, getPeriodType } from '@/utils/paperTradeMTMUtils';
 import PaperPriceDetails from './PaperPriceDetails';
-import ProductToken from '@/components/operations/storage/ProductToken';
 
 const PaperMTMTable: React.FC = () => {
   const { paperTrades, isLoading: tradesLoading, refetchPaperTrades } = usePaperTrades();
@@ -194,14 +194,12 @@ const PaperMTMTable: React.FC = () => {
                   {position.tradeRef}
                 </TableCell>
                 <TableCell>
-                  <ProductToken product={position.product} size="md" />
-                  {position.relationshipType && (
-                    <Badge variant={position.relationshipType === 'FP' ? 'default' : 
-                             position.relationshipType === 'DIFF' ? 'secondary' : 'outline'} 
-                           className="ml-2">
-                      {position.relationshipType}
-                    </Badge>
-                  )}
+                  {position.product}
+                  <Badge variant={position.relationshipType === 'FP' ? 'default' : 
+                           position.relationshipType === 'DIFF' ? 'secondary' : 'outline'} 
+                         className="ml-2">
+                    {position.relationshipType}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant={position.buySell === 'buy' ? 'default' : 'outline'}>
