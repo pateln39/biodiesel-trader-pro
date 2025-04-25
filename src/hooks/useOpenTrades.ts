@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
@@ -38,21 +37,17 @@ export interface OpenTrade {
   pricing_formula?: PricingFormula;
   comments?: string; // Independent from trade_legs.comments
   contract_status?: ContractStatus;
-  // New fields based on database additions
   nominated_value?: number;
   balance?: number;
-  // EFP related properties needed for formula display
   efp_premium?: number;
   efp_agreed_status?: boolean;
   efp_fixed_value?: number;
   efp_designated_month?: string;
-  // Sort order for drag and drop
   sort_order?: number;
 }
 
 const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
   try {
-    // Fetch open trades - now the trade_reference should already include the leg_suffix
     const { data, error } = await supabase
       .from('open_trades')
       .select(`
@@ -80,7 +75,6 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       return [];
     }
     
-    // We still fetch leg references for compatibility with other parts of the code
     const legIds = data
       .map(item => item.trade_leg_id)
       .filter(Boolean);
@@ -132,20 +126,16 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       status: item.status as 'open' | 'closed',
       created_at: new Date(item.created_at),
       updated_at: new Date(item.updated_at),
-      // Map previously added fields
       pricing_type: item.pricing_type as PricingType,
-      pricing_formula: item.pricing_formula as unknown as PricingFormula, // Properly cast the JSON to PricingFormula
+      pricing_formula: item.pricing_formula as unknown as PricingFormula,
       comments: item.comments,
       contract_status: item.contract_status as ContractStatus,
-      // Map newly added fields
-      nominated_value: item.nominated_value || 0, // Ensure nominated_value is never null
-      balance: item.balance !== null && item.balance !== undefined ? item.balance : item.quantity, // Default to quantity if balance is null
-      // Map EFP related fields
+      nominated_value: item.nominated_value || 0,
+      balance: item.balance !== null && item.balance !== undefined ? item.balance : item.quantity,
       efp_premium: item.efp_premium,
-      efp_agreed_status: item.efp_agreed_status,
+      efp_agreed_status: item.efp_agreed_status === true || item.efp_agreed_status === 'true',
       efp_fixed_value: item.efp_fixed_value,
       efp_designated_month: item.efp_designated_month,
-      // Add sort_order field
       sort_order: item.sort_order
     }));
   } catch (error: any) {
