@@ -48,8 +48,7 @@ interface FilterCategory {
 interface MovementsFilterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedStatuses: string[];
-  onStatusesChange: (statuses: string[]) => void;
+  filterOptions?: FilterOptions;
   availableOptions?: {
     status: string[];
     product: string[];
@@ -64,6 +63,10 @@ interface MovementsFilterProps {
     disport: string[];
     disportInspector: string[];
   };
+  onFilterChange?: (filters: FilterOptions) => void;
+  // For backward compatibility
+  selectedStatuses?: string[];
+  onStatusesChange?: (statuses: string[]) => void;
 }
 
 // Default filter options when none are provided
@@ -85,48 +88,127 @@ const defaultAvailableOptions = {
 const MovementsFilter: React.FC<MovementsFilterProps> = ({
   open,
   onOpenChange,
-  selectedStatuses,
-  onStatusesChange,
-  availableOptions = defaultAvailableOptions
+  filterOptions,
+  availableOptions = defaultAvailableOptions,
+  onFilterChange,
+  selectedStatuses = [],
+  onStatusesChange
 }) => {
-  const [tempFilters, setTempFilters] = React.useState<string[]>(selectedStatuses);
+  const [tempFilters, setTempFilters] = React.useState<FilterOptions>(() => {
+    if (filterOptions) {
+      return { ...filterOptions };
+    } else {
+      // For backward compatibility, initialize with just status filter
+      return {
+        status: [...(selectedStatuses || [])],
+        product: [],
+        buySell: [],
+        incoTerm: [],
+        sustainability: [],
+        counterparty: [],
+        creditStatus: [],
+        customsStatus: [],
+        loadport: [],
+        loadportInspector: [],
+        disport: [],
+        disportInspector: []
+      };
+    }
+  });
 
   React.useEffect(() => {
     if (open) {
-      setTempFilters([...selectedStatuses]);
+      if (filterOptions) {
+        setTempFilters({ ...filterOptions });
+      } else if (selectedStatuses) {
+        // For backward compatibility
+        setTempFilters(prev => ({ ...prev, status: [...selectedStatuses] }));
+      }
     }
-  }, [selectedStatuses, open]);
+  }, [filterOptions, selectedStatuses, open]);
 
-  const handleToggleOption = (option: string) => {
+  const handleToggleOption = (category: keyof FilterOptions, option: string) => {
     setTempFilters(prev => {
-      return prev.includes(option)
-        ? prev.filter(o => o !== option)
-        : [...prev, option];
+      const updated = { ...prev };
+      if (updated[category].includes(option)) {
+        updated[category] = updated[category].filter(o => o !== option);
+      } else {
+        updated[category] = [...updated[category], option];
+      }
+      return updated;
     });
   };
 
-  const handleSelectAll = (selected: boolean) => {
-    setTempFilters(selected ? [...availableOptions.status] : []);
+  const handleSelectAll = (category: keyof FilterOptions, selected: boolean) => {
+    setTempFilters(prev => {
+      const updated = { ...prev };
+      updated[category] = selected ? [...availableOptions[category]] : [];
+      return updated;
+    });
   };
 
   const handleApply = () => {
-    onStatusesChange(tempFilters);
+    if (onFilterChange) {
+      onFilterChange(tempFilters);
+    } else if (onStatusesChange) {
+      // For backward compatibility
+      onStatusesChange(tempFilters.status);
+    }
     onOpenChange(false);
   };
 
   const handleReset = () => {
-    setTempFilters([]);
-    onStatusesChange([]);
+    const resetFilters: FilterOptions = {
+      status: [],
+      product: [],
+      buySell: [],
+      incoTerm: [],
+      sustainability: [],
+      counterparty: [],
+      creditStatus: [],
+      customsStatus: [],
+      loadport: [],
+      loadportInspector: [],
+      disport: [],
+      disportInspector: []
+    };
+    
+    setTempFilters(resetFilters);
+    
+    if (onFilterChange) {
+      onFilterChange(resetFilters);
+    } else if (onStatusesChange) {
+      // For backward compatibility
+      onStatusesChange([]);
+    }
+    
     onOpenChange(false);
+  };
+
+  // Calculate total number of active filters across all categories
+  const totalActiveFilters = Object.values(tempFilters).reduce(
+    (total, categoryFilters) => total + categoryFilters.length, 
+    0
+  );
+
+  // For backward compatibility: focus only on status
+  const statusCategory = {
+    id: 'status' as keyof FilterOptions,
+    label: 'Status',
+    options: availableOptions.status,
+    selectedOptions: tempFilters.status,
+    onChange: (values: string[]) => {
+      setTempFilters(prev => ({ ...prev, status: values }));
+    }
   };
 
   // Check if all status options are selected
   const allSelected = availableOptions.status.length > 0 && 
-    tempFilters.length === availableOptions.status.length;
+    tempFilters.status.length === availableOptions.status.length;
 
   // Check if some options are selected (not all and not none)
-  const indeterminate = tempFilters.length > 0 && 
-    tempFilters.length < availableOptions.status.length;
+  const indeterminate = tempFilters.status.length > 0 && 
+    tempFilters.status.length < availableOptions.status.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,9 +216,9 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Filter Movements</span>
-            {tempFilters.length > 0 && (
+            {totalActiveFilters > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {tempFilters.length} active {tempFilters.length === 1 ? 'filter' : 'filters'}
+                {totalActiveFilters} active {totalActiveFilters === 1 ? 'filter' : 'filters'}
               </Badge>
             )}
           </DialogTitle>
@@ -151,7 +233,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                     id="select-all-status" 
                     checked={allSelected}
                     className={indeterminate ? "opacity-80" : ""}
-                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    onCheckedChange={(checked) => handleSelectAll('status', !!checked)}
                   />
                   <Label 
                     htmlFor="select-all-status"
@@ -167,8 +249,8 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                       <div key={`status-${option}`} className="flex items-center space-x-2 py-1">
                         <Checkbox 
                           id={`status-${option}`} 
-                          checked={tempFilters.includes(option)}
-                          onCheckedChange={() => handleToggleOption(option)}
+                          checked={tempFilters.status.includes(option)}
+                          onCheckedChange={() => handleToggleOption('status', option)}
                         />
                         <Label 
                           htmlFor={`status-${option}`}

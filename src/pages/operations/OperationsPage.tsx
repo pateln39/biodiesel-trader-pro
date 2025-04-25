@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
-import MovementsFilter from '@/components/operations/MovementsFilter';
+import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
 
@@ -114,6 +115,28 @@ const OperationsPage = () => {
     }
   };
 
+  // Create a simple FilterOptions object for backward compatibility
+  const movementsFilters: FilterOptions = {
+    status: movementsFilterStatus,
+    product: [],
+    buySell: [],
+    incoTerm: [],
+    sustainability: [],
+    counterparty: [],
+    creditStatus: [],
+    customsStatus: [],
+    loadport: [],
+    loadportInspector: [],
+    disport: [],
+    disportInspector: []
+  };
+
+  // Handler for movement filter changes
+  const handleMovementFilterChange = (newFilters: FilterOptions) => {
+    // For backward compatibility, we only care about status
+    setMovementsFilterStatus(newFilters.status);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -209,6 +232,8 @@ const OperationsPage = () => {
               onOpenChange={setIsMovementsFilterOpen}
               selectedStatuses={movementsFilterStatus}
               onStatusesChange={setMovementsFilterStatus}
+              filterOptions={movementsFilters}
+              onFilterChange={handleMovementFilterChange}
             />
           </TabsContent>
         </Tabs>
