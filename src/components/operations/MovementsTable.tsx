@@ -323,7 +323,8 @@ const MovementsTable: React.FC = () => {
             <TooltipContent>
               <p>Add or view comments</p>
             </TooltipContent>
-          </TooltipProvider>
+          </Tooltip>
+        </TooltipProvider>
       </TableCell>
       <TableCell>
         {movement.creditStatus && (
