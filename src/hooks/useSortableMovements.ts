@@ -1,11 +1,9 @@
-
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { FilterOptions } from '@/components/operations/MovementsFilter';
 
-// Function to fetch all movements with ordering by sort_order
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
     console.log('[MOVEMENTS] Fetching movements with sort_order ordering');
@@ -21,8 +19,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
     }
 
     console.log(`[MOVEMENTS] Successfully fetched ${movements?.length || 0} movements`);
-    console.log('[MOVEMENTS] First few sort_order values:', 
-      movements?.slice(0, 5).map(m => m.sort_order).join(', '));
     
     // Transform the data to match the Movement type
     return (movements || []).map((m: any) => ({
@@ -39,6 +35,8 @@ const fetchMovements = async (): Promise<Movement[]> => {
       scheduledQuantity: m.scheduled_quantity,
       blQuantity: m.bl_quantity,
       actualQuantity: m.actual_quantity,
+      loading_period_start: m.loading_period_start,
+      loading_period_end: m.loading_period_end,
       nominationEta: m.nomination_eta ? new Date(m.nomination_eta) : undefined,
       nominationValid: m.nomination_valid ? new Date(m.nomination_valid) : undefined,
       cashFlow: m.cash_flow ? new Date(m.cash_flow) : undefined,
@@ -60,7 +58,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
       createdAt: new Date(m.created_at),
       updatedAt: new Date(m.updated_at),
       sort_order: m.sort_order,
-      // Add any other fields needed
     }));
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
@@ -68,7 +65,6 @@ const fetchMovements = async (): Promise<Movement[]> => {
   }
 };
 
-// Initialize sort_order for all null values
 const initializeMovementSortOrder = async (): Promise<void> => {
   try {
     console.log('[MOVEMENTS] Initializing sort_order for all null values');
@@ -89,7 +85,6 @@ const initializeMovementSortOrder = async (): Promise<void> => {
   }
 };
 
-// Extract unique values for each filterable field from movements
 const extractAvailableFilterOptions = (movements: Movement[]) => {
   const options = {
     status: [...new Set(movements.map(m => m.status))].filter(Boolean).sort(),
@@ -113,7 +108,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
   const queryClient = useQueryClient();
   const [localMovements, setLocalMovements] = useState<Movement[]>([]);
 
-  // Initialize empty filter options
   const emptyFilters: FilterOptions = {
     status: [],
     product: [],
@@ -133,7 +127,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     filterOptions ? { ...emptyFilters, ...filterOptions } : emptyFilters
   );
   
-  // Mutation to initialize sort_order values if needed
   const initSortOrderMutation = useMutation({
     mutationFn: initializeMovementSortOrder,
     onSuccess: () => {
@@ -145,14 +138,12 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   });
   
-  // Query to get the movements
   const { data: movements = [], isLoading, error, refetch } = useQuery({
     queryKey: ['movements'],
     queryFn: fetchMovements,
     refetchOnWindowFocus: false,
   });
 
-  // Check if any movements have null sort_order and initialize them if needed
   useEffect(() => {
     if (movements?.length) {
       const hasNullSortOrder = movements.some(m => m.sort_order === null || m.sort_order === undefined);
@@ -163,7 +154,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   }, [movements, initSortOrderMutation]);
 
-  // Update local state when movements change from the API
   useEffect(() => {
     if (movements?.length) {
       console.log('[MOVEMENTS] Updating local movements state with', movements.length, 'items');
@@ -173,22 +163,18 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   }, [movements]);
 
-  // Get available filter options based on the data
   const availableFilterOptions = useMemo(
     () => extractAvailableFilterOptions(movements),
     [movements]
   );
 
-  // Update filters if provided as props
   useEffect(() => {
     if (filterOptions) {
       setFilters(prev => ({ ...prev, ...filterOptions }));
     }
   }, [filterOptions]);
 
-  // Filter movements based on all filter criteria
   const filteredMovements = useMemo(() => {
-    // Check if any filters are active
     const hasActiveFilters = Object.values(filters).some(f => f.length > 0);
     
     if (!hasActiveFilters) {
@@ -196,79 +182,65 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
     
     return localMovements.filter(movement => {
-      // Status filter
       if (filters.status.length > 0 && !filters.status.includes(movement.status)) {
         return false;
       }
       
-      // Product filter
       if (filters.product.length > 0 && !filters.product.includes(movement.product)) {
         return false;
       }
       
-      // Buy/Sell filter
       if (filters.buySell.length > 0 && !filters.buySell.includes(movement.buySell)) {
         return false;
       }
       
-      // Incoterm filter
       if (filters.incoTerm.length > 0 && !filters.incoTerm.includes(movement.incoTerm)) {
         return false;
       }
       
-      // Sustainability filter
       if (filters.sustainability.length > 0 && 
           (!movement.sustainability || !filters.sustainability.includes(movement.sustainability))) {
         return false;
       }
       
-      // Counterparty filter
       if (filters.counterparty.length > 0 && !filters.counterparty.includes(movement.counterpartyName)) {
         return false;
       }
       
-      // Credit status filter
       if (filters.creditStatus.length > 0 && 
           (!movement.creditStatus || !filters.creditStatus.includes(movement.creditStatus))) {
         return false;
       }
       
-      // Customs status filter
       if (filters.customsStatus.length > 0 && 
           (!movement.customsStatus || !filters.customsStatus.includes(movement.customsStatus))) {
         return false;
       }
       
-      // Loadport filter
       if (filters.loadport.length > 0 && 
           (!movement.loadport || !filters.loadport.includes(movement.loadport))) {
         return false;
       }
       
-      // Loadport inspector filter
       if (filters.loadportInspector.length > 0 && 
           (!movement.loadportInspector || !filters.loadportInspector.includes(movement.loadportInspector))) {
         return false;
       }
       
-      // Disport filter
       if (filters.disport.length > 0 && 
           (!movement.disport || !filters.disport.includes(movement.disport))) {
         return false;
       }
       
-      // Disport inspector filter
       if (filters.disportInspector.length > 0 && 
           (!movement.disportInspector || !filters.disportInspector.includes(movement.disportInspector))) {
         return false;
       }
       
-      // All filters passed
       return true;
     });
   }, [localMovements, filters]);
 
-  // Mutation to update the sort order in the database
   const updateSortOrderMutation = useMutation({
     mutationFn: async ({
       id,
@@ -279,7 +251,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }) => {
       console.log(`[MOVEMENTS] Updating sort_order for item ${id} to ${newSortOrder}`);
       
-      // Call the update_sort_order database function
       const { data, error } = await supabase.rpc('update_sort_order', {
         p_table_name: 'movements',
         p_id: id,
@@ -295,7 +266,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
       return data;
     },
     onSuccess: () => {
-      // Invalidate and refetch
       console.log('[MOVEMENTS] Sort order update successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
     },
@@ -304,15 +274,12 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   });
 
-  // Function to handle reordering
   const handleReorder = useCallback(
     async (reorderedItems: Movement[]) => {
       console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
       
-      // Update local state immediately for a responsive UI
       setLocalMovements(reorderedItems);
 
-      // Get the moved item and its new index
       const updatedItems = reorderedItems.map((item, index) => ({
         id: item.id,
         sort_order: index + 1,
@@ -321,9 +288,7 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
       console.log('[MOVEMENTS] Prepared sort_order updates:', 
         updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
 
-      // Update each item's sort order in the database
       try {
-        // Use Promise.all to execute all updates in parallel
         await Promise.all(
           updatedItems.map(item => 
             updateSortOrderMutation.mutate({
@@ -335,7 +300,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
         console.log('[MOVEMENTS] All sort_order updates completed successfully');
       } catch (error) {
         console.error('[MOVEMENTS] Error updating sort order:', error);
-        // Revert to the original order
         console.log('[MOVEMENTS] Reverting to original order');
         refetch();
       }

@@ -93,6 +93,7 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
+        disabled ? "opacity-50" : "",  // Always apply opacity when disabled
         bgColorClass,
         className
       )}
