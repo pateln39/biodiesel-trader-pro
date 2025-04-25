@@ -91,7 +91,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
   filterOptions,
   availableOptions = defaultAvailableOptions,
   onFilterChange,
-  // For backward compatibility
   selectedStatuses = [],
   onStatusesChange
 }) => {
@@ -116,6 +115,9 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     }
   });
 
+  // Add state to track open accordion items
+  const [openSections, setOpenSections] = React.useState<string[]>([]);
+
   React.useEffect(() => {
     if (open) {
       if (filterOptions) {
@@ -123,6 +125,9 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
       } else if (selectedStatuses) {
         setTempFilters(prev => ({ ...prev, status: [...selectedStatuses] }));
       }
+    } else {
+      // Reset open sections when dialog closes
+      setOpenSections([]);
     }
   }, [filterOptions, selectedStatuses, open]);
 
@@ -197,7 +202,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     { id: 'disportInspector', label: 'Discharge Port Inspector' }
   ] as const;
 
-  // Calculate total number of active filters across all categories
+  // Calculate total active filters
   const totalActiveFilters = Object.values(tempFilters).reduce(
     (total, categoryFilters) => total + categoryFilters.length, 
     0
@@ -216,7 +221,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     if (options.length === 0) return null;
 
     return (
-      <AccordionItem value={category}>
+      <AccordionItem value={category} className="border-b">
         <AccordionTrigger className="px-4 hover:no-underline">
           <div className="flex items-center justify-between flex-1 pr-4">
             <span>{label}</span>
@@ -253,7 +258,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                   />
                   <Label 
                     htmlFor={`${category}-${option}`}
-                    className="cursor-pointer"
+                    className="text-sm cursor-pointer"
                   >
                     {option.charAt(0).toUpperCase() + option.slice(1)}
                   </Label>
@@ -281,7 +286,12 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
         </DialogHeader>
         
         <ScrollArea className="pr-4 max-h-[60vh]">
-          <Accordion type="multiple" className="w-full">
+          <Accordion 
+            type="multiple" 
+            value={openSections}
+            onValueChange={setOpenSections}
+            className="w-full"
+          >
             {filterCategories.map(({ id, label }) => (
               <FilterGroup 
                 key={id} 
@@ -322,4 +332,3 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
 };
 
 export default MovementsFilter;
-
