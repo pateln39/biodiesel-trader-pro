@@ -18,6 +18,8 @@ export const useMovementDateSort = () => {
   const sortMovements = useCallback((movements: Movement[]) => {
     if (!activeSortColumn || !movements.length) return movements;
 
+    console.log(`[MOVEMENTS] Sorting by ${activeSortColumn}`);
+
     return [...movements].sort((a, b) => {
       const dateA = a[activeSortColumn];
       const dateB = b[activeSortColumn];

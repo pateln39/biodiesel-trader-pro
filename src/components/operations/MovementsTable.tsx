@@ -483,6 +483,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
+          disableDragAndDrop={activeSortColumn !== null}
         />
       </div>
       

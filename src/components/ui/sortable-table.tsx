@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -30,19 +29,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-// Define the interface for sortable row items
 export interface SortableItem {
   id: string;
   [key: string]: any;
 }
 
-// Props for the drag handle component
 interface DragHandleProps {
   className?: string;
   disabled?: boolean;
 }
 
-// Drag handle component
 export const DragHandle = ({ className, disabled }: DragHandleProps) => {
   return (
     <div className={cn(
@@ -55,7 +51,6 @@ export const DragHandle = ({ className, disabled }: DragHandleProps) => {
   );
 };
 
-// Props for the sortable row
 interface SortableRowProps {
   id: string;
   children: React.ReactNode;
@@ -64,7 +59,6 @@ interface SortableRowProps {
   bgColorClass?: string;
 }
 
-// Sortable row component using dnd-kit sortable hooks
 export const SortableRow = ({ 
   id, 
   children, 
@@ -115,8 +109,7 @@ export const SortableRow = ({
   );
 };
 
-// Main sortable table props
-interface SortableTableProps<T extends SortableItem> {
+export interface SortableTableProps<T extends SortableItem> {
   items: T[];
   onReorder: (items: T[]) => void;
   renderHeader: () => React.ReactNode;
@@ -124,9 +117,9 @@ interface SortableTableProps<T extends SortableItem> {
   isItemDisabled?: (item: T) => boolean;
   className?: string;
   getRowBgClass?: (item: T) => string;
+  disableDragAndDrop?: boolean;
 }
 
-// Generic sortable table component
 export function SortableTable<T extends SortableItem>({
   items,
   onReorder,
@@ -135,11 +128,10 @@ export function SortableTable<T extends SortableItem>({
   isItemDisabled,
   className,
   getRowBgClass,
+  disableDragAndDrop = false,
 }: SortableTableProps<T>) {
-  // State to track the currently dragged item
   const [activeId, setActiveId] = useState<string | null>(null);
   
-  // Configure sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -151,12 +143,9 @@ export function SortableTable<T extends SortableItem>({
     })
   );
 
-  // Get the active item
-  const activeItem = activeId ? items.find(item => item.id === activeId) : null;
-
-  // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
-    // Don't allow drag start if the item is disabled
+    if (disableDragAndDrop) return;
+    
     const itemId = event.active.id as string;
     const item = items.find(item => item.id === itemId);
     
@@ -167,20 +156,19 @@ export function SortableTable<T extends SortableItem>({
     setActiveId(itemId);
   };
 
-  // Handle drag end to reorder items
   const handleDragEnd = (event: DragEndEvent) => {
+    if (disableDragAndDrop) return;
+    
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
       const oldIndex = items.findIndex(item => item.id === active.id);
       const newIndex = items.findIndex(item => item.id === over.id);
       
-      // Create a new array with reordered items
       const newItems = [...items];
       const [movedItem] = newItems.splice(oldIndex, 1);
       newItems.splice(newIndex, 0, movedItem);
       
-      // Call the onReorder callback with the new order
       onReorder(newItems);
     }
     
@@ -197,7 +185,13 @@ export function SortableTable<T extends SortableItem>({
       <Table className={className}>
         <TableHeader>
           <TableRow className="h-10">
-            <TableHead className="w-10 p-0 h-10"></TableHead>
+            <TableHead className="w-10 p-0 h-10">
+              {disableDragAndDrop && (
+                <div className="px-2 text-xs text-muted-foreground italic">
+                  Drag disabled during sort
+                </div>
+              )}
+            </TableHead>
             {renderHeader()}
           </TableRow>
         </TableHeader>
@@ -207,7 +201,7 @@ export function SortableTable<T extends SortableItem>({
             strategy={verticalListSortingStrategy}
           >
             {items.map((item, index) => {
-              const isDisabled = isItemDisabled ? isItemDisabled(item) : false;
+              const isDisabled = (isItemDisabled ? isItemDisabled(item) : false) || disableDragAndDrop;
               const bgColorClass = getRowBgClass ? getRowBgClass(item) : "";
               
               return (
