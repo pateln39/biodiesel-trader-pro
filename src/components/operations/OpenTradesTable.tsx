@@ -1,4 +1,3 @@
-
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -199,8 +198,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const renderRow = (trade: HookOpenTrade) => {
     const isZeroBalance = isTradeDisabled(trade);
     
-    // Display the trade reference directly from the open_trades table
-    // Now it should already include the leg suffix from the database
     const displayReference = trade.trade_reference;
     
     const commentPreview = trade.comments 
