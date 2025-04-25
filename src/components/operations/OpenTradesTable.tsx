@@ -324,7 +324,6 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
                     variant="ghost" 
                     size="sm" 
                     className="h-8 w-8 p-0"
-                    disabled={isZeroBalance}
                     onClick={() => handleViewMovements(trade)}
                   >
                     <Eye className="h-4 w-4" />
