@@ -48,6 +48,8 @@ import { SortableTable } from '@/components/ui/sortable-table';
 import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { DateSortHeader } from './DateSortHeader';
+import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -195,6 +197,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     setIsStorageFormOpen(true);
   };
 
+  const {
+    activeSortColumn,
+    setActiveSortColumn,
+    sortMovements
+  } = useMovementDateSort();
+
+  const sortedMovements = sortMovements(filteredMovements);
+
   if (filteredMovements.length === 0) {
     return (
       <div className="w-full">
@@ -225,23 +235,72 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <TableHead>Incoterm</TableHead>
       <TableHead>Sustainability</TableHead>
       <TableHead>Product</TableHead>
-      <TableHead>Loading Start</TableHead>
-      <TableHead>Loading End</TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="loadingPeriodStart"
+          label="Loading Start"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="loadingPeriodEnd"
+          label="Loading End"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
       <TableHead>Counterparty</TableHead>
       <TableHead>Comments</TableHead>
       <TableHead>Credit Status</TableHead>
       <TableHead>Scheduled Quantity</TableHead>
-      <TableHead>Nomination ETA</TableHead>
-      <TableHead>Nomination Valid</TableHead>
-      <TableHead>Cash Flow Date</TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="nominationEta"
+          label="Nomination ETA"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="nominationValid"
+          label="Nomination Valid"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="cashFlow"
+          label="Cash Flow Date"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
       <TableHead className="bg-gray-700">Barge Name</TableHead>
       <TableHead>Loadport</TableHead>
       <TableHead>Loadport Inspector</TableHead>
       <TableHead>Disport</TableHead>
       <TableHead>Disport Inspector</TableHead>
-      <TableHead>BL Date</TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="blDate"
+          label="BL Date"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
       <TableHead>Actual Quantity</TableHead>
-      <TableHead>COD Date</TableHead>
+      <TableHead>
+        <DateSortHeader
+          column="codDate"
+          label="COD Date"
+          activeSortColumn={activeSortColumn}
+          onSort={setActiveSortColumn}
+        />
+      </TableHead>
       <TableHead>Status</TableHead>
       <TableHead className="text-center">Actions</TableHead>
     </>
@@ -420,7 +479,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     <>
       <div className="w-full overflow-auto">
         <SortableTable
-          items={filteredMovements}
+          items={sortedMovements}
           onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
