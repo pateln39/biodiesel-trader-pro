@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -19,21 +18,14 @@ const MovementsPage = () => {
   const [isExporting, setIsExporting] = React.useState(false);
   
   const { 
-    counterparties,
-    sustainabilityOptions,
-    creditStatusOptions,
-    customsStatusOptions
-  } = useReferenceData();
-
-  const {
     filteredMovements,
     availableFilterOptions,
     filters,
     updateFilters,
-    refetch
+    refetch,
+    handleReorder
   } = useSortableMovements();
 
-  // Initialize sort_order when component mounts
   React.useEffect(() => {
     const initializeSortOrder = async () => {
       try {
@@ -88,7 +80,6 @@ const MovementsPage = () => {
     updateFilters(newFilters);
   };
 
-  // Calculate active filter count for badge display
   const getActiveFilterCount = () => {
     return Object.values(filters).reduce((count, filterValues) => 
       count + filterValues.length, 0);
@@ -137,7 +128,9 @@ const MovementsPage = () => {
           </CardHeader>
           <CardContent>
             <MovementsTable 
-              key={`movements-${refreshTrigger}`} 
+              key={`movements-${refreshTrigger}`}
+              filteredMovements={filteredMovements}
+              onReorder={handleReorder}
             />
           </CardContent>
         </Card>

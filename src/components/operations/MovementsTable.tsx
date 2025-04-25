@@ -49,16 +49,16 @@ import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
 
-const MovementsTable: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { 
-    filteredMovements, 
-    isLoading, 
-    error, 
-    refetch,
-    handleReorder
-  } = useSortableMovements();
+interface MovementsTableProps {
+  filteredMovements: Movement[];
+  onReorder: (reorderedItems: Movement[]) => Promise<void>;
+}
 
+const MovementsTable: React.FC<MovementsTableProps> = ({ 
+  filteredMovements,
+  onReorder
+}) => {
+  const queryClient = useQueryClient();
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = useState(false);
@@ -68,26 +68,6 @@ const MovementsTable: React.FC = () => {
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
   const [isStorageFormOpen, setIsStorageFormOpen] = useState(false);
   const [selectedMovementForStorage, setSelectedMovementForStorage] = useState<Movement | null>(null);
-
-  const onReorder = async (reorderedItems: Movement[]) => {
-    try {
-      console.log('[MOVEMENTS] Starting reorder operation');
-      toast.info("Reordering movements", {
-        description: "Saving new order to database..."
-      });
-      
-      await handleReorder(reorderedItems);
-      
-      toast.success("Order updated", {
-        description: "Movement order has been saved successfully"
-      });
-    } catch (error) {
-      console.error('[MOVEMENTS] Reordering error:', error);
-      toast.error("Reordering failed", {
-        description: "There was an error saving the movement order"
-      });
-    }
-  };
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
@@ -215,22 +195,11 @@ const MovementsTable: React.FC = () => {
     setIsStorageFormOpen(true);
   };
 
-  if (isLoading) {
-    return <TableLoadingState />;
-  }
-
-  if (error) {
-    return <TableErrorState error={error as Error} onRetry={refetch} />;
-  }
-
   if (filteredMovements.length === 0) {
     return (
       <div className="w-full">
         <div className="text-center py-10">
           <p className="text-muted-foreground mb-4">No movements match the selected filters</p>
-          <Button variant="outline" onClick={() => refetch()}>
-            Refresh
-          </Button>
         </div>
       </div>
     );
