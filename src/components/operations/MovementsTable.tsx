@@ -329,8 +329,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           showTooltip={true}
         />
       </TableCell>
-      <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
-      <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>
+        {movement.loading_period_start ? format(movement.loading_period_start, 'dd MMM yyyy') : '-'}
+      </TableCell>
+      <TableCell>
+        {movement.loading_period_end ? format(movement.loading_period_end, 'dd MMM yyyy') : '-'}
+      </TableCell>
       <TableCell>{movement.counterpartyName}</TableCell>
       <TableCell>
         <TooltipProvider>

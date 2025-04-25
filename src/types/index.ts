@@ -4,7 +4,7 @@ export * from './physical';
 export * from './paper';
 export * from './common';
 
-// Add or update the Movement interface
+// Update Movement interface
 export interface Movement {
   id: string;
   referenceNumber?: string;
@@ -40,7 +40,8 @@ export interface Movement {
   date: Date;
   createdAt: Date;
   updatedAt: Date;
-  // Adding the checklist properties
+  loading_period_start?: Date;
+  loading_period_end?: Date;
   bargeOrdersChecked?: boolean;
   nominationChecked?: boolean;
   loadPlanChecked?: boolean;
