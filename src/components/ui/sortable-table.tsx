@@ -121,6 +121,7 @@ export interface SortableTableProps<T extends SortableItem> {
   className?: string;
   getRowBgClass?: (item: T) => string;
   disableDragAndDrop?: boolean;
+  disabledRowClassName?: string;
 }
 
 export function SortableTable<T extends SortableItem>({
@@ -132,6 +133,7 @@ export function SortableTable<T extends SortableItem>({
   className,
   getRowBgClass,
   disableDragAndDrop = false,
+  disabledRowClassName = "opacity-50 text-muted-foreground bg-muted/50"
 }: SortableTableProps<T>) {
   const [activeId, setActiveId] = useState<string | null>(null);
   
@@ -215,7 +217,10 @@ export function SortableTable<T extends SortableItem>({
                   id={item.id} 
                   disabled={isDisabled}
                   bgColorClass={bgColorClass}
-                  className="h-10"
+                  className={cn(
+                    "h-10",
+                    isDisabled && disabledRowClassName
+                  )}
                 >
                   {renderRow(item, index)}
                 </SortableRow>

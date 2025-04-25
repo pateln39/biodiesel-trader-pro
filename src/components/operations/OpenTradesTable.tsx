@@ -197,6 +197,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const renderRow = (trade: OpenTrade) => {
     const isZeroBalance = isTradeDisabled(trade);
     
+    const rowClassName = cn(
+      isZeroBalance && "opacity-50 text-muted-foreground bg-muted/50",
+      "transition-all duration-200"
+    );
+    
     const displayReference = trade.trade_reference;
     
     const commentPreview = trade.comments 
@@ -207,35 +212,41 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     
     return (
       <>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           <span className="font-medium">
             {displayReference}
           </span>
         </TableCell>
-        <TableCell>
-          <Badge variant={trade.buy_sell === 'buy' ? "default" : "outline"}>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
+          <Badge 
+            variant={trade.buy_sell === 'buy' ? "default" : "outline"}
+            className={isZeroBalance ? "opacity-70" : ""}
+          >
             {trade.buy_sell}
           </Badge>
         </TableCell>
-        <TableCell>{trade.inco_term}</TableCell>
-        <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
-        <TableCell>{trade.sustainability || 'N/A'}</TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>{trade.inco_term}</TableCell>
+        <TableCell className={cn(
+          "text-right",
+          isZeroBalance && "text-muted-foreground"
+        )}>{trade.quantity} {trade.unit || 'MT'}</TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>{trade.sustainability || 'N/A'}</TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           <ProductToken 
             product={trade.product}
             value={trade.product}
             showTooltip={true}
           />
         </TableCell>
-        <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
-        <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
-        <TableCell>{trade.counterparty}</TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>{trade.counterparty}</TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           <Badge variant="outline">
             {trade.pricing_type === 'efp' ? 'EFP' : 'Standard'}
           </Badge>
         </TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           <FormulaCellDisplay
             tradeId={trade.parent_trade_id}
             legId={trade.trade_leg_id}
@@ -247,7 +258,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             efpFixedValue={trade.efp_fixed_value}
           />
         </TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           <div 
             className={cn(
               "flex items-center gap-1 cursor-pointer",
@@ -261,7 +272,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             )}
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           {trade.customs_status && (
             <Badge variant={
               trade.customs_status === 'approved' ? "default" :
@@ -272,7 +283,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             </Badge>
           )}
         </TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           {trade.credit_status && (
             <Badge variant={
               trade.credit_status === 'approved' ? "default" :
@@ -283,7 +294,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             </Badge>
           )}
         </TableCell>
-        <TableCell>
+        <TableCell className={cn(isZeroBalance && "text-muted-foreground")}>
           {trade.contract_status && (
             <Badge variant={
               trade.contract_status === 'signed' ? "default" :
@@ -294,8 +305,16 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             </Badge>
           )}
         </TableCell>
-        <TableCell className="text-right">{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
-        <TableCell className="text-right">{trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT</TableCell>
+        <TableCell className={cn(
+          "text-right", 
+          isZeroBalance && "text-muted-foreground"
+        )}>{trade.nominated_value?.toLocaleString() || '0'} MT</TableCell>
+        <TableCell className={cn(
+          "text-right", 
+          isZeroBalance && "text-muted-foreground"
+        )}>
+          {trade.balance?.toLocaleString() || trade.quantity?.toLocaleString()} MT
+        </TableCell>
         <TableCell className="text-center">
           <div className="flex justify-center space-x-1">
             <TooltipProvider>
@@ -305,6 +324,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
                     variant="ghost" 
                     size="sm" 
                     className="h-8 w-8 p-0"
+                    disabled={isZeroBalance}
                     onClick={() => handleViewMovements(trade)}
                   >
                     <Eye className="h-4 w-4" />
@@ -319,7 +339,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Dialog open={isDialogOpen && selectedTrade?.id === trade.id} onOpenChange={setIsDialogOpen}>
+                  <Dialog 
+                    open={isDialogOpen && selectedTrade?.id === trade.id} 
+                    onOpenChange={setIsDialogOpen}
+                  >
                     <DialogTrigger asChild>
                       <Button 
                         variant="ghost" 
@@ -360,6 +383,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           renderHeader={renderHeader}
           renderRow={renderRow}
           isItemDisabled={isTradeDisabled}
+          disabledRowClassName="opacity-50 text-muted-foreground bg-muted/50"
         />
       </div>
 
