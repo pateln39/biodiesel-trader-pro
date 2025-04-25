@@ -330,10 +330,10 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         />
       </TableCell>
       <TableCell>
-        {movement.loading_period_start ? format(movement.loading_period_start, 'dd MMM yyyy') : '-'}
+        {movement.loading_period_start ? format(new Date(movement.loading_period_start), 'dd MMM yyyy') : '-'}
       </TableCell>
       <TableCell>
-        {movement.loading_period_end ? format(movement.loading_period_end, 'dd MMM yyyy') : '-'}
+        {movement.loading_period_end ? format(new Date(movement.loading_period_end), 'dd MMM yyyy') : '-'}
       </TableCell>
       <TableCell>{movement.counterpartyName}</TableCell>
       <TableCell>
@@ -370,17 +370,17 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         )}
       </TableCell>
       <TableCell>{movement.scheduledQuantity?.toLocaleString()} MT</TableCell>
-      <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
-      <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
-      <TableCell>{movement.cashFlow ? format(movement.cashFlow, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.nominationEta ? format(new Date(movement.nominationEta), 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.nominationValid ? format(new Date(movement.nominationValid), 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell className="bg-gray-700">{movement.bargeName || '-'}</TableCell>
       <TableCell>{movement.loadport || '-'}</TableCell>
       <TableCell>{movement.loadportInspector || '-'}</TableCell>
       <TableCell>{movement.disport || '-'}</TableCell>
       <TableCell>{movement.disportInspector || '-'}</TableCell>
-      <TableCell>{movement.blDate ? format(movement.blDate, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.blDate ? format(new Date(movement.blDate), 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
-      <TableCell>{movement.codDate ? format(movement.codDate, 'dd MMM yyyy') : '-'}</TableCell>
+      <TableCell>{movement.codDate ? format(new Date(movement.codDate), 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>
         <Select
           defaultValue={movement.status}
