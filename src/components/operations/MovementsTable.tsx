@@ -392,6 +392,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </Tooltip>
             </TooltipProvider>
           )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={() => handleEditMovement(movement)}
+          >
+            <Edit className="h-4 w-4 text-muted-foreground" />
+          </Button>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -409,14 +417,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8" 
-            onClick={() => handleEditMovement(movement)}
-          >
-            <Edit className="h-4 w-4 text-muted-foreground" />
-          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
