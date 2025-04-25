@@ -25,6 +25,7 @@ import MTMPage from "./pages/risk/MTMPage";
 import PNLPage from "./pages/risk/PNLPage";
 import PricesPage from "./pages/risk/PricesPage";
 import InventoryMTMPage from "./pages/risk/InventoryMTMPage";
+import DemurragePage from "./pages/operations/DemurragePage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/operations/open-trades" element={<OpenTradesPage />} />
             <Route path="/operations/movements" element={<MovementsPage />} />
             <Route path="/operations/storage" element={<StoragePage />} />
+            <Route path="/operations/demurrage" element={<DemurragePage />} />
             
             {/* Risk Routes */}
             <Route path="/risk/mtm" element={<MTMPage />} />

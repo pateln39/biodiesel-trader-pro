@@ -45,6 +45,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         { path: '/operations/open-trades', label: 'Open Trades', icon: <Ship className="h-4 w-4" /> },
         { path: '/operations/movements', label: 'Movements', icon: <Layers className="h-4 w-4" /> },
         { path: '/operations/storage', label: 'Storage', icon: <Warehouse className="h-4 w-4" /> },
+        { path: '/operations/demurrage', label: 'Demurrage', icon: <Clock className="h-4 w-4" /> },
       ],
     },
     { 
