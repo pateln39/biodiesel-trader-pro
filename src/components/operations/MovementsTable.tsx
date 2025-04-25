@@ -39,7 +39,6 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import ProductToken from '../operations/storage/ProductToken';
 import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -300,9 +299,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       </TableCell>
       <TableCell>{movement.incoTerm}</TableCell>
       <TableCell>{movement.sustainability || '-'}</TableCell>
-      <TableCell>
-        <ProductToken product={movement.product} value="" showTooltip={true} />
-      </TableCell>
+      <TableCell>{movement.product}</TableCell>
       <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>{movement.counterpartyName}</TableCell>

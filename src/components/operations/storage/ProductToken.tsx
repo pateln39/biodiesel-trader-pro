@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface ProductTokenProps {
   product: string;
-  value?: number | string;
+  value: number | string;
   className?: string;
   showTooltip?: boolean;
 }
@@ -28,7 +28,7 @@ const ProductToken: React.FC<ProductTokenProps> = ({
         className
       )}
     >
-      {value !== undefined ? value : product}
+      {value}
     </div>
   );
   

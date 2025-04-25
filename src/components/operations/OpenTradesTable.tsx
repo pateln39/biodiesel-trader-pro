@@ -1,8 +1,10 @@
+
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -21,10 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import TradeMovementsDialog from './TradeMovementsDialog';
 import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
-import ProductToken from './storage/ProductToken';
 import { toast } from 'sonner';
-import { OpenTrade as HookOpenTrade } from '@/hooks/useOpenTrades';
-import { PricingType } from '@/types/physical';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -43,16 +42,16 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     handleReorder
   } = useSortableOpenTrades(filterStatus);
   
-  const [selectedTrade, setSelectedTrade] = React.useState<HookOpenTrade | null>(null);
+  const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = React.useState(false);
-  const [selectedTradeForComments, setSelectedTradeForComments] = React.useState<HookOpenTrade | null>(null);
+  const [selectedTradeForComments, setSelectedTradeForComments] = React.useState<OpenTrade | null>(null);
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = React.useState(false);
-  const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<HookOpenTrade | null>(null);
+  const [selectedTradeForMovements, setSelectedTradeForMovements] = React.useState<OpenTrade | null>(null);
   const queryClient = useQueryClient();
   const { toast: toastHook } = useToast();
   
-  const onReorder = async (reorderedItems: HookOpenTrade[]) => {
+  const onReorder = async (reorderedItems: OpenTrade[]) => {
     try {
       console.log('[OPEN_TRADES] Starting reorder operation');
       toast.info("Reordering trades", {
@@ -77,7 +76,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     if (onRefresh) onRefresh();
   };
 
-  const handleScheduleMovement = (trade: HookOpenTrade) => {
+  const handleScheduleMovement = (trade: OpenTrade) => {
     setSelectedTrade(trade);
     setIsDialogOpen(true);
   };
@@ -88,12 +87,12 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     handleRefresh();
   };
 
-  const handleCommentsClick = (trade: HookOpenTrade) => {
+  const handleCommentsClick = (trade: OpenTrade) => {
     setSelectedTradeForComments(trade);
     setIsCommentsDialogOpen(true);
   };
 
-  const handleViewMovements = (trade: HookOpenTrade) => {
+  const handleViewMovements = (trade: OpenTrade) => {
     setSelectedTradeForMovements(trade);
     setIsMovementsDialogOpen(true);
   };
@@ -137,7 +136,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     }
   };
 
-  const isTradeDisabled = (trade: HookOpenTrade): boolean => {
+  const isTradeDisabled = (trade: OpenTrade): boolean => {
     return trade.balance !== undefined && trade.balance !== null && trade.balance <= 0;
   };
 
@@ -195,9 +194,11 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     </>
   );
 
-  const renderRow = (trade: HookOpenTrade) => {
+  const renderRow = (trade: OpenTrade) => {
     const isZeroBalance = isTradeDisabled(trade);
     
+    // Display the trade reference directly from the open_trades table
+    // Now it should already include the leg suffix from the database
     const displayReference = trade.trade_reference;
     
     const commentPreview = trade.comments 
@@ -221,19 +222,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         <TableCell>{trade.inco_term}</TableCell>
         <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
         <TableCell>{trade.sustainability || 'N/A'}</TableCell>
-        <TableCell>
-          <ProductToken product={trade.product} value="" showTooltip={true} />
-        </TableCell>
-        <TableCell>
-          {trade.loading_period_start 
-            ? formatDate(new Date(trade.loading_period_start)) 
-            : 'N/A'}
-        </TableCell>
-        <TableCell>
-          {trade.loading_period_end 
-            ? formatDate(new Date(trade.loading_period_end)) 
-            : 'N/A'}
-        </TableCell>
+        <TableCell>{trade.product}</TableCell>
+        <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
+        <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
         <TableCell>{trade.counterparty}</TableCell>
         <TableCell>
           <Badge variant="outline">
@@ -245,10 +236,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
             tradeId={trade.parent_trade_id}
             legId={trade.trade_leg_id}
             formula={trade.pricing_formula}
-            pricingType={trade.pricing_type as PricingType}
+            pricingType={trade.pricing_type}
             efpPremium={trade.efp_premium}
             efpDesignatedMonth={trade.efp_designated_month}
-            efpAgreedStatus={trade.efp_agreed_status === 'true' || trade.efp_agreed_status === true}
+            efpAgreedStatus={trade.efp_agreed_status}
             efpFixedValue={trade.efp_fixed_value}
           />
         </TableCell>
@@ -361,10 +352,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       <div className="data-table-container">
         <SortableTable
           items={filteredTrades}
-          onReorder={(items: HookOpenTrade[]) => onReorder(items)}
+          onReorder={onReorder}
           renderHeader={renderHeader}
-          renderRow={(item: HookOpenTrade) => renderRow(item)}
-          isItemDisabled={(item: HookOpenTrade) => isTradeDisabled(item)}
+          renderRow={renderRow}
+          isItemDisabled={isTradeDisabled}
         />
       </div>
 

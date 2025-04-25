@@ -10,7 +10,6 @@ import FormulaCellDisplay from './FormulaCellDisplay';
 import CommentsCellInput from './CommentsCellInput';
 import TableRowActions from './TableRowActions';
 import ContractStatusSelect from './ContractStatusSelect';
-import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
@@ -48,9 +47,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
       <TableCell>{leg.incoTerm}</TableCell>
       <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
       <TableCell>{leg.sustainability}</TableCell>
-      <TableCell>
-        <ProductToken product={leg.product} value="" showTooltip={true} />
-      </TableCell>
+      <TableCell>{leg.product}</TableCell>
       <TableCell>{formatDate(leg.loadingPeriodStart)}</TableCell>
       <TableCell>{formatDate(leg.loadingPeriodEnd)}</TableCell>
       <TableCell>{trade.counterparty}</TableCell>
