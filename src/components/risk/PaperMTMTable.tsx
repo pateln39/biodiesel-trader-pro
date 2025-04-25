@@ -10,6 +10,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { PaperMTMPosition, calculatePaperTradePrice, calculatePaperMTMPrice, calculatePaperMTMValue, getMonthDates, getPeriodType } from '@/utils/paperTradeMTMUtils';
 import PaperPriceDetails from './PaperPriceDetails';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 const PaperMTMTable: React.FC = () => {
   const { paperTrades, isLoading: tradesLoading, refetchPaperTrades } = usePaperTrades();
@@ -194,7 +195,7 @@ const PaperMTMTable: React.FC = () => {
                   {position.tradeRef}
                 </TableCell>
                 <TableCell>
-                  {position.product}
+                  <ProductToken product={position.product} value="" showTooltip={true} />
                   <Badge variant={position.relationshipType === 'FP' ? 'default' : 
                            position.relationshipType === 'DIFF' ? 'secondary' : 'outline'} 
                          className="ml-2">

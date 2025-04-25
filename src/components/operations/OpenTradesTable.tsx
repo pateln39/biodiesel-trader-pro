@@ -4,7 +4,7 @@ import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { OpenTrade } from '@/hooks/useOpenTrades';
+import { OpenTrade } from '@/types/operations';
 import { formatDate } from '@/utils/dateUtils';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import TradeMovementsDialog from './TradeMovementsDialog';
 import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
+import ProductToken from './storage/ProductToken';
 import { toast } from 'sonner';
 
 interface OpenTradesTableProps {
@@ -222,7 +223,9 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         <TableCell>{trade.inco_term}</TableCell>
         <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
         <TableCell>{trade.sustainability || 'N/A'}</TableCell>
-        <TableCell>{trade.product}</TableCell>
+        <TableCell>
+          <ProductToken product={trade.product} value="" showTooltip={true} />
+        </TableCell>
         <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
         <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
         <TableCell>{trade.counterparty}</TableCell>
