@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -11,18 +12,27 @@ import { toast } from 'sonner';
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
-import MovementsFilter from '@/components/operations/MovementsFilter';
+import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
+import { useSortableMovements } from '@/hooks/useSortableMovements';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [openTradesFilterStatus, setOpenTradesFilterStatus] = useState<'all' | 'in-process' | 'completed'>('all');
-  const [movementsFilterStatus, setMovementsFilterStatus] = useState<string[]>([]);
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Use the useSortableMovements hook to get filtered movements and filter-related functions
+  const {
+    filteredMovements,
+    availableFilterOptions,
+    filters,
+    updateFilters,
+    handleReorder
+  } = useSortableMovements();
   
   const { 
     counterparties,
@@ -111,12 +121,16 @@ const OperationsPage = () => {
       });
     } catch (error) {
       console.error('[OPERATIONS] Export error:', error);
-      toast.error("Export failed", {
+      toast.error("Failed to export", {
         description: "There was an error exporting open trades data"
       });
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    updateFilters(newFilters);
   };
 
   return (
@@ -204,8 +218,9 @@ const OperationsPage = () => {
               </CardHeader>
               <CardContent>
                 <MovementsTable 
-                  key={`movements-${refreshTrigger}`} 
-                  filterStatuses={movementsFilterStatus}
+                  key={`movements-${refreshTrigger}`}
+                  filteredMovements={filteredMovements}
+                  onReorder={handleReorder}
                 />
               </CardContent>
             </Card>
@@ -213,8 +228,9 @@ const OperationsPage = () => {
             <MovementsFilter 
               open={isMovementsFilterOpen} 
               onOpenChange={setIsMovementsFilterOpen}
-              selectedStatuses={movementsFilterStatus}
-              onStatusesChange={setMovementsFilterStatus}
+              filterOptions={filters}
+              availableOptions={availableFilterOptions}
+              onFilterChange={handleFilterChange}
             />
           </TabsContent>
         </Tabs>
