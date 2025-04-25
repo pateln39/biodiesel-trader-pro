@@ -47,6 +47,7 @@ import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface MovementsTableProps {
   filterStatuses?: string[];
@@ -299,7 +300,13 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       </TableCell>
       <TableCell>{movement.incoTerm}</TableCell>
       <TableCell>{movement.sustainability || '-'}</TableCell>
-      <TableCell>{movement.product}</TableCell>
+      <TableCell>
+        <ProductToken 
+          product={movement.product}
+          value={movement.product}
+          showTooltip={true}
+        />
+      </TableCell>
       <TableCell>{movement.nominationEta ? format(movement.nominationEta, 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>{movement.nominationValid ? format(movement.nominationValid, 'dd MMM yyyy') : '-'}</TableCell>
       <TableCell>{movement.counterpartyName}</TableCell>

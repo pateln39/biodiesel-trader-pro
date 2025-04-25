@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ import FormulaCellDisplay from './FormulaCellDisplay';
 import CommentsCellInput from './CommentsCellInput';
 import TableRowActions from './TableRowActions';
 import ContractStatusSelect from './ContractStatusSelect';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
@@ -47,7 +47,13 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
       <TableCell>{leg.incoTerm}</TableCell>
       <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
       <TableCell>{leg.sustainability}</TableCell>
-      <TableCell>{leg.product}</TableCell>
+      <TableCell>
+        <ProductToken 
+          product={leg.product}
+          value={leg.product}
+          showTooltip={true}
+        />
+      </TableCell>
       <TableCell>{formatDate(leg.loadingPeriodStart)}</TableCell>
       <TableCell>{formatDate(leg.loadingPeriodEnd)}</TableCell>
       <TableCell>{trade.counterparty}</TableCell>

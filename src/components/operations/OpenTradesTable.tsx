@@ -23,6 +23,7 @@ import TradeMovementsDialog from './TradeMovementsDialog';
 import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { toast } from 'sonner';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
@@ -219,7 +220,13 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
         <TableCell>{trade.inco_term}</TableCell>
         <TableCell className="text-right">{trade.quantity} {trade.unit || 'MT'}</TableCell>
         <TableCell>{trade.sustainability || 'N/A'}</TableCell>
-        <TableCell>{trade.product}</TableCell>
+        <TableCell>
+          <ProductToken 
+            product={trade.product}
+            value={trade.product}
+            showTooltip={true}
+          />
+        </TableCell>
         <TableCell>{trade.loading_period_start ? formatDate(trade.loading_period_start) : 'N/A'}</TableCell>
         <TableCell>{trade.loading_period_end ? formatDate(trade.loading_period_end) : 'N/A'}</TableCell>
         <TableCell>{trade.counterparty}</TableCell>
