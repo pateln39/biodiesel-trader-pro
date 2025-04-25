@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
@@ -40,7 +41,7 @@ export interface OpenTrade {
   nominated_value?: number;
   balance?: number;
   efp_premium?: number;
-  efp_agreed_status?: boolean;
+  efp_agreed_status?: boolean; // Type remains boolean for the interface
   efp_fixed_value?: number;
   efp_designated_month?: string;
   sort_order?: number;
@@ -101,8 +102,8 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       id: item.id,
       trade_leg_id: item.trade_leg_id,
       parent_trade_id: item.parent_trade_id,
-      trade_reference: item.trade_reference, // This should now include the leg suffix
-      leg_reference: legReferenceMap[item.trade_leg_id] || '', // Keep this for compatibility
+      trade_reference: item.trade_reference,
+      leg_reference: legReferenceMap[item.trade_leg_id] || '',
       counterparty: item.counterparty,
       buy_sell: item.buy_sell as BuySell,
       product: item.product as Product,
@@ -133,7 +134,10 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       nominated_value: item.nominated_value || 0,
       balance: item.balance !== null && item.balance !== undefined ? item.balance : item.quantity,
       efp_premium: item.efp_premium,
-      efp_agreed_status: item.efp_agreed_status === true || item.efp_agreed_status === 'true',
+      // Fix the type error by properly handling both boolean and string values
+      efp_agreed_status: typeof item.efp_agreed_status === 'string' 
+        ? item.efp_agreed_status === 'true' 
+        : !!item.efp_agreed_status,
       efp_fixed_value: item.efp_fixed_value,
       efp_designated_month: item.efp_designated_month,
       sort_order: item.sort_order
