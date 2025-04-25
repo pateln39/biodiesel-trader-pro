@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check, ChevronDown, X } from 'lucide-react';
 import {
@@ -115,7 +114,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     }
   });
 
-  // Add state to track open accordion items
+  // Add state to track open accordion items with proper typing
   const [openSections, setOpenSections] = React.useState<string[]>([]);
 
   React.useEffect(() => {
@@ -221,7 +220,10 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     if (options.length === 0) return null;
 
     return (
-      <AccordionItem value={category} className="border-b">
+      <AccordionItem 
+        value={category} 
+        className="border-b"
+      >
         <AccordionTrigger className="px-4 hover:no-underline">
           <div className="flex items-center justify-between flex-1 pr-4">
             <span>{label}</span>
@@ -273,7 +275,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] max-h-[85vh]">
+      <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-visible">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Filter Movements</span>
@@ -295,7 +297,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
             {filterCategories.map(({ id, label }) => (
               <FilterGroup 
                 key={id} 
-                category={id} 
+                category={id as keyof FilterOptions} 
                 label={label}
               />
             ))}
