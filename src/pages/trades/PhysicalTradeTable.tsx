@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileDown } from 'lucide-react';
@@ -17,6 +16,7 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { exportPhysicalTradesToExcel } from '@/utils/excelExportUtils';
 import { toast } from 'sonner';
+import ProductToken from '@/components/operations/storage/ProductToken';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];

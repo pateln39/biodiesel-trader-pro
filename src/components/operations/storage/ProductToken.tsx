@@ -1,34 +1,42 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
+import { getProductColor } from '@/utils/productColors';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProductTokenProps {
   product: string;
-  value: number | string;
+  value?: number | string;
   className?: string;
   showTooltip?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const ProductToken: React.FC<ProductTokenProps> = ({
   product,
   value,
   className,
-  showTooltip = true
+  showTooltip = true,
+  size = 'md'
 }) => {
-  // Get background color based on product, default to gray if product not in mapping
-  const colorClass = PRODUCT_COLORS[product] || 'bg-gray-500 text-white';
+  const colorClass = getProductColor(product);
+  
+  const sizeClasses = {
+    sm: 'px-1.5 py-0.5 text-xs',
+    md: 'px-2 py-0.5 text-xs',
+    lg: 'px-2.5 py-1 text-sm'
+  };
   
   const tokenContent = (
     <div 
       className={cn(
-        "inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium", 
+        "inline-flex items-center justify-center rounded-full font-medium", 
+        sizeClasses[size],
         colorClass,
         className
       )}
     >
-      {value}
+      {value !== undefined ? value : product}
     </div>
   );
   
