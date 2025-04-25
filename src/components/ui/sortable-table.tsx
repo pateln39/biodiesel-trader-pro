@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -143,6 +144,9 @@ export function SortableTable<T extends SortableItem>({
     })
   );
 
+  // Find the active item using activeId
+  const activeItem = activeId ? items.find(item => item.id === activeId) : null;
+
   const handleDragStart = (event: DragStartEvent) => {
     if (disableDragAndDrop) return;
     
@@ -236,3 +240,5 @@ export function SortableTable<T extends SortableItem>({
     </DndContext>
   );
 }
+
+export default SortableTable;
