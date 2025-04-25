@@ -31,11 +31,9 @@ const OperationsPage = () => {
     customsStatusOptions
   } = useReferenceData();
 
-  // Initialize sort_order for all tables when component mounts
   useEffect(() => {
     const initializeSortOrder = async () => {
       try {
-        // Initialize sort_order for open_trades
         const { error: openTradesError } = await supabase.rpc('initialize_sort_order', {
           p_table_name: 'open_trades'
         });
@@ -44,7 +42,6 @@ const OperationsPage = () => {
           console.error('[OPERATIONS] Error initializing open_trades sort_order:', openTradesError);
         }
         
-        // Initialize sort_order for movements
         const { error: movementsError } = await supabase.rpc('initialize_sort_order', {
           p_table_name: 'movements'
         });
@@ -58,10 +55,8 @@ const OperationsPage = () => {
           console.log('[OPERATIONS] Successfully initialized sort_order for all tables');
         }
 
-        // Initialize sort_order for terminal assignments
         await initializeAssignmentSortOrder();
         
-        // Fix any duplicate sort orders that might exist
         await fixDuplicateSortOrders();
       } catch (error) {
         console.error('[OPERATIONS] Error initializing sort_order:', error);
@@ -205,7 +200,6 @@ const OperationsPage = () => {
               <CardContent>
                 <MovementsTable 
                   key={`movements-${refreshTrigger}`} 
-                  filterStatuses={movementsFilterStatus}
                 />
               </CardContent>
             </Card>
