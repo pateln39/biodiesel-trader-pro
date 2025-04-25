@@ -3,8 +3,8 @@ import { useState, useCallback } from 'react';
 import { Movement } from '@/types';
 
 export type DateSortColumn = 
-  | 'loadingPeriodStart' 
-  | 'loadingPeriodEnd' 
+  | 'loading_period_start' 
+  | 'loading_period_end' 
   | 'nominationEta' 
   | 'nominationValid' 
   | 'cashFlow' 

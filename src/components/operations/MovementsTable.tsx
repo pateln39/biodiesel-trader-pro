@@ -237,7 +237,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <TableHead>Product</TableHead>
       <TableHead>
         <DateSortHeader
-          column="loadingPeriodStart"
+          column="loading_period_start"
           label="Loading Start"
           activeSortColumn={activeSortColumn}
           onSort={setActiveSortColumn}
@@ -245,7 +245,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       </TableHead>
       <TableHead>
         <DateSortHeader
-          column="loadingPeriodEnd"
+          column="loading_period_end"
           label="Loading End"
           activeSortColumn={activeSortColumn}
           onSort={setActiveSortColumn}

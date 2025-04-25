@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -82,7 +81,7 @@ export const SortableRow = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : disabled ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1 : 0,
     position: 'relative' as const,
   };
@@ -94,14 +93,16 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
-        disabled ? "bg-muted text-muted-foreground" : "",
         bgColorClass,
         className
       )}
       {...attributes}
     >
       <TableCell className="p-0 pl-2 h-10">
-        <div className={cn("h-full flex items-center", disabled ? "cursor-not-allowed" : "cursor-grab")} {...(disabled ? {} : listeners)}>
+        <div className={cn(
+          "h-full flex items-center",
+          disabled ? "cursor-not-allowed" : "cursor-grab"
+        )} {...(disabled ? {} : listeners)}>
           <DragHandle disabled={disabled} />
         </div>
       </TableCell>
@@ -144,7 +145,6 @@ export function SortableTable<T extends SortableItem>({
     })
   );
 
-  // Find the active item using activeId
   const activeItem = activeId ? items.find(item => item.id === activeId) : null;
 
   const handleDragStart = (event: DragStartEvent) => {
