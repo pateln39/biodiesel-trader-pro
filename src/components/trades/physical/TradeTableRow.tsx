@@ -59,7 +59,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
         <FormulaCellDisplay 
           tradeId={trade.id}
           legId={leg.id}
-          formula={leg.pricingFormula}
+          formula={leg.formula}
           pricingType={leg.pricingType}
           efpPremium={leg.efpPremium}
           efpDesignatedMonth={leg.efpDesignatedMonth}

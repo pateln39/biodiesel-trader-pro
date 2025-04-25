@@ -28,6 +28,12 @@ export interface OpenTrade {
   nominated_value?: number | null;
   balance?: number | null;
   sort_order: number;
+  // Add the missing properties
+  scheduled_quantity: number;
+  open_quantity: number;
+  status: 'open' | 'closed';
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface Counterparty {
