@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Check, ChevronDown, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -47,8 +48,8 @@ interface FilterCategory {
 interface MovementsFilterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  filterOptions?: FilterOptions;
-  availableOptions?: {
+  filterOptions: FilterOptions;
+  availableOptions: {
     status: string[];
     product: string[];
     buySell: string[];
@@ -62,105 +63,52 @@ interface MovementsFilterProps {
     disport: string[];
     disportInspector: string[];
   };
-  onFilterChange?: (filters: FilterOptions) => void;
-  // For backward compatibility
-  selectedStatuses?: string[];
-  onStatusesChange?: (statuses: string[]) => void;
+  onFilterChange: (filters: FilterOptions) => void;
 }
-
-// Default filter options when none are provided
-const defaultAvailableOptions = {
-  status: ['scheduled', 'in progress', 'completed', 'cancelled'],
-  product: [],
-  buySell: ['buy', 'sell'],
-  incoTerm: [],
-  sustainability: [],
-  counterparty: [],
-  creditStatus: [],
-  customsStatus: [],
-  loadport: [],
-  loadportInspector: [],
-  disport: [],
-  disportInspector: []
-};
 
 const MovementsFilter: React.FC<MovementsFilterProps> = ({
   open,
   onOpenChange,
   filterOptions,
-  availableOptions = defaultAvailableOptions,
-  onFilterChange,
-  selectedStatuses = [],
-  onStatusesChange
+  availableOptions,
+  onFilterChange
 }) => {
-  const [tempFilters, setTempFilters] = React.useState<FilterOptions>(() => {
-    if (filterOptions) {
-      return { ...filterOptions };
-    } else {
-      return {
-        status: [...(selectedStatuses || [])],
-        product: [],
-        buySell: [],
-        incoTerm: [],
-        sustainability: [],
-        counterparty: [],
-        creditStatus: [],
-        customsStatus: [],
-        loadport: [],
-        loadportInspector: [],
-        disport: [],
-        disportInspector: []
-      };
-    }
-  });
-
-  // Add state to track open accordion items with proper typing
-  const [openSections, setOpenSections] = React.useState<string[]>([]);
+  const [tempFilters, setTempFilters] = React.useState<FilterOptions>({ ...filterOptions });
 
   React.useEffect(() => {
     if (open) {
-      if (filterOptions) {
-        setTempFilters({ ...filterOptions });
-      } else if (selectedStatuses) {
-        setTempFilters(prev => ({ ...prev, status: [...selectedStatuses] }));
-      }
-    } else {
-      // Reset open sections when dialog closes
-      setOpenSections([]);
+      setTempFilters({ ...filterOptions });
     }
-  }, [filterOptions, selectedStatuses, open]);
+  }, [filterOptions, open]);
 
   const handleToggleOption = (category: keyof FilterOptions, option: string) => {
     setTempFilters(prev => {
-      const updated = { ...prev };
-      if (updated[category].includes(option)) {
-        updated[category] = updated[category].filter(o => o !== option);
-      } else {
-        updated[category] = [...updated[category], option];
-      }
-      return updated;
+      const prevOptions = [...prev[category]];
+      const newOptions = prevOptions.includes(option)
+        ? prevOptions.filter(o => o !== option)
+        : [...prevOptions, option];
+      
+      return {
+        ...prev,
+        [category]: newOptions
+      };
     });
   };
 
   const handleSelectAll = (category: keyof FilterOptions, selected: boolean) => {
-    setTempFilters(prev => {
-      const updated = { ...prev };
-      updated[category] = selected ? [...availableOptions[category]] : [];
-      return updated;
-    });
+    setTempFilters(prev => ({
+      ...prev,
+      [category]: selected ? [...availableOptions[category]] : []
+    }));
   };
 
   const handleApply = () => {
-    if (onFilterChange) {
-      onFilterChange(tempFilters);
-    } else if (onStatusesChange) {
-      onStatusesChange(tempFilters.status);
-    }
+    onFilterChange(tempFilters);
     onOpenChange(false);
   };
 
   const handleReset = () => {
-    const resetFilters: FilterOptions = {
+    const emptyFilters: FilterOptions = {
       status: [],
       product: [],
       buySell: [],
@@ -172,136 +120,194 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
       loadport: [],
       loadportInspector: [],
       disport: [],
-      disportInspector: []
+      disportInspector: [],
     };
-    
-    setTempFilters(resetFilters);
-    
-    if (onFilterChange) {
-      onFilterChange(resetFilters);
-    } else if (onStatusesChange) {
-      onStatusesChange([]);
-    }
-    
+    setTempFilters(emptyFilters);
+    onFilterChange(emptyFilters);
     onOpenChange(false);
   };
 
-  const filterCategories = [
-    { id: 'status', label: 'Status' },
-    { id: 'product', label: 'Product' },
-    { id: 'buySell', label: 'Buy/Sell' },
-    { id: 'incoTerm', label: 'Incoterm' },
-    { id: 'sustainability', label: 'Sustainability' },
-    { id: 'counterparty', label: 'Counterparty' },
-    { id: 'creditStatus', label: 'Credit Status' },
-    { id: 'customsStatus', label: 'Customs Status' },
-    { id: 'loadport', label: 'Load Port' },
-    { id: 'loadportInspector', label: 'Load Port Inspector' },
-    { id: 'disport', label: 'Discharge Port' },
-    { id: 'disportInspector', label: 'Discharge Port Inspector' }
-  ] as const;
+  // Create filter categories
+  const filterCategories: FilterCategory[] = [
+    {
+      id: 'status',
+      label: 'Status',
+      options: availableOptions.status,
+      selectedOptions: tempFilters.status,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, status: values }))
+    },
+    {
+      id: 'product',
+      label: 'Product',
+      options: availableOptions.product,
+      selectedOptions: tempFilters.product,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, product: values }))
+    },
+    {
+      id: 'buySell',
+      label: 'Buy/Sell',
+      options: availableOptions.buySell,
+      selectedOptions: tempFilters.buySell,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, buySell: values }))
+    },
+    {
+      id: 'incoTerm',
+      label: 'Incoterm',
+      options: availableOptions.incoTerm,
+      selectedOptions: tempFilters.incoTerm,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, incoTerm: values }))
+    },
+    {
+      id: 'sustainability',
+      label: 'Sustainability',
+      options: availableOptions.sustainability,
+      selectedOptions: tempFilters.sustainability,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values }))
+    },
+    {
+      id: 'counterparty',
+      label: 'Counterparty',
+      options: availableOptions.counterparty,
+      selectedOptions: tempFilters.counterparty,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values }))
+    },
+    {
+      id: 'creditStatus',
+      label: 'Credit Status',
+      options: availableOptions.creditStatus,
+      selectedOptions: tempFilters.creditStatus,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, creditStatus: values }))
+    },
+    {
+      id: 'customsStatus',
+      label: 'Customs Status',
+      options: availableOptions.customsStatus,
+      selectedOptions: tempFilters.customsStatus,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, customsStatus: values }))
+    },
+    {
+      id: 'loadport',
+      label: 'Loadport',
+      options: availableOptions.loadport,
+      selectedOptions: tempFilters.loadport,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, loadport: values }))
+    },
+    {
+      id: 'loadportInspector',
+      label: 'Loadport Inspector',
+      options: availableOptions.loadportInspector,
+      selectedOptions: tempFilters.loadportInspector,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, loadportInspector: values }))
+    },
+    {
+      id: 'disport',
+      label: 'Disport',
+      options: availableOptions.disport,
+      selectedOptions: tempFilters.disport,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, disport: values }))
+    },
+    {
+      id: 'disportInspector',
+      label: 'Disport Inspector',
+      options: availableOptions.disportInspector,
+      selectedOptions: tempFilters.disportInspector,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, disportInspector: values }))
+    }
+  ];
 
-  // Calculate total active filters
-  const totalActiveFilters = Object.values(tempFilters).reduce(
-    (total, categoryFilters) => total + categoryFilters.length, 
-    0
-  );
+  // Count active filters
+  const getActiveFilterCount = () => {
+    return Object.values(tempFilters).reduce((count, filters) => count + filters.length, 0);
+  };
 
-  const FilterGroup: React.FC<{
-    category: keyof FilterOptions;
-    label: string;
-  }> = ({ category, label }) => {
-    const options = availableOptions[category];
-    const selectedOptions = tempFilters[category];
-    const allSelected = options.length > 0 && selectedOptions.length === options.length;
-    const hasSelected = selectedOptions.length > 0;
-    const indeterminate = hasSelected && !allSelected;
-
-    if (options.length === 0) return null;
+  const FilterCategorySection = ({ category }: { category: FilterCategory }) => {
+    const allSelected = category.options.length > 0 && 
+      category.selectedOptions.length === category.options.length;
+    
+    const indeterminate = 
+      category.selectedOptions.length > 0 && 
+      category.selectedOptions.length < category.options.length;
 
     return (
-      <AccordionItem 
-        value={category} 
-        className="border-b"
-      >
-        <AccordionTrigger className="px-4 hover:no-underline">
-          <div className="flex items-center justify-between flex-1 pr-4">
-            <span>{label}</span>
-            {hasSelected && (
-              <Badge variant="secondary" className="ml-auto mr-4">
-                {selectedOptions.length}
-              </Badge>
-            )}
+      <div className="space-y-2">
+        {category.options.length > 0 && (
+          <div className="flex items-center space-x-2 pb-2">
+            <Checkbox 
+              id={`select-all-${category.id}`} 
+              checked={allSelected}
+              className={indeterminate ? "opacity-80" : ""}
+              onCheckedChange={(checked) => handleSelectAll(category.id, !!checked)}
+            />
+            <Label 
+              htmlFor={`select-all-${category.id}`}
+              className="cursor-pointer font-medium text-sm"
+            >
+              Select All
+            </Label>
           </div>
-        </AccordionTrigger>
-        <AccordionContent className="px-4 pt-2">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id={`select-all-${category}`}
-                checked={allSelected}
-                className={indeterminate ? "opacity-80" : ""}
-                onCheckedChange={(checked) => handleSelectAll(category, !!checked)}
-              />
-              <Label 
-                htmlFor={`select-all-${category}`}
-                className="text-sm font-medium cursor-pointer"
-              >
-                Select All
-              </Label>
-            </div>
-            <div className="space-y-2 pl-1">
-              {options.map((option) => (
-                <div key={`${category}-${option}`} className="flex items-center space-x-2">
-                  <Checkbox 
-                    id={`${category}-${option}`}
-                    checked={selectedOptions.includes(option)}
-                    onCheckedChange={() => handleToggleOption(category, option)}
-                  />
-                  <Label 
-                    htmlFor={`${category}-${option}`}
-                    className="text-sm cursor-pointer"
-                  >
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+        )}
+        
+        <div className="space-y-1 pl-1">
+          {category.options.length > 0 ? (
+            category.options.map((option) => (
+              <div key={`${category.id}-${option}`} className="flex items-center space-x-2 py-1">
+                <Checkbox 
+                  id={`${category.id}-${option}`} 
+                  checked={category.selectedOptions.includes(option)}
+                  onCheckedChange={() => handleToggleOption(category.id, option)}
+                />
+                <Label 
+                  htmlFor={`${category.id}-${option}`}
+                  className="cursor-pointer"
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </Label>
+              </div>
+            ))
+          ) : (
+            <div className="text-sm text-muted-foreground italic">No options available</div>
+          )}
+        </div>
+      </div>
     );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-visible">
+      <DialogContent className="sm:max-w-[450px] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Filter Movements</span>
-            {totalActiveFilters > 0 && (
+            {getActiveFilterCount() > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {totalActiveFilters} active {totalActiveFilters === 1 ? 'filter' : 'filters'}
+                {getActiveFilterCount()} active {getActiveFilterCount() === 1 ? 'filter' : 'filters'}
               </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
         
         <ScrollArea className="pr-4 max-h-[60vh]">
-          <Accordion 
-            type="multiple" 
-            value={openSections}
-            onValueChange={setOpenSections}
-            className="w-full"
-          >
-            {filterCategories.map(({ id, label }) => (
-              <FilterGroup 
-                key={id} 
-                category={id as keyof FilterOptions} 
-                label={label}
-              />
-            ))}
-          </Accordion>
+          <div className="py-4">
+            <Accordion type="multiple" className="w-full">
+              {filterCategories.map((category) => (
+                <AccordionItem key={category.id} value={category.id}>
+                  <AccordionTrigger className="py-2 hover:no-underline">
+                    <div className="flex items-center">
+                      <span>{category.label}</span>
+                      {category.selectedOptions.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {category.selectedOptions.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <FilterCategorySection category={category} />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
         </ScrollArea>
         
         <DialogFooter>
