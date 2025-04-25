@@ -9,12 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 import MovementsTable from '@/components/operations/MovementsTable';
-import MovementsFilter from '@/components/operations/MovementsFilter';
+import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel } from '@/utils/excelExportUtils';
+import { useSortableMovements } from '@/hooks/useSortableMovements';
 
 const MovementsPage = () => {
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
-  const [movementsFilterStatus, setMovementsFilterStatus] = React.useState<string[]>([]);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
   
@@ -24,6 +24,14 @@ const MovementsPage = () => {
     creditStatusOptions,
     customsStatusOptions
   } = useReferenceData();
+
+  const {
+    filteredMovements,
+    availableFilterOptions,
+    filters,
+    updateFilters,
+    refetch
+  } = useSortableMovements();
 
   // Initialize sort_order when component mounts
   React.useEffect(() => {
@@ -51,6 +59,7 @@ const MovementsPage = () => {
 
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
+    refetch();
   };
 
   const handleExportMovements = async () => {
@@ -73,6 +82,16 @@ const MovementsPage = () => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    updateFilters(newFilters);
+  };
+
+  // Calculate active filter count for badge display
+  const getActiveFilterCount = () => {
+    return Object.values(filters).reduce((count, filterValues) => 
+      count + filterValues.length, 0);
   };
 
   return (
@@ -103,8 +122,15 @@ const MovementsPage = () => {
                   variant="outline" 
                   size="sm"
                   onClick={() => setIsMovementsFilterOpen(true)}
+                  className="relative"
                 >
-                  <Filter className="mr-2 h-4 w-4" /> Filter
+                  <Filter className="mr-2 h-4 w-4" /> 
+                  Filter
+                  {getActiveFilterCount() > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                      {getActiveFilterCount()}
+                    </span>
+                  )}
                 </Button>
               </div>
             </CardDescription>
@@ -112,7 +138,6 @@ const MovementsPage = () => {
           <CardContent>
             <MovementsTable 
               key={`movements-${refreshTrigger}`} 
-              filterStatuses={movementsFilterStatus}
             />
           </CardContent>
         </Card>
@@ -120,8 +145,9 @@ const MovementsPage = () => {
         <MovementsFilter 
           open={isMovementsFilterOpen} 
           onOpenChange={setIsMovementsFilterOpen}
-          selectedStatuses={movementsFilterStatus}
-          onStatusesChange={setMovementsFilterStatus}
+          filterOptions={filters}
+          availableOptions={availableFilterOptions}
+          onFilterChange={handleFilterChange}
         />
       </div>
     </Layout>

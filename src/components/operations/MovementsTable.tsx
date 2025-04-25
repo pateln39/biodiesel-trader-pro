@@ -49,13 +49,7 @@ import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
 
-interface MovementsTableProps {
-  filterStatuses?: string[];
-}
-
-const MovementsTable: React.FC<MovementsTableProps> = ({ 
-  filterStatuses = [] 
-}) => {
+const MovementsTable: React.FC = () => {
   const queryClient = useQueryClient();
   const { 
     filteredMovements, 
@@ -63,7 +57,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     error, 
     refetch,
     handleReorder
-  } = useSortableMovements(filterStatuses);
+  } = useSortableMovements();
 
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
@@ -329,8 +323,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             <TooltipContent>
               <p>Add or view comments</p>
             </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+          </TooltipProvider>
       </TableCell>
       <TableCell>
         {movement.creditStatus && (

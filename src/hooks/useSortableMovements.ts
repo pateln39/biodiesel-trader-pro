@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
+import { FilterOptions } from '@/components/operations/MovementsFilter';
 
 // Function to fetch all movements with ordering by sort_order
 const fetchMovements = async (): Promise<Movement[]> => {
@@ -88,9 +89,49 @@ const initializeMovementSortOrder = async (): Promise<void> => {
   }
 };
 
-export const useSortableMovements = (filterStatuses: string[] = []) => {
+// Extract unique values for each filterable field from movements
+const extractAvailableFilterOptions = (movements: Movement[]) => {
+  const options = {
+    status: [...new Set(movements.map(m => m.status))].filter(Boolean).sort(),
+    product: [...new Set(movements.map(m => m.product))].filter(Boolean).sort(),
+    buySell: [...new Set(movements.map(m => m.buySell))].filter(Boolean).sort(),
+    incoTerm: [...new Set(movements.map(m => m.incoTerm))].filter(Boolean).sort(),
+    sustainability: [...new Set(movements.map(m => m.sustainability))].filter(Boolean).sort(),
+    counterparty: [...new Set(movements.map(m => m.counterpartyName))].filter(Boolean).sort(),
+    creditStatus: [...new Set(movements.map(m => m.creditStatus))].filter(Boolean).sort(),
+    customsStatus: [...new Set(movements.map(m => m.customsStatus))].filter(Boolean).sort(),
+    loadport: [...new Set(movements.map(m => m.loadport))].filter(Boolean).sort(),
+    loadportInspector: [...new Set(movements.map(m => m.loadportInspector))].filter(Boolean).sort(),
+    disport: [...new Set(movements.map(m => m.disport))].filter(Boolean).sort(),
+    disportInspector: [...new Set(movements.map(m => m.disportInspector))].filter(Boolean).sort(),
+  };
+  
+  return options;
+};
+
+export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => {
   const queryClient = useQueryClient();
   const [localMovements, setLocalMovements] = useState<Movement[]>([]);
+
+  // Initialize empty filter options
+  const emptyFilters: FilterOptions = {
+    status: [],
+    product: [],
+    buySell: [],
+    incoTerm: [],
+    sustainability: [],
+    counterparty: [],
+    creditStatus: [],
+    customsStatus: [],
+    loadport: [],
+    loadportInspector: [],
+    disport: [],
+    disportInspector: [],
+  };
+  
+  const [filters, setFilters] = useState<FilterOptions>(
+    filterOptions ? { ...emptyFilters, ...filterOptions } : emptyFilters
+  );
   
   // Mutation to initialize sort_order values if needed
   const initSortOrderMutation = useMutation({
@@ -132,16 +173,100 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
     }
   }, [movements]);
 
-  // Filter movements based on filterStatuses
+  // Get available filter options based on the data
+  const availableFilterOptions = useMemo(
+    () => extractAvailableFilterOptions(movements),
+    [movements]
+  );
+
+  // Update filters if provided as props
+  useEffect(() => {
+    if (filterOptions) {
+      setFilters(prev => ({ ...prev, ...filterOptions }));
+    }
+  }, [filterOptions]);
+
+  // Filter movements based on all filter criteria
   const filteredMovements = useMemo(() => {
-    if (filterStatuses.length === 0) {
+    // Check if any filters are active
+    const hasActiveFilters = Object.values(filters).some(f => f.length > 0);
+    
+    if (!hasActiveFilters) {
       return localMovements;
     }
     
-    return localMovements.filter(movement => 
-      filterStatuses.includes(movement.status)
-    );
-  }, [localMovements, filterStatuses]);
+    return localMovements.filter(movement => {
+      // Status filter
+      if (filters.status.length > 0 && !filters.status.includes(movement.status)) {
+        return false;
+      }
+      
+      // Product filter
+      if (filters.product.length > 0 && !filters.product.includes(movement.product)) {
+        return false;
+      }
+      
+      // Buy/Sell filter
+      if (filters.buySell.length > 0 && !filters.buySell.includes(movement.buySell)) {
+        return false;
+      }
+      
+      // Incoterm filter
+      if (filters.incoTerm.length > 0 && !filters.incoTerm.includes(movement.incoTerm)) {
+        return false;
+      }
+      
+      // Sustainability filter
+      if (filters.sustainability.length > 0 && 
+          (!movement.sustainability || !filters.sustainability.includes(movement.sustainability))) {
+        return false;
+      }
+      
+      // Counterparty filter
+      if (filters.counterparty.length > 0 && !filters.counterparty.includes(movement.counterpartyName)) {
+        return false;
+      }
+      
+      // Credit status filter
+      if (filters.creditStatus.length > 0 && 
+          (!movement.creditStatus || !filters.creditStatus.includes(movement.creditStatus))) {
+        return false;
+      }
+      
+      // Customs status filter
+      if (filters.customsStatus.length > 0 && 
+          (!movement.customsStatus || !filters.customsStatus.includes(movement.customsStatus))) {
+        return false;
+      }
+      
+      // Loadport filter
+      if (filters.loadport.length > 0 && 
+          (!movement.loadport || !filters.loadport.includes(movement.loadport))) {
+        return false;
+      }
+      
+      // Loadport inspector filter
+      if (filters.loadportInspector.length > 0 && 
+          (!movement.loadportInspector || !filters.loadportInspector.includes(movement.loadportInspector))) {
+        return false;
+      }
+      
+      // Disport filter
+      if (filters.disport.length > 0 && 
+          (!movement.disport || !filters.disport.includes(movement.disport))) {
+        return false;
+      }
+      
+      // Disport inspector filter
+      if (filters.disportInspector.length > 0 && 
+          (!movement.disportInspector || !filters.disportInspector.includes(movement.disportInspector))) {
+        return false;
+      }
+      
+      // All filters passed
+      return true;
+    });
+  }, [localMovements, filters]);
 
   // Mutation to update the sort order in the database
   const updateSortOrderMutation = useMutation({
@@ -218,9 +343,16 @@ export const useSortableMovements = (filterStatuses: string[] = []) => {
     [updateSortOrderMutation, refetch]
   );
 
+  const updateFilters = useCallback((newFilters: FilterOptions) => {
+    setFilters(newFilters);
+  }, []);
+
   return {
     movements: localMovements,
     filteredMovements,
+    availableFilterOptions,
+    filters,
+    updateFilters,
     isLoading,
     error,
     refetch,
