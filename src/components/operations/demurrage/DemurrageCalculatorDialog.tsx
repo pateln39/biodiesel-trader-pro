@@ -114,18 +114,36 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
   });
 
   const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
-    if (!startDate || !endDate) return 0;
+    console.log('Calculating hours difference:', { startDate, endDate, shouldRound });
     
-    const diffMs = endDate.getTime() - startDate.getTime();
+    if (!startDate || !endDate) {
+      console.log('Missing start or end date');
+      return 0;
+    }
+    
+    // Ensure we're working with valid Date objects
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const diffMs = end.getTime() - start.getTime();
     const hours = diffMs / (1000 * 60 * 60); // Convert to hours
     
+    console.log('Calculated hours:', hours);
+    
     if (shouldRound) {
-      return Math.round(hours); // Round to nearest hour
+      const rounded = Math.round(hours);
+      console.log('Rounded hours:', rounded);
+      return rounded;
     }
-    return Number(hours.toFixed(2)); // Keep 2 decimal places for non-rounded values
+    
+    const fixed = Number(hours.toFixed(2));
+    console.log('Fixed decimal hours:', fixed);
+    return fixed;
   };
 
   useEffect(() => {
+    console.log('Form values changed:', formValues);
+    
     const loadPortTotal = calculateHoursDifference(
       formValues.loadPort.start, 
       formValues.loadPort.finish,
@@ -138,6 +156,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       formValues.dischargePort.rounding === 'Y'
     );
     
+    console.log('Calculated totals:', { loadPortTotal, dischargePortTotal });
+    
     const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
       ? (formValues.freeTime / 2) - loadPortTotal 
       : 0;
@@ -148,12 +168,21 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
 
     const totalTimeUsed = loadPortTotal + dischargePortTotal;
     const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
-    
     const demurrageDue = demurrageHours * (formValues.rate || 0);
 
+    console.log('Setting calculated values:', {
+      loadPortTotal,
+      dischargePortTotal,
+      loadTimeSaved,
+      dischargeTimeSaved,
+      totalTimeUsed,
+      demurrageHours,
+      demurrageDue
+    });
+
     setCalculatedValues({
-      loadPortTotal: loadPortTotal,
-      dischargePortTotal: dischargePortTotal,
+      loadPortTotal,
+      dischargePortTotal,
       loadTimeSaved: Number(loadTimeSaved.toFixed(2)),
       dischargeTimeSaved: Number(dischargeTimeSaved.toFixed(2)),
       totalTimeUsed: Number(totalTimeUsed.toFixed(2)),
