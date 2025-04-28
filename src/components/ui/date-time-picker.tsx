@@ -21,6 +21,9 @@ export function DateTimePicker({
   disabled, 
   placeholder = "Pick date and time" 
 }: DateTimePickerProps) {
+  // Ensure we always have a valid Date object to work with
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -33,7 +36,9 @@ export function DateTimePicker({
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "dd MMM yyyy HH:mm") : <span>{placeholder}</span>}
+          {date instanceof Date && !isNaN(date.getTime()) 
+            ? format(date, "dd MMM yyyy HH:mm") 
+            : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent 
@@ -45,12 +50,12 @@ export function DateTimePicker({
         <div className="p-4 space-y-4">
           <Calendar
             mode="single"
-            selected={date}
+            selected={safeDate}
             onSelect={(newDate) => {
               if (newDate) {
                 const updatedDate = new Date(newDate)
-                updatedDate.setHours(date?.getHours() || 0)
-                updatedDate.setMinutes(date?.getMinutes() || 0)
+                updatedDate.setHours(safeDate.getHours())
+                updatedDate.setMinutes(safeDate.getMinutes())
                 setDate(updatedDate)
               }
             }}
@@ -58,9 +63,9 @@ export function DateTimePicker({
             className={cn("p-3 pointer-events-auto")}
           />
           <TimeInput
-            date={date || new Date()}
+            date={safeDate}
             setDate={setDate}
-            disabled={!date}
+            disabled={disabled}
           />
         </div>
       </PopoverContent>

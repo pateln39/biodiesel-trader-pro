@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker"; 
 import { Movement } from '@/types';
+import { toast } from 'sonner';
 
 interface DemurrageCalculatorDialogProps {
   movement: Movement;
@@ -113,87 +114,112 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     demurrageDue: 0,
   });
 
+  // Enhanced function to calculate hours difference between two dates
   const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
     console.log('Calculating hours difference:', { startDate, endDate, shouldRound });
     
+    // Both dates must be present to calculate a difference
     if (!startDate || !endDate) {
       console.log('Missing start or end date');
       return 0;
     }
     
-    // Ensure we're working with valid Date objects
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    const diffMs = end.getTime() - start.getTime();
-    const hours = diffMs / (1000 * 60 * 60); // Convert to hours
-    
-    console.log('Calculated hours:', hours);
-    
-    if (shouldRound) {
-      const rounded = Math.round(hours);
-      console.log('Rounded hours:', rounded);
-      return rounded;
+    try {
+      // Ensure we're working with valid Date objects
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.error('Invalid date object detected');
+        return 0;
+      }
+      
+      const diffMs = end.getTime() - start.getTime();
+      const hours = diffMs / (1000 * 60 * 60); // Convert to hours
+      
+      console.log('Calculated hours:', hours);
+      
+      if (shouldRound) {
+        const rounded = Math.round(hours);
+        console.log('Rounded hours:', rounded);
+        return rounded;
+      }
+      
+      const fixed = Number(hours.toFixed(2));
+      console.log('Fixed decimal hours:', fixed);
+      return fixed;
+    } catch (error) {
+      console.error('Error calculating hours difference:', error);
+      return 0;
     }
-    
-    const fixed = Number(hours.toFixed(2));
-    console.log('Fixed decimal hours:', fixed);
-    return fixed;
   };
 
+  // Recalculate values when form inputs change
   useEffect(() => {
     console.log('Form values changed:', formValues);
     
-    const loadPortTotal = calculateHoursDifference(
-      formValues.loadPort.start, 
-      formValues.loadPort.finish,
-      formValues.loadPort.rounding === 'Y'
-    );
-    
-    const dischargePortTotal = calculateHoursDifference(
-      formValues.dischargePort.start, 
-      formValues.dischargePort.finish,
-      formValues.dischargePort.rounding === 'Y'
-    );
-    
-    console.log('Calculated totals:', { loadPortTotal, dischargePortTotal });
-    
-    const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
-      ? (formValues.freeTime / 2) - loadPortTotal 
-      : 0;
+    try {
+      // Calculate load port total time
+      const loadPortTotal = calculateHoursDifference(
+        formValues.loadPort.start, 
+        formValues.loadPort.finish,
+        formValues.loadPort.rounding === 'Y'
+      );
       
-    const dischargeTimeSaved = formValues.freeTime && dischargePortTotal < formValues.freeTime / 2 
-      ? (formValues.freeTime / 2) - dischargePortTotal 
-      : 0;
+      // Calculate discharge port total time
+      const dischargePortTotal = calculateHoursDifference(
+        formValues.dischargePort.start, 
+        formValues.dischargePort.finish,
+        formValues.dischargePort.rounding === 'Y'
+      );
+      
+      console.log('Calculated totals:', { loadPortTotal, dischargePortTotal });
+      
+      // Calculate time saved at load port
+      const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
+        ? (formValues.freeTime / 2) - loadPortTotal 
+        : 0;
+      
+      // Calculate time saved at discharge port  
+      const dischargeTimeSaved = formValues.freeTime && dischargePortTotal < formValues.freeTime / 2 
+        ? (formValues.freeTime / 2) - dischargePortTotal 
+        : 0;
 
-    const totalTimeUsed = loadPortTotal + dischargePortTotal;
-    const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
-    const demurrageDue = demurrageHours * (formValues.rate || 0);
+      // Calculate total time used and demurrage
+      const totalTimeUsed = loadPortTotal + dischargePortTotal;
+      const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
+      const demurrageDue = demurrageHours * (formValues.rate || 0);
 
-    console.log('Setting calculated values:', {
-      loadPortTotal,
-      dischargePortTotal,
-      loadTimeSaved,
-      dischargeTimeSaved,
-      totalTimeUsed,
-      demurrageHours,
-      demurrageDue
-    });
+      console.log('Setting calculated values:', {
+        loadPortTotal,
+        dischargePortTotal,
+        loadTimeSaved,
+        dischargeTimeSaved,
+        totalTimeUsed,
+        demurrageHours,
+        demurrageDue
+      });
 
-    setCalculatedValues({
-      loadPortTotal,
-      dischargePortTotal,
-      loadTimeSaved: Number(loadTimeSaved.toFixed(2)),
-      dischargeTimeSaved: Number(dischargeTimeSaved.toFixed(2)),
-      totalTimeUsed: Number(totalTimeUsed.toFixed(2)),
-      demurrageHours: Number(demurrageHours.toFixed(2)),
-      demurrageDue: Number(demurrageDue.toFixed(2)),
-    });
+      // Update the calculated values state
+      setCalculatedValues({
+        loadPortTotal,
+        dischargePortTotal,
+        loadTimeSaved: Number(loadTimeSaved.toFixed(2)),
+        dischargeTimeSaved: Number(dischargeTimeSaved.toFixed(2)),
+        totalTimeUsed: Number(totalTimeUsed.toFixed(2)),
+        demurrageHours: Number(demurrageHours.toFixed(2)),
+        demurrageDue: Number(demurrageDue.toFixed(2)),
+      });
+    } catch (error) {
+      console.error('Error in calculation effect:', error);
+      toast.error("Error calculating values", { description: "Please check your inputs and try again." });
+    }
   }, [formValues]);
 
   const onSubmit = (data: DemurrageFormValues) => {
     console.log('Demurrage calculation form submitted:', data);
     console.log('Calculated values:', calculatedValues);
+    toast.success("Calculation complete", { description: "Demurrage calculation has been saved." });
     onClose();
   };
 
@@ -217,7 +243,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Barge Name</FormLabel>
                   <FormControl>
-                    <Input {...field} readOnly />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -233,8 +259,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormControl>
                     <Input 
                       type="number" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                       value={field.value || ''}
                     />
                   </FormControl>
@@ -252,8 +277,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormControl>
                     <Input 
                       type="number" 
-                      {...field} 
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                       value={field.value || ''}
                     />
                   </FormControl>
@@ -269,17 +293,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>BL Date</FormLabel>
                   <FormControl>
-                    {field.value ? (
-                      <DatePicker 
-                        date={field.value} 
-                        setDate={field.onChange}
-                      />
-                    ) : (
-                      <DatePicker 
-                        date={new Date()} 
-                        setDate={field.onChange} 
-                      />
-                    )}
+                    <DatePicker 
+                      date={field.value} 
+                      setDate={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -325,6 +342,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <DateTimePicker 
                       date={field.value || new Date()}
                       setDate={field.onChange}
+                      placeholder="Select date and time"
                     />
                   </FormControl>
                   <FormMessage />
@@ -342,6 +360,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <DateTimePicker 
                       date={field.value || new Date()}
                       setDate={field.onChange}
+                      placeholder="Select date and time"
                     />
                   </FormControl>
                   <FormMessage />
@@ -359,6 +378,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <DateTimePicker 
                       date={field.value || new Date()}
                       setDate={field.onChange}
+                      placeholder="Select date and time"
                     />
                   </FormControl>
                   <FormMessage />
@@ -376,6 +396,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <DateTimePicker 
                       date={field.value || new Date()}
                       setDate={field.onChange}
+                      placeholder="Select date and time"
                     />
                   </FormControl>
                   <FormMessage />
@@ -397,7 +418,11 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <DateTimePicker 
                         date={field.value || new Date()}
-                        setDate={field.onChange}
+                        setDate={(date) => {
+                          field.onChange(date);
+                          form.trigger('loadPort');
+                        }}
+                        placeholder="Select start date/time"
                       />
                     </FormControl>
                     <FormMessage />
@@ -414,7 +439,11 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <DateTimePicker 
                         date={field.value || new Date()}
-                        setDate={field.onChange}
+                        setDate={(date) => {
+                          field.onChange(date);
+                          form.trigger('loadPort');
+                        }}
+                        placeholder="Select finish date/time"
                       />
                     </FormControl>
                     <FormMessage />
@@ -427,7 +456,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.loadPortTotal}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
 
@@ -438,7 +468,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Rounding</FormLabel>
                     <Select 
-                      onValueChange={field.onChange} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.trigger('loadPort');
+                      }} 
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -465,8 +498,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <Input 
                         type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -480,7 +512,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.loadTimeSaved}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
             </div>
@@ -497,7 +530,11 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <DateTimePicker 
                         date={field.value || new Date()}
-                        setDate={field.onChange}
+                        setDate={(date) => {
+                          field.onChange(date);
+                          form.trigger('dischargePort');
+                        }}
+                        placeholder="Select start date/time"
                       />
                     </FormControl>
                     <FormMessage />
@@ -514,7 +551,11 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <DateTimePicker 
                         date={field.value || new Date()}
-                        setDate={field.onChange}
+                        setDate={(date) => {
+                          field.onChange(date);
+                          form.trigger('dischargePort');
+                        }}
+                        placeholder="Select finish date/time"
                       />
                     </FormControl>
                     <FormMessage />
@@ -527,7 +568,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.dischargePortTotal}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
 
@@ -538,7 +580,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Rounding</FormLabel>
                     <Select 
-                      onValueChange={field.onChange} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.trigger('dischargePort');
+                      }} 
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -565,8 +610,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <Input 
                         type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -580,7 +624,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.dischargeTimeSaved}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
             </div>
@@ -595,7 +640,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.totalTimeUsed}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
 
@@ -608,8 +654,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <Input 
                         type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -623,7 +668,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.demurrageHours}
-                  disabled
+                  className="font-medium bg-muted text-foreground"
+                  readOnly
                 />
               </div>
 
@@ -636,8 +682,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                     <FormControl>
                       <Input 
                         type="number" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                         value={field.value || ''}
                       />
                     </FormControl>
@@ -651,8 +696,8 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <Input
                   type="number"
                   value={calculatedValues.demurrageDue}
-                  disabled
-                  className="font-bold text-lg"
+                  className="font-bold text-lg bg-muted text-foreground"
+                  readOnly
                 />
               </div>
             </div>

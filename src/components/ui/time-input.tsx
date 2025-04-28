@@ -10,38 +10,44 @@ interface TimeInputProps {
 }
 
 export function TimeInput({ date, setDate, disabled }: TimeInputProps) {
-  const hours = date?.getHours() || 0
-  const minutes = date?.getMinutes() || 0
+  // Ensure we're working with valid values
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  const hours = safeDate.getHours();
+  const minutes = safeDate.getMinutes();
 
   const updateTime = (newHours: number, newMinutes: number) => {
-    const newDate = new Date(date)
-    newDate.setHours(newHours)
-    newDate.setMinutes(newMinutes)
-    setDate(newDate)
+    try {
+      const newDate = new Date(safeDate);
+      newDate.setHours(newHours);
+      newDate.setMinutes(newMinutes);
+      setDate(newDate);
+    } catch (error) {
+      console.error("Error updating time:", error);
+    }
   }
 
   const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.min(23, Math.max(0, parseInt(e.target.value) || 0))
-    updateTime(value, minutes)
+    const value = Math.min(23, Math.max(0, parseInt(e.target.value) || 0));
+    updateTime(value, minutes);
   }
 
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.min(59, Math.max(0, parseInt(e.target.value) || 0))
-    updateTime(hours, value)
+    const value = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+    updateTime(hours, value);
   }
 
   const handleHoursFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.stopPropagation()
-    e.target.select()
+    e.stopPropagation();
+    e.target.select();
   }
 
   const handleMinutesFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.stopPropagation()
-    e.target.select()
+    e.stopPropagation();
+    e.target.select();
   }
 
   const handleInputClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
+    e.stopPropagation();
   }
 
   return (
