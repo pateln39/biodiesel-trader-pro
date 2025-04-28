@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +9,7 @@ import { OpenTrade } from '@/hooks/useOpenTrades';
 import { format } from 'date-fns';
 import { CalendarIcon, Ship, ClipboardCheck } from 'lucide-react';
 import { 
+  Dialog,
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
