@@ -35,4 +35,3 @@ export interface ManualOverride {
   comment: string;
   timestamp: Date;
 }
-
