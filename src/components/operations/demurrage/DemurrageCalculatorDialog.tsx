@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calculator } from 'lucide-react';
@@ -34,6 +33,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker"; 
 import { Movement } from '@/types';
 import { toast } from 'sonner';
+import { EditableTotalHoursField } from './EditableTotalHoursField';
+
+interface ManualOverride {
+  value: number;
+  comment: string;
+  timestamp: Date;
+}
 
 interface DemurrageCalculatorDialogProps {
   movement: Movement;
@@ -73,6 +79,9 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
   movement,
   onClose
 }) => {
+  const [loadPortOverride, setLoadPortOverride] = useState<ManualOverride | null>(null);
+  const [dischargePortOverride, setDischargePortOverride] = useState<ManualOverride | null>(null);
+
   const form = useForm<DemurrageFormValues>({
     resolver: zodResolver(demurrageFormSchema),
     defaultValues: {
@@ -86,14 +95,14 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       bargeArrived: undefined,
       timeStartsToRun: undefined,
       loadPort: {
-        start: undefined,
-        finish: undefined,
+        start: new Date(),
+        finish: new Date(),
         rounding: "N",
         loadDemurrage: 0,
       },
       dischargePort: {
-        start: undefined,
-        finish: undefined,
+        start: new Date(),
+        finish: new Date(),
         rounding: "N",
         dischargeDemurrage: 0,
       },
@@ -114,18 +123,15 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     demurrageDue: 0,
   });
 
-  // Enhanced function to calculate hours difference between two dates
   const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
     console.log('Calculating hours difference:', { startDate, endDate, shouldRound });
     
-    // Both dates must be present to calculate a difference
     if (!startDate || !endDate) {
       console.log('Missing start or end date');
       return 0;
     }
     
     try {
-      // Ensure we're working with valid Date objects
       const start = new Date(startDate);
       const end = new Date(endDate);
       
@@ -135,7 +141,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       }
       
       const diffMs = end.getTime() - start.getTime();
-      const hours = diffMs / (1000 * 60 * 60); // Convert to hours
+      const hours = diffMs / (1000 * 60 * 60);
       
       console.log('Calculated hours:', hours);
       
@@ -154,20 +160,17 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     }
   };
 
-  // Recalculate values when form inputs change
   useEffect(() => {
     console.log('Form values changed:', formValues);
     
     try {
-      // Calculate load port total time
-      const loadPortTotal = calculateHoursDifference(
+      const loadPortTotal = loadPortOverride?.value || calculateHoursDifference(
         formValues.loadPort.start, 
         formValues.loadPort.finish,
         formValues.loadPort.rounding === 'Y'
       );
       
-      // Calculate discharge port total time
-      const dischargePortTotal = calculateHoursDifference(
+      const dischargePortTotal = dischargePortOverride?.value || calculateHoursDifference(
         formValues.dischargePort.start, 
         formValues.dischargePort.finish,
         formValues.dischargePort.rounding === 'Y'
@@ -175,32 +178,18 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       
       console.log('Calculated totals:', { loadPortTotal, dischargePortTotal });
       
-      // Calculate time saved at load port
       const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
         ? (formValues.freeTime / 2) - loadPortTotal 
         : 0;
       
-      // Calculate time saved at discharge port  
       const dischargeTimeSaved = formValues.freeTime && dischargePortTotal < formValues.freeTime / 2 
         ? (formValues.freeTime / 2) - dischargePortTotal 
         : 0;
 
-      // Calculate total time used and demurrage
       const totalTimeUsed = loadPortTotal + dischargePortTotal;
       const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
       const demurrageDue = demurrageHours * (formValues.rate || 0);
 
-      console.log('Setting calculated values:', {
-        loadPortTotal,
-        dischargePortTotal,
-        loadTimeSaved,
-        dischargeTimeSaved,
-        totalTimeUsed,
-        demurrageHours,
-        demurrageDue
-      });
-
-      // Update the calculated values state
       setCalculatedValues({
         loadPortTotal,
         dischargePortTotal,
@@ -212,9 +201,36 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       });
     } catch (error) {
       console.error('Error in calculation effect:', error);
-      toast.error("Error calculating values", { description: "Please check your inputs and try again." });
+      toast.error("Error calculating values");
     }
-  }, [formValues]);
+  }, [
+    formValues.loadPort.start,
+    formValues.loadPort.finish,
+    formValues.loadPort.rounding,
+    formValues.dischargePort.start,
+    formValues.dischargePort.finish,
+    formValues.dischargePort.rounding,
+    formValues.freeTime,
+    formValues.rate,
+    loadPortOverride,
+    dischargePortOverride
+  ]);
+
+  const handleLoadPortTotalSave = (value: number, comment: string) => {
+    setLoadPortOverride({
+      value,
+      comment,
+      timestamp: new Date(),
+    });
+  };
+
+  const handleDischargePortTotalSave = (value: number, comment: string) => {
+    setDischargePortOverride({
+      value,
+      comment,
+      timestamp: new Date(),
+    });
+  };
 
   const onSubmit = (data: DemurrageFormValues) => {
     console.log('Demurrage calculation form submitted:', data);
@@ -451,15 +467,12 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 )}
               />
 
-              <div className="mb-4">
-                <FormLabel>Total (hours)</FormLabel>
-                <Input
-                  type="number"
-                  value={calculatedValues.loadPortTotal}
-                  className="font-medium bg-muted text-foreground"
-                  readOnly
-                />
-              </div>
+              <EditableTotalHoursField
+                calculatedValue={calculatedValues.loadPortTotal}
+                label="Total (hours)"
+                onSave={handleLoadPortTotalSave}
+                isOverridden={!!loadPortOverride}
+              />
 
               <FormField
                 control={form.control}
@@ -563,15 +576,12 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 )}
               />
 
-              <div className="mb-4">
-                <FormLabel>Total (hours)</FormLabel>
-                <Input
-                  type="number"
-                  value={calculatedValues.dischargePortTotal}
-                  className="font-medium bg-muted text-foreground"
-                  readOnly
-                />
-              </div>
+              <EditableTotalHoursField
+                calculatedValue={calculatedValues.dischargePortTotal}
+                label="Total (hours)"
+                onSave={handleDischargePortTotalSave}
+                isOverridden={!!dischargePortOverride}
+              />
 
               <FormField
                 control={form.control}
