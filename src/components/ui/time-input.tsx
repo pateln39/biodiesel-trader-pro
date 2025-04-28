@@ -30,8 +30,22 @@ export function TimeInput({ date, setDate, disabled }: TimeInputProps) {
     updateTime(hours, value)
   }
 
+  const handleHoursFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+    e.target.select()
+  }
+
+  const handleMinutesFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.stopPropagation()
+    e.target.select()
+  }
+
+  const handleInputClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-2 items-center z-50 pointer-events-auto">
       <Clock className="h-4 w-4 opacity-50" />
       <Input
         type="number"
@@ -39,7 +53,9 @@ export function TimeInput({ date, setDate, disabled }: TimeInputProps) {
         max={23}
         value={hours.toString().padStart(2, '0')}
         onChange={handleHoursChange}
-        className="w-[70px]"
+        onFocus={handleHoursFocus}
+        onClick={handleInputClick}
+        className="w-[70px] pointer-events-auto z-50 cursor-text"
         disabled={disabled}
       />
       <span className="opacity-50">:</span>
@@ -49,7 +65,9 @@ export function TimeInput({ date, setDate, disabled }: TimeInputProps) {
         max={59}
         value={minutes.toString().padStart(2, '0')}
         onChange={handleMinutesChange}
-        className="w-[70px]"
+        onFocus={handleMinutesFocus}
+        onClick={handleInputClick}
+        className="w-[70px] pointer-events-auto z-50 cursor-text"
         disabled={disabled}
       />
     </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calculator } from 'lucide-react';
@@ -31,7 +32,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker"; 
-import { TimeInput } from "@/components/ui/time-input"; 
 import { Movement } from '@/types';
 
 interface DemurrageCalculatorDialogProps {
@@ -115,6 +115,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
 
   const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
     if (!startDate || !endDate) return 0;
+    
     const diffMs = endDate.getTime() - startDate.getTime();
     const hours = diffMs / (1000 * 60 * 60); // Convert to hours
     
@@ -153,9 +154,9 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     setCalculatedValues({
       loadPortTotal: loadPortTotal,
       dischargePortTotal: dischargePortTotal,
-      loadTimeSaved: loadTimeSaved,
-      dischargeTimeSaved: dischargeTimeSaved,
-      totalTimeUsed: totalTimeUsed,
+      loadTimeSaved: Number(loadTimeSaved.toFixed(2)),
+      dischargeTimeSaved: Number(dischargeTimeSaved.toFixed(2)),
+      totalTimeUsed: Number(totalTimeUsed.toFixed(2)),
       demurrageHours: Number(demurrageHours.toFixed(2)),
       demurrageDue: Number(demurrageDue.toFixed(2)),
     });

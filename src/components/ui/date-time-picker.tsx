@@ -36,7 +36,12 @@ export function DateTimePicker({
           {date ? format(date, "dd MMM yyyy HH:mm") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent 
+        className="w-auto p-0" 
+        align="start" 
+        sideOffset={4}
+        style={{ zIndex: 50 }}
+      >
         <div className="p-4 space-y-4">
           <Calendar
             mode="single"
