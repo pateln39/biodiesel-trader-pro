@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Pencil } from "lucide-react";
+import { Pencil, RotateCcw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,11 +13,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface EditableTotalHoursFieldProps {
   calculatedValue: number;
   label: string;
-  onSave: (manualValue: number, comment: string) => void;
+  onSave: (manualValue: number | null, comment: string) => void;
   isOverridden?: boolean;
 }
 
@@ -28,6 +29,7 @@ export function EditableTotalHoursField({
   isOverridden = false
 }: EditableTotalHoursFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [manualValue, setManualValue] = useState<string>(calculatedValue.toString());
   const [comment, setComment] = useState('');
 
@@ -53,12 +55,18 @@ export function EditableTotalHoursField({
     setIsEditing(true);
   };
 
+  const handleReset = () => {
+    onSave(null, "Reset to calculated value");
+    setIsResetDialogOpen(false);
+    toast.success("Reset to calculated value");
+  };
+
   return (
     <div className="relative">
       <div className="flex items-center gap-2 mb-1">
         <Label>{label}</Label>
         {isOverridden && (
-          <span className="text-xs text-orange-500">(Manually edited)</span>
+          <span className="text-xs text-orange-500">(Manual)</span>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -68,14 +76,26 @@ export function EditableTotalHoursField({
           className="font-medium bg-muted text-foreground"
           readOnly
         />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleEditClick}
-          className="h-9 w-9"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleEditClick}
+            className="h-9 w-9"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {isOverridden && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsResetDialogOpen(true)}
+              className="h-9 w-9"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <Dialog 
@@ -127,6 +147,21 @@ export function EditableTotalHoursField({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset to Calculated Value</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the manual override and return to using the automatically calculated value. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset}>Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
