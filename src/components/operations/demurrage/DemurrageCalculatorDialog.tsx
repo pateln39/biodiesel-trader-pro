@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker"; 
+import { TimePicker } from "@/components/ui/time-picker"; 
 import { Movement } from '@/types';
 
 interface DemurrageCalculatorDialogProps {
@@ -37,7 +39,6 @@ interface DemurrageCalculatorDialogProps {
   onClose: () => void;
 }
 
-// Define form schema with zod
 const demurrageFormSchema = z.object({
   bargeName: z.string().min(1, "Barge name is required"),
   blDate: z.date().optional(),
@@ -71,7 +72,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
   movement,
   onClose
 }) => {
-  // Initialize form with data from movement
   const form = useForm<DemurrageFormValues>({
     resolver: zodResolver(demurrageFormSchema),
     defaultValues: {
@@ -102,7 +102,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     },
   });
 
-  // Calculate values whenever form data changes
   const formValues = form.watch();
   const [calculatedValues, setCalculatedValues] = useState({
     loadPortTotal: 0,
@@ -114,19 +113,16 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     demurrageDue: 0,
   });
 
-  // Calculate time difference in hours between two dates
   const calculateHoursDifference = (startDate?: Date, endDate?: Date): number => {
     if (!startDate || !endDate) return 0;
     const diffMs = endDate.getTime() - startDate.getTime();
     return diffMs / (1000 * 60 * 60); // Convert to hours
   };
 
-  // Update calculations when form values change
   useEffect(() => {
     const loadPortTotal = calculateHoursDifference(formValues.loadPort.start, formValues.loadPort.finish);
     const dischargePortTotal = calculateHoursDifference(formValues.dischargePort.start, formValues.dischargePort.finish);
     
-    // Calculate Time Saved (if Total < laytime, then laytime - total, else 0)
     const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
       ? (formValues.freeTime / 2) - loadPortTotal 
       : 0;
@@ -135,11 +131,9 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       ? (formValues.freeTime / 2) - dischargePortTotal 
       : 0;
 
-    // Calculate Total Time Used and Demurrage Hours
     const totalTimeUsed = loadPortTotal + dischargePortTotal;
     const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
     
-    // Calculate Demurrage Due
     const demurrageDue = demurrageHours * (formValues.rate || 0);
 
     setCalculatedValues({
@@ -153,11 +147,9 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     });
   }, [formValues]);
 
-  // Handle form submission
   const onSubmit = (data: DemurrageFormValues) => {
     console.log('Demurrage calculation form submitted:', data);
     console.log('Calculated values:', calculatedValues);
-    // Here you would save the demurrage calculation to the database
     onClose();
   };
 
@@ -171,7 +163,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Barge Details Section */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 rounded-md border">
             <div className="col-span-2 font-semibold text-lg mb-2">Barge Details</div>
             
@@ -277,7 +268,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
             />
           </div>
 
-          {/* Nomination Section */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 rounded-md border">
             <div className="col-span-2 font-semibold text-lg mb-2">Nomination Details</div>
             
@@ -350,9 +340,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
             />
           </div>
 
-          {/* Port Operations Section */}
           <div className="grid grid-cols-2 gap-6">
-            {/* Load Port Section */}
             <div className="p-4 bg-blue-50/10 rounded-md border">
               <div className="font-semibold text-lg mb-4">Load Port</div>
               
@@ -453,7 +441,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
               </div>
             </div>
 
-            {/* Discharge Port Section */}
             <div className="p-4 bg-green-50/10 rounded-md border">
               <div className="font-semibold text-lg mb-4">Discharge Port</div>
               
@@ -555,7 +542,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
             </div>
           </div>
 
-          {/* Summary Section */}
           <div className="p-4 bg-purple-50/10 rounded-md border">
             <div className="font-semibold text-lg mb-4">Summary</div>
             
@@ -628,7 +614,6 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
             </div>
           </div>
 
-          {/* Comments Section */}
           <FormField
             control={form.control}
             name="comments"
