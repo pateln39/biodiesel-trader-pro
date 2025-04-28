@@ -31,7 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker"; 
-import { TimePicker } from "@/components/ui/time-picker"; 
+import { TimeInput } from "@/components/ui/time-input"; 
 import { Movement } from '@/types';
 
 interface DemurrageCalculatorDialogProps {
@@ -113,15 +113,29 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     demurrageDue: 0,
   });
 
-  const calculateHoursDifference = (startDate?: Date, endDate?: Date): number => {
+  const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
     if (!startDate || !endDate) return 0;
     const diffMs = endDate.getTime() - startDate.getTime();
-    return diffMs / (1000 * 60 * 60); // Convert to hours
+    const hours = diffMs / (1000 * 60 * 60); // Convert to hours
+    
+    if (shouldRound) {
+      return Math.round(hours); // Round to nearest hour
+    }
+    return Number(hours.toFixed(2)); // Keep 2 decimal places for non-rounded values
   };
 
   useEffect(() => {
-    const loadPortTotal = calculateHoursDifference(formValues.loadPort.start, formValues.loadPort.finish);
-    const dischargePortTotal = calculateHoursDifference(formValues.dischargePort.start, formValues.dischargePort.finish);
+    const loadPortTotal = calculateHoursDifference(
+      formValues.loadPort.start, 
+      formValues.loadPort.finish,
+      formValues.loadPort.rounding === 'Y'
+    );
+    
+    const dischargePortTotal = calculateHoursDifference(
+      formValues.dischargePort.start, 
+      formValues.dischargePort.finish,
+      formValues.dischargePort.rounding === 'Y'
+    );
     
     const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
       ? (formValues.freeTime / 2) - loadPortTotal 
@@ -137,13 +151,13 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     const demurrageDue = demurrageHours * (formValues.rate || 0);
 
     setCalculatedValues({
-      loadPortTotal: parseFloat(loadPortTotal.toFixed(2)),
-      dischargePortTotal: parseFloat(dischargePortTotal.toFixed(2)),
-      loadTimeSaved: parseFloat(loadTimeSaved.toFixed(2)),
-      dischargeTimeSaved: parseFloat(dischargeTimeSaved.toFixed(2)),
-      totalTimeUsed: parseFloat(totalTimeUsed.toFixed(2)),
-      demurrageHours: parseFloat(demurrageHours.toFixed(2)),
-      demurrageDue: parseFloat(demurrageDue.toFixed(2)),
+      loadPortTotal: loadPortTotal,
+      dischargePortTotal: dischargePortTotal,
+      loadTimeSaved: loadTimeSaved,
+      dischargeTimeSaved: dischargeTimeSaved,
+      totalTimeUsed: totalTimeUsed,
+      demurrageHours: Number(demurrageHours.toFixed(2)),
+      demurrageDue: Number(demurrageDue.toFixed(2)),
     });
   }, [formValues]);
 
@@ -295,7 +309,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Nomination Valid</FormLabel>
                   <FormControl>
-                    <TimePicker 
+                    <DateTimePicker 
                       date={field.value || new Date()}
                       setDate={field.onChange}
                     />
