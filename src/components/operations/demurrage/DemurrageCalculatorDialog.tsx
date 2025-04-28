@@ -164,13 +164,13 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     console.log('Form values changed:', formValues);
     
     try {
-      const loadPortTotal = loadPortOverride?.value || calculateHoursDifference(
+      const loadPortTotal = loadPortOverride?.value ?? calculateHoursDifference(
         formValues.loadPort.start, 
         formValues.loadPort.finish,
         formValues.loadPort.rounding === 'Y'
       );
       
-      const dischargePortTotal = dischargePortOverride?.value || calculateHoursDifference(
+      const dischargePortTotal = dischargePortOverride?.value ?? calculateHoursDifference(
         formValues.dischargePort.start, 
         formValues.dischargePort.finish,
         formValues.dischargePort.rounding === 'Y'
@@ -216,20 +216,28 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
     dischargePortOverride
   ]);
 
-  const handleLoadPortTotalSave = (value: number, comment: string) => {
-    setLoadPortOverride({
-      value,
-      comment,
-      timestamp: new Date(),
-    });
+  const handleLoadPortTotalSave = (value: number | null, comment: string) => {
+    if (value === null) {
+      setLoadPortOverride(null);
+    } else {
+      setLoadPortOverride({
+        value,
+        comment,
+        timestamp: new Date(),
+      });
+    }
   };
 
-  const handleDischargePortTotalSave = (value: number, comment: string) => {
-    setDischargePortOverride({
-      value,
-      comment,
-      timestamp: new Date(),
-    });
+  const handleDischargePortTotalSave = (value: number | null, comment: string) => {
+    if (value === null) {
+      setDischargePortOverride(null);
+    } else {
+      setDischargePortOverride({
+        value,
+        comment,
+        timestamp: new Date(),
+      });
+    }
   };
 
   const onSubmit = (data: DemurrageFormValues) => {

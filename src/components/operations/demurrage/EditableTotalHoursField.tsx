@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,9 +54,12 @@ export function EditableTotalHoursField({
     setIsEditing(true);
   };
 
-  const handleReset = () => {
+  const handleReset = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     onSave(null, "Reset to calculated value");
     setIsResetDialogOpen(false);
+    setManualValue(calculatedValue.toString());
     toast.success("Reset to calculated value");
   };
 
@@ -89,7 +91,11 @@ export function EditableTotalHoursField({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsResetDialogOpen(true)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsResetDialogOpen(true);
+              }}
               className="h-9 w-9"
             >
               <RotateCcw className="h-4 w-4" />
@@ -148,7 +154,15 @@ export function EditableTotalHoursField({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+      <AlertDialog 
+        open={isResetDialogOpen} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setManualValue(calculatedValue.toString());
+          }
+          setIsResetDialogOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reset to Calculated Value</AlertDialogTitle>
