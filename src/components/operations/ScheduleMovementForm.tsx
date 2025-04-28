@@ -48,6 +48,7 @@ import { formatDateForStorage } from '@/utils/dateParsingUtils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsTitle } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import AddBargeVesselDialog from './AddBargeVesselDialog';
 
 const formSchema = z.object({
   scheduledQuantity: z.coerce.number().positive("Quantity must be positive"),
@@ -94,6 +95,8 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
   const [inspectorToAdd, setInspectorToAdd] = useState<'loadport' | 'disport'>('loadport');
   const [activeTab, setActiveTab] = useState('movement');
+  const [isAddBargeOpen, setIsAddBargeOpen] = useState(false);
+  const [barges, setBarges] = useState([{ name: "Nish's Barge" }]);
   
   const [existingMovementsCount, setExistingMovementsCount] = useState(0);
   
@@ -250,6 +253,20 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
     }
   };
 
+  const handleAddBarge = (bargeDetails: any) => {
+    setBarges([...barges, { name: bargeDetails.name }]);
+    setIsAddBargeOpen(false);
+    form.setValue('bargeName', bargeDetails.name);
+  };
+
+  const handleBargeSelect = (value: string) => {
+    if (value === 'add-new') {
+      setIsAddBargeOpen(true);
+    } else {
+      form.setValue('bargeName', value);
+    }
+  };
+
   const onSubmit = (values: FormValues) => {
     let referenceNumber = '';
     
@@ -334,9 +351,23 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vessel/Barge Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
+                      <Select onValueChange={handleBargeSelect} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a barge/vessel" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {barges.map((barge) => (
+                            <SelectItem key={barge.name} value={barge.name}>
+                              {barge.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="add-new" className="text-blue-500 font-medium">
+                            + Add Barge/Vessel...
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -677,6 +708,13 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
           }
         }}
       />
+
+      <Dialog open={isAddBargeOpen} onOpenChange={setIsAddBargeOpen}>
+        <AddBargeVesselDialog
+          onAddBarge={handleAddBarge}
+          onCancel={() => setIsAddBargeOpen(false)}
+        />
+      </Dialog>
     </DialogContent>
   );
 };
