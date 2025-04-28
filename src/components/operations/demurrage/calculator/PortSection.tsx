@@ -113,7 +113,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
 
       <FormField
         control={form.control}
-        name={isLoadPort ? `${baseFieldName}.loadDemurrage` : `${baseFieldName}.dischargeDemurrage`}
+        name={isLoadPort ? "loadPort.loadDemurrage" : "dischargePort.dischargeDemurrage"}
         render={({ field }) => (
           <FormItem className="mb-4">
             <FormLabel>{isLoadPort ? 'Load' : 'Discharge'} Demurrage</FormLabel>
@@ -133,7 +133,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
         <FormLabel>Time Saved</FormLabel>
         <Input
           type="number"
-          value={isLoadPort ? calculatedHours : calculatedHours}
+          value={calculatedHours}
           className="font-medium bg-muted text-foreground"
           readOnly
         />
