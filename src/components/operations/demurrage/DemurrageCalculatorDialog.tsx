@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Calculator } from 'lucide-react';
@@ -289,17 +288,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Nomination Sent</FormLabel>
                   <FormControl>
-                    {field.value ? (
-                      <DatePicker 
-                        date={field.value} 
-                        setDate={field.onChange}
-                      />
-                    ) : (
-                      <DatePicker 
-                        date={new Date()} 
-                        setDate={field.onChange} 
-                      />
-                    )}
+                    <DateTimePicker 
+                      date={field.value || new Date()}
+                      setDate={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -313,17 +305,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Nomination Valid</FormLabel>
                   <FormControl>
-                    {field.value ? (
-                      <DatePicker 
-                        date={field.value} 
-                        setDate={field.onChange}
-                      />
-                    ) : (
-                      <DatePicker 
-                        date={new Date()} 
-                        setDate={field.onChange} 
-                      />
-                    )}
+                    <TimePicker 
+                      date={field.value || new Date()}
+                      setDate={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -337,17 +322,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Barge Arrived</FormLabel>
                   <FormControl>
-                    {field.value ? (
-                      <DatePicker 
-                        date={field.value} 
-                        setDate={field.onChange}
-                      />
-                    ) : (
-                      <DatePicker 
-                        date={new Date()} 
-                        setDate={field.onChange} 
-                      />
-                    )}
+                    <DateTimePicker 
+                      date={field.value || new Date()}
+                      setDate={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -361,17 +339,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                 <FormItem>
                   <FormLabel>Time Starts to Run</FormLabel>
                   <FormControl>
-                    {field.value ? (
-                      <DatePicker 
-                        date={field.value} 
-                        setDate={field.onChange}
-                      />
-                    ) : (
-                      <DatePicker 
-                        date={new Date()} 
-                        setDate={field.onChange} 
-                      />
-                    )}
+                    <DateTimePicker 
+                      date={field.value || new Date()}
+                      setDate={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -379,7 +350,7 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
             />
           </div>
 
-          {/* Port Operations Section - Split into Load and Discharge */}
+          {/* Port Operations Section */}
           <div className="grid grid-cols-2 gap-6">
             {/* Load Port Section */}
             <div className="p-4 bg-blue-50/10 rounded-md border">
@@ -392,17 +363,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Start</FormLabel>
                     <FormControl>
-                      {field.value ? (
-                        <DatePicker 
-                          date={field.value} 
-                          setDate={field.onChange}
-                        />
-                      ) : (
-                        <DatePicker 
-                          date={new Date()} 
-                          setDate={field.onChange}
-                        />
-                      )}
+                      <DateTimePicker 
+                        date={field.value || new Date()}
+                        setDate={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -416,17 +380,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Finish</FormLabel>
                     <FormControl>
-                      {field.value ? (
-                        <DatePicker 
-                          date={field.value} 
-                          setDate={field.onChange}
-                        />
-                      ) : (
-                        <DatePicker 
-                          date={new Date()} 
-                          setDate={field.onChange}
-                        />
-                      )}
+                      <DateTimePicker 
+                        date={field.value || new Date()}
+                        setDate={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -507,17 +464,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Start</FormLabel>
                     <FormControl>
-                      {field.value ? (
-                        <DatePicker 
-                          date={field.value} 
-                          setDate={field.onChange}
-                        />
-                      ) : (
-                        <DatePicker 
-                          date={new Date()} 
-                          setDate={field.onChange}
-                        />
-                      )}
+                      <DateTimePicker 
+                        date={field.value || new Date()}
+                        setDate={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -531,17 +481,10 @@ const DemurrageCalculatorDialog: React.FC<DemurrageCalculatorDialogProps> = ({
                   <FormItem className="mb-4">
                     <FormLabel>Finish</FormLabel>
                     <FormControl>
-                      {field.value ? (
-                        <DatePicker 
-                          date={field.value} 
-                          setDate={field.onChange}
-                        />
-                      ) : (
-                        <DatePicker 
-                          date={new Date()} 
-                          setDate={field.onChange}
-                        />
-                      )}
+                      <DateTimePicker 
+                        date={field.value || new Date()}
+                        setDate={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
