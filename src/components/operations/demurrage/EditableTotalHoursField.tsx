@@ -47,6 +47,12 @@ export function EditableTotalHoursField({
     toast.success("Total hours updated successfully");
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
   return (
     <div className="relative">
       <div className="flex items-center gap-2 mb-1">
@@ -65,15 +71,28 @@ export function EditableTotalHoursField({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsEditing(true)}
+          onClick={handleEditClick}
           className="h-9 w-9"
         >
           <Pencil className="h-4 w-4" />
         </Button>
       </div>
 
-      <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent>
+      <Dialog 
+        open={isEditing} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setManualValue(calculatedValue.toString());
+            setComment('');
+          }
+          setIsEditing(open);
+        }}
+      >
+        <DialogContent 
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onClick={(e) => e.stopPropagation()}
+          className="z-[100]"
+        >
           <DialogHeader>
             <DialogTitle>Edit Total Hours</DialogTitle>
           </DialogHeader>
