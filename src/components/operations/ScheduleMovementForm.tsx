@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,6 +50,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Tabs, TabsList, TabsTrigger, TabsContent, TabsTitle } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import AddBargeVesselDialog from './AddBargeVesselDialog';
+import { useBargesVessels } from '@/hooks/useBargesVessels';
 
 const formSchema = z.object({
   scheduledQuantity: z.coerce.number().positive("Quantity must be positive"),
@@ -93,12 +93,12 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: inspectorsData } = useInspectors();
+  const { barges, loading: bargesLoading } = useBargesVessels();
   const inspectors = inspectorsData || [];
   const [isAddInspectorOpen, setIsAddInspectorOpen] = useState(false);
   const [inspectorToAdd, setInspectorToAdd] = useState<'loadport' | 'disport'>('loadport');
   const [activeTab, setActiveTab] = useState('movement');
   const [isAddBargeOpen, setIsAddBargeOpen] = useState(false);
-  const [barges, setBarges] = useState([{ name: "Nish's Barge" }]);
   
   const [existingMovementsCount, setExistingMovementsCount] = useState(0);
   
@@ -256,7 +256,7 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
   };
 
   const handleAddBarge = (bargeDetails: any) => {
-    setBarges([...barges, { name: bargeDetails.name }]);
+    queryClient.invalidateQueries({ queryKey: ['bargesVessels'] });
     setIsAddBargeOpen(false);
     form.setValue('bargeName', bargeDetails.name);
   };
@@ -360,11 +360,17 @@ const ScheduleMovementForm: React.FC<ScheduleMovementFormProps> = ({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {barges.map((barge) => (
-                            <SelectItem key={barge.name} value={barge.name}>
-                              {barge.name}
-                            </SelectItem>
-                          ))}
+                          {bargesLoading ? (
+                            <SelectItem value="loading" disabled>Loading barges...</SelectItem>
+                          ) : barges.length === 0 ? (
+                            <SelectItem value="none" disabled>No barges available</SelectItem>
+                          ) : (
+                            barges.map((barge) => (
+                              <SelectItem key={barge.id} value={barge.name}>
+                                {barge.name}
+                              </SelectItem>
+                            ))
+                          )}
                           <SelectItem value="add-new" className="text-blue-500 font-medium">
                             + Add Barge/Vessel...
                           </SelectItem>
