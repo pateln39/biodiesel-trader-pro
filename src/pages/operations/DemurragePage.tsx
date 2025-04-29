@@ -119,6 +119,11 @@ const DemurragePage = () => {
       header: 'Created',
       cell: ({ row }) => <span>{format(new Date(row.original.created_at), 'dd-MM-yyyy HH:mm')}</span>,
     },
+    {
+      accessorKey: 'updated_at',
+      header: 'Updated',
+      cell: ({ row }) => <span>{format(new Date(row.original.updated_at), 'dd-MM-yyyy HH:mm')}</span>,
+    },
   ];
 
   return (

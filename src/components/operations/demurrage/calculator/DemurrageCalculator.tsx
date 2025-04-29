@@ -32,15 +32,18 @@ import { useBargesVessels } from '@/hooks/useBargesVessels';
 interface DemurrageCalculatorProps {
   movement: Movement;
   onClose: () => void;
+  calculationId?: string; // Optional ID to load existing calculation
 }
 
 export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
   movement,
-  onClose
+  onClose,
+  calculationId
 }) => {
   const [loadPortOverride, setLoadPortOverride] = useState<ManualOverride | null>(null);
   const [dischargePortOverride, setDischargePortOverride] = useState<ManualOverride | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [calculatedValues, setCalculatedValues] = useState({
     loadPortTotal: 0,
     dischargePortTotal: 0,
@@ -69,10 +72,10 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
       deadWeight: barge?.deadweight || 0,
       quantityLoaded: movement.actualQuantity || 0,
       calculationRate: "TTB",
-      nominationSent: undefined,
-      nominationValid: movement.nominationValid ? new Date(movement.nominationValid) : undefined,
-      bargeArrived: undefined,
-      timeStartsToRun: undefined,
+      nominationSent: new Date(),
+      nominationValid: movement.nominationValid ? new Date(movement.nominationValid) : new Date(),
+      bargeArrived: new Date(),
+      timeStartsToRun: new Date(),
       loadPort: {
         start: new Date(),
         finish: new Date(),
@@ -94,6 +97,114 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
       comments: '',
     },
   });
+
+  // Load existing calculation if calculationId is provided
+  useEffect(() => {
+    const loadExistingCalculation = async () => {
+      if (!calculationId) return;
+      
+      setIsLoading(true);
+      
+      try {
+        const { data, error } = await supabase
+          .from('demurrage_calculations')
+          .select('*')
+          .eq('id', calculationId)
+          .single();
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          console.log('Loaded demurrage calculation:', data);
+          
+          // Convert DB timestamps to Date objects for the form
+          const nominationSent = data.nomination_sent ? new Date(data.nomination_sent) : new Date();
+          const nominationValid = data.nomination_valid ? new Date(data.nomination_valid) : new Date();
+          const bargeArrived = data.barge_arrived ? new Date(data.barge_arrived) : new Date();
+          const timeStartsToRun = data.time_starts_to_run ? new Date(data.time_starts_to_run) : new Date();
+          const loadPortStart = data.load_port_start ? new Date(data.load_port_start) : new Date();
+          const loadPortFinish = data.load_port_finish ? new Date(data.load_port_finish) : new Date();
+          const dischargePortStart = data.discharge_port_start ? new Date(data.discharge_port_start) : new Date();
+          const dischargePortFinish = data.discharge_port_finish ? new Date(data.discharge_port_finish) : new Date();
+          
+          // Set load port override if port is manual
+          if (data.load_port_is_manual) {
+            setLoadPortOverride({
+              value: data.load_port_hours || 0,
+              comment: data.load_port_override_comment || '',
+              timestamp: new Date()
+            });
+          }
+          
+          // Set discharge port override if port is manual
+          if (data.discharge_port_is_manual) {
+            setDischargePortOverride({
+              value: data.discharge_port_hours || 0,
+              comment: data.discharge_port_override_comment || '',
+              timestamp: new Date()
+            });
+          }
+          
+          // Reset form with loaded data
+          form.reset({
+            bargeName: movement.bargeName || '',
+            bargeVesselId: data.barge_vessel_id || barge?.id,
+            blDate: data.bl_date ? new Date(data.bl_date) : undefined,
+            deadWeight: barge?.deadweight || 0,
+            quantityLoaded: data.quantity_loaded || movement.actualQuantity || 0,
+            calculationRate: data.calculation_rate || "TTB",
+            nominationSent,
+            nominationValid,
+            bargeArrived,
+            timeStartsToRun,
+            loadPort: {
+              start: loadPortStart,
+              finish: loadPortFinish,
+              rounding: data.load_port_rounding || "N",
+              loadDemurrage: data.load_port_demurrage_hours || 0,
+              isManual: data.load_port_is_manual || false,
+              overrideComment: data.load_port_override_comment || '',
+            },
+            dischargePort: {
+              start: dischargePortStart,
+              finish: dischargePortFinish,
+              rounding: data.discharge_port_rounding || "N",
+              dischargeDemurrage: data.discharge_port_demurrage_hours || 0,
+              isManual: data.discharge_port_is_manual || false,
+              overrideComment: data.discharge_port_override_comment || '',
+            },
+            freeTime: data.total_laytime || 0,
+            rate: data.rate || 0,
+            comments: data.comments || '',
+          });
+          
+          // Update calculated values
+          setCalculatedValues(prev => ({
+            ...prev,
+            loadPortTotal: data.load_port_hours || 0,
+            dischargePortTotal: data.discharge_port_hours || 0,
+            totalTimeUsed: data.total_time_used || 0,
+            demurrageHours: data.demurrage_hours || 0,
+            demurrageDue: data.demurrage_due || 0,
+            totalLaytime: data.total_laytime || 0,
+            allowedLaytimePerPort: (data.total_laytime || 0) / 2,
+            rate: data.rate || 0
+          }));
+        }
+      } catch (error) {
+        console.error('[DEMURRAGE] Error loading calculation:', error);
+        toast.error("Failed to load calculation", {
+          description: error instanceof Error ? error.message : "An error occurred"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadExistingCalculation();
+  }, [calculationId, movement, barge, form]);
 
   const calculateHoursDifference = (startDate?: Date, endDate?: Date, shouldRound?: boolean): number => {
     if (!startDate || !endDate) return 0;
@@ -252,8 +363,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
       const bargeArrived = data.bargeArrived ? data.bargeArrived.toISOString() : null;
       const timeStartsToRun = data.timeStartsToRun ? data.timeStartsToRun.toISOString() : null;
       
-      // Save to database
-      const { data: insertedData, error } = await supabase.from('demurrage_calculations').insert({
+      const calculationData = {
         movement_id: movement.id,
         barge_vessel_id: data.bargeVesselId,
         bl_date: data.blDate ? data.blDate.toISOString().split('T')[0] : null,
@@ -290,13 +400,33 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
         demurrage_due: calculatedValues.demurrageDue,
         
         comments: data.comments
-      }).select();
+      };
 
-      if (error) {
-        throw new Error(`Failed to save demurrage calculation: ${error.message}`);
+      let result;
+      
+      if (calculationId) {
+        // Update existing calculation
+        const { data: updatedData, error } = await supabase
+          .from('demurrage_calculations')
+          .update(calculationData)
+          .eq('id', calculationId)
+          .select();
+          
+        if (error) throw new Error(`Failed to update demurrage calculation: ${error.message}`);
+        result = updatedData;
+        toast.success("Calculation updated", { description: "Demurrage calculation has been updated." });
+      } else {
+        // Insert new calculation
+        const { data: insertedData, error } = await supabase
+          .from('demurrage_calculations')
+          .insert(calculationData)
+          .select();
+          
+        if (error) throw new Error(`Failed to save demurrage calculation: ${error.message}`);
+        result = insertedData;
+        toast.success("Calculation complete", { description: "Demurrage calculation has been saved." });
       }
       
-      toast.success("Calculation complete", { description: "Demurrage calculation has been saved." });
       onClose();
     } catch (error) {
       console.error('[DEMURRAGE] Save error:', error);
@@ -308,11 +438,25 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
     }
   };
 
+  if (isLoading) {
+    return (
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Loading Calculation...</DialogTitle>
+        </DialogHeader>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </DialogContent>
+    );
+  }
+
   return (
     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <Calculator className="h-5 w-5" /> Demurrage Calculator
+          {calculationId && <span className="text-sm text-muted-foreground ml-2">(Editing existing calculation)</span>}
         </DialogTitle>
       </DialogHeader>
       
@@ -356,7 +500,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
           <DialogFooter>
             <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Calculation'}
+              {isSaving ? 'Saving...' : calculationId ? 'Update Calculation' : 'Save Calculation'}
             </Button>
           </DialogFooter>
         </form>
