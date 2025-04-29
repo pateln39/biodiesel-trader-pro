@@ -1,14 +1,15 @@
 
-import React from 'react';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { UseFormReturn } from 'react-hook-form';
 import { DemurrageFormValues, ManualOverride } from './DemurrageFormTypes';
-import { EditableTotalHoursField } from '../EditableTotalHoursField';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { InfoIcon } from 'lucide-react';
+import { EditableTotalHoursField } from "../EditableTotalHoursField";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface PortSectionProps {
   form: UseFormReturn<DemurrageFormValues>;
@@ -16,44 +17,59 @@ interface PortSectionProps {
   calculatedHours: number;
   override: ManualOverride | null;
   onOverrideChange: (value: number | null, comment: string) => void;
-  className?: string;
   allowedLaytime: number;
   timeSaved: number;
 }
 
-export const PortSection: React.FC<PortSectionProps> = ({ 
-  form, 
-  type, 
+export const PortSection: React.FC<PortSectionProps> = ({
+  form,
+  type,
   calculatedHours,
   override,
   onOverrideChange,
-  className = '',
   allowedLaytime,
   timeSaved
 }) => {
-  const isLoadPort = type === 'load';
-  const baseFieldName = isLoadPort ? 'loadPort' : 'dischargePort';
-  const title = isLoadPort ? 'Load Port' : 'Discharge Port';
-  const bgColor = isLoadPort ? 'blue-50/10' : 'green-50/10';
+  const [showOverrideComment, setShowOverrideComment] = useState(false);
+
+  const isLoad = type === 'load';
+  const baseFieldName = isLoad ? 'loadPort' : 'dischargePort';
+  const title = isLoad ? 'Load Port' : 'Discharge Port';
+  const roundingValue = form.watch(`${baseFieldName}.rounding`);
+  const isManual = form.watch(`${baseFieldName}.isManual`);
+
+  const handleOverrideChange = (value: number | null, comment: string) => {
+    form.setValue(`${baseFieldName}.isManual`, value !== null);
+    if (value !== null) {
+      form.setValue(`${baseFieldName}.overrideComment`, comment);
+    } else {
+      form.setValue(`${baseFieldName}.overrideComment`, undefined);
+    }
+    onOverrideChange(value, comment);
+  };
 
   return (
-    <div className={`p-4 bg-${bgColor} rounded-md border ${className}`}>
-      <div className="font-semibold text-lg mb-4">{title}</div>
+    <div className="p-4 bg-muted/20 rounded-md border">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-lg">{title}</h3>
+        {isManual && (
+          <Badge variant="outline" className="bg-yellow-100 hover:bg-yellow-200">
+            Manual Override
+          </Badge>
+        )}
+      </div>
       
       <FormField
         control={form.control}
         name={`${baseFieldName}.start`}
         render={({ field }) => (
           <FormItem className="mb-4">
-            <FormLabel>Start</FormLabel>
+            <FormLabel>Start Time</FormLabel>
             <FormControl>
-              <DateTimePicker 
-                date={field.value || new Date()}
-                setDate={(date) => {
-                  field.onChange(date);
-                  form.trigger(baseFieldName);
-                }}
-                placeholder="Select start date/time"
+              <DatePicker 
+                date={field.value} 
+                setDate={field.onChange}
+                showTimeSelect
               />
             </FormControl>
             <FormMessage />
@@ -66,27 +82,17 @@ export const PortSection: React.FC<PortSectionProps> = ({
         name={`${baseFieldName}.finish`}
         render={({ field }) => (
           <FormItem className="mb-4">
-            <FormLabel>Finish</FormLabel>
+            <FormLabel>Finish Time</FormLabel>
             <FormControl>
-              <DateTimePicker 
-                date={field.value || new Date()}
-                setDate={(date) => {
-                  field.onChange(date);
-                  form.trigger(baseFieldName);
-                }}
-                placeholder="Select finish date/time"
+              <DatePicker 
+                date={field.value} 
+                setDate={field.onChange}
+                showTimeSelect
               />
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
-      />
-
-      <EditableTotalHoursField
-        calculatedValue={calculatedHours}
-        label="Total (hours)"
-        onSave={onOverrideChange}
-        isOverridden={!!override}
       />
 
       <FormField
@@ -94,103 +100,108 @@ export const PortSection: React.FC<PortSectionProps> = ({
         name={`${baseFieldName}.rounding`}
         render={({ field }) => (
           <FormItem className="mb-4">
-            <FormLabel>Rounding</FormLabel>
+            <FormLabel>Round Hours</FormLabel>
             <Select 
-              onValueChange={(value) => {
-                field.onChange(value);
-                form.trigger(baseFieldName);
-              }} 
+              onValueChange={field.onChange} 
               defaultValue={field.value}
+              value={field.value}
             >
               <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select option" />
+                <SelectTrigger className="w-20">
+                  <SelectValue placeholder="Y/N" />
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="Y">Yes</SelectItem>
-                <SelectItem value="N">No</SelectItem>
+                <SelectItem value="Y">Y</SelectItem>
+                <SelectItem value="N">N</SelectItem>
               </SelectContent>
             </Select>
+            <FormDescription>
+              Y = round to nearest hour, N = exact hours
+            </FormDescription>
             <FormMessage />
           </FormItem>
         )}
       />
 
       <div className="mb-4">
-        <div className="flex items-center gap-1.5">
-          <FormLabel>Allowed Laytime</FormLabel>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                Half of the total allowed laytime based on loaded quantity
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <Label>Total Hours</Label>
+        <div className="mt-2">
+          <EditableTotalHoursField
+            calculatedValue={calculatedHours}
+            overrideValue={override?.value}
+            onSave={handleOverrideChange}
+            comment={override?.comment || ''}
+            onCommentToggle={() => setShowOverrideComment(!showOverrideComment)}
+          />
         </div>
-        <Input
-          type="number"
-          value={allowedLaytime}
-          className="font-medium bg-muted text-foreground"
-          readOnly
+      </div>
+
+      {(isManual || showOverrideComment) && (
+        <FormField
+          control={form.control}
+          name={`${baseFieldName}.overrideComment`}
+          render={({ field }) => (
+            <FormItem className="mb-4">
+              <FormLabel>Override Reason</FormLabel>
+              <FormControl>
+                <Textarea 
+                  {...field} 
+                  placeholder="Explain reason for manual override"
+                  value={field.value || ''}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
+      )}
+
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <Label>Allowed Laytime</Label>
+          <div className="flex items-center mt-1">
+            <Input type="text" value={allowedLaytime.toFixed(2)} readOnly className="bg-muted" />
+            <span className="ml-2">hours</span>
+          </div>
+        </div>
+        
+        <div>
+          <Label>Time Saved</Label>
+          <div className="flex items-center mt-1">
+            <Input 
+              type="text" 
+              value={timeSaved.toFixed(2)} 
+              readOnly 
+              className={`${timeSaved > 0 ? 'bg-green-50' : 'bg-muted'}`} 
+            />
+            <span className="ml-2">hours</span>
+          </div>
+        </div>
       </div>
 
       <FormField
         control={form.control}
-        name={isLoadPort ? "loadPort.loadDemurrage" : "dischargePort.dischargeDemurrage"}
+        name={`${baseFieldName}.${isLoad ? 'loadDemurrage' : 'dischargeDemurrage'}`}
         render={({ field }) => (
-          <FormItem className="mb-4">
-            <div className="flex items-center gap-1.5">
-              <FormLabel>{isLoadPort ? 'Load' : 'Discharge'} Demurrage</FormLabel>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Automatically calculated when total hours exceed allowed laytime
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+          <FormItem>
+            <FormLabel>{title} Demurrage Hours</FormLabel>
             <FormControl>
-              <Input 
-                type="number" 
-                value={field.value || 0}
-                className="font-medium bg-muted text-foreground"
-                readOnly
-              />
+              <div className="flex items-center">
+                <Input 
+                  type="number" 
+                  {...field}
+                  value={field.value || 0}
+                  readOnly
+                  className="bg-muted"
+                />
+                <span className="ml-2">hours</span>
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>
         )}
       />
-
-      <div>
-        <div className="flex items-center gap-1.5">
-          <FormLabel>Time Saved</FormLabel>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                Time saved when total hours are less than allowed laytime
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <Input
-          type="number"
-          value={timeSaved}
-          className="font-medium bg-muted text-foreground"
-          readOnly
-        />
-      </div>
     </div>
   );
 };

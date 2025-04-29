@@ -26,6 +26,8 @@ import {
   calculateTimeSaved,
   calculateDemurrageHours
 } from './demurrageCalculationUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { useBargesVessels } from '@/hooks/useBargesVessels';
 
 interface DemurrageCalculatorProps {
   movement: Movement;
@@ -38,6 +40,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
 }) => {
   const [loadPortOverride, setLoadPortOverride] = useState<ManualOverride | null>(null);
   const [dischargePortOverride, setDischargePortOverride] = useState<ManualOverride | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [calculatedValues, setCalculatedValues] = useState({
     loadPortTotal: 0,
     dischargePortTotal: 0,
@@ -51,12 +54,19 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
     rate: 0,
   });
 
+  const { barges, getBargeByName } = useBargesVessels();
+
+  // Initialize form with existing barge data if available
+  const initBargeName = movement.bargeName || '';
+  const barge = getBargeByName(initBargeName);
+  
   const form = useForm<DemurrageFormValues>({
     resolver: zodResolver(demurrageFormSchema),
     defaultValues: {
-      bargeName: movement.bargeName || '',
+      bargeName: initBargeName,
+      bargeVesselId: barge?.id,
       blDate: movement.blDate ? new Date(movement.blDate) : undefined,
-      deadWeight: 0,
+      deadWeight: barge?.deadweight || 0,
       quantityLoaded: movement.actualQuantity || 0,
       calculationRate: "TTB",
       nominationSent: undefined,
@@ -68,12 +78,16 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
         finish: new Date(),
         rounding: "N",
         loadDemurrage: 0,
+        isManual: false,
+        overrideComment: '',
       },
       dischargePort: {
         start: new Date(),
         finish: new Date(),
         rounding: "N",
         dischargeDemurrage: 0,
+        isManual: false,
+        overrideComment: '',
       },
       freeTime: 0, // Will be calculated automatically
       rate: 0, // Will be calculated automatically
@@ -222,11 +236,76 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
     }
   };
 
-  const onSubmit = (data: DemurrageFormValues) => {
-    console.log('Demurrage calculation form submitted:', data);
-    console.log('Calculated values:', calculatedValues);
-    toast.success("Calculation complete", { description: "Demurrage calculation has been saved." });
-    onClose();
+  const onSubmit = async (data: DemurrageFormValues) => {
+    try {
+      setIsSaving(true);
+      console.log('Demurrage calculation form submitted:', data);
+      console.log('Calculated values:', calculatedValues);
+      
+      // Convert Date objects to ISO strings for Supabase
+      const loadPortStart = data.loadPort.start ? data.loadPort.start.toISOString() : null;
+      const loadPortFinish = data.loadPort.finish ? data.loadPort.finish.toISOString() : null;
+      const dischargePortStart = data.dischargePort.start ? data.dischargePort.start.toISOString() : null;
+      const dischargePortFinish = data.dischargePort.finish ? data.dischargePort.finish.toISOString() : null;
+      const nominationSent = data.nominationSent ? data.nominationSent.toISOString() : null;
+      const nominationValid = data.nominationValid ? data.nominationValid.toISOString() : null;
+      const bargeArrived = data.bargeArrived ? data.bargeArrived.toISOString() : null;
+      const timeStartsToRun = data.timeStartsToRun ? data.timeStartsToRun.toISOString() : null;
+      
+      // Save to database
+      const { data: insertedData, error } = await supabase.from('demurrage_calculations').insert({
+        movement_id: movement.id,
+        barge_vessel_id: data.bargeVesselId,
+        bl_date: data.blDate ? data.blDate.toISOString().split('T')[0] : null,
+        quantity_loaded: data.quantityLoaded || 0,
+        calculation_rate: data.calculationRate,
+        nomination_sent: nominationSent,
+        nomination_valid: nominationValid,
+        barge_arrived: bargeArrived,
+        time_starts_to_run: timeStartsToRun,
+        
+        // Load port data
+        load_port_start: loadPortStart,
+        load_port_finish: loadPortFinish,
+        load_port_rounding: data.loadPort.rounding,
+        load_port_hours: calculatedValues.loadPortTotal,
+        load_port_demurrage_hours: data.loadPort.loadDemurrage || 0,
+        load_port_is_manual: data.loadPort.isManual,
+        load_port_override_comment: data.loadPort.isManual ? data.loadPort.overrideComment : null,
+        
+        // Discharge port data
+        discharge_port_start: dischargePortStart,
+        discharge_port_finish: dischargePortFinish,
+        discharge_port_rounding: data.dischargePort.rounding,
+        discharge_port_hours: calculatedValues.dischargePortTotal,
+        discharge_port_demurrage_hours: data.dischargePort.dischargeDemurrage || 0,
+        discharge_port_is_manual: data.dischargePort.isManual,
+        discharge_port_override_comment: data.dischargePort.isManual ? data.dischargePort.overrideComment : null,
+        
+        // Calculation results
+        total_laytime: calculatedValues.totalLaytime,
+        rate: calculatedValues.rate,
+        total_time_used: calculatedValues.totalTimeUsed,
+        demurrage_hours: calculatedValues.demurrageHours,
+        demurrage_due: calculatedValues.demurrageDue,
+        
+        comments: data.comments
+      }).select();
+
+      if (error) {
+        throw new Error(`Failed to save demurrage calculation: ${error.message}`);
+      }
+      
+      toast.success("Calculation complete", { description: "Demurrage calculation has been saved." });
+      onClose();
+    } catch (error) {
+      console.error('[DEMURRAGE] Save error:', error);
+      toast.error("Save failed", {
+        description: error instanceof Error ? error.message : "Failed to save demurrage calculation"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -276,7 +355,9 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
 
           <DialogFooter>
             <Button variant="outline" type="button" onClick={onClose}>Cancel</Button>
-            <Button type="submit">Save Calculation</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Calculation'}
+            </Button>
           </DialogFooter>
         </form>
       </Form>

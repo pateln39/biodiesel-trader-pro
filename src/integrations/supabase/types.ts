@@ -42,6 +42,42 @@ export type Database = {
         }
         Relationships: []
       }
+      barges_vessels: {
+        Row: {
+          created_at: string
+          deadweight: number
+          id: string
+          imo_number: string
+          is_active: boolean | null
+          name: string
+          owners: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadweight: number
+          id?: string
+          imo_number: string
+          is_active?: boolean | null
+          name: string
+          owners?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadweight?: number
+          id?: string
+          imo_number?: string
+          is_active?: boolean | null
+          name?: string
+          owners?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brokers: {
         Row: {
           created_at: string | null
@@ -131,6 +167,126 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      demurrage_calculations: {
+        Row: {
+          barge_arrived: string | null
+          barge_vessel_id: string | null
+          bl_date: string | null
+          calculation_rate: string
+          comments: string | null
+          created_at: string
+          demurrage_due: number | null
+          demurrage_hours: number | null
+          discharge_port_demurrage_hours: number | null
+          discharge_port_finish: string | null
+          discharge_port_hours: number | null
+          discharge_port_is_manual: boolean | null
+          discharge_port_override_comment: string | null
+          discharge_port_rounding: string | null
+          discharge_port_start: string | null
+          id: string
+          load_port_demurrage_hours: number | null
+          load_port_finish: string | null
+          load_port_hours: number | null
+          load_port_is_manual: boolean | null
+          load_port_override_comment: string | null
+          load_port_rounding: string | null
+          load_port_start: string | null
+          movement_id: string | null
+          nomination_sent: string | null
+          nomination_valid: string | null
+          quantity_loaded: number
+          rate: number | null
+          time_starts_to_run: string | null
+          total_laytime: number | null
+          total_time_used: number | null
+          updated_at: string
+        }
+        Insert: {
+          barge_arrived?: string | null
+          barge_vessel_id?: string | null
+          bl_date?: string | null
+          calculation_rate: string
+          comments?: string | null
+          created_at?: string
+          demurrage_due?: number | null
+          demurrage_hours?: number | null
+          discharge_port_demurrage_hours?: number | null
+          discharge_port_finish?: string | null
+          discharge_port_hours?: number | null
+          discharge_port_is_manual?: boolean | null
+          discharge_port_override_comment?: string | null
+          discharge_port_rounding?: string | null
+          discharge_port_start?: string | null
+          id?: string
+          load_port_demurrage_hours?: number | null
+          load_port_finish?: string | null
+          load_port_hours?: number | null
+          load_port_is_manual?: boolean | null
+          load_port_override_comment?: string | null
+          load_port_rounding?: string | null
+          load_port_start?: string | null
+          movement_id?: string | null
+          nomination_sent?: string | null
+          nomination_valid?: string | null
+          quantity_loaded: number
+          rate?: number | null
+          time_starts_to_run?: string | null
+          total_laytime?: number | null
+          total_time_used?: number | null
+          updated_at?: string
+        }
+        Update: {
+          barge_arrived?: string | null
+          barge_vessel_id?: string | null
+          bl_date?: string | null
+          calculation_rate?: string
+          comments?: string | null
+          created_at?: string
+          demurrage_due?: number | null
+          demurrage_hours?: number | null
+          discharge_port_demurrage_hours?: number | null
+          discharge_port_finish?: string | null
+          discharge_port_hours?: number | null
+          discharge_port_is_manual?: boolean | null
+          discharge_port_override_comment?: string | null
+          discharge_port_rounding?: string | null
+          discharge_port_start?: string | null
+          id?: string
+          load_port_demurrage_hours?: number | null
+          load_port_finish?: string | null
+          load_port_hours?: number | null
+          load_port_is_manual?: boolean | null
+          load_port_override_comment?: string | null
+          load_port_rounding?: string | null
+          load_port_start?: string | null
+          movement_id?: string | null
+          nomination_sent?: string | null
+          nomination_valid?: string | null
+          quantity_loaded?: number
+          rate?: number | null
+          time_starts_to_run?: string | null
+          total_laytime?: number | null
+          total_time_used?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demurrage_calculations_barge_vessel_id_fkey"
+            columns: ["barge_vessel_id"]
+            isOneToOne: false
+            referencedRelation: "barges_vessels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demurrage_calculations_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "movements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       forward_prices: {
         Row: {

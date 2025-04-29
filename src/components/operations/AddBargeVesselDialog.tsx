@@ -3,6 +3,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { toast } from 'sonner';
 import {
   DialogContent,
   DialogHeader,
@@ -19,6 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -50,8 +52,31 @@ const AddBargeVesselDialog = ({
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    onAddBarge(data);
+  const onSubmit = async (data: FormValues) => {
+    try {
+      // Save to database
+      const { error } = await supabase.from('barges_vessels').insert({
+        name: data.name,
+        deadweight: parseFloat(data.size),
+        imo_number: data.imo,
+        type: data.type || null,
+        owners: data.owners || null
+      });
+
+      if (error) {
+        console.error('Error saving barge/vessel:', error);
+        toast.error('Failed to save barge/vessel data', {
+          description: error.message
+        });
+        return;
+      }
+
+      toast.success('Barge/vessel data saved successfully');
+      onAddBarge(data);
+    } catch (err) {
+      console.error('Error in barge/vessel save:', err);
+      toast.error('An unexpected error occurred');
+    }
   };
 
   return (
