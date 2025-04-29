@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,23 +15,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-interface EditableTotalHoursFieldProps {
+export interface EditableTotalHoursFieldProps {
   calculatedValue: number;
-  label: string;
+  label?: string;
   onSave: (manualValue: number | null, comment: string) => void;
   isOverridden?: boolean;
+  overrideValue?: number | null;
+  comment?: string;
+  onCommentToggle?: () => void;
 }
 
 export function EditableTotalHoursField({
   calculatedValue,
-  label,
+  label = "Total Hours",
   onSave,
-  isOverridden = false
+  isOverridden = false,
+  overrideValue = null,
+  comment = '',
+  onCommentToggle
 }: EditableTotalHoursFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [manualValue, setManualValue] = useState<string>(calculatedValue.toString());
-  const [comment, setComment] = useState('');
+  const [manualValue, setManualValue] = useState<string>(overrideValue !== null ? overrideValue.toString() : calculatedValue.toString());
+  const [editComment, setEditComment] = useState(comment || '');
 
   const handleSave = () => {
     const numericValue = parseFloat(manualValue);
@@ -38,13 +45,13 @@ export function EditableTotalHoursField({
       toast.error("Please enter a valid number");
       return;
     }
-    if (!comment.trim()) {
+    if (!editComment.trim()) {
       toast.error("Please provide a comment explaining the change");
       return;
     }
-    onSave(numericValue, comment);
+    onSave(numericValue, editComment);
     setIsEditing(false);
-    setComment('');
+    setEditComment('');
     toast.success("Total hours updated successfully");
   };
 
@@ -74,7 +81,7 @@ export function EditableTotalHoursField({
       <div className="flex items-center gap-2">
         <Input
           type="number"
-          value={calculatedValue}
+          value={overrideValue !== null ? overrideValue : calculatedValue}
           className="font-medium bg-muted text-foreground"
           readOnly
         />
@@ -108,8 +115,8 @@ export function EditableTotalHoursField({
         open={isEditing} 
         onOpenChange={(open) => {
           if (!open) {
-            setManualValue(calculatedValue.toString());
-            setComment('');
+            setManualValue(overrideValue !== null ? overrideValue.toString() : calculatedValue.toString());
+            setEditComment(comment);
           }
           setIsEditing(open);
         }}
@@ -138,8 +145,8 @@ export function EditableTotalHoursField({
               </Label>
               <Textarea
                 id="comment"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                value={editComment}
+                onChange={(e) => setEditComment(e.target.value)}
                 placeholder="Enter reason for change"
                 className="min-h-[100px]"
               />
@@ -158,7 +165,7 @@ export function EditableTotalHoursField({
         open={isResetDialogOpen} 
         onOpenChange={(open) => {
           if (!open) {
-            setManualValue(calculatedValue.toString());
+            setManualValue(overrideValue !== null ? overrideValue.toString() : calculatedValue.toString());
           }
           setIsResetDialogOpen(open);
         }}

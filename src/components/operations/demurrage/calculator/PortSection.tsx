@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
 import { UseFormReturn } from 'react-hook-form';
 import { DemurrageFormValues, ManualOverride } from './DemurrageFormTypes';
 import { EditableTotalHoursField } from "../EditableTotalHoursField";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface PortSectionProps {
   form: UseFormReturn<DemurrageFormValues>;
@@ -37,6 +37,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
   const title = isLoad ? 'Load Port' : 'Discharge Port';
   const roundingValue = form.watch(`${baseFieldName}.rounding`);
   const isManual = form.watch(`${baseFieldName}.isManual`);
+  const demurrageFieldName = isLoad ? 'loadPort.loadDemurrage' : 'dischargePort.dischargeDemurrage';
 
   const handleOverrideChange = (value: number | null, comment: string) => {
     form.setValue(`${baseFieldName}.isManual`, value !== null);
@@ -66,10 +67,9 @@ export const PortSection: React.FC<PortSectionProps> = ({
           <FormItem className="mb-4">
             <FormLabel>Start Time</FormLabel>
             <FormControl>
-              <DatePicker 
+              <DateTimePicker 
                 date={field.value} 
                 setDate={field.onChange}
-                showTimeSelect
               />
             </FormControl>
             <FormMessage />
@@ -84,10 +84,9 @@ export const PortSection: React.FC<PortSectionProps> = ({
           <FormItem className="mb-4">
             <FormLabel>Finish Time</FormLabel>
             <FormControl>
-              <DatePicker 
+              <DateTimePicker 
                 date={field.value} 
                 setDate={field.onChange}
-                showTimeSelect
               />
             </FormControl>
             <FormMessage />
@@ -133,6 +132,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
             onSave={handleOverrideChange}
             comment={override?.comment || ''}
             onCommentToggle={() => setShowOverrideComment(!showOverrideComment)}
+            isOverridden={isManual}
           />
         </div>
       </div>
@@ -182,7 +182,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
 
       <FormField
         control={form.control}
-        name={`${baseFieldName}.${isLoad ? 'loadDemurrage' : 'dischargeDemurrage'}`}
+        name={demurrageFieldName}
         render={({ field }) => (
           <FormItem>
             <FormLabel>{title} Demurrage Hours</FormLabel>
@@ -190,8 +190,8 @@ export const PortSection: React.FC<PortSectionProps> = ({
               <div className="flex items-center">
                 <Input 
                   type="number" 
-                  {...field}
                   value={field.value || 0}
+                  onChange={field.onChange}
                   readOnly
                   className="bg-muted"
                 />

@@ -5,7 +5,6 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from "@/components/ui/data-table";
-import { ColumnDef } from '@tanstack/react-table';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -29,6 +28,14 @@ interface DemurrageCalculation {
   barge_name: string | null;
   counterparty: string | null;
 }
+
+// Define the column type
+type ColumnDef<TData, TValue = unknown> = {
+  accessorKey?: string;
+  header: React.ReactNode | ((props: { column: any }) => React.ReactNode);
+  cell?: (props: { row: any }) => React.ReactNode;
+  // Add other properties as needed
+};
 
 const DemurragePage = () => {
   const [calculations, setCalculations] = useState<DemurrageCalculation[]>([]);
