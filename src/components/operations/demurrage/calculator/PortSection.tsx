@@ -174,7 +174,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
               type="text" 
               value={timeSaved > 0 ? timeSaved.toFixed(2) : "0.00"} 
               readOnly 
-              className={`${timeSaved > 0 ? 'bg-green-50 text-green-700' : 'bg-muted'}`} 
+              className={`${timeSaved > 0 ? 'bg-green-50' : 'bg-muted'}`} 
             />
             <span className="ml-2">hours</span>
           </div>
