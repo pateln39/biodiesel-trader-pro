@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UseFormReturn } from 'react-hook-form';
 import { DemurrageFormValues } from './DemurrageFormTypes';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon } from 'lucide-react';
 
 interface SummarySectionProps {
   form: UseFormReturn<DemurrageFormValues>;
@@ -12,6 +14,8 @@ interface SummarySectionProps {
     totalTimeUsed: number;
     demurrageHours: number;
     demurrageDue: number;
+    totalLaytime: number;
+    rate: number;
   };
 }
 
@@ -31,23 +35,27 @@ export const SummarySection: React.FC<SummarySectionProps> = ({ form, calculated
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="freeTime"
-          render={({ field }) => (
-            <FormItem className="mb-4">
-              <FormLabel>Free Time (allowed laytime)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                  value={field.value || ''}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5">
+            <FormLabel>Free Time (allowed laytime)</FormLabel>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Automatically calculated based on loaded quantity
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Input
+            type="number"
+            value={calculatedValues.totalLaytime}
+            className="font-medium bg-muted text-foreground"
+            readOnly
+          />
+        </div>
 
         <div className="mb-4">
           <FormLabel>Demurrage Hours</FormLabel>
@@ -59,26 +67,30 @@ export const SummarySection: React.FC<SummarySectionProps> = ({ form, calculated
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="rate"
-          render={({ field }) => (
-            <FormItem className="mb-4">
-              <FormLabel>Rate</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                  value={field.value || ''}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5">
+            <FormLabel>Rate (€/hour)</FormLabel>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Automatically calculated based on {form.watch('calculationRate') === 'TTB' ? 'deadweight tonnage' : 'loaded quantity'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Input
+            type="number"
+            value={calculatedValues.rate}
+            className="font-medium bg-muted text-foreground"
+            readOnly
+          />
+        </div>
 
         <div className="col-span-2 mb-4">
-          <FormLabel>Demurrage Due</FormLabel>
+          <FormLabel>Demurrage Due (€)</FormLabel>
           <Input
             type="number"
             value={calculatedValues.demurrageDue}

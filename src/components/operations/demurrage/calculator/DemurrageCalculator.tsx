@@ -20,6 +20,12 @@ import { BargeSectionFields } from './BargeSectionFields';
 import { NominationSectionFields } from './NominationSectionFields';
 import { PortSection } from './PortSection';
 import { SummarySection } from './SummarySection';
+import { 
+  calculateTotalLaytime, 
+  calculateRate, 
+  calculateTimeSaved,
+  calculateDemurrageHours
+} from './demurrageCalculationUtils';
 
 interface DemurrageCalculatorProps {
   movement: Movement;
@@ -40,6 +46,9 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
     totalTimeUsed: 0,
     demurrageHours: 0,
     demurrageDue: 0,
+    totalLaytime: 0,
+    allowedLaytimePerPort: 0,
+    rate: 0,
   });
 
   const form = useForm<DemurrageFormValues>({
@@ -66,8 +75,8 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
         rounding: "N",
         dischargeDemurrage: 0,
       },
-      freeTime: 0,
-      rate: 0,
+      freeTime: 0, // Will be calculated automatically
+      rate: 0, // Will be calculated automatically
       comments: '',
     },
   });
@@ -99,6 +108,36 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
 
   const formValues = form.watch();
 
+  // Calculate laytime and rate based on loaded quantity and calculation rate
+  useEffect(() => {
+    try {
+      const quantityLoaded = formValues.quantityLoaded || 0;
+      const deadWeight = formValues.deadWeight || 0;
+      const calculationRate = formValues.calculationRate;
+      
+      // Calculate total allowed laytime based on loaded quantity
+      const totalLaytime = calculateTotalLaytime(quantityLoaded);
+      
+      // Calculate rate based on calculation method
+      const rate = calculateRate(calculationRate, deadWeight, quantityLoaded);
+      
+      // Update form values
+      form.setValue('freeTime', totalLaytime);
+      form.setValue('rate', rate);
+      
+      // Update calculated values
+      setCalculatedValues(prev => ({
+        ...prev,
+        totalLaytime,
+        allowedLaytimePerPort: totalLaytime / 2,
+        rate
+      }));
+    } catch (error) {
+      console.error('Error calculating laytime and rate:', error);
+    }
+  }, [formValues.quantityLoaded, formValues.deadWeight, formValues.calculationRate, form]);
+
+  // Calculate port hours and demurrage
   useEffect(() => {
     try {
       const loadPortTotal = loadPortOverride?.value ?? calculateHoursDifference(
@@ -113,27 +152,34 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
         formValues.dischargePort.rounding === 'Y'
       );
       
-      const loadTimeSaved = formValues.freeTime && loadPortTotal < formValues.freeTime / 2 
-        ? (formValues.freeTime / 2) - loadPortTotal 
-        : 0;
+      const allowedLaytimePerPort = calculatedValues.totalLaytime / 2;
       
-      const dischargeTimeSaved = formValues.freeTime && dischargePortTotal < formValues.freeTime / 2 
-        ? (formValues.freeTime / 2) - dischargePortTotal 
-        : 0;
+      // Calculate time saved at each port
+      const loadTimeSaved = calculateTimeSaved(loadPortTotal, allowedLaytimePerPort);
+      const dischargeTimeSaved = calculateTimeSaved(dischargePortTotal, allowedLaytimePerPort);
+      
+      // Calculate demurrage hours at each port
+      const loadDemurrageHours = calculateDemurrageHours(loadPortTotal, allowedLaytimePerPort);
+      const dischargeDemurrageHours = calculateDemurrageHours(dischargePortTotal, allowedLaytimePerPort);
+      
+      // Update form values for demurrage hours
+      form.setValue('loadPort.loadDemurrage', loadDemurrageHours);
+      form.setValue('dischargePort.dischargeDemurrage', dischargeDemurrageHours);
 
       const totalTimeUsed = loadPortTotal + dischargePortTotal;
-      const demurrageHours = formValues.freeTime ? Math.max(0, totalTimeUsed - formValues.freeTime) : 0;
-      const demurrageDue = demurrageHours * (formValues.rate || 0);
+      const demurrageHours = Math.max(0, totalTimeUsed - calculatedValues.totalLaytime);
+      const demurrageDue = demurrageHours * calculatedValues.rate;
 
-      setCalculatedValues({
+      setCalculatedValues(prev => ({
+        ...prev,
         loadPortTotal,
         dischargePortTotal,
-        loadTimeSaved: Number(loadTimeSaved.toFixed(2)),
-        dischargeTimeSaved: Number(dischargeTimeSaved.toFixed(2)),
+        loadTimeSaved,
+        dischargeTimeSaved,
         totalTimeUsed: Number(totalTimeUsed.toFixed(2)),
         demurrageHours: Number(demurrageHours.toFixed(2)),
         demurrageDue: Number(demurrageDue.toFixed(2)),
-      });
+      }));
     } catch (error) {
       console.error('Error in calculation effect:', error);
       toast.error("Error calculating values");
@@ -145,10 +191,11 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
     formValues.dischargePort.start,
     formValues.dischargePort.finish,
     formValues.dischargePort.rounding,
-    formValues.freeTime,
-    formValues.rate,
+    calculatedValues.totalLaytime,
+    calculatedValues.rate,
     loadPortOverride,
-    dischargePortOverride
+    dischargePortOverride,
+    form
   ]);
 
   const handleLoadPortTotalSave = (value: number | null, comment: string) => {
@@ -202,6 +249,8 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
               calculatedHours={calculatedValues.loadPortTotal}
               override={loadPortOverride}
               onOverrideChange={handleLoadPortTotalSave}
+              allowedLaytime={calculatedValues.allowedLaytimePerPort}
+              timeSaved={calculatedValues.loadTimeSaved}
             />
             <PortSection
               form={form}
@@ -209,6 +258,8 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
               calculatedHours={calculatedValues.dischargePortTotal}
               override={dischargePortOverride}
               onOverrideChange={handleDischargePortTotalSave}
+              allowedLaytime={calculatedValues.allowedLaytimePerPort}
+              timeSaved={calculatedValues.dischargeTimeSaved}
             />
           </div>
 
@@ -218,6 +269,8 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
               totalTimeUsed: calculatedValues.totalTimeUsed,
               demurrageHours: calculatedValues.demurrageHours,
               demurrageDue: calculatedValues.demurrageDue,
+              totalLaytime: calculatedValues.totalLaytime,
+              rate: calculatedValues.rate,
             }} 
           />
 

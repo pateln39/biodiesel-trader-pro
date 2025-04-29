@@ -7,6 +7,8 @@ import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { UseFormReturn } from 'react-hook-form';
 import { DemurrageFormValues, ManualOverride } from './DemurrageFormTypes';
 import { EditableTotalHoursField } from '../EditableTotalHoursField';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon } from 'lucide-react';
 
 interface PortSectionProps {
   form: UseFormReturn<DemurrageFormValues>;
@@ -15,6 +17,8 @@ interface PortSectionProps {
   override: ManualOverride | null;
   onOverrideChange: (value: number | null, comment: string) => void;
   className?: string;
+  allowedLaytime: number;
+  timeSaved: number;
 }
 
 export const PortSection: React.FC<PortSectionProps> = ({ 
@@ -23,7 +27,9 @@ export const PortSection: React.FC<PortSectionProps> = ({
   calculatedHours,
   override,
   onOverrideChange,
-  className = ''
+  className = '',
+  allowedLaytime,
+  timeSaved
 }) => {
   const isLoadPort = type === 'load';
   const baseFieldName = isLoadPort ? 'loadPort' : 'dischargePort';
@@ -111,17 +117,52 @@ export const PortSection: React.FC<PortSectionProps> = ({
         )}
       />
 
+      <div className="mb-4">
+        <div className="flex items-center gap-1.5">
+          <FormLabel>Allowed Laytime</FormLabel>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Half of the total allowed laytime based on loaded quantity
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <Input
+          type="number"
+          value={allowedLaytime}
+          className="font-medium bg-muted text-foreground"
+          readOnly
+        />
+      </div>
+
       <FormField
         control={form.control}
         name={isLoadPort ? "loadPort.loadDemurrage" : "dischargePort.dischargeDemurrage"}
         render={({ field }) => (
           <FormItem className="mb-4">
-            <FormLabel>{isLoadPort ? 'Load' : 'Discharge'} Demurrage</FormLabel>
+            <div className="flex items-center gap-1.5">
+              <FormLabel>{isLoadPort ? 'Load' : 'Discharge'} Demurrage</FormLabel>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Automatically calculated when total hours exceed allowed laytime
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <FormControl>
               <Input 
                 type="number" 
-                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                value={field.value || ''}
+                value={field.value || 0}
+                className="font-medium bg-muted text-foreground"
+                readOnly
               />
             </FormControl>
             <FormMessage />
@@ -130,10 +171,22 @@ export const PortSection: React.FC<PortSectionProps> = ({
       />
 
       <div>
-        <FormLabel>Time Saved</FormLabel>
+        <div className="flex items-center gap-1.5">
+          <FormLabel>Time Saved</FormLabel>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Time saved when total hours are less than allowed laytime
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <Input
           type="number"
-          value={calculatedHours}
+          value={timeSaved}
           className="font-medium bg-muted text-foreground"
           readOnly
         />

@@ -23,8 +23,8 @@ export const demurrageFormSchema = z.object({
     rounding: z.enum(["Y", "N"]),
     dischargeDemurrage: z.number().min(0).optional(),
   }),
-  freeTime: z.number().min(0).optional(),
-  rate: z.number().min(0).optional(),
+  freeTime: z.number().min(0).optional(),  // Will be auto-calculated
+  rate: z.number().min(0).optional(),      // Will be auto-calculated
   comments: z.string().optional(),
 });
 
