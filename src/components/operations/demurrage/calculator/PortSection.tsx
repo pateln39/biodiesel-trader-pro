@@ -124,17 +124,15 @@ export const PortSection: React.FC<PortSectionProps> = ({
       />
 
       <div className="mb-4">
-        <Label>Total Hours</Label>
-        <div className="mt-2">
-          <EditableTotalHoursField
-            calculatedValue={calculatedHours}
-            overrideValue={override?.value}
-            onSave={handleOverrideChange}
-            comment={override?.comment || ''}
-            onCommentToggle={() => setShowOverrideComment(!showOverrideComment)}
-            isOverridden={isManual}
-          />
-        </div>
+        <EditableTotalHoursField
+          calculatedValue={calculatedHours}
+          overrideValue={override?.value}
+          onSave={handleOverrideChange}
+          comment={override?.comment || ''}
+          onCommentToggle={() => setShowOverrideComment(!showOverrideComment)}
+          isOverridden={isManual}
+          label="Total Hours"
+        />
       </div>
 
       {(isManual || showOverrideComment) && (
@@ -174,7 +172,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
               type="text" 
               value={timeSaved > 0 ? timeSaved.toFixed(2) : "0.00"} 
               readOnly 
-              className={`${timeSaved > 0 ? 'bg-green-50' : 'bg-muted'}`} 
+              className={`${timeSaved > 0 ? 'bg-green-50 text-black' : 'bg-muted text-foreground'}`} 
             />
             <span className="ml-2">hours</span>
           </div>
