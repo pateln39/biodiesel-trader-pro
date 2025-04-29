@@ -157,7 +157,8 @@ export const PortSection: React.FC<PortSectionProps> = ({
         />
       )}
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      {/* Changed layout: sequential instead of grid */}
+      <div className="space-y-4 mb-4">
         <div>
           <Label>Allowed Laytime</Label>
           <div className="flex items-center mt-1">
@@ -171,7 +172,7 @@ export const PortSection: React.FC<PortSectionProps> = ({
           <div className="flex items-center mt-1">
             <Input 
               type="text" 
-              value={timeSaved.toFixed(2)} 
+              value={timeSaved > 0 ? timeSaved.toFixed(2) : "0.00"} 
               readOnly 
               className={`${timeSaved > 0 ? 'bg-green-50' : 'bg-muted'}`} 
             />

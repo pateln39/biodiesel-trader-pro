@@ -51,6 +51,9 @@ export const calculateTotalLaytime = (loadedQuantity: number): number => {
  * @param deadWeight - The barge deadweight tonnage (for TTB)
  * @param loadedQuantity - The actual loaded quantity (for BP)
  * @returns Rate in euros per hour
+ * 
+ * Example: For a TTB deal with barge deadweight of 5000, the rate would be €200/hour
+ * as per the rateTable (entry [5000, 200])
  */
 export const calculateRate = (
   calculationRate: 'TTB' | 'BP', 
@@ -77,6 +80,10 @@ export const calculateRate = (
  * @param portHours - Total hours used at port
  * @param allowedLaytime - Allowed laytime for this port (half of total laytime)
  * @returns Time saved in hours (0 if port hours exceed allowed laytime)
+ * 
+ * Note: This function already correctly returns 0 when there is no time saved 
+ * (when port hours exceed allowed laytime). The UI component should display "0.00"
+ * in this case.
  */
 export const calculateTimeSaved = (portHours: number, allowedLaytime: number): number => {
   if (portHours >= allowedLaytime) {
