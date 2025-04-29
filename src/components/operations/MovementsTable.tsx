@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye, Calculator } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -50,6 +50,7 @@ import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { DateSortHeader } from './DateSortHeader';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -70,6 +71,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [selectedLegId, setSelectedLegId] = useState<string | undefined>(undefined);
   const [isStorageFormOpen, setIsStorageFormOpen] = useState(false);
   const [selectedMovementForStorage, setSelectedMovementForStorage] = useState<Movement | null>(null);
+  const [isDemurrageDialogOpen, setIsDemurrageDialogOpen] = useState(false);
+  const [selectedMovementForDemurrage, setSelectedMovementForDemurrage] = useState<Movement | null>(null);
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
@@ -195,6 +198,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const handleStorageClick = (movement: Movement) => {
     setSelectedMovementForStorage(movement);
     setIsStorageFormOpen(true);
+  };
+
+  const handleDemurrageCalculatorClick = (movement: Movement) => {
+    setSelectedMovementForDemurrage(movement);
+    setIsDemurrageDialogOpen(true);
   };
 
   const {
@@ -450,6 +458,23 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => handleDemurrageCalculatorClick(movement)}
+                >
+                  <Calculator className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Demurrage Calculator</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -526,6 +551,15 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onOpenChange={setIsStorageFormOpen}
           movement={selectedMovementForStorage}
         />
+      )}
+
+      {selectedMovementForDemurrage && (
+        <Dialog open={isDemurrageDialogOpen} onOpenChange={setIsDemurrageDialogOpen}>
+          <DemurrageCalculatorDialog
+            movement={selectedMovementForDemurrage}
+            onClose={() => setIsDemurrageDialogOpen(false)}
+          />
+        </Dialog>
       )}
 
       <TradeDetailsDialog
