@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -73,6 +74,51 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [selectedMovementForStorage, setSelectedMovementForStorage] = useState<Movement | null>(null);
   const [isDemurrageDialogOpen, setIsDemurrageDialogOpen] = useState(false);
   const [selectedMovementForDemurrage, setSelectedMovementForDemurrage] = useState<Movement | null>(null);
+
+  // Handler functions
+  const handleCommentsClick = (movement: Movement) => {
+    setSelectedMovementForComments(movement);
+    setIsCommentsDialogOpen(true);
+  };
+
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatusMutation.mutate({ id, status });
+  };
+
+  const handleViewTradeDetails = (tradeId: string, legId?: string) => {
+    setSelectedTradeId(tradeId);
+    setSelectedLegId(legId);
+    setTradeDetailsOpen(true);
+  };
+
+  const handleEditMovement = (movement: Movement) => {
+    setSelectedMovement(movement);
+    setEditDialogOpen(true);
+  };
+
+  const handleStorageClick = (movement: Movement) => {
+    setSelectedMovementForStorage(movement);
+    setIsStorageFormOpen(true);
+  };
+
+  const handleDemurrageCalculatorClick = (movement: Movement) => {
+    setSelectedMovementForDemurrage(movement);
+    setIsDemurrageDialogOpen(true);
+  };
+
+  const handleDeleteMovement = (id: string) => {
+    deleteMovementMutation.mutate(id);
+  };
+
+  const handleEditComplete = () => {
+    setEditDialogOpen(false);
+    setSelectedMovement(null);
+    queryClient.invalidateQueries({ queryKey: ['movements'] });
+  };
+
+  const handleCommentsUpdate = (id: string, comments: string) => {
+    updateCommentsMutation.mutate({ id, comments });
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
