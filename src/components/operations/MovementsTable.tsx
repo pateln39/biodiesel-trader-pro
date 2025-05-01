@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,8 +115,16 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     queryClient.invalidateQueries({ queryKey: ['movements'] });
   };
 
+  // Fix for the type mismatch - create a wrapper function that adapts the interface
   const handleCommentsUpdate = (id: string, comments: string) => {
     updateCommentsMutation.mutate({ id, comments });
+  };
+
+  // This is the adapter function that matches CommentsCellInput's expected signature
+  const handleSelectedMovementCommentsUpdate = (comments: string) => {
+    if (selectedMovementForComments) {
+      handleCommentsUpdate(selectedMovementForComments.id, comments);
+    }
   };
 
   const updateStatusMutation = useMutation({
@@ -534,7 +541,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               <CommentsCellInput
                 tradeId={selectedMovementForComments.id}
                 initialValue={selectedMovementForComments.comments || ''}
-                onSave={handleCommentsUpdate}
+                onSave={handleSelectedMovementCommentsUpdate}
                 showButtons={true}
                 onCancel={() => setIsCommentsDialogOpen(false)}
               />
