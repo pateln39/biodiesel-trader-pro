@@ -12,31 +12,92 @@ export type DateSortColumn =
   | 'codDate'
   | null;
 
+export type SortDirection = 'asc' | 'desc';
+
+export interface SortConfig {
+  column: DateSortColumn;
+  direction: SortDirection;
+}
+
 export const useMovementDateSort = () => {
-  const [activeSortColumn, setActiveSortColumn] = useState<DateSortColumn>(null);
+  const [sortColumns, setSortColumns] = useState<SortConfig[]>([]);
+
+  const toggleSortColumn = useCallback((column: DateSortColumn) => {
+    if (!column) return;
+
+    setSortColumns(prevSortColumns => {
+      // Find if column is already in the sort config
+      const existingColumnIndex = prevSortColumns.findIndex(sc => sc.column === column);
+
+      // Clone the array to avoid mutating state directly
+      const updatedSortColumns = [...prevSortColumns];
+
+      if (existingColumnIndex >= 0) {
+        // Column exists in sort config - toggle direction or remove
+        const currentConfig = updatedSortColumns[existingColumnIndex];
+        
+        if (currentConfig.direction === 'desc') {
+          // If already descending, remove from sort
+          updatedSortColumns.splice(existingColumnIndex, 1);
+        } else {
+          // If ascending, change to descending
+          updatedSortColumns[existingColumnIndex] = {
+            ...currentConfig,
+            direction: 'desc'
+          };
+        }
+      } else {
+        // Column is not in sort config - add it with ascending direction
+        updatedSortColumns.push({
+          column,
+          direction: 'asc'
+        });
+      }
+
+      return updatedSortColumns;
+    });
+  }, []);
 
   const sortMovements = useCallback((movements: Movement[]) => {
-    if (!activeSortColumn || !movements.length) return movements;
+    if (!sortColumns.length || !movements.length) return movements;
 
-    console.log(`[MOVEMENTS] Sorting by ${activeSortColumn}`);
+    console.log(`[MOVEMENTS] Sorting by multiple columns: ${sortColumns.map((sc, i) => 
+      `${i+1}. ${sc.column} (${sc.direction})`).join(', ')}`);
 
     return [...movements].sort((a, b) => {
-      const dateA = a[activeSortColumn];
-      const dateB = b[activeSortColumn];
+      // Try each sort column in sequence
+      for (const { column, direction } of sortColumns) {
+        const dateA = a[column];
+        const dateB = b[column];
 
-      // Handle cases where dates might be undefined/null
-      if (!dateA && !dateB) return 0;
-      if (!dateA) return 1; // Push null dates to the end
-      if (!dateB) return -1;
+        // Skip if both dates are null/undefined for this column
+        if (!dateA && !dateB) continue;
+        
+        // Handle cases where only one date is null/undefined
+        if (!dateA) return direction === 'asc' ? 1 : -1;
+        if (!dateB) return direction === 'asc' ? -1 : 1;
 
-      // Sort in descending order (most recent first)
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
+        // Compare dates based on sort direction
+        const comparison = new Date(dateA).getTime() - new Date(dateB).getTime();
+        const result = direction === 'asc' ? comparison : -comparison;
+
+        // If we found a difference, return the result
+        if (result !== 0) return result;
+      }
+      
+      // If all columns compared have equal values, maintain original order
+      return 0;
     });
-  }, [activeSortColumn]);
+  }, [sortColumns]);
+
+  // For compatibility with existing code
+  const activeSortColumn = sortColumns.length > 0 ? sortColumns[0].column : null;
 
   return {
-    activeSortColumn,
-    setActiveSortColumn,
+    sortColumns,
+    activeSortColumn, // For backward compatibility
+    toggleSortColumn,
     sortMovements,
+    hasSorting: sortColumns.length > 0
   };
 };

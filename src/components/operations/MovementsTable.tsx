@@ -74,6 +74,59 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [isDemurrageDialogOpen, setIsDemurrageDialogOpen] = useState(false);
   const [selectedMovementForDemurrage, setSelectedMovementForDemurrage] = useState<Movement | null>(null);
 
+  // Handler functions
+  const handleCommentsClick = (movement: Movement) => {
+    setSelectedMovementForComments(movement);
+    setIsCommentsDialogOpen(true);
+  };
+
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatusMutation.mutate({ id, status });
+  };
+
+  const handleViewTradeDetails = (tradeId: string, legId?: string) => {
+    setSelectedTradeId(tradeId);
+    setSelectedLegId(legId);
+    setTradeDetailsOpen(true);
+  };
+
+  const handleEditMovement = (movement: Movement) => {
+    setSelectedMovement(movement);
+    setEditDialogOpen(true);
+  };
+
+  const handleStorageClick = (movement: Movement) => {
+    setSelectedMovementForStorage(movement);
+    setIsStorageFormOpen(true);
+  };
+
+  const handleDemurrageCalculatorClick = (movement: Movement) => {
+    setSelectedMovementForDemurrage(movement);
+    setIsDemurrageDialogOpen(true);
+  };
+
+  const handleDeleteMovement = (id: string) => {
+    deleteMovementMutation.mutate(id);
+  };
+
+  const handleEditComplete = () => {
+    setEditDialogOpen(false);
+    setSelectedMovement(null);
+    queryClient.invalidateQueries({ queryKey: ['movements'] });
+  };
+
+  // Fix for the type mismatch - create a wrapper function that adapts the interface
+  const handleCommentsUpdate = (id: string, comments: string) => {
+    updateCommentsMutation.mutate({ id, comments });
+  };
+
+  // This is the adapter function that matches CommentsCellInput's expected signature
+  const handleSelectedMovementCommentsUpdate = (comments: string) => {
+    if (selectedMovementForComments) {
+      handleCommentsUpdate(selectedMovementForComments.id, comments);
+    }
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
       const { data, error } = await supabase
@@ -156,59 +209,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   });
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    updateStatusMutation.mutate({ id, status: newStatus });
-  };
-
-  const handleCommentsClick = (movement: Movement) => {
-    setSelectedMovementForComments(movement);
-    setIsCommentsDialogOpen(true);
-  };
-
-  const handleCommentsUpdate = (comments: string) => {
-    if (selectedMovementForComments) {
-      updateCommentsMutation.mutate({ 
-        id: selectedMovementForComments.id, 
-        comments 
-      });
-    }
-  };
-
-  const handleDeleteMovement = (id: string) => {
-    deleteMovementMutation.mutate(id);
-  };
-
-  const handleEditMovement = (movement: Movement) => {
-    setSelectedMovement(movement);
-    setEditDialogOpen(true);
-  };
-
-  const handleEditComplete = () => {
-    setEditDialogOpen(false);
-    setSelectedMovement(null);
-    queryClient.invalidateQueries({ queryKey: ['movements'] });
-  };
-
-  const handleViewTradeDetails = (parentId: string, legId?: string) => {
-    setSelectedTradeId(parentId);
-    setSelectedLegId(legId);
-    setTradeDetailsOpen(true);
-  };
-
-  const handleStorageClick = (movement: Movement) => {
-    setSelectedMovementForStorage(movement);
-    setIsStorageFormOpen(true);
-  };
-
-  const handleDemurrageCalculatorClick = (movement: Movement) => {
-    setSelectedMovementForDemurrage(movement);
-    setIsDemurrageDialogOpen(true);
-  };
-
   const {
-    activeSortColumn,
-    setActiveSortColumn,
-    sortMovements
+    sortColumns,
+    toggleSortColumn,
+    sortMovements,
+    hasSorting
   } = useMovementDateSort();
 
   const sortedMovements = sortMovements(filteredMovements);
@@ -247,16 +252,16 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         <DateSortHeader
           column="loading_period_start"
           label="Loading Start"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>
         <DateSortHeader
           column="loading_period_end"
           label="Loading End"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>Counterparty</TableHead>
@@ -267,24 +272,24 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         <DateSortHeader
           column="nominationEta"
           label="Nomination ETA"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>
         <DateSortHeader
           column="nominationValid"
           label="Nomination Valid"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>
         <DateSortHeader
           column="cashFlow"
           label="Cash Flow Date"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead className="bg-gray-700">Barge Name</TableHead>
@@ -296,8 +301,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         <DateSortHeader
           column="blDate"
           label="BL Date"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>Actual Quantity</TableHead>
@@ -305,8 +310,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
         <DateSortHeader
           column="codDate"
           label="COD Date"
-          activeSortColumn={activeSortColumn}
-          onSort={setActiveSortColumn}
+          sortColumns={sortColumns}
+          onSort={toggleSortColumn}
         />
       </TableHead>
       <TableHead>Status</TableHead>
@@ -512,7 +517,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
-          disableDragAndDrop={activeSortColumn !== null}
+          disableDragAndDrop={hasSorting}
           disabledRowClassName=""
         />
       </div>
@@ -536,7 +541,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               <CommentsCellInput
                 tradeId={selectedMovementForComments.id}
                 initialValue={selectedMovementForComments.comments || ''}
-                onSave={handleCommentsUpdate}
+                onSave={handleSelectedMovementCommentsUpdate}
                 showButtons={true}
                 onCancel={() => setIsCommentsDialogOpen(false)}
               />
