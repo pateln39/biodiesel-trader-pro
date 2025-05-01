@@ -147,6 +147,20 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
             });
           }
           
+          // Ensure calculation_rate is a valid enum value
+          const calculationRate = data.calculation_rate === "TTB" || data.calculation_rate === "BP"
+            ? data.calculation_rate as "TTB" | "BP"
+            : "TTB"; // Default to TTB if invalid value
+            
+          // Ensure rounding values are valid enum values
+          const loadPortRounding = data.load_port_rounding === "Y" || data.load_port_rounding === "N"
+            ? data.load_port_rounding as "Y" | "N" 
+            : "N"; // Default to N if invalid value
+            
+          const dischargePortRounding = data.discharge_port_rounding === "Y" || data.discharge_port_rounding === "N"
+            ? data.discharge_port_rounding as "Y" | "N"
+            : "N"; // Default to N if invalid value
+          
           // Reset form with loaded data
           form.reset({
             bargeName: movement.bargeName || '',
@@ -154,7 +168,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
             blDate: data.bl_date ? new Date(data.bl_date) : undefined,
             deadWeight: barge?.deadweight || 0,
             quantityLoaded: data.quantity_loaded || movement.actualQuantity || 0,
-            calculationRate: data.calculation_rate || "TTB",
+            calculationRate: calculationRate,
             nominationSent,
             nominationValid,
             bargeArrived,
@@ -162,7 +176,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
             loadPort: {
               start: loadPortStart,
               finish: loadPortFinish,
-              rounding: data.load_port_rounding || "N",
+              rounding: loadPortRounding,
               loadDemurrage: data.load_port_demurrage_hours || 0,
               isManual: data.load_port_is_manual || false,
               overrideComment: data.load_port_override_comment || '',
@@ -170,7 +184,7 @@ export const DemurrageCalculator: React.FC<DemurrageCalculatorProps> = ({
             dischargePort: {
               start: dischargePortStart,
               finish: dischargePortFinish,
-              rounding: data.discharge_port_rounding || "N",
+              rounding: dischargePortRounding,
               dischargeDemurrage: data.discharge_port_demurrage_hours || 0,
               isManual: data.discharge_port_is_manual || false,
               overrideComment: data.discharge_port_override_comment || '',
