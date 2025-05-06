@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -642,7 +643,7 @@ export const useInventoryState = (terminalId?: string) => {
         .insert({
           terminal_id: terminalId,
           movement_id: null, // No associated movement for pump overs
-          quantity_mt: 0, // Start with 0 as this is just a placeholder
+          quantity_mt: 0.01, // Changed from 0 to a small non-zero value to satisfy the check constraint
           assignment_date: formatDateForStorage(new Date()),
           comments: 'PUMP_OVER' // Special identifier for pump overs
         })
