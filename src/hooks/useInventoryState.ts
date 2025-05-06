@@ -631,30 +631,51 @@ export const useInventoryState = (terminalId?: string) => {
   ];
 
   const createPumpOverMutation = useMutation({
-    mutationFn: async ({ quantity }: { quantity: number }) => {
+    mutationFn: async ({ quantity, comment }: { quantity: number; comment?: string }) => {
       if (!terminalId) throw new Error('Terminal ID is required');
       
       console.log('Creating pump over for terminal:', terminalId, 'with quantity:', quantity);
       
-      // Generate a unique movement_id for the pump over
+      // First create a movement record specifically for this pump over
       const pumpOverMovementId = crypto.randomUUID();
+      const currentDate = new Date();
+      const formattedDate = formatDateForStorage(currentDate);
       
-      // Create a new terminal assignment specifically for pump overs
-      const { data, error } = await supabase
+      // Create a movement record for the pump over
+      const { data: movementData, error: movementError } = await supabase
+        .from('movements')
+        .insert({
+          id: pumpOverMovementId,
+          reference_number: `PUMP-${pumpOverMovementId.slice(0, 6)}`,
+          bl_quantity: quantity,
+          status: 'completed',
+          product: 'Transfer', // Generic product name for pump overs
+          buy_sell: null, // Neutral, neither buy nor sell
+          comments: comment || 'Internal tank transfer',
+          terminal_id: terminalId,
+          inventory_movement_date: formattedDate
+        })
+        .select()
+        .single();
+      
+      if (movementError) throw movementError;
+      
+      // Then create the terminal assignment linked to this movement
+      const { data: assignmentData, error: assignmentError } = await supabase
         .from('movement_terminal_assignments')
         .insert({
           terminal_id: terminalId,
-          movement_id: pumpOverMovementId, // Use a unique UUID instead of null
-          quantity_mt: quantity, // Use the quantity from the form
-          assignment_date: formatDateForStorage(new Date()),
+          movement_id: pumpOverMovementId,
+          quantity_mt: quantity,
+          assignment_date: formattedDate,
           comments: 'PUMP_OVER' // Special identifier for pump overs
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (assignmentError) throw assignmentError;
       
-      return data;
+      return { movementData, assignmentData };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
@@ -714,7 +735,7 @@ export const useInventoryState = (terminalId?: string) => {
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
-    createPumpOver: (quantity: number) => createPumpOverMutation.mutate({ quantity }),
+    createPumpOver: (quantity: number, comment?: string) => createPumpOverMutation.mutate({ quantity, comment }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

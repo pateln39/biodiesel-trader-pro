@@ -139,9 +139,9 @@ const StoragePage = () => {
     setIsPumpOverFormOpen(true);
   };
 
-  const handlePumpOverSubmit = (quantity: number) => {
+  const handlePumpOverSubmit = (quantity: number, comment?: string) => {
     if (selectedTerminalId) {
-      createPumpOver(quantity);
+      createPumpOver(quantity, comment);
     }
   };
 

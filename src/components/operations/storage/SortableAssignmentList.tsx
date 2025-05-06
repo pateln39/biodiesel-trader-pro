@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   TableHead, 
@@ -39,32 +40,39 @@ const SortableAssignmentList = ({
     assignment: TerminalAssignment 
   })[] = assignments
     .map(assignment => {
+      // Find the corresponding movement
+      const movement = movements.find(m => m.assignment_id === assignment.id || m.id === assignment.movement_id);
+      
       // Check if this is a pump over assignment
       const isPumpOver = assignment.comments === 'PUMP_OVER';
       
-      // For pump overs, we create a special movement-like object
+      if (movement) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            ...movement,
+            isPumpOver: isPumpOver
+          },
+          assignment
+        };
+      }
+      
+      // If movement is not found but this is a pump over, create a special movement-like object
       if (isPumpOver) {
         return {
           id: assignment.id as string,
           movement: {
-            id: assignment.movement_id, // Now assignment.movement_id will contain a valid UUID
+            id: assignment.movement_id,
             assignment_id: assignment.id,
             buy_sell: null, // Neutral, neither buy nor sell
+            product: 'Transfer',
             isPumpOver: true
           },
           assignment
         };
       }
       
-      // For regular assignments, find the corresponding movement
-      const movement = movements.find(m => m.assignment_id === assignment.id);
-      if (!movement) return null;
-      
-      return {
-        id: assignment.id as string,
-        movement,
-        assignment
-      };
+      return null;
     })
     .filter(Boolean) as any[];
 

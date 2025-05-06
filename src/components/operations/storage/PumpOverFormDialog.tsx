@@ -27,6 +27,7 @@ const formSchema = z.object({
   quantity: z.coerce.number()
     .positive("Quantity must be positive")
     .min(0.01, "Quantity must be greater than 0"),
+  comment: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -34,7 +35,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface PumpOverFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (quantity: number) => void;
+  onSubmit: (quantity: number, comment?: string) => void;
 }
 
 const PumpOverFormDialog: React.FC<PumpOverFormDialogProps> = ({ 
@@ -46,11 +47,12 @@ const PumpOverFormDialog: React.FC<PumpOverFormDialogProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       quantity: 1,
+      comment: 'Internal tank transfer',
     },
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit(values.quantity);
+    onSubmit(values.quantity, values.comment);
     onOpenChange(false);
     form.reset();
   };
@@ -82,6 +84,23 @@ const PumpOverFormDialog: React.FC<PumpOverFormDialogProps> = ({
                       min="0.01"
                       step="0.01"
                       placeholder="Enter quantity" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="comment"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Comment (optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter comment" 
                       {...field} 
                     />
                   </FormControl>
