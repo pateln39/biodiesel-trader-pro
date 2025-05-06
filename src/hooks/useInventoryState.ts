@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -636,7 +637,24 @@ export const useInventoryState = (terminalId?: string) => {
       
       console.log('Creating pump over for terminal:', terminalId, 'with quantity:', quantity);
       
-      // First create a movement record specifically for this pump over
+      // First, get the current maximum sort_order for this terminal
+      const { data: maxSortOrderData, error: maxSortOrderError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('sort_order')
+        .eq('terminal_id', terminalId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      
+      if (maxSortOrderError) throw maxSortOrderError;
+      
+      // Calculate the new sort_order (max + 1, or 1 if no existing records)
+      const maxSortOrder = maxSortOrderData && maxSortOrderData.length > 0 && maxSortOrderData[0].sort_order
+        ? maxSortOrderData[0].sort_order
+        : 0;
+      
+      const newSortOrder = maxSortOrder + 1;
+      
+      // Create a movement record for the pump over
       const pumpOverMovementId = crypto.randomUUID();
       const currentDate = new Date();
       const formattedDate = formatDateForStorage(currentDate);
@@ -654,14 +672,14 @@ export const useInventoryState = (terminalId?: string) => {
           comments: comment || 'Internal tank transfer',
           terminal_id: terminalId,
           inventory_movement_date: formattedDate,
-          sort_order: null // Explicitly setting sort_order to null for pump overs
+          sort_order: null // Explicitly setting sort_order to null for pump overs in movements table
         })
         .select()
         .single();
       
       if (movementError) throw movementError;
       
-      // Then create the terminal assignment linked to this movement
+      // Then create the terminal assignment linked to this movement with the new sort_order
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('movement_terminal_assignments')
         .insert({
@@ -669,7 +687,8 @@ export const useInventoryState = (terminalId?: string) => {
           movement_id: pumpOverMovementId,
           quantity_mt: quantity,
           assignment_date: formattedDate,
-          comments: 'PUMP_OVER' // Special identifier for pump overs
+          comments: 'PUMP_OVER', // Special identifier for pump overs
+          sort_order: newSortOrder // Explicitly set the calculated sort_order
         })
         .select()
         .single();
@@ -740,3 +759,4 @@ export const useInventoryState = (terminalId?: string) => {
     isLoading: loadingMovements || loadingTankMovements
   };
 };
+
