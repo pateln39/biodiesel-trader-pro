@@ -36,6 +36,7 @@ const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
   bargeName: 90,
+  bargeImo: 85,  // Add width for the new IMO column
   movementDate: 75,
   nominationDate: 75,
   customs: 75,
@@ -60,6 +61,7 @@ const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
   bargeName: "Barge",
+  bargeImo: "IMO",
   movementDate: "Move Date",
   nominationDate: "Nom. Valid",
   customs: "Customs",
@@ -141,8 +143,9 @@ const StoragePage = () => {
       if (a.sort_order !== null) return -1;
       if (b.sort_order !== null) return 1;
       
-      const dateA = new Date(a.assignment_date || a.created_at);
-      const dateB = new Date(b.assignment_date || b.created_at);
+      // Use nullish coalescing for possibly missing properties
+      const dateA = new Date(a.assignment_date || a.created_at || new Date());
+      const dateB = new Date(b.assignment_date || b.created_at || new Date());
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);

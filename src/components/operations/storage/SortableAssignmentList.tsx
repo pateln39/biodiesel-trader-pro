@@ -64,6 +64,7 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
+    // Handle the case where buy_sell might be null
     return item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
@@ -103,6 +104,17 @@ const SortableAssignmentList = ({
             <TruncatedCell 
               text="Barge" 
               width={columnWidths.bargeName - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
+          {/* Add the new IMO column header */}
+          <TableHead 
+            className={`w-[${columnWidths.bargeImo}px] h-10`}
+            style={{ width: `${columnWidths.bargeImo}px` }}
+          >
+            <TruncatedCell 
+              text="IMO" 
+              width={columnWidths.bargeImo - 8} 
               className="text-[10px] font-medium"
             />
           </TableHead>
@@ -194,6 +206,14 @@ const SortableAssignmentList = ({
                 className="text-[10px]"
               />
             </TableCell>
+            {/* Add the new IMO column cell */}
+            <TableCell className="py-2 text-[10px] h-10">
+              <TruncatedCell 
+                text={movement?.barge_imo || 'N/A'} 
+                width={columnWidths.bargeImo - 16} 
+                className="text-[10px]"
+              />
+            </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
               <TruncatedCell 
                 text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
@@ -215,7 +235,7 @@ const SortableAssignmentList = ({
                   ? "bg-green-900/60 text-green-200" 
                   : "bg-blue-900/60 text-blue-200"}
               `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status}
+                {movement?.customs_status || 'N/A'}
               </span>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">

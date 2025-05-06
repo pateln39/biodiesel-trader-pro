@@ -33,7 +33,8 @@ export const useInventoryState = (terminalId?: string) => {
     queryFn: async () => {
       if (!terminalId) return [];
 
-      const { data, error } = await supabase
+      // First, query the movement_terminal_assignments with their movements
+      const { data: assignmentsData, error } = await supabase
         .from('movement_terminal_assignments')
         .select(`
           *,
@@ -48,14 +49,64 @@ export const useInventoryState = (terminalId?: string) => {
         throw error;
       }
 
-      return data.map(assignment => ({
-        ...assignment.movements,
-        assignment_id: assignment.id,
-        assignment_quantity: assignment.quantity_mt,
-        assignment_date: assignment.assignment_date,
-        terminal_comments: assignment.comments,
-        sort_order: assignment.sort_order
-      }));
+      // Fetch all barges' IMO numbers to use for mapping
+      const { data: bargesData, error: bargesError } = await supabase
+        .from('barges_vessels')
+        .select('name, imo_number');
+
+      if (bargesError) {
+        console.error('Error fetching barges data:', bargesError);
+        throw bargesError;
+      }
+
+      // Create a map of barge name to IMO number for easy lookup
+      const bargeImoMap = new Map();
+      bargesData.forEach(barge => {
+        bargeImoMap.set(barge.name, barge.imo_number);
+      });
+      
+      // Process the returned data to ensure we always have movement data and IMO information
+      return assignmentsData.map(assignment => {
+        // If there's no movement data, create a default object with consistent properties
+        if (!assignment.movements) {
+          return {
+            id: null, // Use null as a placeholder
+            assignment_id: assignment.id,
+            assignment_date: assignment.assignment_date,
+            assignment_quantity: 0,
+            terminal_comments: assignment.comments,
+            sort_order: assignment.sort_order,
+            barge_name: null,
+            barge_imo: null,
+            buy_sell: null,
+            customs_status: null,
+            created_at: assignment.created_at || new Date().toISOString(),
+            updated_at: assignment.created_at || new Date().toISOString()
+          };
+        }
+        
+        // Get the IMO number from the map if the barge name exists
+        const bargeImo = assignment.movements.barge_name ? 
+          bargeImoMap.get(assignment.movements.barge_name) || 'Unknown' : 
+          'N/A';
+
+        // Return the complete movement data with IMO information
+        return {
+          ...assignment.movements,
+          // Include the barge IMO number for display
+          barge_imo: bargeImo,
+          assignment_id: assignment.id,
+          assignment_quantity: assignment.quantity_mt,
+          assignment_date: assignment.assignment_date,
+          terminal_comments: assignment.comments,
+          sort_order: assignment.sort_order,
+          // Ensure all required properties exist
+          buy_sell: assignment.movements.buy_sell || null,
+          customs_status: assignment.movements.customs_status || null,
+          created_at: assignment.movements.created_at || assignment.created_at || new Date().toISOString(),
+          updated_at: assignment.movements.updated_at || assignment.updated_at || new Date().toISOString()
+        };
+      }).filter(item => item !== null);
     },
     enabled: !!terminalId,
     staleTime: 0
@@ -365,7 +416,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
         movement_date: movement.assignment_date || new Date().toISOString(),
-        customs_status: movement.customs_status,
+        customs_status: movement.customs_status || null,
         assignment_id: assignmentId,
         sort_order: sortOrder
       };
