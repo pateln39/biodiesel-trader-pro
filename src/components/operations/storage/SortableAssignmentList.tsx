@@ -13,6 +13,8 @@ import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { Badge } from '@/components/ui/badge';
+import { Waves } from 'lucide-react';
 
 interface SortableAssignmentListProps {
   terminalId: string;
@@ -38,6 +40,23 @@ const SortableAssignmentList = ({
     assignment: TerminalAssignment 
   })[] = assignments
     .map(assignment => {
+      // Check if this is a pump over assignment
+      const isPumpOver = assignment.comments === 'PUMP_OVER';
+      
+      // For pump overs, we create a special movement-like object
+      if (isPumpOver) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            assignment_id: assignment.id,
+            buy_sell: null, // Neutral, neither buy nor sell
+            isPumpOver: true
+          },
+          assignment
+        };
+      }
+      
+      // For regular assignments, find the corresponding movement
       const movement = movements.find(m => m.assignment_id === assignment.id);
       if (!movement) return null;
       
@@ -64,6 +83,11 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
+    // For pump overs, use a distinct color
+    if (item.movement?.isPumpOver) {
+      return "bg-blue-900/10 hover:bg-blue-900/20";
+    }
+    
     // Handle the case where buy_sell might be null
     return item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
@@ -107,7 +131,6 @@ const SortableAssignmentList = ({
               className="text-[10px] font-medium"
             />
           </TableHead>
-          {/* Add the new IMO column header */}
           <TableHead 
             className={`w-[${columnWidths.bargeImo}px] h-10`}
             style={{ width: `${columnWidths.bargeImo}px` }}
@@ -183,6 +206,31 @@ const SortableAssignmentList = ({
       renderRow={(item) => {
         const { movement, assignment } = item;
         
+        // Special rendering for pump over rows
+        if (movement?.isPumpOver) {
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                <div className="flex items-center justify-center space-x-2">
+                  <Waves className="h-4 w-4 text-blue-500" />
+                  <Badge variant="outline" className="bg-blue-100/10 border-blue-500 text-blue-500">
+                    Pump Over
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <div className="flex justify-center">
+                  <ProductToken 
+                    product="Transfer"
+                    value="0"
+                  />
+                </div>
+              </TableCell>
+            </>
+          );
+        }
+        
+        // Regular row rendering
         return (
           <>
             <TableCell className="py-2 text-[10px] h-10">
@@ -206,7 +254,6 @@ const SortableAssignmentList = ({
                 className="text-[10px]"
               />
             </TableCell>
-            {/* Add the new IMO column cell */}
             <TableCell className="py-2 text-[10px] h-10">
               <TruncatedCell 
                 text={movement?.barge_imo || 'N/A'} 

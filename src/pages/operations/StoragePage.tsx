@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Wrench } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus, Wrench, Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState } from '@/hooks/useInventoryState';
@@ -99,6 +99,7 @@ const StoragePage = () => {
     updateTankHeating,
     updateTankCapacity,
     updateTankNumber,
+    createPumpOver,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -150,6 +151,12 @@ const StoragePage = () => {
     });
   }, [movements]);
 
+  const handleCreatePumpOver = () => {
+    if (selectedTerminalId) {
+      createPumpOver();
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -189,10 +196,16 @@ const StoragePage = () => {
             <CardTitle className="flex justify-between items-center">
               <span>Storage Movements</span>
               {selectedTerminalId && (
-                <Button variant="outline" size="sm" onClick={handleAddTank}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Tank
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={handleCreatePumpOver}>
+                    <Waves className="h-4 w-4 mr-1" />
+                    Pump Over
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleAddTank}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Tank
+                  </Button>
+                </div>
               )}
             </CardTitle>
             <CardDescription>

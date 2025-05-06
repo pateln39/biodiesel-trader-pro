@@ -630,6 +630,41 @@ export const useInventoryState = (terminalId?: string) => {
     { label: 'No', value: 'false' }
   ];
 
+  const createPumpOverMutation = useMutation({
+    mutationFn: async () => {
+      if (!terminalId) throw new Error('Terminal ID is required');
+      
+      console.log('Creating pump over for terminal:', terminalId);
+      
+      // Create a new terminal assignment specifically for pump overs
+      const { data, error } = await supabase
+        .from('movement_terminal_assignments')
+        .insert({
+          terminal_id: terminalId,
+          movement_id: null, // No associated movement for pump overs
+          quantity_mt: 0, // Start with 0 as this is just a placeholder
+          assignment_date: formatDateForStorage(new Date()),
+          comments: 'PUMP_OVER' // Special identifier for pump overs
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Pump over created successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error creating pump over:', error);
+      toast.error(`Failed to create pump over: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   return {
     movements,
     tankMovements,
@@ -676,6 +711,7 @@ export const useInventoryState = (terminalId?: string) => {
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
+    createPumpOver: () => createPumpOverMutation.mutate(),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
