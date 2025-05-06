@@ -653,7 +653,8 @@ export const useInventoryState = (terminalId?: string) => {
           buy_sell: null, // Neutral, neither buy nor sell
           comments: comment || 'Internal tank transfer',
           terminal_id: terminalId,
-          inventory_movement_date: formattedDate
+          inventory_movement_date: formattedDate,
+          sort_order: null // Explicitly setting sort_order to null for pump overs
         })
         .select()
         .single();
