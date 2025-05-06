@@ -1,8 +1,9 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Wrench } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus, Wrench, Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState } from '@/hooks/useInventoryState';
@@ -16,6 +17,7 @@ import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
+import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
@@ -36,6 +38,7 @@ const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
   bargeName: 90,
+  bargeImo: 85,  // Add width for the new IMO column
   movementDate: 75,
   nominationDate: 75,
   customs: 75,
@@ -60,6 +63,7 @@ const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
   bargeName: "Barge",
+  bargeImo: "IMO",
   movementDate: "Move Date",
   nominationDate: "Nom. Valid",
   customs: "Customs",
@@ -78,6 +82,7 @@ const truncatedHeaders = {
 const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
+  const [isPumpOverFormOpen, setIsPumpOverFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
 
@@ -97,6 +102,7 @@ const StoragePage = () => {
     updateTankHeating,
     updateTankCapacity,
     updateTankNumber,
+    createPumpOver,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -130,6 +136,16 @@ const StoragePage = () => {
     }
   };
 
+  const handlePumpOverClick = () => {
+    setIsPumpOverFormOpen(true);
+  };
+
+  const handlePumpOverSubmit = (quantity: number, comment?: string) => {
+    if (selectedTerminalId) {
+      createPumpOver(quantity, comment);
+    }
+  };
+
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
   
@@ -141,8 +157,9 @@ const StoragePage = () => {
       if (a.sort_order !== null) return -1;
       if (b.sort_order !== null) return 1;
       
-      const dateA = new Date(a.assignment_date || a.created_at);
-      const dateB = new Date(b.assignment_date || b.created_at);
+      // Use nullish coalescing for possibly missing properties
+      const dateA = new Date(a.assignment_date || a.created_at || new Date());
+      const dateB = new Date(b.assignment_date || b.created_at || new Date());
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
@@ -186,10 +203,16 @@ const StoragePage = () => {
             <CardTitle className="flex justify-between items-center">
               <span>Storage Movements</span>
               {selectedTerminalId && (
-                <Button variant="outline" size="sm" onClick={handleAddTank}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Tank
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={handlePumpOverClick}>
+                    <Waves className="h-4 w-4 mr-1" />
+                    Internal Pump Over
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleAddTank}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Tank
+                  </Button>
+                </div>
               )}
             </CardTitle>
             <CardDescription>
@@ -654,6 +677,12 @@ const StoragePage = () => {
         terminal={terminals.find(t => t.id === selectedTerminalId)}
         tank={selectedTank}
         isNewTerminal={isNewTerminal}
+      />
+
+      <PumpOverFormDialog
+        open={isPumpOverFormOpen}
+        onOpenChange={setIsPumpOverFormOpen}
+        onSubmit={handlePumpOverSubmit}
       />
     </Layout>
   );

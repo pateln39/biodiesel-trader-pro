@@ -13,6 +13,8 @@ import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { Badge } from '@/components/ui/badge';
+import { Waves } from 'lucide-react';
 
 interface SortableAssignmentListProps {
   terminalId: string;
@@ -38,14 +40,39 @@ const SortableAssignmentList = ({
     assignment: TerminalAssignment 
   })[] = assignments
     .map(assignment => {
-      const movement = movements.find(m => m.assignment_id === assignment.id);
-      if (!movement) return null;
+      // Find the corresponding movement
+      const movement = movements.find(m => m.assignment_id === assignment.id || m.id === assignment.movement_id);
       
-      return {
-        id: assignment.id as string,
-        movement,
-        assignment
-      };
+      // Check if this is a pump over assignment
+      const isPumpOver = assignment.comments === 'PUMP_OVER';
+      
+      if (movement) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            ...movement,
+            isPumpOver: isPumpOver
+          },
+          assignment
+        };
+      }
+      
+      // If movement is not found but this is a pump over, create a special movement-like object
+      if (isPumpOver) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            id: assignment.movement_id,
+            assignment_id: assignment.id,
+            buy_sell: null, // Neutral, neither buy nor sell
+            product: 'Transfer',
+            isPumpOver: true
+          },
+          assignment
+        };
+      }
+      
+      return null;
     })
     .filter(Boolean) as any[];
 
@@ -64,6 +91,12 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
+    // For pump overs, use a distinct color
+    if (item.movement?.isPumpOver) {
+      return "bg-blue-900/10 hover:bg-blue-900/20";
+    }
+    
+    // Handle the case where buy_sell might be null
     return item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
@@ -103,6 +136,16 @@ const SortableAssignmentList = ({
             <TruncatedCell 
               text="Barge" 
               width={columnWidths.bargeName - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
+          <TableHead 
+            className={`w-[${columnWidths.bargeImo}px] h-10`}
+            style={{ width: `${columnWidths.bargeImo}px` }}
+          >
+            <TruncatedCell 
+              text="IMO" 
+              width={columnWidths.bargeImo - 8} 
               className="text-[10px] font-medium"
             />
           </TableHead>
@@ -171,6 +214,31 @@ const SortableAssignmentList = ({
       renderRow={(item) => {
         const { movement, assignment } = item;
         
+        // Special rendering for pump over rows
+        if (movement?.isPumpOver) {
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                <div className="flex items-center justify-center space-x-2">
+                  <Waves className="h-4 w-4 text-blue-500" />
+                  <Badge variant="outline" className="bg-blue-100/10 border-blue-500 text-blue-500">
+                    Internal Pump Over
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <div className="flex justify-center">
+                  <ProductToken 
+                    product="Transfer"
+                    value={assignment.quantity_mt.toString()}
+                  />
+                </div>
+              </TableCell>
+            </>
+          );
+        }
+        
+        // Regular row rendering
         return (
           <>
             <TableCell className="py-2 text-[10px] h-10">
@@ -196,6 +264,13 @@ const SortableAssignmentList = ({
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
               <TruncatedCell 
+                text={movement?.barge_imo || 'N/A'} 
+                width={columnWidths.bargeImo - 16} 
+                className="text-[10px]"
+              />
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <TruncatedCell 
                 text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
                 width={columnWidths.movementDate - 16} 
                 className="text-[10px]"
@@ -215,7 +290,7 @@ const SortableAssignmentList = ({
                   ? "bg-green-900/60 text-green-200" 
                   : "bg-blue-900/60 text-blue-200"}
               `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status}
+                {movement?.customs_status || 'N/A'}
               </span>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">

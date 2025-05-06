@@ -463,7 +463,7 @@ export type Database = {
           comments: string | null
           created_at: string
           id: string
-          movement_id: string
+          movement_id: string | null
           quantity_mt: number
           sort_order: number | null
           terminal_id: string
@@ -474,7 +474,7 @@ export type Database = {
           comments?: string | null
           created_at?: string
           id?: string
-          movement_id: string
+          movement_id?: string | null
           quantity_mt: number
           sort_order?: number | null
           terminal_id: string
@@ -485,7 +485,7 @@ export type Database = {
           comments?: string | null
           created_at?: string
           id?: string
-          movement_id?: string
+          movement_id?: string | null
           quantity_mt?: number
           sort_order?: number | null
           terminal_id?: string

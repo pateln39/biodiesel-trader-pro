@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -29,6 +30,7 @@ const MovementsPage = () => {
   React.useEffect(() => {
     const initializeSortOrder = async () => {
       try {
+        // This will now exclude pump overs (product='Transfer') thanks to our updated function
         const { error: movementsError } = await supabase.rpc('initialize_sort_order', {
           p_table_name: 'movements'
         });
