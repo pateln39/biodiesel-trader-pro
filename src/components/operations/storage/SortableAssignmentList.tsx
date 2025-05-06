@@ -222,7 +222,7 @@ const SortableAssignmentList = ({
                 <div className="flex items-center justify-center space-x-2">
                   <Waves className="h-4 w-4 text-blue-500" />
                   <Badge variant="outline" className="bg-blue-100/10 border-blue-500 text-blue-500">
-                    Pump Over
+                    Internal Pump Over
                   </Badge>
                 </div>
               </TableCell>

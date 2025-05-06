@@ -63,7 +63,7 @@ const PumpOverFormDialog: React.FC<PumpOverFormDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Waves className="h-5 w-5 text-blue-500" />
-            Create Pump Over
+            Create Internal Pump Over
           </DialogTitle>
           <DialogDescription>
             Enter the quantity to pump over between tanks.
@@ -118,7 +118,7 @@ const PumpOverFormDialog: React.FC<PumpOverFormDialogProps> = ({
                 Cancel
               </Button>
               <Button type="submit">
-                Create Pump Over
+                Create Internal Pump Over
               </Button>
             </div>
           </form>

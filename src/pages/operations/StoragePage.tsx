@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -205,7 +206,7 @@ const StoragePage = () => {
                 <div className="flex items-center space-x-2">
                   <Button variant="outline" size="sm" onClick={handlePumpOverClick}>
                     <Waves className="h-4 w-4 mr-1" />
-                    Pump Over
+                    Internal Pump Over
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleAddTank}>
                     <Plus className="h-4 w-4 mr-1" />
