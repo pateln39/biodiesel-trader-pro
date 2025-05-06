@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   TableHead, 
@@ -48,6 +47,7 @@ const SortableAssignmentList = ({
         return {
           id: assignment.id as string,
           movement: {
+            id: assignment.movement_id, // Now assignment.movement_id will contain a valid UUID
             assignment_id: assignment.id,
             buy_sell: null, // Neutral, neither buy nor sell
             isPumpOver: true
@@ -222,7 +222,7 @@ const SortableAssignmentList = ({
                 <div className="flex justify-center">
                   <ProductToken 
                     product="Transfer"
-                    value="0"
+                    value={assignment.quantity_mt.toString()}
                   />
                 </div>
               </TableCell>

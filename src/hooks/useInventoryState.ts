@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -632,18 +631,21 @@ export const useInventoryState = (terminalId?: string) => {
   ];
 
   const createPumpOverMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({ quantity }: { quantity: number }) => {
       if (!terminalId) throw new Error('Terminal ID is required');
       
-      console.log('Creating pump over for terminal:', terminalId);
+      console.log('Creating pump over for terminal:', terminalId, 'with quantity:', quantity);
+      
+      // Generate a unique movement_id for the pump over
+      const pumpOverMovementId = crypto.randomUUID();
       
       // Create a new terminal assignment specifically for pump overs
       const { data, error } = await supabase
         .from('movement_terminal_assignments')
         .insert({
           terminal_id: terminalId,
-          movement_id: null, // No associated movement for pump overs
-          quantity_mt: 0.01, // Changed from 0 to a small non-zero value to satisfy the check constraint
+          movement_id: pumpOverMovementId, // Use a unique UUID instead of null
+          quantity_mt: quantity, // Use the quantity from the form
           assignment_date: formatDateForStorage(new Date()),
           comments: 'PUMP_OVER' // Special identifier for pump overs
         })
@@ -712,7 +714,7 @@ export const useInventoryState = (terminalId?: string) => {
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
-    createPumpOver: () => createPumpOverMutation.mutate(),
+    createPumpOver: (quantity: number) => createPumpOverMutation.mutate({ quantity }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

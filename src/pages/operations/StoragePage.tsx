@@ -16,6 +16,7 @@ import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
+import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
@@ -80,6 +81,7 @@ const truncatedHeaders = {
 const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
+  const [isPumpOverFormOpen, setIsPumpOverFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
 
@@ -133,6 +135,16 @@ const StoragePage = () => {
     }
   };
 
+  const handlePumpOverClick = () => {
+    setIsPumpOverFormOpen(true);
+  };
+
+  const handlePumpOverSubmit = (quantity: number) => {
+    if (selectedTerminalId) {
+      createPumpOver(quantity);
+    }
+  };
+
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
   
@@ -150,12 +162,6 @@ const StoragePage = () => {
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
-
-  const handleCreatePumpOver = () => {
-    if (selectedTerminalId) {
-      createPumpOver();
-    }
-  };
 
   return (
     <Layout>
@@ -197,7 +203,7 @@ const StoragePage = () => {
               <span>Storage Movements</span>
               {selectedTerminalId && (
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={handleCreatePumpOver}>
+                  <Button variant="outline" size="sm" onClick={handlePumpOverClick}>
                     <Waves className="h-4 w-4 mr-1" />
                     Pump Over
                   </Button>
@@ -670,6 +676,12 @@ const StoragePage = () => {
         terminal={terminals.find(t => t.id === selectedTerminalId)}
         tank={selectedTank}
         isNewTerminal={isNewTerminal}
+      />
+
+      <PumpOverFormDialog
+        open={isPumpOverFormOpen}
+        onOpenChange={setIsPumpOverFormOpen}
+        onSubmit={handlePumpOverSubmit}
       />
     </Layout>
   );
