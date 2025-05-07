@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -316,55 +317,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   };
 
-  // Function to identify movements in the same group
-  const isGroupedMovement = (movement: Movement) => {
-    return !!movement.group_id;
-  };
-
-  // Function to determine if this is the first item in a group
-  const isFirstInGroup = (index: number, movements: Movement[]) => {
-    if (index === 0) return true;
-    
-    const currentMovement = movements[index];
-    const previousMovement = movements[index - 1];
-    
-    return !currentMovement.group_id || currentMovement.group_id !== previousMovement.group_id;
-  };
-
-  const isLastInGroup = (index: number, movements: Movement[]) => {
-    if (index === movements.length - 1) return true;
-    
-    const currentMovement = movements[index];
-    const nextMovement = movements[index + 1];
-    
-    return !currentMovement.group_id || currentMovement.group_id !== nextMovement.group_id;
-  };
-  
-  // Calculate row style based on group membership
-  const getRowGroupClasses = (movement: Movement, index: number, movements: Movement[]) => {
-    if (!movement.group_id) return "";
-    
-    let classes = "ring-1 ring-purple-400/30 bg-purple-900/20";
-    
-    if (isFirstInGroup(index, movements)) {
-      classes += " rounded-t-md border-t border-l border-r border-purple-400/30";
-    } else {
-      classes += " border-l border-r border-purple-400/30";
-    }
-    
-    if (isLastInGroup(index, movements)) {
-      classes += " rounded-b-md border-b border-purple-400/30 mb-1";
-    }
-    
-    return classes;
-  };
-  
-  // Item is disabled for drag if it belongs to a group but is not the first item
-  const isItemDisabledForDrag = (movement: Movement, index: number, movements: Movement[]) => {
-    // Only the first item in a group can be dragged
-    return movement.group_id && !isFirstInGroup(index, movements);
-  };
-
   const renderHeader = () => (
     <>
       <TableHead>
@@ -522,7 +474,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     const disableDrag = isItemDisabledForDrag(movement, index, sortedMovements);
     const isInGroup = isGroupedMovement(movement);
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
-    const isFirstGroupItem = isInGroup && isFirstInGroup(index, sortedMovements);
+    const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
 
     return (
       <>
@@ -754,7 +706,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <div className="w-full overflow-auto">
         <SortableTable
           items={sortedMovements}
-          onReorder={onReorder}
+          onReorder={handleCustomReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
           disableDragAndDrop={hasSorting}
