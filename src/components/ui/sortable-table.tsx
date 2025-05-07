@@ -436,21 +436,26 @@ export function SortableTable<T extends SortableItem>({
               </TableRow>
             )}
             
-            {/* Then render all items in the same group */}
-            {activeGroupItems.map((item, groupIdx) => (
-              <TableRow 
-                key={item.id} 
-                className={cn(
-                  "border-l border-r border-primary bg-background opacity-80 h-10",
-                  groupIdx === activeGroupItems.length - 1 ? "rounded-b-md border-b" : ""
-                )}
-              >
-                <TableCell className="p-0 pl-2 h-10">
-                  <DragHandle grouped={true} />
-                </TableCell>
-                {renderRow(item, groupIdx + 1)} {/* The +1 is just for rendering context */}
-              </TableRow>
-            ))}
+            {/* Then render all items in the same group with the same color as the active item */}
+            {activeGroupItems.map((item, groupIdx) => {
+              // Get the same background color class used for the group in the main table
+              const groupBgClass = getRowBgClass ? getRowBgClass(item, items.indexOf(item), items) : "";
+              
+              return (
+                <TableRow 
+                  key={item.id} 
+                  className={cn(
+                    "border-l border-r border-primary bg-background opacity-80 h-10",
+                    groupIdx === activeGroupItems.length - 1 ? "rounded-b-md border-b" : ""
+                  )}
+                >
+                  <TableCell className="p-0 pl-2 h-10">
+                    <DragHandle grouped={true} />
+                  </TableCell>
+                  {renderRow(item, groupIdx + 1)}
+                </TableRow>
+              );
+            })}
           </div>
         </DragOverlay>,
         document.body

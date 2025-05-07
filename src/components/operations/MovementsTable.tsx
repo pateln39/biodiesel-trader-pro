@@ -49,6 +49,7 @@ import ProductToken from '@/components/operations/storage/ProductToken';
 import { DateSortHeader } from './DateSortHeader';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
+import { getGroupColorClasses } from '@/utils/colorUtils';
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -507,6 +508,18 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
     const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
 
+    // Extract the base color name from the class string for group icon colors
+    const getIconColorClass = (bgColor: string): string => {
+      if (bgColor.includes('indigo')) return 'text-indigo-400';
+      if (bgColor.includes('blue')) return 'text-blue-400';
+      if (bgColor.includes('violet')) return 'text-violet-400';
+      if (bgColor.includes('fuchsia')) return 'text-fuchsia-400';
+      if (bgColor.includes('pink')) return 'text-pink-400';
+      return 'text-purple-400'; // Default
+    };
+    
+    const iconColorClass = getIconColorClass(groupBgClass);
+
     return (
       <>
         <TableCell>
@@ -524,11 +537,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 mr-1 bg-purple-500/20 hover:bg-purple-500/30"
+                        className={`h-6 w-6 mr-1 ${groupBgClass.split(' ')[0]} hover:${groupBgClass.split(' ')[0].replace('/20', '/30')}`}
                         onClick={() => handleUngroupClick(movement.group_id as string)}
                         disabled={isUngrouping}
                       >
-                        <Ungroup className="h-3 w-3 text-purple-300" />
+                        <Ungroup className={`h-3 w-3 ${iconColorClass}`} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -538,7 +551,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                 </TooltipProvider>
               )}
               {isInGroup && !isFirstGroupItem && (
-                <Group className="h-3 w-3 text-purple-300 mr-1" />
+                <Group className={`h-3 w-3 ${iconColorClass} mr-1`} />
               )}
               {movement.referenceNumber}
             </span>
