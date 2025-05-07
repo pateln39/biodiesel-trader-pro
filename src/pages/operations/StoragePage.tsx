@@ -18,6 +18,7 @@ import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
 import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
 import DeletePumpOverDialog from '@/components/operations/storage/DeletePumpOverDialog';
+import DeleteStorageMovementDialog from '@/components/operations/storage/DeleteStorageMovementDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
@@ -81,6 +82,8 @@ const StoragePage = () => {
     movementId: string;
     quantity: number;
   } | null>(null);
+  // Add state for storage movement deletion
+  const [storageMovementToDelete, setStorageMovementToDelete] = React.useState<string | null>(null);
 
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
@@ -100,6 +103,7 @@ const StoragePage = () => {
     updateTankNumber,
     createPumpOver,
     deletePumpOver,
+    deleteStorageMovement,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -145,9 +149,19 @@ const StoragePage = () => {
     }
   };
 
+  const handleDeleteStorageMovement = (assignmentId: string) => {
+    setStorageMovementToDelete(assignmentId);
+  };
+
   const confirmDeletePumpOver = () => {
     if (pumpOverToDelete) {
       deletePumpOver(pumpOverToDelete.assignmentId, pumpOverToDelete.movementId);
+    }
+  };
+
+  const confirmDeleteStorageMovement = () => {
+    if (storageMovementToDelete) {
+      deleteStorageMovement(storageMovementToDelete);
     }
   };
 
@@ -276,6 +290,7 @@ const StoragePage = () => {
                           updateAssignmentComments={updateAssignmentComments}
                           columnWidths={stickyColumnWidths}
                           onDeletePumpOver={handleDeletePumpOver}
+                          onDeleteStorageMovement={handleDeleteStorageMovement}
                         />
                       )}
                     </Table>
@@ -692,6 +707,13 @@ const StoragePage = () => {
         onOpenChange={(open) => !open && setPumpOverToDelete(null)}
         onConfirm={confirmDeletePumpOver}
         quantity={pumpOverToDelete?.quantity || 0}
+      />
+
+      <DeleteStorageMovementDialog
+        open={!!storageMovementToDelete}
+        onOpenChange={(open) => !open && setStorageMovementToDelete(null)}
+        onConfirm={confirmDeleteStorageMovement}
+        assignmentId={storageMovementToDelete || ''}
       />
     </Layout>
   );
