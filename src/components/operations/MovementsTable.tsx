@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,26 +89,30 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   };
 
   // Function to identify if an item is part of a group
-  const isGroupedMovement = (item: Movement) => {
+  const isGroupedMovement = (item: Movement, index: number, items: Movement[]) => {
     return !!item.group_id;
   };
 
   // Function to determine if an item is the first in a group
   const isFirstInGroup = (item: Movement, index: number, items: Movement[]) => {
+    if (!item.group_id) return false;
+    
     if (index === 0) return true;
     
     const previousMovement = items[index - 1];
     
-    return !item.group_id || item.group_id !== previousMovement.group_id;
+    return item.group_id !== previousMovement.group_id;
   };
 
   // Function to determine if an item is the last in a group
   const isLastInGroup = (item: Movement, index: number, items: Movement[]) => {
+    if (!item.group_id) return false;
+    
     if (index === items.length - 1) return true;
     
     const nextMovement = items[index + 1];
     
-    return !item.group_id || item.group_id !== nextMovement.group_id;
+    return item.group_id !== nextMovement.group_id;
   };
 
   // Item is disabled for drag if it belongs to a group but is not the first item
@@ -428,42 +431,79 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   // This function handles the custom behavior for drag and drop with groups
   const handleCustomReorder = async (reorderedItems: Movement[]) => {
-    // Create a copy of the reordered items as our starting point
-    const processedItems = [...reorderedItems];
+    // We'll implement a more robust algorithm to ensure groups stay together
     
-    // Create a Set to track which items we've already processed
-    const processedIds = new Set<string>();
+    console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
     
-    // Create our final array where we'll build the correctly ordered list
+    // Step 1: Extract all groups and standalone items
+    const processedGroups = new Set<string>();
+    const groupedMovements: Map<string, Movement[]> = new Map();
+    const standaloneMovements: Movement[] = [];
+    
+    // First pass - identify all groups and standalone items
+    for (const item of reorderedItems) {
+      if (item.group_id && !processedGroups.has(item.group_id)) {
+        // Find all items in this group from the original array
+        const groupItems = getMovementsInGroup(reorderedItems, item.group_id);
+        groupedMovements.set(item.group_id, groupItems);
+        processedGroups.add(item.group_id);
+      } else if (!item.group_id) {
+        standaloneMovements.push(item);
+      }
+      // Skip items that are part of an already processed group
+    }
+    
+    // Step 2: Rebuild the array in the correct order, with groups intact
     const finalItems: Movement[] = [];
+    const processedItems = new Set<string>();
     
-    // Process items in their reordered sequence
-    for (let i = 0; i < processedItems.length; i++) {
-      const currentItem = processedItems[i];
+    // Second pass - rebuild array with intact groups
+    for (const item of reorderedItems) {
+      // Skip items we've already processed
+      if (processedItems.has(item.id)) continue;
       
-      // Skip if we've already processed this item (part of a group we already handled)
-      if (processedIds.has(currentItem.id)) continue;
-      
-      // Add the current item to the final array and mark as processed
-      finalItems.push(currentItem);
-      processedIds.add(currentItem.id);
-      
-      // If this is part of a group, add all other items from the same group
-      if (currentItem.group_id) {
-        // Find all other items in the same group from the original array
-        // Important: We use the processedItems array to maintain the order in the source array
-        const groupItems = getMovementsInGroup(processedItems, currentItem.group_id)
-          .filter(item => item.id !== currentItem.id); // Exclude the current item
+      // If item is part of a group and is the first we encounter from that group
+      if (item.group_id && !processedItems.has(item.id)) {
+        // Add all items from the group in their original order
+        const groupItems = groupedMovements.get(item.group_id) || [];
         
-        // Add all group members and mark them as processed
-        for (const groupItem of groupItems) {
-          if (!processedIds.has(groupItem.id)) {
-            finalItems.push(groupItem);
-            processedIds.add(groupItem.id);
-          }
+        // Sort group items by their sort_order to maintain proper group order
+        const sortedGroupItems = [...groupItems].sort((a, b) => {
+          // Use original array index as a fallback if sort_order is not available
+          const aIndex = filteredMovements.findIndex(m => m.id === a.id);
+          const bIndex = filteredMovements.findIndex(m => m.id === b.id);
+          
+          const aSortOrder = a.sort_order !== null ? a.sort_order : aIndex;
+          const bSortOrder = b.sort_order !== null ? b.sort_order : bIndex;
+          
+          return (aSortOrder || 0) - (bSortOrder || 0);
+        });
+        
+        // Add all items from the group
+        for (const groupItem of sortedGroupItems) {
+          finalItems.push(groupItem);
+          processedItems.add(groupItem.id);
         }
+      } 
+      // If it's a standalone item we haven't processed yet
+      else if (!item.group_id && !processedItems.has(item.id)) {
+        finalItems.push(item);
+        processedItems.add(item.id);
       }
     }
+    
+    // Make sure we didn't miss anything (shouldn't happen, but just in case)
+    const allProcessed = reorderedItems.every(item => processedItems.has(item.id));
+    if (!allProcessed) {
+      console.warn('[MOVEMENTS] Not all items were processed in handleCustomReorder');
+      reorderedItems.forEach(item => {
+        if (!processedItems.has(item.id)) {
+          finalItems.push(item);
+        }
+      });
+    }
+    
+    console.log('[MOVEMENTS] Final reordered items:', finalItems.length);
     
     // Call the onReorder function with our properly sequenced items
     await onReorder(finalItems);
@@ -472,7 +512,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const renderRow = (movement: Movement, index: number) => {
     // Determine if this item can be dragged (only first in group can be dragged)
     const disableDrag = isItemDisabledForDrag(movement, index, sortedMovements);
-    const isInGroup = isGroupedMovement(movement);
+    const isInGroup = isGroupedMovement(movement, index, sortedMovements);
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
     const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
 
@@ -712,8 +752,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           disableDragAndDrop={hasSorting}
           isItemDisabled={isItemDisabledForDrag}
           isItemPartOfGroup={isGroupedMovement}
-          isItemFirstInGroup={(item, index, items) => isFirstInGroup(item, index, items)}
-          isItemLastInGroup={(item, index, items) => isLastInGroup(item, index, items)}
+          isItemFirstInGroup={isFirstInGroup}
+          isItemLastInGroup={isLastInGroup}
           getGroupId={(item) => item.group_id || null}
           findGroupMembers={(items, groupId) => getMovementsInGroup(items, groupId)}
           getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}

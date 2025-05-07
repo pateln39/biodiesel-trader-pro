@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -216,89 +215,92 @@ export function SortableTable<T extends SortableItem>({
     
     const activeItem = items[activeIndex];
     
-    // Check if the active item is part of a group and if it's the first item
-    const isGroupLeader = isItemFirstInGroup && isItemFirstInGroup(activeItem, activeIndex, items);
-    const isPartOfGroup = isItemPartOfGroup && isItemPartOfGroup(activeItem, activeIndex, items);
+    // Check if the active item is part of a group 
+    const isActiveItemInGroup = isItemPartOfGroup && isItemPartOfGroup(activeItem, activeIndex, items);
+    const isActiveItemGroupLeader = isItemFirstInGroup && isItemFirstInGroup(activeItem, activeIndex, items);
     
     // If this is not the first item in a group, don't allow dragging
-    if (isPartOfGroup && !isGroupLeader) return;
+    if (isActiveItemInGroup && !isActiveItemGroupLeader) return;
     
-    // Check if we're trying to drop between items of the same group
-    const overItem = items[overIndex];
-    const overGroupId = getGroupId ? getGroupId(overItem) : null;
+    // Get the active group ID if any
+    const activeGroupId = getGroupId ? getGroupId(activeItem) : null;
     
-    // If over item is part of a group, but not the first in group,
-    // we need to adjust the insertion point
-    if (overGroupId && isItemPartOfGroup && !isItemFirstInGroup) {
-      // Find the first item in the group
-      const groupStartIndex = items.findIndex((item, idx) => 
-        getGroupId && getGroupId(item) === overGroupId && 
-        isItemFirstInGroup && isItemFirstInGroup(item, idx, items)
-      );
-      
-      if (groupStartIndex !== -1) {
-        // Find the last item in the group
-        const groupEndIndex = items.findIndex((item, idx) => 
-          getGroupId && getGroupId(item) === overGroupId && 
-          isItemLastInGroup && isItemLastInGroup(item, idx, items)
-        );
-        
-        // Determine if we should insert before or after the group
-        const insertAfterGroup = overIndex > activeIndex;
-        const newIndex = insertAfterGroup ? groupEndIndex + 1 : groupStartIndex;
-        
-        // Create a copy of the items array
-        const newItems = [...items];
-        
-        // Handle group movement as a single unit
-        if (isPartOfGroup && isGroupLeader) {
-          // Find all items in the active group
-          const activeGroupId = getGroupId ? getGroupId(activeItem) : null;
-          const groupItems = activeGroupId && findGroupMembers ? 
-            findGroupMembers(items, activeGroupId) : [activeItem];
-          
-          // Remove all group items from the array
-          const itemsWithoutGroup = newItems.filter(
-            item => !groupItems.some(groupItem => groupItem.id === item.id)
-          );
-          
-          // Insert the group at the new position
-          itemsWithoutGroup.splice(newIndex, 0, ...groupItems);
-          onReorder(itemsWithoutGroup);
-        } else {
-          // Handle normal item movement
-          const [movedItem] = newItems.splice(activeIndex, 1);
-          newItems.splice(newIndex, 0, movedItem);
-          onReorder(newItems);
-        }
-        
-        return;
-      }
-    }
-    
-    // Standard reordering logic (with group support)
+    // Create a copy for our reordering
     const newItems = [...items];
     
-    if (isPartOfGroup && isGroupLeader && getGroupId) {
-      // Get all items in the group
-      const activeGroupId = getGroupId(activeItem);
-      const groupItems = activeGroupId && findGroupMembers ? 
-        findGroupMembers(items, activeGroupId) : [activeItem];
-      
-      // Remove all group items
-      const filteredItems = newItems.filter(
-        item => !groupItems.some(groupItem => groupItem.id === item.id)
+    if (isActiveItemInGroup && isActiveItemGroupLeader && findGroupMembers && activeGroupId) {
+      // Find all items in the active group
+      const groupItems = findGroupMembers(items, activeGroupId);
+      const nonGroupItems = newItems.filter(item => 
+        !groupItems.some(groupItem => groupItem.id === item.id)
       );
       
-      // Insert all group items at the new position
-      const newIndex = overIndex > activeIndex ? overIndex - groupItems.length + 1 : overIndex;
-      filteredItems.splice(newIndex, 0, ...groupItems);
+      // Determine the proper insertion point
+      let insertionIndex = overIndex;
       
-      onReorder(filteredItems);
+      // Check if the target item is part of a group
+      const overItem = items[overIndex];
+      const overItemGroupId = getGroupId ? getGroupId(overItem) : null;
+      
+      if (overItemGroupId && overItemGroupId !== activeGroupId) {
+        // If dragging to an item in a different group, we need special handling
+        if (isItemPartOfGroup && isItemPartOfGroup(overItem, overIndex, items)) {
+          // Find where this group starts
+          const overGroupItems = findGroupMembers(items, overItemGroupId);
+          const firstGroupItemIndex = items.findIndex(item => 
+            item.id === overGroupItems[0].id
+          );
+          const lastGroupItemIndex = items.findIndex(item => 
+            item.id === overGroupItems[overGroupItems.length - 1].id
+          );
+          
+          // If dragging before the middle of group, insert before the group
+          // Otherwise, insert after the group
+          if (overIndex - firstGroupItemIndex < lastGroupItemIndex - overIndex) {
+            insertionIndex = firstGroupItemIndex;
+          } else {
+            insertionIndex = lastGroupItemIndex + 1;
+          }
+        }
+      }
+      
+      // Remove the original group items and insert them at the new position
+      nonGroupItems.splice(insertionIndex, 0, ...groupItems);
+      
+      // Update with the new order
+      onReorder(nonGroupItems);
     } else {
-      // Standard single-item movement
+      // Handle single item movement (not part of a group)
       const [movedItem] = newItems.splice(activeIndex, 1);
-      newItems.splice(overIndex, 0, movedItem);
+      
+      // Check if inserting into the middle of a group (which we want to prevent)
+      const overItem = items[overIndex];
+      const overItemGroupId = getGroupId ? getGroupId(overItem) : null;
+      
+      let insertionIndex = overIndex;
+      
+      if (overItemGroupId && isItemPartOfGroup && isItemPartOfGroup(overItem, overIndex, items)) {
+        // Find the boundaries of the group
+        const groupItems = findGroupMembers ? findGroupMembers(items, overItemGroupId) : [];
+        const firstGroupItemIndex = items.findIndex(item => 
+          groupItems.some(groupItem => groupItem.id === item.id) && 
+          isItemFirstInGroup && isItemFirstInGroup(item, items.indexOf(item), items)
+        );
+        const lastGroupItemIndex = items.findIndex(item => 
+          groupItems.some(groupItem => groupItem.id === item.id) && 
+          isItemLastInGroup && isItemLastInGroup(item, items.indexOf(item), items)
+        );
+        
+        // If closer to the start, insert before the group
+        // If closer to the end, insert after the group
+        if (Math.abs(overIndex - firstGroupItemIndex) <= Math.abs(overIndex - lastGroupItemIndex)) {
+          insertionIndex = firstGroupItemIndex;
+        } else {
+          insertionIndex = lastGroupItemIndex + 1;
+        }
+      }
+      
+      newItems.splice(insertionIndex, 0, movedItem);
       onReorder(newItems);
     }
   };
@@ -362,10 +364,10 @@ export function SortableTable<T extends SortableItem>({
 
       {activeId && createPortal(
         <DragOverlay adjustScale={false}>
-          <div className="space-y-0">
+          <div className="space-y-0 shadow-xl border-2 border-primary rounded-md">
             {/* First render the active item */}
             {activeItem && (
-              <TableRow className="border border-primary bg-background shadow-lg opacity-90 h-10">
+              <TableRow className="border border-primary bg-background opacity-90 rounded-t-md h-10">
                 <TableCell className="p-0 pl-2 h-10">
                   <DragHandle grouped={isItemPartOfGroup && isItemPartOfGroup(activeItem, items.indexOf(activeItem), items)} />
                 </TableCell>
@@ -377,12 +379,15 @@ export function SortableTable<T extends SortableItem>({
             {activeGroupItems.map((item, groupIdx) => (
               <TableRow 
                 key={item.id} 
-                className="border-l border-r border-primary bg-background shadow-lg opacity-80 h-10"
+                className={cn(
+                  "border-l border-r border-primary bg-background opacity-80 h-10",
+                  groupIdx === activeGroupItems.length - 1 ? "rounded-b-md border-b" : ""
+                )}
               >
                 <TableCell className="p-0 pl-2 h-10">
                   <DragHandle grouped={true} />
                 </TableCell>
-                {renderRow(item, groupIdx + 1)} {/* The +1 is to indicate it's not the first item */}
+                {renderRow(item, groupIdx + 1)} {/* The +1 is just for rendering context */}
               </TableRow>
             ))}
           </div>
