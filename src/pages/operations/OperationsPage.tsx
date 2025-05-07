@@ -221,6 +221,10 @@ const OperationsPage = () => {
                   key={`movements-${refreshTrigger}`}
                   filteredMovements={filteredMovements}
                   onReorder={handleReorder}
+                  selectedMovementIds={[]} // Providing an empty array as default
+                  onToggleSelect={() => {}} // Empty function as default
+                  onUngroupMovement={() => {}} // Empty function as default
+                  isUngrouping={false} // Default to false
                 />
               </CardContent>
             </Card>

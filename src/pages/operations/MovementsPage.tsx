@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Filter, Download, Rows, Group, X } from 'lucide-react';
+import { Filter, Download, Rows, Group, Ungroup, X } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

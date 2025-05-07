@@ -51,6 +51,7 @@ export interface Movement {
   sort_order?: number; // Added sort_order property
   terminal_id?: string; // Added terminal_id property for terminal assignment
   inventory_movement_date?: Date; // Added inventory_movement_date for terminal assignments
+  group_id?: string; // Added group_id property for grouping movements
 }
 
 // Explicit re-exports to avoid name conflicts when importing

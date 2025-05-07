@@ -158,4 +158,5 @@ export interface Movement {
   sort_order?: number; // Add sort_order field
   terminal_id?: string; // Add terminal_id field
   inventory_movement_date?: Date; // Add inventory_movement_date field
+  group_id?: string; // Add group_id field for grouping movements
 }

@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye, Calculator, GroupOff, Group } from 'lucide-react';
+import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye, Calculator, Ungroup, Group } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -495,7 +494,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                         onClick={() => handleUngroupClick(movement.group_id as string)}
                         disabled={isUngrouping}
                       >
-                        <GroupOff className="h-3 w-3 text-purple-300" />
+                        <Ungroup className="h-3 w-3 text-purple-300" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
