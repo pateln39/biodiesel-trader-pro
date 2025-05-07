@@ -205,7 +205,11 @@ const StoragePage = () => {
 
   // New handler for opening the storage form
   const handleOpenStorageForm = (movement: any) => {
-    setSelectedMovement(movement);
+    setSelectedMovement({
+      ...movement,
+      actualQuantity: movement.assignment_quantity, // Use assignment_quantity as actualQuantity
+      referenceNumber: movement.reference_number // Ensure referenceNumber is available
+    });
     setStorageFormOpen(true);
   };
 
@@ -744,6 +748,7 @@ const StoragePage = () => {
           movement={selectedMovement}
           open={storageFormOpen}
           onOpenChange={setStorageFormOpen}
+          isEditMode={true} // Set to edit mode when opened from the storage page
         />
       )}
     </Layout>
