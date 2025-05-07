@@ -23,6 +23,7 @@ interface SortableAssignmentListProps {
   updateAssignmentComments: (assignmentId: string, comments: string) => void;
   columnWidths: Record<string, number>;
   onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
+  onDeleteStorageMovement?: (assignmentId: string) => void;
 }
 
 const SortableAssignmentList = ({ 
@@ -30,7 +31,8 @@ const SortableAssignmentList = ({
   movements, 
   updateAssignmentComments,
   columnWidths,
-  onDeletePumpOver
+  onDeletePumpOver,
+  onDeleteStorageMovement
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -346,7 +348,18 @@ const SortableAssignmentList = ({
               </div>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
-              {/* Regular movements have no actions for now */}
+              {onDeleteStorageMovement && (
+                <div className="flex justify-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 p-0" 
+                    onClick={() => onDeleteStorageMovement(assignment.id as string)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              )}
             </TableCell>
           </>
         );

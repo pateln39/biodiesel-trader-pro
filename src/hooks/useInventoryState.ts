@@ -619,6 +619,40 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const deleteStorageMovementMutation = useMutation({
+    mutationFn: async ({ assignmentId }: { assignmentId: string }) => {
+      console.log('Deleting storage movement assignment:', assignmentId);
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      return { assignmentId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Storage movement deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting storage movement:', error);
+      toast.error(`Failed to delete storage movement: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   const updateTankNumber = useMutation({
     mutationFn: async ({ tankId, tankNumber }: { tankId: string, tankNumber: string }) => {
       const { data: tank } = await supabase
@@ -806,6 +840,8 @@ export const useInventoryState = (terminalId?: string) => {
     createPumpOver: (quantity: number, comment?: string) => createPumpOverMutation.mutate({ quantity, comment }),
     deletePumpOver: (assignmentId: string, movementId: string) => 
       deletePumpOverMutation.mutate({ assignmentId, movementId }),
+    deleteStorageMovement: (assignmentId: string) => 
+      deleteStorageMovementMutation.mutate({ assignmentId }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
