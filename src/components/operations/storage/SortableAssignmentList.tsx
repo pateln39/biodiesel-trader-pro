@@ -14,20 +14,23 @@ import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssig
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { Badge } from '@/components/ui/badge';
-import { Waves } from 'lucide-react';
+import { Trash2, Waves } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SortableAssignmentListProps {
   terminalId: string;
   movements: any[];
   updateAssignmentComments: (assignmentId: string, comments: string) => void;
   columnWidths: Record<string, number>;
+  onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
 }
 
 const SortableAssignmentList = ({ 
   terminalId, 
   movements, 
   updateAssignmentComments,
-  columnWidths
+  columnWidths,
+  onDeletePumpOver
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -65,7 +68,7 @@ const SortableAssignmentList = ({
             id: assignment.movement_id,
             assignment_id: assignment.id,
             buy_sell: null, // Neutral, neither buy nor sell
-            product: 'Transfer',
+            product: 'TRANSFERS', // Updated from "Transfer" to "TRANSFERS"
             isPumpOver: true
           },
           assignment
@@ -93,7 +96,7 @@ const SortableAssignmentList = ({
   }) => {
     // For pump overs, use a distinct color
     if (item.movement?.isPumpOver) {
-      return "bg-blue-900/10 hover:bg-blue-900/20";
+      return "bg-gray-900/10 hover:bg-gray-900/20"; // Changed from blue-900 to gray-900
     }
     
     // Handle the case where buy_sell might be null
@@ -209,6 +212,16 @@ const SortableAssignmentList = ({
               className="text-[10px] font-medium"
             />
           </TableHead>
+          <TableHead 
+            className={`w-[${columnWidths.actions}px] h-10`}
+            style={{ width: `${columnWidths.actions}px` }}
+          >
+            <TruncatedCell 
+              text="Actions" 
+              width={columnWidths.actions - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
         </>
       )}
       renderRow={(item) => {
@@ -220,19 +233,35 @@ const SortableAssignmentList = ({
             <>
               <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
                 <div className="flex items-center justify-center space-x-2">
-                  <Waves className="h-4 w-4 text-blue-500" />
-                  <Badge variant="outline" className="bg-blue-100/10 border-blue-500 text-blue-500">
-                    Internal Pump Over
-                  </Badge>
+                  <Waves className="h-4 w-4 text-gray-500" />
+                  <div className="flex items-center space-x-1">
+                    <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500">
+                      Internal Pump Over
+                    </Badge>
+                  </div>
                 </div>
               </TableCell>
               <TableCell className="py-2 text-[10px] h-10">
                 <div className="flex justify-center">
                   <ProductToken 
-                    product="Transfer"
+                    product="TRANSFERS"
                     value={assignment.quantity_mt.toString()}
                   />
                 </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {onDeletePumpOver && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </>
           );
@@ -315,6 +344,9 @@ const SortableAssignmentList = ({
                   value={assignment?.quantity_mt?.toString() || '0'}
                 />
               </div>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              {/* Regular movements have no actions for now */}
             </TableCell>
           </>
         );

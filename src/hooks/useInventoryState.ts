@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,7 +22,8 @@ export const PRODUCT_COLORS = {
   'FAME0': 'bg-purple-500 text-white',
   'HVO': 'bg-orange-500 text-white',
   'RME DC': 'bg-red-500 text-white',
-  'UCOME-5': 'bg-yellow-500 text-white'
+  'UCOME-5': 'bg-yellow-500 text-white',
+  'TRANSFERS': 'bg-gray-500 text-white', // Changed from "Transfer" to "TRANSFERS" and kept gray-500
 };
 
 export const useInventoryState = (terminalId?: string) => {
@@ -571,6 +571,54 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const deletePumpOverMutation = useMutation({
+    mutationFn: async ({ 
+      assignmentId, 
+      movementId 
+    }: { 
+      assignmentId: string, 
+      movementId: string 
+    }) => {
+      console.log('Deleting pump over:', { assignmentId, movementId });
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      // Finally, delete the movement record
+      const { error: movementError } = await supabase
+        .from('movements')
+        .delete()
+        .eq('id', movementId);
+      
+      if (movementError) throw movementError;
+      
+      return { assignmentId, movementId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Pump over deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting pump over:', error);
+      toast.error(`Failed to delete pump over: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   const updateTankNumber = useMutation({
     mutationFn: async ({ tankId, tankNumber }: { tankId: string, tankNumber: string }) => {
       const { data: tank } = await supabase
@@ -756,7 +804,8 @@ export const useInventoryState = (terminalId?: string) => {
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
     createPumpOver: (quantity: number, comment?: string) => createPumpOverMutation.mutate({ quantity, comment }),
+    deletePumpOver: (assignmentId: string, movementId: string) => 
+      deletePumpOverMutation.mutate({ assignmentId, movementId }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };
-
