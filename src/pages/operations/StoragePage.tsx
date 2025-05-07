@@ -38,13 +38,14 @@ const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
   bargeName: 90,
-  bargeImo: 85,  // Add width for the new IMO column
+  bargeImo: 85,
   movementDate: 75,
   nominationDate: 75,
   customs: 75,
   sustainability: 90,
   comments: 100,
   quantity: 70,
+  actions: 50,  // New column for actions
 };
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);

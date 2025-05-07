@@ -212,6 +212,16 @@ const SortableAssignmentList = ({
               className="text-[10px] font-medium"
             />
           </TableHead>
+          <TableHead 
+            className={`w-[${columnWidths.actions}px] h-10`}
+            style={{ width: `${columnWidths.actions}px` }}
+          >
+            <TruncatedCell 
+              text="Actions" 
+              width={columnWidths.actions - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
         </>
       )}
       renderRow={(item) => {
@@ -228,26 +238,30 @@ const SortableAssignmentList = ({
                     <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500">
                       Internal Pump Over
                     </Badge>
-                    {onDeletePumpOver && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-5 w-5 ml-1 p-0" 
-                        onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
-                      >
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
-                    )}
                   </div>
                 </div>
               </TableCell>
               <TableCell className="py-2 text-[10px] h-10">
                 <div className="flex justify-center">
                   <ProductToken 
-                    product="TRANSFERS" // Updated from "Transfer" to "TRANSFERS"
+                    product="TRANSFERS"
                     value={assignment.quantity_mt.toString()}
                   />
                 </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {onDeletePumpOver && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </>
           );
@@ -330,6 +344,9 @@ const SortableAssignmentList = ({
                   value={assignment?.quantity_mt?.toString() || '0'}
                 />
               </div>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              {/* Regular movements have no actions for now */}
             </TableCell>
           </>
         );
