@@ -431,76 +431,67 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   // This function handles the custom behavior for drag and drop with groups
   const handleCustomReorder = async (reorderedItems: Movement[]) => {
-    // We'll implement a more robust algorithm to ensure groups stay together
-    
     console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
     
     // Step 1: Extract all groups and standalone items
-    const processedGroups = new Set<string>();
-    const groupedMovements: Map<string, Movement[]> = new Map();
-    const standaloneMovements: Movement[] = [];
+    const groupMap = new Map<string, Movement[]>();
+    const standaloneItems: Movement[] = [];
     
-    // First pass - identify all groups and standalone items
+    // Collect all items by their group_id (or lack thereof)
     for (const item of reorderedItems) {
-      if (item.group_id && !processedGroups.has(item.group_id)) {
-        // Find all items in this group from the original array
-        const groupItems = getMovementsInGroup(reorderedItems, item.group_id);
-        groupedMovements.set(item.group_id, groupItems);
-        processedGroups.add(item.group_id);
-      } else if (!item.group_id) {
-        standaloneMovements.push(item);
-      }
-      // Skip items that are part of an already processed group
-    }
-    
-    // Step 2: Rebuild the array in the correct order, with groups intact
-    const finalItems: Movement[] = [];
-    const processedItems = new Set<string>();
-    
-    // Second pass - rebuild array with intact groups
-    for (const item of reorderedItems) {
-      // Skip items we've already processed
-      if (processedItems.has(item.id)) continue;
-      
-      // If item is part of a group and is the first we encounter from that group
-      if (item.group_id && !processedItems.has(item.id)) {
-        // Add all items from the group in their original order
-        const groupItems = groupedMovements.get(item.group_id) || [];
-        
-        // Sort group items by their sort_order to maintain proper group order
-        const sortedGroupItems = [...groupItems].sort((a, b) => {
-          // Use original array index as a fallback if sort_order is not available
-          const aIndex = filteredMovements.findIndex(m => m.id === a.id);
-          const bIndex = filteredMovements.findIndex(m => m.id === b.id);
-          
-          const aSortOrder = a.sort_order !== null ? a.sort_order : aIndex;
-          const bSortOrder = b.sort_order !== null ? b.sort_order : bIndex;
-          
-          return (aSortOrder || 0) - (bSortOrder || 0);
-        });
-        
-        // Add all items from the group
-        for (const groupItem of sortedGroupItems) {
-          finalItems.push(groupItem);
-          processedItems.add(groupItem.id);
+      if (item.group_id) {
+        // Initialize group array if this is the first item we encounter from this group
+        if (!groupMap.has(item.group_id)) {
+          groupMap.set(item.group_id, []);
         }
-      } 
-      // If it's a standalone item we haven't processed yet
-      else if (!item.group_id && !processedItems.has(item.id)) {
-        finalItems.push(item);
-        processedItems.add(item.id);
+        
+        // Add this item to its group's array
+        groupMap.get(item.group_id)?.push(item);
+      } else {
+        // This is a standalone item
+        standaloneItems.push(item);
       }
     }
     
-    // Make sure we didn't miss anything (shouldn't happen, but just in case)
-    const allProcessed = reorderedItems.every(item => processedItems.has(item.id));
-    if (!allProcessed) {
-      console.warn('[MOVEMENTS] Not all items were processed in handleCustomReorder');
-      reorderedItems.forEach(item => {
-        if (!processedItems.has(item.id)) {
+    // Step 2: Sort each group internally by original sort_order to maintain group integrity
+    groupMap.forEach((items, groupId) => {
+      // Sort group items by their original sort_order to preserve internal group order
+      items.sort((a, b) => {
+        const aOrder = a.sort_order !== null ? a.sort_order : Infinity;
+        const bOrder = b.sort_order !== null ? b.sort_order : Infinity;
+        return aOrder - bOrder;
+      });
+    });
+    
+    // Step 3: Build the final array preserving user-intended order but keeping groups intact
+    const finalItems: Movement[] = [];
+    const processedGroupIds = new Set<string>();
+    
+    // Process items in the order the user intended
+    for (const item of reorderedItems) {
+      if (item.group_id && !processedGroupIds.has(item.group_id)) {
+        // When we encounter a group for the first time, add all items from that group
+        const groupItems = groupMap.get(item.group_id) || [];
+        finalItems.push(...groupItems);
+        processedGroupIds.add(item.group_id);
+      } else if (!item.group_id) {
+        // Add standalone items
+        finalItems.push(item);
+      }
+      // Skip items from already processed groups
+    }
+    
+    // Verify that all items are included
+    if (finalItems.length !== reorderedItems.length) {
+      console.warn('[MOVEMENTS] Item count mismatch after reordering:', 
+        `Expected ${reorderedItems.length}, got ${finalItems.length}`);
+      // Try to recover from any missing items
+      const itemIds = new Set(finalItems.map(item => item.id));
+      for (const item of reorderedItems) {
+        if (!itemIds.has(item.id)) {
           finalItems.push(item);
         }
-      });
+      }
     }
     
     console.log('[MOVEMENTS] Final reordered items:', finalItems.length);

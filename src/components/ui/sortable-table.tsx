@@ -215,12 +215,24 @@ export function SortableTable<T extends SortableItem>({
     
     const activeItem = items[activeIndex];
     
+    console.log('[SORTABLE] Drag end:', { 
+      activeId: activeItem.id, 
+      activeIndex, 
+      overId: over.id, 
+      overIndex,
+      isInGroup: isItemPartOfGroup && isItemPartOfGroup(activeItem, activeIndex, items),
+      isGroupLeader: isItemFirstInGroup && isItemFirstInGroup(activeItem, activeIndex, items),
+    });
+    
     // Check if the active item is part of a group 
     const isActiveItemInGroup = isItemPartOfGroup && isItemPartOfGroup(activeItem, activeIndex, items);
     const isActiveItemGroupLeader = isItemFirstInGroup && isItemFirstInGroup(activeItem, activeIndex, items);
     
     // If this is not the first item in a group, don't allow dragging
-    if (isActiveItemInGroup && !isActiveItemGroupLeader) return;
+    if (isActiveItemInGroup && !isActiveItemGroupLeader) {
+      console.log('[SORTABLE] Rejected drag: item is in group but not the group leader');
+      return;
+    }
     
     // Get the active group ID if any
     const activeGroupId = getGroupId ? getGroupId(activeItem) : null;
@@ -231,7 +243,10 @@ export function SortableTable<T extends SortableItem>({
     if (isActiveItemInGroup && isActiveItemGroupLeader && findGroupMembers && activeGroupId) {
       // Find all items in the active group
       const groupItems = findGroupMembers(items, activeGroupId);
-      const nonGroupItems = newItems.filter(item => 
+      console.log('[SORTABLE] Moving group with', groupItems.length, 'items');
+      
+      // Remove all group items from the array
+      const remainingItems = newItems.filter(item => 
         !groupItems.some(groupItem => groupItem.id === item.id)
       );
       
@@ -242,10 +257,17 @@ export function SortableTable<T extends SortableItem>({
       const overItem = items[overIndex];
       const overItemGroupId = getGroupId ? getGroupId(overItem) : null;
       
+      console.log('[SORTABLE] Drop target:', { 
+        overId: overItem.id, 
+        overIndex, 
+        overGroupId: overItemGroupId,
+        inGroup: isItemPartOfGroup && isItemPartOfGroup(overItem, overIndex, items)
+      });
+      
+      // If dropping on an item in a different group, handle boundary behavior
       if (overItemGroupId && overItemGroupId !== activeGroupId) {
-        // If dragging to an item in a different group, we need special handling
         if (isItemPartOfGroup && isItemPartOfGroup(overItem, overIndex, items)) {
-          // Find where this group starts
+          // Find where this group starts and ends
           const overGroupItems = findGroupMembers(items, overItemGroupId);
           const firstGroupItemIndex = items.findIndex(item => 
             item.id === overGroupItems[0].id
@@ -254,33 +276,67 @@ export function SortableTable<T extends SortableItem>({
             item.id === overGroupItems[overGroupItems.length - 1].id
           );
           
-          // If dragging before the middle of group, insert before the group
+          console.log('[SORTABLE] Target is in group:', {
+            firstGroupItemIndex,
+            lastGroupItemIndex,
+            overIndex
+          });
+          
+          // If closer to the start of the group, insert before the group
           // Otherwise, insert after the group
           if (overIndex - firstGroupItemIndex < lastGroupItemIndex - overIndex) {
             insertionIndex = firstGroupItemIndex;
+            console.log('[SORTABLE] Inserting before group at', insertionIndex);
           } else {
             insertionIndex = lastGroupItemIndex + 1;
+            console.log('[SORTABLE] Inserting after group at', insertionIndex);
           }
         }
       }
       
-      // Remove the original group items and insert them at the new position
-      nonGroupItems.splice(insertionIndex, 0, ...groupItems);
+      // Adjust the insertion index if it would be in the middle of another group
+      if (insertionIndex > 0 && insertionIndex < items.length) {
+        const prevItem = items[insertionIndex - 1];
+        const currentItem = items[insertionIndex];
+        
+        // Check if insertion would split a group
+        if (getGroupId && isItemPartOfGroup) {
+          const prevGroupId = getGroupId(prevItem);
+          const currentGroupId = getGroupId(currentItem);
+          
+          if (prevGroupId && prevGroupId === currentGroupId) {
+            // Find the start of this group
+            const groupStart = items.findIndex(item => 
+              getGroupId(item) === prevGroupId && 
+              isItemFirstInGroup && isItemFirstInGroup(item, items.indexOf(item), items)
+            );
+            
+            if (groupStart !== -1) {
+              // Insert before the group
+              insertionIndex = groupStart;
+              console.log('[SORTABLE] Adjusted insertion to group start:', insertionIndex);
+            }
+          }
+        }
+      }
       
-      // Update with the new order
-      onReorder(nonGroupItems);
+      // Insert all items from the dragged group at the new position
+      remainingItems.splice(insertionIndex, 0, ...groupItems);
+      console.log('[SORTABLE] Final item count after group reordering:', remainingItems.length);
+      
+      onReorder(remainingItems);
     } else {
-      // Handle single item movement (not part of a group)
+      // Handle movement of a single standalone item
       const [movedItem] = newItems.splice(activeIndex, 1);
       
-      // Check if inserting into the middle of a group (which we want to prevent)
+      // Determine the insertion point, avoiding splitting groups
+      let insertionIndex = overIndex;
       const overItem = items[overIndex];
       const overItemGroupId = getGroupId ? getGroupId(overItem) : null;
       
-      let insertionIndex = overIndex;
-      
+      // If dropping on an item in a group, adjust insertion point
       if (overItemGroupId && isItemPartOfGroup && isItemPartOfGroup(overItem, overIndex, items)) {
-        // Find the boundaries of the group
+        // Find the group boundaries
         const groupItems = findGroupMembers ? findGroupMembers(items, overItemGroupId) : [];
         const firstGroupItemIndex = items.findIndex(item => 
           groupItems.some(groupItem => groupItem.id === item.id) && 
@@ -295,12 +351,17 @@ export function SortableTable<T extends SortableItem>({
         // If closer to the end, insert after the group
         if (Math.abs(overIndex - firstGroupItemIndex) <= Math.abs(overIndex - lastGroupItemIndex)) {
           insertionIndex = firstGroupItemIndex;
+          console.log('[SORTABLE] Inserting single item before group at', insertionIndex);
         } else {
           insertionIndex = lastGroupItemIndex + 1;
+          console.log('[SORTABLE] Inserting single item after group at', insertionIndex);
         }
       }
       
+      // Insert the item at the determined position
       newItems.splice(insertionIndex, 0, movedItem);
+      console.log('[SORTABLE] Final item count after single item reordering:', newItems.length);
+      
       onReorder(newItems);
     }
   };
