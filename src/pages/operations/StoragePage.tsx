@@ -2,7 +2,7 @@ import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Wrench, Waves } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus, Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
@@ -22,17 +22,6 @@ import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
-import { 
-  cleanupOrphanedTankMovements, 
-  initializeAssignmentSortOrder, 
-  fixDuplicateSortOrders 
-} from '@/utils/cleanupUtils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -135,15 +124,6 @@ const StoragePage = () => {
     refetchTanks();
   };
 
-  const handleMaintenance = async () => {
-    if (selectedTerminalId) {
-      await cleanupOrphanedTankMovements(selectedTerminalId);
-      await initializeAssignmentSortOrder(selectedTerminalId);
-      await fixDuplicateSortOrders(selectedTerminalId);
-      refetchTanks();
-    }
-  };
-
   const handlePumpOverClick = () => {
     setIsPumpOverFormOpen(true);
   };
@@ -205,20 +185,6 @@ const StoragePage = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
           <div className="flex items-center space-x-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="mr-2">
-                  <Wrench className="h-4 w-4 mr-1" />
-                  Maintenance
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleMaintenance}>
-                  <Wrench className="h-4 w-4 mr-2" />
-                  Cleanup Tank Data
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             <Filter className="h-5 w-5 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Filter</span>
           </div>
