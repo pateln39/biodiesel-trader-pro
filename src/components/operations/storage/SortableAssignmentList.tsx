@@ -96,7 +96,7 @@ const SortableAssignmentList = ({
   }) => {
     // For pump overs, use a distinct color
     if (item.movement?.isPumpOver) {
-      return "bg-blue-900/10 hover:bg-blue-900/20";
+      return "bg-gray-900/10 hover:bg-gray-900/20"; // Changed from blue-900 to gray-900
     }
     
     // Handle the case where buy_sell might be null
@@ -223,8 +223,8 @@ const SortableAssignmentList = ({
             <>
               <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
                 <div className="flex items-center justify-center space-x-2">
-                  <Waves className="h-4 w-4 text-blue-500" />
-                  <Badge variant="outline" className="bg-blue-100/10 border-blue-500 text-blue-500">
+                  <Waves className="h-4 w-4 text-gray-500" /> {/* Changed from text-blue-500 to text-gray-500 */}
+                  <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500"> {/* Changed from blue to gray */}
                     Internal Pump Over
                   </Badge>
                 </div>
