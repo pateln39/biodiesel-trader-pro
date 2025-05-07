@@ -14,8 +14,14 @@ import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssig
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Waves } from 'lucide-react';
+import { ArrowRight, Trash2, Waves } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface SortableAssignmentListProps {
   terminalId: string;
@@ -23,6 +29,7 @@ interface SortableAssignmentListProps {
   updateAssignmentComments: (assignmentId: string, comments: string) => void;
   columnWidths: Record<string, number>;
   onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
+  onOpenStorageForm?: (movement: any) => void;
 }
 
 const SortableAssignmentList = ({ 
@@ -30,7 +37,8 @@ const SortableAssignmentList = ({
   movements, 
   updateAssignmentComments,
   columnWidths,
-  onDeletePumpOver
+  onDeletePumpOver,
+  onOpenStorageForm
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -106,235 +114,279 @@ const SortableAssignmentList = ({
   };
 
   return (
-    <SortableTable
-      items={sortableItems}
-      onReorder={handleReorderWrapper}
-      getRowBgClass={getRowBgClass}
-      renderHeader={() => (
-        <>
-          <TableHead 
-            className={`w-[${columnWidths.counterparty}px] h-10`}
-            style={{ width: `${columnWidths.counterparty}px` }}
-          >
-            <TruncatedCell 
-              text="Counterparty" 
-              width={columnWidths.counterparty - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.tradeRef}px] h-10`}
-            style={{ width: `${columnWidths.tradeRef}px` }}
-          >
-            <TruncatedCell 
-              text="Trade Ref" 
-              width={columnWidths.tradeRef - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.bargeName}px] h-10`}
-            style={{ width: `${columnWidths.bargeName}px` }}
-          >
-            <TruncatedCell 
-              text="Barge" 
-              width={columnWidths.bargeName - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.bargeImo}px] h-10`}
-            style={{ width: `${columnWidths.bargeImo}px` }}
-          >
-            <TruncatedCell 
-              text="IMO" 
-              width={columnWidths.bargeImo - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.movementDate}px] h-10`}
-            style={{ width: `${columnWidths.movementDate}px` }}
-          >
-            <TruncatedCell 
-              text="Move Date" 
-              width={columnWidths.movementDate - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.nominationDate}px] h-10`}
-            style={{ width: `${columnWidths.nominationDate}px` }}
-          >
-            <TruncatedCell 
-              text="Nom. Valid" 
-              width={columnWidths.nominationDate - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.customs}px] h-10`}
-            style={{ width: `${columnWidths.customs}px` }}
-          >
-            <TruncatedCell 
-              text="Customs" 
-              width={columnWidths.customs - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.sustainability}px] h-10`}
-            style={{ width: `${columnWidths.sustainability}px` }}
-          >
-            <TruncatedCell 
-              text="Sustain." 
-              width={columnWidths.sustainability - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.comments}px] h-10`}
-            style={{ width: `${columnWidths.comments}px` }}
-          >
-            <TruncatedCell 
-              text="Comments" 
-              width={columnWidths.comments - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-          <TableHead 
-            className={`w-[${columnWidths.quantity}px] h-10`}
-            style={{ width: `${columnWidths.quantity}px` }}
-          >
-            <TruncatedCell 
-              text="Qty (MT)" 
-              width={columnWidths.quantity - 8} 
-              className="text-[10px] font-medium"
-            />
-          </TableHead>
-        </>
-      )}
-      renderRow={(item) => {
-        const { movement, assignment } = item;
-        
-        // Special rendering for pump over rows
-        if (movement?.isPumpOver) {
-          return (
-            <>
-              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
-                <div className="flex items-center justify-center space-x-2">
-                  <Waves className="h-4 w-4 text-gray-500" />
-                  <div className="flex items-center space-x-1">
-                    <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500">
-                      Internal Pump Over
-                    </Badge>
+    <TooltipProvider>
+      <SortableTable
+        items={sortableItems}
+        onReorder={handleReorderWrapper}
+        getRowBgClass={getRowBgClass}
+        renderHeader={() => (
+          <>
+            <TableHead 
+              className={`w-[${columnWidths.counterparty}px] h-10`}
+              style={{ width: `${columnWidths.counterparty}px` }}
+            >
+              <TruncatedCell 
+                text="Counterparty" 
+                width={columnWidths.counterparty - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.tradeRef}px] h-10`}
+              style={{ width: `${columnWidths.tradeRef}px` }}
+            >
+              <TruncatedCell 
+                text="Trade Ref" 
+                width={columnWidths.tradeRef - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.bargeName}px] h-10`}
+              style={{ width: `${columnWidths.bargeName}px` }}
+            >
+              <TruncatedCell 
+                text="Barge" 
+                width={columnWidths.bargeName - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.bargeImo}px] h-10`}
+              style={{ width: `${columnWidths.bargeImo}px` }}
+            >
+              <TruncatedCell 
+                text="IMO" 
+                width={columnWidths.bargeImo - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.movementDate}px] h-10`}
+              style={{ width: `${columnWidths.movementDate}px` }}
+            >
+              <TruncatedCell 
+                text="Move Date" 
+                width={columnWidths.movementDate - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.nominationDate}px] h-10`}
+              style={{ width: `${columnWidths.nominationDate}px` }}
+            >
+              <TruncatedCell 
+                text="Nom. Valid" 
+                width={columnWidths.nominationDate - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.customs}px] h-10`}
+              style={{ width: `${columnWidths.customs}px` }}
+            >
+              <TruncatedCell 
+                text="Customs" 
+                width={columnWidths.customs - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.sustainability}px] h-10`}
+              style={{ width: `${columnWidths.sustainability}px` }}
+            >
+              <TruncatedCell 
+                text="Sustain." 
+                width={columnWidths.sustainability - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.comments}px] h-10`}
+              style={{ width: `${columnWidths.comments}px` }}
+            >
+              <TruncatedCell 
+                text="Comments" 
+                width={columnWidths.comments - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.quantity}px] h-10`}
+              style={{ width: `${columnWidths.quantity}px` }}
+            >
+              <TruncatedCell 
+                text="Qty (MT)" 
+                width={columnWidths.quantity - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+            <TableHead 
+              className={`w-[${columnWidths.actions}px] h-10`}
+              style={{ width: `${columnWidths.actions}px` }}
+            >
+              <TruncatedCell 
+                text="Actions" 
+                width={columnWidths.actions - 8} 
+                className="text-[10px] font-medium"
+              />
+            </TableHead>
+          </>
+        )}
+        renderRow={(item) => {
+          const { movement, assignment } = item;
+          
+          // Special rendering for pump over rows
+          if (movement?.isPumpOver) {
+            return (
+              <>
+                <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                  <div className="flex items-center justify-center space-x-2">
+                    <Waves className="h-4 w-4 text-gray-500" />
+                    <div className="flex items-center space-x-1">
+                      <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500">
+                        Internal Pump Over
+                      </Badge>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="py-2 text-[10px] h-10">
+                  <div className="flex justify-center">
+                    <ProductToken 
+                      product="TRANSFERS" // Updated from "Transfer" to "TRANSFERS"
+                      value={assignment.quantity_mt.toString()}
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="py-2 text-[10px] h-10">
+                  <div className="flex justify-end">
                     {onDeletePumpOver && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-5 w-5 ml-1 p-0" 
-                        onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
-                      >
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 p-0" 
+                            onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Delete pump over</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
-                </div>
+                </TableCell>
+              </>
+            );
+          }
+          
+          // Regular row rendering
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.counterparty} 
+                  width={columnWidths.counterparty - 16} 
+                  className="font-medium text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.trade_reference} 
+                  width={columnWidths.tradeRef - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.barge_name} 
+                  width={columnWidths.bargeName - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.barge_imo || 'N/A'} 
+                  width={columnWidths.bargeImo - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
+                  width={columnWidths.movementDate - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
+                  width={columnWidths.nominationDate - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <span className={`
+                  px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
+                  ${movement?.customs_status === "T1" 
+                    ? "bg-green-900/60 text-green-200" 
+                    : "bg-blue-900/60 text-blue-200"}
+                `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
+                  {movement?.customs_status || 'N/A'}
+                </span>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <TruncatedCell 
+                  text={movement?.sustainability} 
+                  width={columnWidths.sustainability - 16} 
+                  className="text-[10px]"
+                />
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <EditableAssignmentComments
+                  assignmentId={assignment.id as string}
+                  initialValue={assignment.comments || ''}
+                  onSave={updateAssignmentComments}
+                  className="text-[10px]"
+                />
               </TableCell>
               <TableCell className="py-2 text-[10px] h-10">
                 <div className="flex justify-center">
                   <ProductToken 
-                    product="TRANSFERS" // Updated from "Transfer" to "TRANSFERS"
-                    value={assignment.quantity_mt.toString()}
+                    product={movement?.product}
+                    value={assignment?.quantity_mt?.toString() || '0'}
                   />
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <div className="flex justify-end">
+                  {onOpenStorageForm && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 p-0" 
+                          onClick={() => onOpenStorageForm(movement)}
+                        >
+                          <ArrowRight className="h-4 w-4 text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Edit storage assignment</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </TableCell>
             </>
           );
-        }
-        
-        // Regular row rendering
-        return (
-          <>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.counterparty} 
-                width={columnWidths.counterparty - 16} 
-                className="font-medium text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.trade_reference} 
-                width={columnWidths.tradeRef - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.barge_name} 
-                width={columnWidths.bargeName - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.barge_imo || 'N/A'} 
-                width={columnWidths.bargeImo - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
-                width={columnWidths.movementDate - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.nomination_valid ? new Date(movement.nomination_valid).toLocaleDateString() : '-'}
-                width={columnWidths.nominationDate - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <span className={`
-                px-1 py-0.5 rounded-full text-[10px] font-medium truncate block
-                ${movement?.customs_status === "T1" 
-                  ? "bg-green-900/60 text-green-200" 
-                  : "bg-blue-900/60 text-blue-200"}
-              `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status || 'N/A'}
-              </span>
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <TruncatedCell 
-                text={movement?.sustainability} 
-                width={columnWidths.sustainability - 16} 
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <EditableAssignmentComments
-                assignmentId={assignment.id as string}
-                initialValue={assignment.comments || ''}
-                onSave={updateAssignmentComments}
-                className="text-[10px]"
-              />
-            </TableCell>
-            <TableCell className="py-2 text-[10px] h-10">
-              <div className="flex justify-center">
-                <ProductToken 
-                  product={movement?.product}
-                  value={assignment?.quantity_mt?.toString() || '0'}
-                />
-              </div>
-            </TableCell>
-          </>
-        );
-      }}
-    />
+        }}
+      />
+    </TooltipProvider>
   );
 };
 
