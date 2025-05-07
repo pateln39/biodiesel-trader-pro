@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -24,8 +23,7 @@ export const PRODUCT_COLORS = {
   'HVO': 'bg-orange-500 text-white',
   'RME DC': 'bg-red-500 text-white',
   'UCOME-5': 'bg-yellow-500 text-white',
-  'Transfer': 'bg-gray-500 text-white', // Changed from blue-500 to gray-500
-  'default': 'bg-gray-500 text-white'
+  'TRANSFERS': 'bg-gray-500 text-white', // Changed from "Transfer" to "TRANSFERS" and kept gray-500
 };
 
 export const useInventoryState = (terminalId?: string) => {

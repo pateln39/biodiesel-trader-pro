@@ -68,7 +68,7 @@ const SortableAssignmentList = ({
             id: assignment.movement_id,
             assignment_id: assignment.id,
             buy_sell: null, // Neutral, neither buy nor sell
-            product: 'Transfer',
+            product: 'TRANSFERS', // Updated from "Transfer" to "TRANSFERS"
             isPumpOver: true
           },
           assignment
@@ -244,7 +244,7 @@ const SortableAssignmentList = ({
               <TableCell className="py-2 text-[10px] h-10">
                 <div className="flex justify-center">
                   <ProductToken 
-                    product="Transfer"
+                    product="TRANSFERS" // Updated from "Transfer" to "TRANSFERS"
                     value={assignment.quantity_mt.toString()}
                   />
                 </div>
