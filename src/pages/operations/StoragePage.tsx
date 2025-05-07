@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -599,6 +600,9 @@ const StoragePage = () => {
                         
                         <TableBody>
                           {sortedMovements.map((movement, index) => {
+                            // Check if this is a pump over row
+                            const isPumpOver = movements.find(m => m.id === movement.id)?.terminal_comments === 'PUMP_OVER';
+                            
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
@@ -640,19 +644,37 @@ const StoragePage = () => {
                                     const totalMTMoved = Math.round(movementSummary.totalMTMoved);
                                     const movementQuantity = Math.round(movement.assignment_quantity || 0);
                                     
-                                    return (
-                                      <div className="flex items-center justify-center space-x-1">
-                                        <span>{totalMTMoved}</span>
-                                        {totalMTMoved !== movementQuantity && (
-                                          <Badge 
-                                            variant="outline" 
-                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
-                                          >
-                                            !
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    );
+                                    if (isPumpOver) {
+                                      // For pump overs, show an exclamation if total is NOT zero
+                                      return (
+                                        <div className="flex items-center justify-center space-x-1">
+                                          <span>{totalMTMoved}</span>
+                                          {totalMTMoved !== 0 && (
+                                            <Badge 
+                                              variant="outline" 
+                                              className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                            >
+                                              !
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    } else {
+                                      // For normal movements, show an exclamation if total doesn't match quantity
+                                      return (
+                                        <div className="flex items-center justify-center space-x-1">
+                                          <span>{totalMTMoved}</span>
+                                          {totalMTMoved !== movementQuantity && (
+                                            <Badge 
+                                              variant="outline" 
+                                              className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                            >
+                                              !
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    }
                                   })()}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
@@ -671,7 +693,10 @@ const StoragePage = () => {
                                   {Math.round(movementSummary.currentUllage)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                  {isPumpOver ? 
+                                    <span className="text-white">-</span> : 
+                                    Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))
+                                  }
                                 </TableCell>
                               </TableRow>
                             );
