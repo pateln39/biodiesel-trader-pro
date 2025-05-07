@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -37,13 +38,15 @@ export interface SortableItem {
 interface DragHandleProps {
   className?: string;
   disabled?: boolean;
+  grouped?: boolean;
 }
 
-export const DragHandle = ({ className, disabled }: DragHandleProps) => {
+export const DragHandle = ({ className, disabled, grouped }: DragHandleProps) => {
   return (
     <div className={cn(
       "flex items-center justify-center h-full", 
       disabled ? "cursor-not-allowed opacity-50" : "cursor-grab", 
+      grouped ? "bg-purple-500/10 text-purple-400" : "",
       className
     )}>
       <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -57,6 +60,7 @@ interface SortableRowProps {
   className?: string;
   disabled?: boolean;
   bgColorClass?: string;
+  grouped?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -64,7 +68,8 @@ export const SortableRow = ({
   children, 
   className, 
   disabled = false,
-  bgColorClass = "" 
+  bgColorClass = "",
+  grouped = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -104,7 +109,7 @@ export const SortableRow = ({
           "h-full flex items-center",
           disabled ? "cursor-not-allowed" : "cursor-grab"
         )} {...(disabled ? {} : listeners)}>
-          <DragHandle disabled={disabled} />
+          <DragHandle disabled={disabled} grouped={grouped} />
         </div>
       </TableCell>
       {children}
@@ -117,9 +122,9 @@ export interface SortableTableProps<T extends SortableItem> {
   onReorder: (items: T[]) => void;
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
-  isItemDisabled?: (item: T) => boolean;
+  isItemDisabled?: (item: T, index: number, items: T[]) => boolean;
   className?: string;
-  getRowBgClass?: (item: T) => string;
+  getRowBgClass?: (item: T, index: number, items: T[]) => string;
   disableDragAndDrop?: boolean;
   disabledRowClassName?: string;
 }
@@ -154,9 +159,10 @@ export function SortableTable<T extends SortableItem>({
     if (disableDragAndDrop) return;
     
     const itemId = event.active.id as string;
-    const item = items.find(item => item.id === itemId);
+    const itemIndex = items.findIndex(item => item.id === itemId);
+    const item = items[itemIndex];
     
-    if (item && isItemDisabled && isItemDisabled(item)) {
+    if (item && isItemDisabled && isItemDisabled(item, itemIndex, items)) {
       return;
     }
     
@@ -208,8 +214,11 @@ export function SortableTable<T extends SortableItem>({
             strategy={verticalListSortingStrategy}
           >
             {items.map((item, index) => {
-              const isDisabled = (isItemDisabled ? isItemDisabled(item) : false) || disableDragAndDrop;
-              const bgColorClass = getRowBgClass ? getRowBgClass(item) : "";
+              const isDisabled = (isItemDisabled ? isItemDisabled(item, index, items) : false) || disableDragAndDrop;
+              const bgColorClass = getRowBgClass ? getRowBgClass(item, index, items) : "";
+              
+              // Check if this item is part of a group
+              const isGrouped = item.group_id != null;
               
               return (
                 <SortableRow 
@@ -217,6 +226,7 @@ export function SortableTable<T extends SortableItem>({
                   id={item.id} 
                   disabled={isDisabled}
                   bgColorClass={bgColorClass}
+                  grouped={isGrouped}
                   className={cn(
                     "h-10",
                     isDisabled && disabledRowClassName
@@ -235,7 +245,7 @@ export function SortableTable<T extends SortableItem>({
           {activeItem && (
             <TableRow className="border border-primary bg-background shadow-lg opacity-80 h-10">
               <TableCell className="p-0 pl-2 h-10">
-                <DragHandle />
+                <DragHandle grouped={activeItem.group_id != null} />
               </TableCell>
               {renderRow(activeItem, items.indexOf(activeItem))}
             </TableRow>
