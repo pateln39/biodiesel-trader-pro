@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -446,6 +447,7 @@ export function SortableTable<T extends SortableItem>({
                   key={item.id} 
                   className={cn(
                     "border-l border-r border-primary bg-background opacity-80 h-10",
+                    groupBgClass,  // Apply the group-specific background color
                     groupIdx === activeGroupItems.length - 1 ? "rounded-b-md border-b" : ""
                   )}
                 >

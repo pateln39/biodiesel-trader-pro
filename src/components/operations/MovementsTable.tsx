@@ -126,19 +126,33 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const getRowGroupClasses = (item: Movement, index: number, items: Movement[]) => {
     if (!item.group_id) return "";
     
-    let classes = "ring-1 ring-purple-400/30 bg-purple-900/20";
+    // Use the color utility to get dynamic colors based on group_id
+    const colorClasses = getGroupColorClasses(item.group_id);
+    let classes = colorClasses;
     
     if (isFirstInGroup(item, index, items)) {
-      classes += " rounded-t-md border-t border-l border-r border-purple-400/30";
+      classes += " rounded-t-md border-t border-l border-r";
     } else {
-      classes += " border-l border-r border-purple-400/30";
+      classes += " border-l border-r";
     }
     
     if (isLastInGroup(item, index, items)) {
-      classes += " rounded-b-md border-b border-purple-400/30 mb-1";
+      classes += " rounded-b-md border-b mb-1";
     }
     
     return classes;
+  };
+
+  // Extract the base color name from the class string for group icon colors
+  const getIconColorClass = (groupId: string): string => {
+    const colorClasses = getGroupColorClasses(groupId);
+    
+    if (colorClasses.includes('indigo')) return 'text-indigo-400';
+    if (colorClasses.includes('blue')) return 'text-blue-400';
+    if (colorClasses.includes('violet')) return 'text-violet-400';
+    if (colorClasses.includes('fuchsia')) return 'text-fuchsia-400';
+    if (colorClasses.includes('pink')) return 'text-pink-400';
+    return 'text-purple-400'; // Default
   };
 
   // Handler functions
@@ -507,18 +521,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     const isInGroup = isGroupedMovement(movement, index, sortedMovements);
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
     const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
-
-    // Extract the base color name from the class string for group icon colors
-    const getIconColorClass = (bgColor: string): string => {
-      if (bgColor.includes('indigo')) return 'text-indigo-400';
-      if (bgColor.includes('blue')) return 'text-blue-400';
-      if (bgColor.includes('violet')) return 'text-violet-400';
-      if (bgColor.includes('fuchsia')) return 'text-fuchsia-400';
-      if (bgColor.includes('pink')) return 'text-pink-400';
-      return 'text-purple-400'; // Default
-    };
     
-    const iconColorClass = getIconColorClass(groupBgClass);
+    // Get icon color based on group ID
+    const iconColorClass = movement.group_id ? getIconColorClass(movement.group_id) : '';
 
     return (
       <>
