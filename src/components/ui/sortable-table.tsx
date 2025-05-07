@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -61,6 +61,8 @@ interface SortableRowProps {
   disabled?: boolean;
   bgColorClass?: string;
   grouped?: boolean;
+  isBeingDragged?: boolean;
+  isPartOfDraggedGroup?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -69,7 +71,9 @@ export const SortableRow = ({
   className, 
   disabled = false,
   bgColorClass = "",
-  grouped = false
+  grouped = false,
+  isBeingDragged = false,
+  isPartOfDraggedGroup = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -86,7 +90,7 @@ export const SortableRow = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.5 : isPartOfDraggedGroup ? 0.3 : 1,
     zIndex: isDragging ? 1 : 0,
     position: 'relative' as const,
   };
@@ -98,7 +102,9 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
-        disabled ? "opacity-50" : "",  // Always apply opacity when disabled
+        isBeingDragged ? "border-2 border-dashed border-primary" : "",
+        isPartOfDraggedGroup ? "border-2 border-dashed border-primary bg-accent/20" : "",
+        disabled ? "opacity-50" : "",
         bgColorClass,
         className
       )}
@@ -123,6 +129,11 @@ export interface SortableTableProps<T extends SortableItem> {
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
   isItemDisabled?: (item: T, index: number, items: T[]) => boolean;
+  isItemPartOfGroup?: (item: T, index: number, items: T[]) => boolean;
+  isItemFirstInGroup?: (item: T, index: number, items: T[]) => boolean;
+  isItemLastInGroup?: (item: T, index: number, items: T[]) => boolean;
+  getGroupId?: (item: T) => string | null | undefined;
+  findGroupMembers?: (items: T[], groupId: string | null | undefined) => T[];
   className?: string;
   getRowBgClass?: (item: T, index: number, items: T[]) => string;
   disableDragAndDrop?: boolean;
@@ -135,6 +146,11 @@ export function SortableTable<T extends SortableItem>({
   renderHeader,
   renderRow,
   isItemDisabled,
+  isItemPartOfGroup,
+  isItemFirstInGroup,
+  isItemLastInGroup,
+  getGroupId,
+  findGroupMembers,
   className,
   getRowBgClass,
   disableDragAndDrop = false,
@@ -154,6 +170,21 @@ export function SortableTable<T extends SortableItem>({
   );
 
   const activeItem = activeId ? items.find(item => item.id === activeId) : null;
+  
+  // Find all items that are part of the same group as the active item
+  const activeGroupId = activeItem && getGroupId ? getGroupId(activeItem) : null;
+  const activeGroupItems = useMemo(() => {
+    if (!activeGroupId || !findGroupMembers || !activeItem) return [];
+    return findGroupMembers(items, activeGroupId).filter(item => item.id !== activeItem.id);
+  }, [activeGroupId, findGroupMembers, items, activeItem]);
+  
+  // Track which items are part of the dragged group
+  const draggedGroupIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (activeId) ids.add(activeId);
+    activeGroupItems.forEach(item => ids.add(item.id));
+    return ids;
+  }, [activeId, activeGroupItems]);
 
   const handleDragStart = (event: DragStartEvent) => {
     if (disableDragAndDrop) return;
@@ -173,19 +204,103 @@ export function SortableTable<T extends SortableItem>({
     if (disableDragAndDrop) return;
     
     const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex(item => item.id === active.id);
-      const newIndex = items.findIndex(item => item.id === over.id);
+    setActiveId(null);
+    
+    if (!over) return;
+    
+    const activeIndex = items.findIndex(item => item.id === active.id);
+    const overIndex = items.findIndex(item => item.id === over.id);
+    
+    // If the item hasn't moved or if activeItem is not found, do nothing
+    if (activeIndex === -1 || activeIndex === overIndex) return;
+    
+    const activeItem = items[activeIndex];
+    
+    // Check if the active item is part of a group and if it's the first item
+    const isGroupLeader = isItemFirstInGroup && isItemFirstInGroup(activeItem, activeIndex, items);
+    const isPartOfGroup = isItemPartOfGroup && isItemPartOfGroup(activeItem, activeIndex, items);
+    
+    // If this is not the first item in a group, don't allow dragging
+    if (isPartOfGroup && !isGroupLeader) return;
+    
+    // Check if we're trying to drop between items of the same group
+    const overItem = items[overIndex];
+    const overGroupId = getGroupId ? getGroupId(overItem) : null;
+    
+    // If over item is part of a group, but not the first in group,
+    // we need to adjust the insertion point
+    if (overGroupId && isItemPartOfGroup && !isItemFirstInGroup) {
+      // Find the first item in the group
+      const groupStartIndex = items.findIndex((item, idx) => 
+        getGroupId && getGroupId(item) === overGroupId && 
+        isItemFirstInGroup && isItemFirstInGroup(item, idx, items)
+      );
       
-      const newItems = [...items];
-      const [movedItem] = newItems.splice(oldIndex, 1);
-      newItems.splice(newIndex, 0, movedItem);
-      
-      onReorder(newItems);
+      if (groupStartIndex !== -1) {
+        // Find the last item in the group
+        const groupEndIndex = items.findIndex((item, idx) => 
+          getGroupId && getGroupId(item) === overGroupId && 
+          isItemLastInGroup && isItemLastInGroup(item, idx, items)
+        );
+        
+        // Determine if we should insert before or after the group
+        const insertAfterGroup = overIndex > activeIndex;
+        const newIndex = insertAfterGroup ? groupEndIndex + 1 : groupStartIndex;
+        
+        // Create a copy of the items array
+        const newItems = [...items];
+        
+        // Handle group movement as a single unit
+        if (isPartOfGroup && isGroupLeader) {
+          // Find all items in the active group
+          const activeGroupId = getGroupId ? getGroupId(activeItem) : null;
+          const groupItems = activeGroupId && findGroupMembers ? 
+            findGroupMembers(items, activeGroupId) : [activeItem];
+          
+          // Remove all group items from the array
+          const itemsWithoutGroup = newItems.filter(
+            item => !groupItems.some(groupItem => groupItem.id === item.id)
+          );
+          
+          // Insert the group at the new position
+          itemsWithoutGroup.splice(newIndex, 0, ...groupItems);
+          onReorder(itemsWithoutGroup);
+        } else {
+          // Handle normal item movement
+          const [movedItem] = newItems.splice(activeIndex, 1);
+          newItems.splice(newIndex, 0, movedItem);
+          onReorder(newItems);
+        }
+        
+        return;
+      }
     }
     
-    setActiveId(null);
+    // Standard reordering logic (with group support)
+    const newItems = [...items];
+    
+    if (isPartOfGroup && isGroupLeader && getGroupId) {
+      // Get all items in the group
+      const activeGroupId = getGroupId(activeItem);
+      const groupItems = activeGroupId && findGroupMembers ? 
+        findGroupMembers(items, activeGroupId) : [activeItem];
+      
+      // Remove all group items
+      const filteredItems = newItems.filter(
+        item => !groupItems.some(groupItem => groupItem.id === item.id)
+      );
+      
+      // Insert all group items at the new position
+      const newIndex = overIndex > activeIndex ? overIndex - groupItems.length + 1 : overIndex;
+      filteredItems.splice(newIndex, 0, ...groupItems);
+      
+      onReorder(filteredItems);
+    } else {
+      // Standard single-item movement
+      const [movedItem] = newItems.splice(activeIndex, 1);
+      newItems.splice(overIndex, 0, movedItem);
+      onReorder(newItems);
+    }
   };
 
   return (
@@ -218,7 +333,11 @@ export function SortableTable<T extends SortableItem>({
               const bgColorClass = getRowBgClass ? getRowBgClass(item, index, items) : "";
               
               // Check if this item is part of a group
-              const isGrouped = item.group_id != null;
+              const isGrouped = isItemPartOfGroup ? isItemPartOfGroup(item, index, items) : false;
+              const isFirstGroup = isItemFirstInGroup ? isItemFirstInGroup(item, index, items) : false;
+              
+              // Check if this item is part of the currently dragged group
+              const isPartOfDraggedGroup = draggedGroupIds.has(item.id) && item.id !== activeId;
               
               return (
                 <SortableRow 
@@ -227,6 +346,7 @@ export function SortableTable<T extends SortableItem>({
                   disabled={isDisabled}
                   bgColorClass={bgColorClass}
                   grouped={isGrouped}
+                  isPartOfDraggedGroup={isPartOfDraggedGroup}
                   className={cn(
                     "h-10",
                     isDisabled && disabledRowClassName
@@ -242,14 +362,30 @@ export function SortableTable<T extends SortableItem>({
 
       {activeId && createPortal(
         <DragOverlay adjustScale={false}>
-          {activeItem && (
-            <TableRow className="border border-primary bg-background shadow-lg opacity-80 h-10">
-              <TableCell className="p-0 pl-2 h-10">
-                <DragHandle grouped={activeItem.group_id != null} />
-              </TableCell>
-              {renderRow(activeItem, items.indexOf(activeItem))}
-            </TableRow>
-          )}
+          <div className="space-y-0">
+            {/* First render the active item */}
+            {activeItem && (
+              <TableRow className="border border-primary bg-background shadow-lg opacity-90 h-10">
+                <TableCell className="p-0 pl-2 h-10">
+                  <DragHandle grouped={isItemPartOfGroup && isItemPartOfGroup(activeItem, items.indexOf(activeItem), items)} />
+                </TableCell>
+                {renderRow(activeItem, items.indexOf(activeItem))}
+              </TableRow>
+            )}
+            
+            {/* Then render all items in the same group */}
+            {activeGroupItems.map((item, groupIdx) => (
+              <TableRow 
+                key={item.id} 
+                className="border-l border-r border-primary bg-background shadow-lg opacity-80 h-10"
+              >
+                <TableCell className="p-0 pl-2 h-10">
+                  <DragHandle grouped={true} />
+                </TableCell>
+                {renderRow(item, groupIdx + 1)} {/* The +1 is to indicate it's not the first item */}
+              </TableRow>
+            ))}
+          </div>
         </DragOverlay>,
         document.body
       )}

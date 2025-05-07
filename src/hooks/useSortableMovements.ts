@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -356,7 +357,7 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
       
       setLocalMovements(reorderedItems);
 
-      // Collect all items that were reordered, including entire groups that move together
+      // Update sort_order for all reordered items
       const updatedItems = reorderedItems.map((item, index) => ({
         id: item.id,
         sort_order: index + 1,

@@ -88,6 +88,54 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     return items.filter(m => m.group_id === groupId);
   };
 
+  // Function to identify if an item is part of a group
+  const isGroupedMovement = (item: Movement) => {
+    return !!item.group_id;
+  };
+
+  // Function to determine if an item is the first in a group
+  const isFirstInGroup = (item: Movement, index: number, items: Movement[]) => {
+    if (index === 0) return true;
+    
+    const previousMovement = items[index - 1];
+    
+    return !item.group_id || item.group_id !== previousMovement.group_id;
+  };
+
+  // Function to determine if an item is the last in a group
+  const isLastInGroup = (item: Movement, index: number, items: Movement[]) => {
+    if (index === items.length - 1) return true;
+    
+    const nextMovement = items[index + 1];
+    
+    return !item.group_id || item.group_id !== nextMovement.group_id;
+  };
+
+  // Item is disabled for drag if it belongs to a group but is not the first item
+  const isItemDisabledForDrag = (item: Movement, index: number, items: Movement[]) => {
+    // Only the first item in a group can be dragged
+    return !!item.group_id && !isFirstInGroup(item, index, items);
+  };
+
+  // Calculate row style based on group membership
+  const getRowGroupClasses = (item: Movement, index: number, items: Movement[]) => {
+    if (!item.group_id) return "";
+    
+    let classes = "ring-1 ring-purple-400/30 bg-purple-900/20";
+    
+    if (isFirstInGroup(item, index, items)) {
+      classes += " rounded-t-md border-t border-l border-r border-purple-400/30";
+    } else {
+      classes += " border-l border-r border-purple-400/30";
+    }
+    
+    if (isLastInGroup(item, index, items)) {
+      classes += " rounded-b-md border-b border-purple-400/30 mb-1";
+    }
+    
+    return classes;
+  };
+
   // Handler functions
   const handleCommentsClick = (movement: Movement) => {
     setSelectedMovementForComments(movement);
@@ -706,12 +754,17 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <div className="w-full overflow-auto">
         <SortableTable
           items={sortedMovements}
-          onReorder={handleCustomReorder}
+          onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
           disableDragAndDrop={hasSorting}
           isItemDisabled={isItemDisabledForDrag}
-          getRowBgClass={(item, index) => getRowGroupClasses(item, index, sortedMovements)}
+          isItemPartOfGroup={isGroupedMovement}
+          isItemFirstInGroup={(item, index, items) => isFirstInGroup(item, index, items)}
+          isItemLastInGroup={(item, index, items) => isLastInGroup(item, index, items)}
+          getGroupId={(item) => item.group_id || null}
+          findGroupMembers={(items, groupId) => getMovementsInGroup(items, groupId)}
+          getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
           disabledRowClassName=""
         />
       </div>
