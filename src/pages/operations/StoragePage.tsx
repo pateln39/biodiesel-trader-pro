@@ -33,7 +33,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { StorageFormDialog } from '@/components/operations/movements/StorageFormDialog';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -46,7 +45,6 @@ const stickyColumnWidths = {
   sustainability: 90,
   comments: 100,
   quantity: 70,
-  actions: 60, // Added width for the new Actions column
 };
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
@@ -93,9 +91,6 @@ const StoragePage = () => {
     movementId: string;
     quantity: number;
   } | null>(null);
-  // New state for storage form dialog
-  const [storageFormOpen, setStorageFormOpen] = React.useState(false);
-  const [selectedMovement, setSelectedMovement] = React.useState<any>(null);
 
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
@@ -203,16 +198,6 @@ const StoragePage = () => {
     });
   }, [movements]);
 
-  // New handler for opening the storage form
-  const handleOpenStorageForm = (movement: any) => {
-    setSelectedMovement({
-      ...movement,
-      actualQuantity: movement.assignment_quantity, // Use assignment_quantity as actualQuantity
-      referenceNumber: movement.reference_number // Ensure referenceNumber is available
-    });
-    setStorageFormOpen(true);
-  };
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -281,37 +266,37 @@ const StoragePage = () => {
                       <TableHeader>
                         <TableRow className="bg-muted/50 border-b border-white/10 h-12">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-10">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-14">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
                         <TableRow className="bg-muted/40 border-b border-white/10 h-8">
                           <TableHead 
-                            colSpan={10} 
+                            colSpan={9} 
                             className="bg-brand-navy text-[10px]"
                           ></TableHead>
                         </TableRow>
@@ -324,7 +309,6 @@ const StoragePage = () => {
                           updateAssignmentComments={updateAssignmentComments}
                           columnWidths={stickyColumnWidths}
                           onDeletePumpOver={handleDeletePumpOver}
-                          onOpenStorageForm={handleOpenStorageForm}
                         />
                       )}
                     </Table>
@@ -742,15 +726,6 @@ const StoragePage = () => {
         onConfirm={confirmDeletePumpOver}
         quantity={pumpOverToDelete?.quantity || 0}
       />
-
-      {selectedMovement && (
-        <StorageFormDialog
-          movement={selectedMovement}
-          open={storageFormOpen}
-          onOpenChange={setStorageFormOpen}
-          isEditMode={true} // Set to edit mode when opened from the storage page
-        />
-      )}
     </Layout>
   );
 };
