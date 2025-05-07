@@ -14,20 +14,23 @@ import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssig
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { Badge } from '@/components/ui/badge';
-import { Waves } from 'lucide-react';
+import { Trash2, Waves } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SortableAssignmentListProps {
   terminalId: string;
   movements: any[];
   updateAssignmentComments: (assignmentId: string, comments: string) => void;
   columnWidths: Record<string, number>;
+  onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
 }
 
 const SortableAssignmentList = ({ 
   terminalId, 
   movements, 
   updateAssignmentComments,
-  columnWidths
+  columnWidths,
+  onDeletePumpOver
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -227,11 +230,21 @@ const SortableAssignmentList = ({
                 </div>
               </TableCell>
               <TableCell className="py-2 text-[10px] h-10">
-                <div className="flex justify-center">
+                <div className="flex justify-center items-center space-x-2">
                   <ProductToken 
                     product="Transfer"
                     value={assignment.quantity_mt.toString()}
                   />
+                  {onDeletePumpOver && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6" 
+                      onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-3 w-3 text-red-500" />
+                    </Button>
+                  )}
                 </div>
               </TableCell>
             </>

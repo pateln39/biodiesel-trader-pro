@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Filter, Thermometer, Database, Plus, Wrench, Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useInventoryState } from '@/hooks/useInventoryState';
+import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import { Button } from '@/components/ui/button';
 import EditableField from '@/components/operations/storage/EditableField';
 import EditableNumberField from '@/components/operations/storage/EditableNumberField';
@@ -18,6 +17,7 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
 import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
+import DeletePumpOverDialog from '@/components/operations/storage/DeletePumpOverDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
@@ -85,6 +85,12 @@ const StoragePage = () => {
   const [isPumpOverFormOpen, setIsPumpOverFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
+  // Add state for pump over deletion
+  const [pumpOverToDelete, setPumpOverToDelete] = React.useState<{
+    assignmentId: string;
+    movementId: string;
+    quantity: number;
+  } | null>(null);
 
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
@@ -103,6 +109,7 @@ const StoragePage = () => {
     updateTankCapacity,
     updateTankNumber,
     createPumpOver,
+    deletePumpOver,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -146,8 +153,35 @@ const StoragePage = () => {
     }
   };
 
+  const handleDeletePumpOver = (assignmentId: string, movementId: string) => {
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (assignment) {
+      setPumpOverToDelete({
+        assignmentId,
+        movementId,
+        quantity: assignment.quantity_mt
+      });
+    }
+  };
+
+  const confirmDeletePumpOver = () => {
+    if (pumpOverToDelete) {
+      deletePumpOver(pumpOverToDelete.assignmentId, pumpOverToDelete.movementId);
+    }
+  };
+
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
+  
+  // Get assignments from movements for deletion functionality
+  const assignments = React.useMemo(() => {
+    return movements.map(movement => ({
+      id: movement.assignment_id,
+      quantity_mt: movement.assignment_quantity || 0,
+      movement_id: movement.id,
+      comments: movement.terminal_comments
+    }));
+  }, [movements]);
   
   const sortedMovements = React.useMemo(() => {
     return [...movements].sort((a, b) => {
@@ -274,6 +308,7 @@ const StoragePage = () => {
                           movements={movements}
                           updateAssignmentComments={updateAssignmentComments}
                           columnWidths={stickyColumnWidths}
+                          onDeletePumpOver={handleDeletePumpOver}
                         />
                       )}
                     </Table>
@@ -683,6 +718,13 @@ const StoragePage = () => {
         open={isPumpOverFormOpen}
         onOpenChange={setIsPumpOverFormOpen}
         onSubmit={handlePumpOverSubmit}
+      />
+
+      <DeletePumpOverDialog
+        open={!!pumpOverToDelete}
+        onOpenChange={(open) => !open && setPumpOverToDelete(null)}
+        onConfirm={confirmDeletePumpOver}
+        quantity={pumpOverToDelete?.quantity || 0}
       />
     </Layout>
   );
