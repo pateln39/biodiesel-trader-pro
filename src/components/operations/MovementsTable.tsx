@@ -82,10 +82,10 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [confirmUngroupDialogOpen, setConfirmUngroupDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Helper function to get all movements in a group
-  const getMovementsInGroup = (groupId: string | null) => {
+  // Helper function to get all movements in a group - using the input array instead of filteredMovements
+  const getMovementsInGroup = (items: Movement[], groupId: string | null) => {
     if (!groupId) return [];
-    return filteredMovements.filter(m => m.group_id === groupId);
+    return items.filter(m => m.group_id === groupId);
   };
 
   // Handler functions
@@ -428,41 +428,44 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   // This function handles the custom behavior for drag and drop with groups
   const handleCustomReorder = async (reorderedItems: Movement[]) => {
-    // For each group, we need to ensure all its items move together
-    // First, identify all the groups and their positions
-    const groupPositions = new Map<string, number>();
-    const updatedItems: Movement[] = [];
+    // Create a copy of the reordered items as our starting point
+    const processedItems = [...reorderedItems];
     
-    // First pass: identify the new position for each group's first item
-    reorderedItems.forEach((item, index) => {
-      if (item.group_id && !groupPositions.has(item.group_id)) {
-        groupPositions.set(item.group_id, index);
-      }
-      updatedItems.push(item);
-    });
+    // Create a Set to track which items we've already processed
+    const processedIds = new Set<string>();
     
-    // Now adjust the positions of all items, moving entire groups together
-    // Start by removing all non-first group items
-    const filteredItems = updatedItems.filter((item, index) => 
-      !item.group_id || isFirstInGroup(index, updatedItems)
-    );
-    
-    // Then insert all group items at their proper positions
+    // Create our final array where we'll build the correctly ordered list
     const finalItems: Movement[] = [];
     
-    // Iterate through the filtered items (which contain only first items of groups)
-    for (let i = 0; i < filteredItems.length; i++) {
-      const item = filteredItems[i];
-      finalItems.push(item);
+    // Process items in their reordered sequence
+    for (let i = 0; i < processedItems.length; i++) {
+      const currentItem = processedItems[i];
       
-      // If this is the first item in a group, add all the rest of the group items
-      if (item.group_id) {
-        const groupItems = getMovementsInGroup(item.group_id).filter(m => m.id !== item.id);
-        finalItems.push(...groupItems);
+      // Skip if we've already processed this item (part of a group we already handled)
+      if (processedIds.has(currentItem.id)) continue;
+      
+      // Add the current item to the final array and mark as processed
+      finalItems.push(currentItem);
+      processedIds.add(currentItem.id);
+      
+      // If this is part of a group, add all other items from the same group
+      if (currentItem.group_id) {
+        // Find all other items in the same group from the original array
+        // Important: We use the processedItems array to maintain the order in the source array
+        const groupItems = getMovementsInGroup(processedItems, currentItem.group_id)
+          .filter(item => item.id !== currentItem.id); // Exclude the current item
+        
+        // Add all group members and mark them as processed
+        for (const groupItem of groupItems) {
+          if (!processedIds.has(groupItem.id)) {
+            finalItems.push(groupItem);
+            processedIds.add(groupItem.id);
+          }
+        }
       }
     }
     
-    // Call the onReorder function with our adjusted items
+    // Call the onReorder function with our properly sequenced items
     await onReorder(finalItems);
   };
 
