@@ -223,7 +223,9 @@ const ExposurePage = () => {
                       netExposure: 0
                     };
                   }
-                  const actualExposure = typeof weight === 'number' ? weight * quantityMultiplier : 0;
+                  // FIX: Remove redundant quantity multiplier - use weight directly 
+                  // since mtm_formula.exposures.physical already contains the correct sign
+                  const actualExposure = typeof weight === 'number' ? weight : 0;
                   exposuresByMonth[physicalExposureMonth][canonicalBaseProduct].physical += actualExposure;
                 });
               } else {
