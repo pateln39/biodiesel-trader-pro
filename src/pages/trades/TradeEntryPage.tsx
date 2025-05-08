@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +14,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -187,7 +187,7 @@ const TradeEntryPage = () => {
                   tradeReference={tradeReference} 
                   onSubmit={handlePhysicalSubmit} 
                   onCancel={handleCancel}
-                  globalComments={comments}
+                  comments={comments}
                 />
               </TabsContent>
               
@@ -196,7 +196,7 @@ const TradeEntryPage = () => {
                   tradeReference={tradeReference} 
                   onSubmit={handlePaperSubmit} 
                   onCancel={handleCancel} 
-                  globalComments={comments}
+                  comments={comments}
                 />
               </TabsContent>
             </Tabs>
