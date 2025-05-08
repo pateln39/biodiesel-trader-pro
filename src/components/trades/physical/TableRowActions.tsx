@@ -1,85 +1,81 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Trash2, Edit } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
+import { Link } from 'react-router-dom';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { MoreHorizontal, Edit, Trash2, Copy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { copyPhysicalTrade } from '@/utils/physicalTradeCopyUtils';
+import { toast } from 'sonner';
 
 interface TableRowActionsProps {
   tradeId: string;
-  legId?: string;
+  legId: string;
   isMultiLeg: boolean;
-  legReference?: string;
+  legReference: string;
   tradeReference: string;
 }
 
-const TableRowActions: React.FC<TableRowActionsProps> = ({
-  tradeId,
-  legId,
+const TableRowActions = ({ 
+  tradeId, 
+  legId, 
   isMultiLeg,
   legReference,
-  tradeReference,
-}) => {
+  tradeReference 
+}: TableRowActionsProps) => {
   const navigate = useNavigate();
-  
-  // Handle row delete action
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+
+  const handleCopy = async () => {
+    toast.info('Copying trade...', {
+      description: `Creating a copy of ${tradeReference}`
+    });
     
-    if (isMultiLeg && legId) {
-      console.log(`[ROW_ACTIONS] Navigating to leg deletion: ${legId}`);
-      navigate(`/trades/delete/${tradeId}/leg/${legId}`);
-    } else {
-      console.log(`[ROW_ACTIONS] Navigating to trade deletion: ${tradeId}`);
-      navigate(`/trades/delete/${tradeId}`);
+    try {
+      const newTradeReference = await copyPhysicalTrade(tradeId);
+      toast.success('Trade copied successfully', {
+        description: `New trade reference: ${newTradeReference}`
+      });
+      navigate('/trades', { state: { created: true, tradeReference: newTradeReference } });
+    } catch (error) {
+      console.error('Error copying trade:', error);
+      toast.error('Failed to copy trade', {
+        description: error instanceof Error ? error.message : "An unknown error occurred"
+      });
     }
   };
-  
-  // Handle row edit action
-  const handleEdit = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log(`[ROW_ACTIONS] Navigating to trade edit: ${tradeId}`);
-    navigate(`/trades/edit/${tradeId}`);
-  };
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
-          Actions
+        <Button variant="ghost" className="h-8 w-8 p-0">
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleEdit}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Trade
+        <Link to={`/trades/${tradeId}/edit`}>
+          <DropdownMenuItem>
+            <Edit className="mr-2 h-4 w-4" /> Edit Trade
+          </DropdownMenuItem>
+        </Link>
+        
+        <DropdownMenuItem onClick={handleCopy}>
+          <Copy className="mr-2 h-4 w-4" /> Copy Trade
         </DropdownMenuItem>
         
-        {isMultiLeg && legId && legReference ? (
-          <DropdownMenuItem 
-            onClick={handleDelete}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Trade Leg
+        <DropdownMenuSeparator />
+        
+        <Link to={`/trades/${tradeId}/delete`}>
+          <DropdownMenuItem className="text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" /> Delete Trade
           </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem 
-            onClick={handleDelete}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Trade
-          </DropdownMenuItem>
-        )}
+        </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   );
