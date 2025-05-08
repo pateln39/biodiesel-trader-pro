@@ -101,7 +101,8 @@ export const SortableRow = ({
         disabled ? "opacity-50" : "",
         isSelected ? "bg-muted" : "",
         bgColorClass,
-        className
+        className,
+        "hover:bg-accent/20" // Add hover effect for all rows
       )}
       {...attributes}
     >

@@ -330,33 +330,35 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     <>
       <TableHead>
         <div className="flex items-center">
-          <Checkbox
-            className="mr-2"
-            checked={selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                // Select all movements
-                const allIds = filteredMovements.map(m => m.id);
-                selectedMovementIds.forEach(id => {
-                  if (!allIds.includes(id)) {
-                    onToggleSelect(id);
-                  }
-                });
-                allIds.forEach(id => {
-                  if (!selectedMovementIds.includes(id)) {
-                    onToggleSelect(id);
-                  }
-                });
-              } else {
-                // Deselect all movements
-                filteredMovements.forEach(m => {
-                  if (selectedMovementIds.includes(m.id)) {
-                    onToggleSelect(m.id);
-                  }
-                });
-              }
-            }}
-          />
+          <div className="p-2 cursor-pointer" onClick={(e) => {
+            e.stopPropagation();
+            if (selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length) {
+              // Deselect all movements
+              filteredMovements.forEach(m => {
+                if (selectedMovementIds.includes(m.id)) {
+                  onToggleSelect(m.id);
+                }
+              });
+            } else {
+              // Select all movements
+              const allIds = filteredMovements.map(m => m.id);
+              selectedMovementIds.forEach(id => {
+                if (!allIds.includes(id)) {
+                  onToggleSelect(id);
+                }
+              });
+              allIds.forEach(id => {
+                if (!selectedMovementIds.includes(id)) {
+                  onToggleSelect(id);
+                }
+              });
+            }
+          }}>
+            <Checkbox
+              className="mr-2"
+              checked={selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length}
+            />
+          </div>
           Movement Reference Number
         </div>
       </TableHead>
@@ -447,11 +449,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <>
         <TableCell>
           <div className="flex items-center">
-            <Checkbox 
-              className="mr-2" 
-              checked={selectedMovementIds.includes(movement.id)}
-              onCheckedChange={() => onToggleSelect(movement.id)}
-            />
+            <div className="p-2 cursor-pointer" onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(movement.id);
+            }}>
+              <Checkbox 
+                checked={selectedMovementIds.includes(movement.id)}
+              />
+            </div>
             <span className="flex items-center">
               {isInGroup && isFirstGroupItem && (
                 <TooltipProvider>

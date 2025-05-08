@@ -90,3 +90,13 @@
 .table-row-selected {
   @apply bg-muted;
 }
+
+/* Hover style for table rows */
+.table-row-hover:hover {
+  @apply bg-accent/20;
+}
+
+/* Enhanced checkbox styles */
+.checkbox-large {
+  @apply h-6 w-6 rounded-md border-2 border-primary;
+}
