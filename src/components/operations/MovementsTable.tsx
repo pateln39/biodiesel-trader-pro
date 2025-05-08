@@ -22,6 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -685,19 +686,21 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   return (
     <>
-      <div className="w-full overflow-auto">
-        <SortableTable
-          items={sortedMovements}
-          onReorder={onReorder}
-          renderHeader={renderHeader}
-          renderRow={renderRow}
-          disableDragAndDrop={hasSorting}
-          getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
-          disabledRowClassName=""
-          onSelectItem={onToggleSelect}
-          selectedItemIds={selectedMovementIds}
-        />
-      </div>
+      <ScrollArea className="w-full" orientation="horizontal">
+        <div className="w-full min-w-[1800px]">
+          <SortableTable
+            items={sortedMovements}
+            onReorder={onReorder}
+            renderHeader={renderHeader}
+            renderRow={renderRow}
+            disableDragAndDrop={hasSorting}
+            getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
+            disabledRowClassName=""
+            onSelectItem={onToggleSelect}
+            selectedItemIds={selectedMovementIds}
+          />
+        </div>
+      </ScrollArea>
       
       {selectedMovement && (
         <MovementEditDialog 
