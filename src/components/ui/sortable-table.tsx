@@ -58,6 +58,8 @@ interface SortableRowProps {
   className?: string;
   disabled?: boolean;
   bgColorClass?: string;
+  onSelect?: (id: string) => void;
+  isSelected?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -66,6 +68,8 @@ export const SortableRow = ({
   className, 
   disabled = false,
   bgColorClass = "",
+  onSelect,
+  isSelected = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -87,6 +91,28 @@ export const SortableRow = ({
     position: 'relative' as const,
   };
 
+  // Handle clicks on the row
+  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    // Check if the click was on an interactive element
+    const target = e.target as HTMLElement;
+    const isInteractive = 
+      target.closest('button') || 
+      target.closest('a') || 
+      target.closest('input') || 
+      target.closest('select') ||
+      target.closest('[role="button"]') ||
+      target.closest('[data-ignore-row-click="true"]');
+    
+    // If click is on an interactive element, don't handle row selection
+    if (isInteractive) {
+      return;
+    }
+    
+    if (onSelect) {
+      onSelect(id);
+    }
+  };
+
   return (
     <TableRow
       ref={setNodeRef}
@@ -95,9 +121,12 @@ export const SortableRow = ({
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
         disabled ? "opacity-50" : "",
+        isSelected ? "bg-muted" : "",
         bgColorClass,
-        className
+        className,
+        onSelect ? "cursor-pointer hover:bg-accent/50" : ""
       )}
+      onClick={onSelect ? handleRowClick : undefined}
       {...attributes}
     >
       <TableCell className="p-0 pl-2 h-10">
@@ -123,6 +152,8 @@ export interface SortableTableProps<T extends SortableItem> {
   getRowBgClass?: (item: T, index: number, items: T[]) => string;
   disableDragAndDrop?: boolean;
   disabledRowClassName?: string;
+  onSelectItem?: (id: string) => void;
+  selectedItemIds?: string[];
 }
 
 export function SortableTable<T extends SortableItem>({
@@ -134,7 +165,9 @@ export function SortableTable<T extends SortableItem>({
   className,
   getRowBgClass,
   disableDragAndDrop = false,
-  disabledRowClassName = "opacity-50 text-muted-foreground bg-muted/50"
+  disabledRowClassName = "opacity-50 text-muted-foreground bg-muted/50",
+  onSelectItem,
+  selectedItemIds = []
 }: SortableTableProps<T>) {
   const [activeId, setActiveId] = useState<string | null>(null);
   
@@ -216,6 +249,7 @@ export function SortableTable<T extends SortableItem>({
             {items.map((item, index) => {
               const isDisabled = (isItemDisabled ? isItemDisabled(item, index, items) : false) || disableDragAndDrop;
               const bgColorClass = getRowBgClass ? getRowBgClass(item, index, items) : "";
+              const isSelected = selectedItemIds.includes(item.id);
               
               return (
                 <SortableRow 
@@ -227,6 +261,8 @@ export function SortableTable<T extends SortableItem>({
                     "h-10",
                     isDisabled && disabledRowClassName
                   )}
+                  onSelect={onSelectItem}
+                  isSelected={isSelected}
                 >
                   {renderRow(item, index)}
                 </SortableRow>

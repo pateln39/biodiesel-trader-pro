@@ -443,7 +443,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     return (
       <>
         <TableCell>
-          <div className="flex items-center">
+          <div className="flex items-center" data-ignore-row-click="true">
             <Checkbox 
               className="mr-2" 
               checked={selectedMovementIds.includes(movement.id)}
@@ -676,6 +676,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           disableDragAndDrop={hasSorting}
           getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
           disabledRowClassName=""
+          onSelectItem={onToggleSelect}
+          selectedItemIds={selectedMovementIds}
         />
       </div>
       
