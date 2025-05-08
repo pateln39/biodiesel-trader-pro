@@ -83,14 +83,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [confirmUngroupDialogOpen, setConfirmUngroupDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Helper function to get all movements in a group - using the input array instead of filteredMovements
-  const getMovementsInGroup = (items: Movement[], groupId: string | null) => {
-    if (!groupId) return [];
-    return items.filter(m => m.group_id === groupId);
-  };
-
   // Function to identify if an item is part of a group
-  const isGroupedMovement = (item: Movement, index: number, items: Movement[]) => {
+  const isGroupedMovement = (item: Movement) => {
     return !!item.group_id;
   };
 
@@ -114,11 +108,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     const nextMovement = items[index + 1];
     
     return item.group_id !== nextMovement.group_id;
-  };
-
-  // Remove the disabled drag logic - every row can now be dragged individually
-  const isItemDisabledForDrag = (item: Movement, index: number, items: Movement[]) => {
-    return false; // No rows are disabled for drag now
   };
 
   // Calculate row style based on group membership
@@ -443,17 +432,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     </>
   );
 
-  // We no longer need the custom reorder logic that kept groups together
-  const handleCustomReorder = async (reorderedItems: Movement[]) => {
-    console.log('[MOVEMENTS] Starting individual reordering process for', reorderedItems.length, 'items');
-    // Pass the reordered items directly to onReorder
-    await onReorder(reorderedItems);
-  };
-
   const renderRow = (movement: Movement, index: number) => {
-    // No rows are disabled for drag now
-    const disableDrag = false;
-    const isInGroup = isGroupedMovement(movement, index, sortedMovements);
+    const isInGroup = isGroupedMovement(movement);
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
     const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
     
@@ -690,16 +670,10 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <div className="w-full overflow-auto">
         <SortableTable
           items={sortedMovements}
-          onReorder={handleCustomReorder}
+          onReorder={onReorder}
           renderHeader={renderHeader}
           renderRow={renderRow}
           disableDragAndDrop={hasSorting}
-          isItemDisabled={isItemDisabledForDrag}
-          isItemPartOfGroup={isGroupedMovement}
-          isItemFirstInGroup={isFirstInGroup}
-          isItemLastInGroup={isLastInGroup}
-          getGroupId={(item) => item.group_id || null}
-          findGroupMembers={(items, groupId) => getMovementsInGroup(items, groupId)}
           getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
           disabledRowClassName=""
         />

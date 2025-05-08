@@ -61,8 +61,6 @@ interface SortableRowProps {
   disabled?: boolean;
   bgColorClass?: string;
   grouped?: boolean;
-  isBeingDragged?: boolean;
-  isPartOfDraggedGroup?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -71,9 +69,7 @@ export const SortableRow = ({
   className, 
   disabled = false,
   bgColorClass = "",
-  grouped = false,
-  isBeingDragged = false,
-  isPartOfDraggedGroup = false
+  grouped = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -102,7 +98,6 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
-        isBeingDragged ? "border-2 border-dashed border-primary" : "",
         disabled ? "opacity-50" : "",
         bgColorClass,
         className
@@ -128,11 +123,6 @@ export interface SortableTableProps<T extends SortableItem> {
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
   isItemDisabled?: (item: T, index: number, items: T[]) => boolean;
-  isItemPartOfGroup?: (item: T, index: number, items: T[]) => boolean;
-  isItemFirstInGroup?: (item: T, index: number, items: T[]) => boolean;
-  isItemLastInGroup?: (item: T, index: number, items: T[]) => boolean;
-  getGroupId?: (item: T) => string | null | undefined;
-  findGroupMembers?: (items: T[], groupId: string | null | undefined) => T[];
   className?: string;
   getRowBgClass?: (item: T, index: number, items: T[]) => string;
   disableDragAndDrop?: boolean;
@@ -145,11 +135,6 @@ export function SortableTable<T extends SortableItem>({
   renderHeader,
   renderRow,
   isItemDisabled,
-  isItemPartOfGroup,
-  isItemFirstInGroup,
-  isItemLastInGroup,
-  getGroupId,
-  findGroupMembers,
   className,
   getRowBgClass,
   disableDragAndDrop = false,
@@ -198,7 +183,7 @@ export function SortableTable<T extends SortableItem>({
     // If the item hasn't moved or if activeItem is not found, do nothing
     if (activeIndex === -1 || activeIndex === overIndex) return;
 
-    // Simple individual row reordering without group handling
+    // Simple individual row reordering
     const reordered = [...items];
     const [movedItem] = reordered.splice(activeIndex, 1);
     reordered.splice(overIndex, 0, movedItem);
@@ -236,16 +221,12 @@ export function SortableTable<T extends SortableItem>({
               const isDisabled = (isItemDisabled ? isItemDisabled(item, index, items) : false) || disableDragAndDrop;
               const bgColorClass = getRowBgClass ? getRowBgClass(item, index, items) : "";
               
-              // Check if this item is part of a group
-              const isGrouped = isItemPartOfGroup ? isItemPartOfGroup(item, index, items) : false;
-              
               return (
                 <SortableRow 
                   key={item.id} 
                   id={item.id} 
                   disabled={isDisabled}
                   bgColorClass={bgColorClass}
-                  grouped={isGrouped}
                   className={cn(
                     "h-10",
                     isDisabled && disabledRowClassName
@@ -264,7 +245,7 @@ export function SortableTable<T extends SortableItem>({
           {activeItem && (
             <TableRow className="border border-primary bg-background opacity-90 rounded-md h-10">
               <TableCell className="p-0 pl-2 h-10">
-                <DragHandle grouped={isItemPartOfGroup && isItemPartOfGroup(activeItem, items.indexOf(activeItem), items)} />
+                <DragHandle />
               </TableCell>
               {renderRow(activeItem, items.indexOf(activeItem))}
             </TableRow>
