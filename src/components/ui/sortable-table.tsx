@@ -91,25 +91,24 @@ export const SortableRow = ({
     position: 'relative' as const,
   };
 
-  // Handle clicks on the row
+  // Enhanced row click handler with improved interactive element detection
   const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
-    // Check if the click was on an interactive element
+    // Check if the click was on an element with data-ignore-row-click attribute
+    // or on any interactive element
     const target = e.target as HTMLElement;
+    const isIgnored = !!target.closest('[data-ignore-row-click="true"]');
     const isInteractive = 
       target.closest('button') || 
       target.closest('a') || 
       target.closest('input') || 
       target.closest('select') ||
-      target.closest('[role="button"]') ||
-      target.closest('[data-ignore-row-click="true"]');
+      target.closest('[role="button"]');
     
-    // If click is on an interactive element, don't handle row selection
-    if (isInteractive) {
-      return;
-    }
-    
-    if (onSelect) {
+    // Only handle row selection if not clicking on an interactive element
+    if (!isIgnored && !isInteractive && onSelect) {
       onSelect(id);
+      // Prevent any other handlers from firing
+      e.stopPropagation();
     }
   };
 
@@ -124,9 +123,11 @@ export const SortableRow = ({
         isSelected ? "bg-muted" : "",
         bgColorClass,
         className,
-        onSelect ? "cursor-pointer hover:bg-accent/50" : ""
+        // Enhanced hover styles to make it more obvious rows are clickable
+        onSelect ? "cursor-pointer hover:bg-accent/50 table-row-selectable" : "",
+        isSelected ? "table-row-selected" : ""
       )}
-      onClick={onSelect ? handleRowClick : undefined}
+      onClick={handleRowClick}
       {...attributes}
     >
       <TableCell className="p-0 pl-2 h-10">
