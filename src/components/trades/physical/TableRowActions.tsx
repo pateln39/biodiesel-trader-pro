@@ -35,7 +35,7 @@ const TableRowActions = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <Link to={`/trades/${tradeId}/edit`}>
+        <Link to={`/trades/edit/${tradeId}`}>
           <DropdownMenuItem>
             <Edit className="mr-2 h-4 w-4" /> Edit Trade
           </DropdownMenuItem>
