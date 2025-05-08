@@ -91,7 +91,7 @@ export const SortableRow = ({
     position: 'relative' as const,
   };
 
-  // Enhanced row click handler with improved interactive element detection
+  // Row click handler that properly handles selection
   const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
     // Check if the click was on an element with data-ignore-row-click attribute
     // or on any interactive element

@@ -451,7 +451,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               className="mr-2" 
               checked={selectedMovementIds.includes(movement.id)}
               onCheckedChange={() => onToggleSelect(movement.id)}
-              data-ignore-row-click="true"
             />
             <span className="flex items-center">
               {isInGroup && isFirstGroupItem && (
