@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -285,18 +284,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
         throw new Error('At least 2 movements are required to create a group');
       }
 
-      // Find the minimum sort_order among selected movements to determine where the group should start
-      const { data: selectedMovements, error: fetchError } = await supabase
-        .from('movements')
-        .select('id, sort_order')
-        .in('id', ids)
-        .order('sort_order', { ascending: true });
-      
-      if (fetchError) {
-        console.error('[MOVEMENTS] Error fetching selected movements:', fetchError);
-        throw fetchError;
-      }
-      
       // Generate a new group ID
       const groupId = uuidv4();
       
@@ -311,17 +298,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
       if (error) {
         console.error('[MOVEMENTS] Error creating movement group:', error);
         throw error;
-      }
-      
-      // Now adjust the sort order to ensure grouped items are consecutive
-      console.log('[MOVEMENTS] Adjusting sort order to ensure grouped items are consecutive');
-      const { error: sortError } = await supabase.rpc('update_movement_group_sort_order', {
-        p_group_id: groupId
-      });
-      
-      if (sortError) {
-        console.error('[MOVEMENTS] Error updating group sort order:', sortError);
-        throw sortError;
       }
       
       console.log(`[MOVEMENTS] Successfully created movement group ${groupId}`);

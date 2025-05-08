@@ -116,10 +116,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     return item.group_id !== nextMovement.group_id;
   };
 
-  // Item is disabled for drag if it belongs to a group but is not the first item
+  // Remove the disabled drag logic - every row can now be dragged individually
   const isItemDisabledForDrag = (item: Movement, index: number, items: Movement[]) => {
-    // Only the first item in a group can be dragged
-    return !!item.group_id && !isFirstInGroup(item, index, items);
+    return false; // No rows are disabled for drag now
   };
 
   // Calculate row style based on group membership
@@ -444,80 +443,16 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     </>
   );
 
-  // This function handles the custom behavior for drag and drop with groups
+  // We no longer need the custom reorder logic that kept groups together
   const handleCustomReorder = async (reorderedItems: Movement[]) => {
-    console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
-    
-    // Step 1: Extract all groups and standalone items
-    const groupMap = new Map<string, Movement[]>();
-    const standaloneItems: Movement[] = [];
-    
-    // Collect all items by their group_id (or lack thereof)
-    for (const item of reorderedItems) {
-      if (item.group_id) {
-        // Initialize group array if this is the first item we encounter from this group
-        if (!groupMap.has(item.group_id)) {
-          groupMap.set(item.group_id, []);
-        }
-        
-        // Add this item to its group's array
-        groupMap.get(item.group_id)?.push(item);
-      } else {
-        // This is a standalone item
-        standaloneItems.push(item);
-      }
-    }
-    
-    // Step 2: Sort each group internally by original sort_order to maintain group integrity
-    groupMap.forEach((items, groupId) => {
-      // Sort group items by their original sort_order to preserve internal group order
-      items.sort((a, b) => {
-        const aOrder = a.sort_order !== null ? a.sort_order : Infinity;
-        const bOrder = b.sort_order !== null ? b.sort_order : Infinity;
-        return aOrder - bOrder;
-      });
-    });
-    
-    // Step 3: Build the final array preserving user-intended order but keeping groups intact
-    const finalItems: Movement[] = [];
-    const processedGroupIds = new Set<string>();
-    
-    // Process items in the order the user intended
-    for (const item of reorderedItems) {
-      if (item.group_id && !processedGroupIds.has(item.group_id)) {
-        // When we encounter a group for the first time, add all items from that group
-        const groupItems = groupMap.get(item.group_id) || [];
-        finalItems.push(...groupItems);
-        processedGroupIds.add(item.group_id);
-      } else if (!item.group_id) {
-        // Add standalone items
-        finalItems.push(item);
-      }
-      // Skip items from already processed groups
-    }
-    
-    // Verify that all items are included
-    if (finalItems.length !== reorderedItems.length) {
-      console.warn('[MOVEMENTS] Item count mismatch after reordering:', 
-        `Expected ${reorderedItems.length}, got ${finalItems.length}`);
-      // Try to recover from any missing items
-      const itemIds = new Set(finalItems.map(item => item.id));
-      for (const item of reorderedItems) {
-        if (!itemIds.has(item.id)) {
-          finalItems.push(item);
-        }
-      }
-    }
-    
-    console.log('[MOVEMENTS] Final reordered items:', finalItems.length);
-    
-    // Call the onReorder function with our properly sequenced items
-    await onReorder(finalItems);
+    console.log('[MOVEMENTS] Starting individual reordering process for', reorderedItems.length, 'items');
+    // Pass the reordered items directly to onReorder
+    await onReorder(reorderedItems);
   };
 
   const renderRow = (movement: Movement, index: number) => {
-    // Determine if this item can be dragged (only first in group can be dragged)
-    const disableDrag = isItemDisabledForDrag(movement, index, sortedMovements);
+    // No rows are disabled for drag now
+    const disableDrag = false;
     const isInGroup = isGroupedMovement(movement, index, sortedMovements);
     const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
     const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
