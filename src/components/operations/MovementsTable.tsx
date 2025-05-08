@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -135,11 +136,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const getIconColorClass = (groupId: string): string => {
     const colorClasses = getGroupColorClasses(groupId);
     
-    if (colorClasses.includes('indigo')) return 'text-indigo-400';
-    if (colorClasses.includes('blue')) return 'text-blue-400';
-    if (colorClasses.includes('violet')) return 'text-violet-400';
-    if (colorClasses.includes('fuchsia')) return 'text-fuchsia-400';
-    if (colorClasses.includes('pink')) return 'text-pink-400';
+    // Update color mappings based on our new color palette
+    if (colorClasses.includes('amber')) return 'text-amber-400';
+    if (colorClasses.includes('emerald')) return 'text-emerald-400';
+    if (colorClasses.includes('sky')) return 'text-sky-400';
+    if (colorClasses.includes('rose')) return 'text-rose-400';
+    if (colorClasses.includes('lime')) return 'text-lime-400';
+    if (colorClasses.includes('orange')) return 'text-orange-400';
+    if (colorClasses.includes('cyan')) return 'text-cyan-400';
     return 'text-purple-400'; // Default
   };
 
@@ -460,6 +464,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                         className={`h-6 w-6 mr-1 ${groupBgClass.split(' ')[0]} hover:${groupBgClass.split(' ')[0].replace('/20', '/30')}`}
                         onClick={() => handleUngroupClick(movement.group_id as string)}
                         disabled={isUngrouping}
+                        data-ignore-row-click="true"
                       >
                         <Ungroup className={`h-3 w-3 ${iconColorClass}`} />
                       </Button>
@@ -573,7 +578,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           </Select>
         </TableCell>
         <TableCell className="text-center">
-          <div className="flex justify-center space-x-1">
+          <div className="flex justify-center space-x-1" data-ignore-row-click="true">
             {movement.parentTradeId && (
               <TooltipProvider>
                 <Tooltip>
@@ -583,6 +588,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                       size="icon" 
                       className="h-8 w-8"
                       onClick={() => handleViewTradeDetails(movement.parentTradeId as string, movement.tradeLegId)}
+                      data-ignore-row-click="true"
                     >
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </Button>
@@ -598,6 +604,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               size="icon" 
               className="h-8 w-8" 
               onClick={() => handleEditMovement(movement)}
+              data-ignore-row-click="true"
             >
               <Edit className="h-4 w-4 text-muted-foreground" />
             </Button>
@@ -609,6 +616,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handleStorageClick(movement)}
+                    data-ignore-row-click="true"
                   >
                     <Warehouse className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -626,6 +634,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                     size="icon" 
                     className="h-8 w-8"
                     onClick={() => handleDemurrageCalculatorClick(movement)}
+                    data-ignore-row-click="true"
                   >
                     <Calculator className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -637,7 +646,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </TooltipProvider>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  data-ignore-row-click="true"
+                >
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </AlertDialogTrigger>

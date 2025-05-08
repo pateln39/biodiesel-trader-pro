@@ -85,3 +85,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Add styles for selectable rows */
+.table-row-selectable {
+  @apply cursor-pointer transition-colors;
+}
+
+.table-row-selectable:hover {
+  @apply bg-accent/50;
+}
+
+.table-row-selected {
+  @apply bg-muted;
+}

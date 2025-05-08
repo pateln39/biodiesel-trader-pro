@@ -3,14 +3,16 @@
  * Utility functions for color operations
  */
 
-// Color palette for group backgrounds (soft purples with varying hues)
+// Updated color palette with more distinct colors across different hues
 export const GROUP_COLORS = [
   'bg-purple-500/20 ring-purple-400/30 border-purple-400/30', // Default purple
-  'bg-indigo-500/20 ring-indigo-400/30 border-indigo-400/30',
-  'bg-blue-500/20 ring-blue-400/30 border-blue-400/30',
-  'bg-violet-500/20 ring-violet-400/30 border-violet-400/30',
-  'bg-fuchsia-500/20 ring-fuchsia-400/30 border-fuchsia-400/30',
-  'bg-pink-500/20 ring-pink-400/30 border-pink-400/30',
+  'bg-amber-500/20 ring-amber-400/30 border-amber-400/30',    // Warm amber
+  'bg-emerald-500/20 ring-emerald-400/30 border-emerald-400/30', // Green
+  'bg-sky-500/20 ring-sky-400/30 border-sky-400/30',          // Blue
+  'bg-rose-500/20 ring-rose-400/30 border-rose-400/30',       // Red/Pink
+  'bg-lime-500/20 ring-lime-400/30 border-lime-400/30',       // Lime green
+  'bg-orange-500/20 ring-orange-400/30 border-orange-400/30', // Orange
+  'bg-cyan-500/20 ring-cyan-400/30 border-cyan-400/30',       // Cyan
 ];
 
 /**
@@ -45,4 +47,3 @@ export const getGroupColorClasses = (groupId: string | null | undefined): string
   const colorIndex = getGroupColorIndex(groupId);
   return GROUP_COLORS[colorIndex];
 };
-
