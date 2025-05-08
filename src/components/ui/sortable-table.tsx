@@ -38,15 +38,13 @@ export interface SortableItem {
 interface DragHandleProps {
   className?: string;
   disabled?: boolean;
-  grouped?: boolean;
 }
 
-export const DragHandle = ({ className, disabled, grouped }: DragHandleProps) => {
+export const DragHandle = ({ className, disabled }: DragHandleProps) => {
   return (
     <div className={cn(
       "flex items-center justify-center h-full", 
       disabled ? "cursor-not-allowed opacity-50" : "cursor-grab", 
-      grouped ? "bg-purple-500/10 text-purple-400" : "",
       className
     )}>
       <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -60,7 +58,6 @@ interface SortableRowProps {
   className?: string;
   disabled?: boolean;
   bgColorClass?: string;
-  grouped?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -69,7 +66,6 @@ export const SortableRow = ({
   className, 
   disabled = false,
   bgColorClass = "",
-  grouped = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -109,7 +105,7 @@ export const SortableRow = ({
           "h-full flex items-center",
           disabled ? "cursor-not-allowed" : "cursor-grab"
         )} {...(disabled ? {} : listeners)}>
-          <DragHandle disabled={disabled} grouped={grouped} />
+          <DragHandle disabled={disabled} />
         </div>
       </TableCell>
       {children}

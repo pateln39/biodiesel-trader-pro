@@ -1474,10 +1474,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      update_movement_group_sort_order: {
-        Args: { p_group_id: string }
-        Returns: undefined
-      }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
         Returns: undefined

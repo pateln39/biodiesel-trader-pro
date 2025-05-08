@@ -4,7 +4,6 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { FilterOptions } from '@/components/operations/MovementsFilter';
-import { v4 as uuidv4 } from 'uuid';
 
 const fetchMovements = async (): Promise<Movement[]> => {
   try {
@@ -286,7 +285,7 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
       }
 
       // Generate a new group ID
-      const groupId = uuidv4();
+      const groupId = crypto.randomUUID();
       
       console.log(`[MOVEMENTS] Creating movement group ${groupId} with ${ids.length} items`);
       
