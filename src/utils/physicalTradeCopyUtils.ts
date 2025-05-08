@@ -38,11 +38,9 @@ export const copyPhysicalTrade = async (tradeId: string): Promise<string> => {
     const newTradeReference = generateTradeReference();
     
     // Create a new parent trade with the new reference
-    // Use object destructuring to exclude the id field
-    const { id: _, ...parentTradeDataWithoutId } = parentTradeData;
-    
     const newParentTrade = {
-      ...parentTradeDataWithoutId,
+      ...parentTradeData,
+      id: undefined, // Let Supabase generate a new ID
       trade_reference: newTradeReference,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -61,9 +59,6 @@ export const copyPhysicalTrade = async (tradeId: string): Promise<string> => {
     
     // Create new legs for each original leg
     const newTradeLegs = tradeLegs.map((leg, index) => {
-      // Use object destructuring to exclude the id field
-      const { id: _, ...legDataWithoutId } = leg;
-      
       // Determine if this is the main leg (which should have the same reference as the parent)
       const isMainLeg = leg.leg_reference === parentTradeData.trade_reference;
       
@@ -73,7 +68,8 @@ export const copyPhysicalTrade = async (tradeId: string): Promise<string> => {
         : `${newTradeReference}-${String.fromCharCode(97 + index)}`;
       
       return {
-        ...legDataWithoutId,
+        ...leg,
+        id: undefined, // Let Supabase generate a new ID
         parent_trade_id: newParentTradeData.id,
         leg_reference: newLegReference,
         created_at: new Date().toISOString(),
