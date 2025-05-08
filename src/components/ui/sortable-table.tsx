@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -90,34 +91,6 @@ export const SortableRow = ({
     position: 'relative' as const,
   };
 
-  // Enhanced row click handler to better handle checkbox interaction
-  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
-    // Check if the click was on an element with data-ignore-row-click attribute
-    // or on any interactive element
-    const target = e.target as HTMLElement;
-    const isIgnored = !!target.closest('[data-ignore-row-click="true"]');
-    const isInteractive = 
-      target.closest('button') || 
-      target.closest('a') || 
-      target.closest('input') || 
-      target.closest('select') ||
-      target.closest('[role="button"]');
-    
-    // Only handle row selection if not clicking on an interactive element
-    if (!isIgnored && !isInteractive && onSelect) {
-      // Check if we're clicking on or within the checkbox cell
-      const isCheckboxCell = !!target.closest('[data-checkbox-cell="true"]');
-      
-      // If clicking in the checkbox cell, let the checkbox handler manage it
-      // Otherwise, trigger the row selection
-      if (!isCheckboxCell) {
-        onSelect(id);
-        // Prevent any other handlers from firing
-        e.stopPropagation();
-      }
-    }
-  };
-
   return (
     <TableRow
       ref={setNodeRef}
@@ -128,12 +101,8 @@ export const SortableRow = ({
         disabled ? "opacity-50" : "",
         isSelected ? "bg-muted" : "",
         bgColorClass,
-        className,
-        // Enhanced hover styles to make it more obvious rows are clickable
-        onSelect ? "cursor-pointer hover:bg-accent/50 table-row-selectable" : "",
-        isSelected ? "table-row-selected" : ""
+        className
       )}
-      onClick={handleRowClick}
       {...attributes}
     >
       <TableCell className="p-0 pl-2 h-10">
@@ -268,7 +237,6 @@ export function SortableTable<T extends SortableItem>({
                     "h-10",
                     isDisabled && disabledRowClassName
                   )}
-                  onSelect={onSelectItem}
                   isSelected={isSelected}
                 >
                   {renderRow(item, index)}

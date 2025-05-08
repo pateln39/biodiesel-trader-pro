@@ -86,15 +86,7 @@
   }
 }
 
-/* Add styles for selectable rows */
-.table-row-selectable {
-  @apply cursor-pointer transition-colors;
-}
-
-.table-row-selectable:hover {
-  @apply bg-accent/50;
-}
-
+/* Style for selected rows only */
 .table-row-selected {
   @apply bg-muted;
 }
