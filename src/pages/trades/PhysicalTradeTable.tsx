@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
@@ -95,30 +96,34 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
           <FileDown className="mr-2 h-4 w-4" /> Export to Excel
         </Button>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-white/10">
-            <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
-            <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Customs Status</TableHead>
-            <TableHead className="h-10 whitespace-nowrap">Contract Status</TableHead>
-            <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows}
-        </TableBody>
-      </Table>
+      <ScrollArea className="w-full" orientation="horizontal">
+        <div className="min-w-[1800px]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-white/10">
+                <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
+                <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Customs Status</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Contract Status</TableHead>
+                <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows}
+            </TableBody>
+          </Table>
+        </div>
+      </ScrollArea>
     </div>
   );
 };
