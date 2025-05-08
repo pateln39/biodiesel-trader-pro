@@ -11,6 +11,18 @@ import { toast } from 'sonner';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import PaperTradeRowActions from '@/components/trades/paper/PaperTradeRowActions';
+import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
+
+// Constants for cell width to maintain consistency
+const CELL_WIDTHS = {
+  reference: 140,
+  broker: 150,
+  product: 180, 
+  period: 100,
+  quantity: 100,
+  price: 100,
+  actions: 100
+};
 
 interface PaperTradeListProps {
   paperTrades: PaperTrade[];
@@ -56,13 +68,13 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
       <Table>
         <TableHeader>
           <TableRow className="border-b border-white/10">
-            <TableHead>Reference</TableHead>
-            <TableHead>Broker</TableHead>
-            <TableHead>Products</TableHead>
-            <TableHead>Period</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead className="text-right">Price</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
+            <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
+            <TableHead className="h-10 whitespace-nowrap">Broker</TableHead>
+            <TableHead className="h-10 whitespace-nowrap">Products</TableHead>
+            <TableHead className="h-10 whitespace-nowrap">Period</TableHead>
+            <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
+            <TableHead className="h-10 whitespace-nowrap text-right">Price</TableHead>
+            <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -86,18 +98,32 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
                 );
                 
                 return (
-                  <TableRow key={`${trade.id}-${leg.id}`} className="border-b border-white/5 hover:bg-brand-navy/80">
-                    <TableCell>
-                      <Link to={`/trades/paper/edit/${trade.id}`} className="text-white hover:text-white/80">
-                        {displayReference}
-                      </Link>
+                  <TableRow key={`${trade.id}-${leg.id}`} className="border-b border-white/5 hover:bg-brand-navy/80 h-10">
+                    <TableCell className="h-10">
+                      <TruncatedCell 
+                        text={displayReference} 
+                        width={CELL_WIDTHS.reference} 
+                        className="text-xs font-medium text-white hover:text-white/80"
+                      />
                     </TableCell>
-                    <TableCell>{leg.broker || trade.broker}</TableCell>
-                    <TableCell>{productDisplay}</TableCell>
-                    <TableCell>{leg.period}</TableCell>
-                    <TableCell className="text-right">{leg.quantity}</TableCell>
-                    <TableCell className="text-right">{displayPrice}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="h-10">
+                      <TruncatedCell 
+                        text={leg.broker || trade.broker} 
+                        width={CELL_WIDTHS.broker}
+                        className="text-xs"
+                      />
+                    </TableCell>
+                    <TableCell className="h-10">
+                      <TruncatedCell 
+                        text={productDisplay} 
+                        width={CELL_WIDTHS.product}
+                        className="text-xs"
+                      />
+                    </TableCell>
+                    <TableCell className="h-10 whitespace-nowrap">{leg.period}</TableCell>
+                    <TableCell className="h-10 text-right whitespace-nowrap">{leg.quantity}</TableCell>
+                    <TableCell className="h-10 text-right whitespace-nowrap">{displayPrice}</TableCell>
+                    <TableCell className="h-10 text-center">
                       <PaperTradeRowActions
                         tradeId={trade.id}
                         legId={leg.id}

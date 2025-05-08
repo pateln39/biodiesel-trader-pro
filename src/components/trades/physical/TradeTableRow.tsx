@@ -11,6 +11,20 @@ import CommentsCellInput from './CommentsCellInput';
 import TableRowActions from './TableRowActions';
 import ContractStatusSelect from './ContractStatusSelect';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
+
+// Constants for cell width to maintain consistency
+const CELL_WIDTHS = {
+  reference: 140,
+  counterparty: 150,
+  incoTerm: 80,
+  quantity: 100,
+  product: 120,
+  date: 110,
+  comments: 80,
+  formula: 150,
+  actions: 100
+};
 
 interface TradeTableRowProps {
   trade: PhysicalTrade;
@@ -30,36 +44,47 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
   return (
     <TableRow 
       key={leg.id} 
-      className="border-b border-white/5 hover:bg-brand-navy/80"
+      className="border-b border-white/5 hover:bg-brand-navy/80 h-10"
     >
-      <TableCell>
-        <Link 
-          to={`/trades/edit/${trade.id}`} 
-          className="text-white hover:text-white/80 font-medium"
-        >
-          {displayReference}
-        </Link>
+      <TableCell className="h-10">
+        <TruncatedCell 
+          text={displayReference} 
+          width={CELL_WIDTHS.reference} 
+          className="text-xs font-medium text-white hover:text-white/80"
+        />
       </TableCell>
-      <TableCell>
+      <TableCell className="h-10">
         <Badge variant={leg.buySell === 'buy' ? "default" : "outline"}>
           {leg.buySell}
         </Badge>
       </TableCell>
-      <TableCell>{leg.incoTerm}</TableCell>
-      <TableCell className="text-right">{leg.quantity} {leg.unit}</TableCell>
-      <TableCell>{leg.sustainability}</TableCell>
-      <TableCell>
+      <TableCell className="h-10 whitespace-nowrap">{leg.incoTerm}</TableCell>
+      <TableCell className="h-10 text-right whitespace-nowrap">{leg.quantity} {leg.unit}</TableCell>
+      <TableCell className="h-10 whitespace-nowrap">
+        <TruncatedCell 
+          text={leg.sustainability || '-'} 
+          width={CELL_WIDTHS.product} 
+          className="text-xs"
+        />
+      </TableCell>
+      <TableCell className="h-10">
         <ProductToken 
           product={leg.product}
           value={leg.product}
           showTooltip={true}
         />
       </TableCell>
-      <TableCell>{formatDate(leg.loadingPeriodStart)}</TableCell>
-      <TableCell>{formatDate(leg.loadingPeriodEnd)}</TableCell>
-      <TableCell>{trade.counterparty}</TableCell>
-      <TableCell>{leg.pricingType === 'efp' ? 'EFP' : 'Standard'}</TableCell>
-      <TableCell>
+      <TableCell className="h-10 whitespace-nowrap">{formatDate(leg.loadingPeriodStart)}</TableCell>
+      <TableCell className="h-10 whitespace-nowrap">{formatDate(leg.loadingPeriodEnd)}</TableCell>
+      <TableCell className="h-10">
+        <TruncatedCell 
+          text={trade.counterparty} 
+          width={CELL_WIDTHS.counterparty} 
+          className="text-xs"
+        />
+      </TableCell>
+      <TableCell className="h-10 whitespace-nowrap">{leg.pricingType === 'efp' ? 'EFP' : 'Standard'}</TableCell>
+      <TableCell className="h-10">
         <FormulaCellDisplay 
           tradeId={trade.id}
           legId={leg.id}
@@ -71,7 +96,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
           efpFixedValue={leg.efpFixedValue}
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="h-10">
         <CommentsCellInput 
           tradeId={trade.id}
           legId={leg.id}
@@ -79,7 +104,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
           useInlineIcon={true}
         />
       </TableCell>
-      <TableCell>
+      <TableCell className="h-10">
         <Badge variant={
           leg.customsStatus === 'approved' ? "default" :
           leg.customsStatus === 'rejected' ? "destructive" :
@@ -88,14 +113,14 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
           {leg.customsStatus || 'pending'}
         </Badge>
       </TableCell>
-      <TableCell>
+      <TableCell className="h-10">
         <ContractStatusSelect
           tradeId={trade.id}
           legId={leg.id} 
           initialValue={leg.contractStatus}
         />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="text-center h-10">
         <TableRowActions 
           tradeId={trade.id} 
           legId={leg.id}
