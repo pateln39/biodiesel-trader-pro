@@ -22,6 +22,7 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
+  const [comments, setComments] = useState<string>('');
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -31,6 +32,7 @@ const TradeEntryPage = () => {
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
         counterparty: tradeData.counterparty,
+        comments: comments // Add comments to parent trade
       };
       
       // Insert parent trade
@@ -66,11 +68,12 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          customs_status: leg.customsStatus, // Updated: correctly map to customs_status column
+          customs_status: leg.customsStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
-          mtm_future_month: leg.mtmFutureMonth
+          mtm_future_month: leg.mtmFutureMonth,
+          comments: leg.comments // Add leg comments
         };
 
         // Add EFP fields if they exist
@@ -133,14 +136,29 @@ const TradeEntryPage = () => {
     navigate('/trades');
   };
 
+  const handleCommentsChange = (newComments: string) => {
+    setComments(newComments);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
-          <p className="text-muted-foreground">
-            Create a new trade by filling out the form below
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
+            <p className="text-muted-foreground">
+              Create a new trade by filling out the form below
+            </p>
+          </div>
+          <div className="flex items-center">
+            <CommentsCellInput 
+              tradeId="new"
+              initialValue={comments}
+              onSave={handleCommentsChange}
+              useInlineIcon={true}
+              className="text-xs"
+            />
+          </div>
         </div>
 
         <Separator />
@@ -168,7 +186,8 @@ const TradeEntryPage = () => {
                 <PhysicalTradeForm 
                   tradeReference={tradeReference} 
                   onSubmit={handlePhysicalSubmit} 
-                  onCancel={handleCancel} 
+                  onCancel={handleCancel}
+                  globalComments={comments}
                 />
               </TabsContent>
               
@@ -177,6 +196,7 @@ const TradeEntryPage = () => {
                   tradeReference={tradeReference} 
                   onSubmit={handlePaperSubmit} 
                   onCancel={handleCancel} 
+                  globalComments={comments}
                 />
               </TabsContent>
             </Tabs>

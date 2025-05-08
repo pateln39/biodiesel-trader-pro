@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
@@ -75,6 +76,7 @@ const TradeTableRow = ({ trade, leg, legIndex }: TradeTableRowProps) => {
           tradeId={trade.id}
           legId={leg.id}
           initialValue={leg.comments || ''}
+          useInlineIcon={true}
         />
       </TableCell>
       <TableCell>
