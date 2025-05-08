@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -91,7 +90,7 @@ export const SortableRow = ({
     position: 'relative' as const,
   };
 
-  // Row click handler that properly handles selection
+  // Enhanced row click handler to better handle checkbox interaction
   const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>) => {
     // Check if the click was on an element with data-ignore-row-click attribute
     // or on any interactive element
@@ -106,9 +105,16 @@ export const SortableRow = ({
     
     // Only handle row selection if not clicking on an interactive element
     if (!isIgnored && !isInteractive && onSelect) {
-      onSelect(id);
-      // Prevent any other handlers from firing
-      e.stopPropagation();
+      // Check if we're clicking on or within the checkbox cell
+      const isCheckboxCell = !!target.closest('[data-checkbox-cell="true"]');
+      
+      // If clicking in the checkbox cell, let the checkbox handler manage it
+      // Otherwise, trigger the row selection
+      if (!isCheckboxCell) {
+        onSelect(id);
+        // Prevent any other handlers from firing
+        e.stopPropagation();
+      }
     }
   };
 

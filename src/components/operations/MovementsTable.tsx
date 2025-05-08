@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -445,13 +446,23 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
     return (
       <>
-        <TableCell>
+        <TableCell className="select-none" data-checkbox-cell="true">
           <div className="flex items-center">
-            <Checkbox 
-              className="mr-2" 
-              checked={selectedMovementIds.includes(movement.id)}
-              onCheckedChange={() => onToggleSelect(movement.id)}
-            />
+            {/* Make the entire area around the checkbox clickable */}
+            <div 
+              className="flex items-center cursor-pointer" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelect(movement.id);
+              }}
+              data-ignore-row-click="true"
+            >
+              <Checkbox 
+                className="mr-2" 
+                checked={selectedMovementIds.includes(movement.id)}
+                onCheckedChange={() => onToggleSelect(movement.id)}
+              />
+            </div>
             <span className="flex items-center">
               {isInGroup && isFirstGroupItem && (
                 <TooltipProvider>
