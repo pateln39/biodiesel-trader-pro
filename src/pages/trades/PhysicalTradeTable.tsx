@@ -1,6 +1,6 @@
 
-import React, { useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, FileDown } from 'lucide-react';
 import { PhysicalTrade } from '@/types';
 import {
@@ -27,16 +27,6 @@ interface PhysicalTradeTableProps {
 }
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Refresh trades if we're navigating back to the list with a newly created/copied trade
-  useEffect(() => {
-    if (location.state?.created) {
-      refetchTrades();
-    }
-  }, [location.state, refetchTrades]);
-
   const handleExport = async () => {
     try {
       toast.info("Exporting trades", { description: "Preparing Excel file..." });

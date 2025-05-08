@@ -9,10 +9,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Edit, Trash2, Copy } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { copyPhysicalTrade } from '@/utils/physicalTradeCopyUtils';
-import { toast } from 'sonner';
+import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 
 interface TableRowActionsProps {
   tradeId: string;
@@ -29,27 +26,6 @@ const TableRowActions = ({
   legReference,
   tradeReference 
 }: TableRowActionsProps) => {
-  const navigate = useNavigate();
-
-  const handleCopy = async () => {
-    toast.info('Copying trade...', {
-      description: `Creating a copy of ${tradeReference}`
-    });
-    
-    try {
-      const newTradeReference = await copyPhysicalTrade(tradeId);
-      toast.success('Trade copied successfully', {
-        description: `New trade reference: ${newTradeReference}`
-      });
-      navigate('/trades', { state: { created: true, tradeReference: newTradeReference } });
-    } catch (error) {
-      console.error('Error copying trade:', error);
-      toast.error('Failed to copy trade', {
-        description: error instanceof Error ? error.message : "An unknown error occurred"
-      });
-    }
-  };
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -64,10 +40,6 @@ const TableRowActions = ({
             <Edit className="mr-2 h-4 w-4" /> Edit Trade
           </DropdownMenuItem>
         </Link>
-        
-        <DropdownMenuItem onClick={handleCopy}>
-          <Copy className="mr-2 h-4 w-4" /> Copy Trade
-        </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         
