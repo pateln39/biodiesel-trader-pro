@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +23,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +52,26 @@ import { DateSortHeader } from './DateSortHeader';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 import { getGroupColorClasses } from '@/utils/colorUtils';
+import { TruncatedCell } from './storage/TruncatedCell';
+
+// Constants for cell width to maintain consistency
+const CELL_WIDTHS = {
+  reference: 160,
+  buySell: 80,
+  incoterm: 100,
+  sustainability: 110,
+  product: 120,
+  date: 110,
+  counterparty: 150,
+  comments: 80,
+  creditStatus: 120,
+  quantity: 120,
+  location: 140,
+  inspector: 140,
+  bargeName: 140,
+  status: 130,
+  actions: 120
+};
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -328,7 +350,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   const renderHeader = () => (
     <>
-      <TableHead>
+      <TableHead className="h-10">
         <div className="flex items-center">
           <div className="p-2 cursor-pointer" onClick={(e) => {
             e.stopPropagation();
@@ -359,14 +381,14 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               checked={selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length}
             />
           </div>
-          Movement Reference Number
+          <span className="whitespace-nowrap">Movement Reference Number</span>
         </div>
       </TableHead>
-      <TableHead>Buy/Sell</TableHead>
-      <TableHead>Incoterm</TableHead>
-      <TableHead>Sustainability</TableHead>
-      <TableHead>Product</TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="loading_period_start"
           label="Loading Start"
@@ -374,7 +396,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="loading_period_end"
           label="Loading End"
@@ -382,11 +404,11 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>Counterparty</TableHead>
-      <TableHead>Comments</TableHead>
-      <TableHead>Credit Status</TableHead>
-      <TableHead>Scheduled Quantity</TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Credit Status</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Scheduled Quantity</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="nominationEta"
           label="Nomination ETA"
@@ -394,7 +416,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="nominationValid"
           label="Nomination Valid"
@@ -402,7 +424,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="cashFlow"
           label="Cash Flow Date"
@@ -410,12 +432,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead className="bg-gray-700">Barge Name</TableHead>
-      <TableHead>Loadport</TableHead>
-      <TableHead>Loadport Inspector</TableHead>
-      <TableHead>Disport</TableHead>
-      <TableHead>Disport Inspector</TableHead>
-      <TableHead>
+      <TableHead className="bg-gray-700 h-10 whitespace-nowrap">Barge Name</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Loadport</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Loadport Inspector</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Disport</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Disport Inspector</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="blDate"
           label="BL Date"
@@ -423,8 +445,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>Actual Quantity</TableHead>
-      <TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Actual Quantity</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
           column="codDate"
           label="COD Date"
@@ -432,8 +454,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           onSort={toggleSortColumn}
         />
       </TableHead>
-      <TableHead>Status</TableHead>
-      <TableHead className="text-center">Actions</TableHead>
+      <TableHead className="h-10 whitespace-nowrap">Status</TableHead>
+      <TableHead className="text-center h-10 whitespace-nowrap">Actions</TableHead>
     </>
   );
 
@@ -447,7 +469,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
     return (
       <>
-        <TableCell>
+        <TableCell className="h-10">
           <div className="flex items-center">
             <div className="p-2 cursor-pointer" onClick={(e) => {
               e.stopPropagation();
@@ -457,7 +479,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
                 checked={selectedMovementIds.includes(movement.id)}
               />
             </div>
-            <span className="flex items-center">
+            <div className="flex items-center">
               {isInGroup && isFirstGroupItem && (
                 <TooltipProvider>
                   <Tooltip>
@@ -482,11 +504,15 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
               {isInGroup && !isFirstGroupItem && (
                 <Group className={`h-3 w-3 ${iconColorClass} mr-1`} />
               )}
-              {movement.referenceNumber}
-            </span>
+              <TruncatedCell 
+                text={movement.referenceNumber} 
+                width={CELL_WIDTHS.reference - 40} // Account for checkbox and icon
+                className="text-xs"
+              />
+            </div>
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="h-10">
           {movement.buySell && (
             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
               movement.buySell === 'buy' 
@@ -497,23 +523,41 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </div>
           )}
         </TableCell>
-        <TableCell>{movement.incoTerm}</TableCell>
-        <TableCell>{movement.sustainability || '-'}</TableCell>
-        <TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.incoTerm} 
+            width={CELL_WIDTHS.incoterm} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.sustainability || '-'} 
+            width={CELL_WIDTHS.sustainability} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
           <ProductToken 
             product={movement.product}
             value={movement.product}
             showTooltip={true}
           />
         </TableCell>
-        <TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
           {movement.loading_period_start ? format(new Date(movement.loading_period_start), 'dd MMM yyyy') : '-'}
         </TableCell>
-        <TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
           {movement.loading_period_end ? format(new Date(movement.loading_period_end), 'dd MMM yyyy') : '-'}
         </TableCell>
-        <TableCell>{movement.counterpartyName}</TableCell>
-        <TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.counterpartyName} 
+            width={CELL_WIDTHS.counterparty} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -535,7 +579,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </Tooltip>
           </TooltipProvider>
         </TableCell>
-        <TableCell>
+        <TableCell className="h-10">
           {movement.creditStatus && (
             <Badge variant={
               movement.creditStatus === 'approved' ? "default" :
@@ -546,19 +590,63 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </Badge>
           )}
         </TableCell>
-        <TableCell>{movement.scheduledQuantity?.toLocaleString()} MT</TableCell>
-        <TableCell>{movement.nominationEta ? format(new Date(movement.nominationEta), 'dd MMM yyyy') : '-'}</TableCell>
-        <TableCell>{movement.nominationValid ? format(new Date(movement.nominationValid), 'dd MMM yyyy') : '-'}</TableCell>
-        <TableCell>{movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}</TableCell>
-        <TableCell className="bg-gray-700">{movement.bargeName || '-'}</TableCell>
-        <TableCell>{movement.loadport || '-'}</TableCell>
-        <TableCell>{movement.loadportInspector || '-'}</TableCell>
-        <TableCell>{movement.disport || '-'}</TableCell>
-        <TableCell>{movement.disportInspector || '-'}</TableCell>
-        <TableCell>{movement.blDate ? format(new Date(movement.blDate), 'dd MMM yyyy') : '-'}</TableCell>
-        <TableCell>{movement.actualQuantity?.toLocaleString()} MT</TableCell>
-        <TableCell>{movement.codDate ? format(new Date(movement.codDate), 'dd MMM yyyy') : '-'}</TableCell>
-        <TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.scheduledQuantity?.toLocaleString()} MT
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.nominationEta ? format(new Date(movement.nominationEta), 'dd MMM yyyy') : '-'}
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.nominationValid ? format(new Date(movement.nominationValid), 'dd MMM yyyy') : '-'}
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}
+        </TableCell>
+        <TableCell className="bg-gray-700 h-10">
+          <TruncatedCell 
+            text={movement.bargeName || '-'} 
+            width={CELL_WIDTHS.bargeName} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.loadport || '-'} 
+            width={CELL_WIDTHS.location} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.loadportInspector || '-'} 
+            width={CELL_WIDTHS.inspector} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.disport || '-'} 
+            width={CELL_WIDTHS.location} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10">
+          <TruncatedCell 
+            text={movement.disportInspector || '-'} 
+            width={CELL_WIDTHS.inspector} 
+            className="text-xs"
+          />
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.blDate ? format(new Date(movement.blDate), 'dd MMM yyyy') : '-'}
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.actualQuantity?.toLocaleString()} MT
+        </TableCell>
+        <TableCell className="h-10 whitespace-nowrap">
+          {movement.codDate ? format(new Date(movement.codDate), 'dd MMM yyyy') : '-'}
+        </TableCell>
+        <TableCell className="h-10">
           <Select
             defaultValue={movement.status}
             onValueChange={(value) => {
@@ -581,7 +669,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             </SelectContent>
           </Select>
         </TableCell>
-        <TableCell className="text-center">
+        <TableCell className="text-center h-10">
           <div className="flex justify-center space-x-1" data-ignore-row-click="true">
             {movement.parentTradeId && (
               <TooltipProvider>
@@ -685,19 +773,21 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   return (
     <>
-      <div className="w-full overflow-auto">
-        <SortableTable
-          items={sortedMovements}
-          onReorder={onReorder}
-          renderHeader={renderHeader}
-          renderRow={renderRow}
-          disableDragAndDrop={hasSorting}
-          getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
-          disabledRowClassName=""
-          onSelectItem={onToggleSelect}
-          selectedItemIds={selectedMovementIds}
-        />
-      </div>
+      <ScrollArea className="w-full" orientation="horizontal">
+        <div className="w-full min-w-[1800px]">
+          <SortableTable
+            items={sortedMovements}
+            onReorder={onReorder}
+            renderHeader={renderHeader}
+            renderRow={renderRow}
+            disableDragAndDrop={hasSorting}
+            getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
+            disabledRowClassName=""
+            onSelectItem={onToggleSelect}
+            selectedItemIds={selectedMovementIds}
+          />
+        </div>
+      </ScrollArea>
       
       {selectedMovement && (
         <MovementEditDialog 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Plus, FileDown } from 'lucide-react';
 import { PhysicalTrade } from '@/types';
 import {
@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
@@ -26,8 +27,6 @@ interface PhysicalTradeTableProps {
 }
 
 const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalTradeTableProps) => {
-  const navigate = useNavigate();
-
   const handleExport = async () => {
     try {
       toast.info("Exporting trades", { description: "Preparing Excel file..." });
@@ -95,30 +94,34 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades }: PhysicalT
           <FileDown className="mr-2 h-4 w-4" /> Export to Excel
         </Button>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow className="border-b border-white/10">
-            <TableHead>Reference</TableHead>
-            <TableHead>Buy/Sell</TableHead>
-            <TableHead>Incoterm</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead>Sustainability</TableHead>
-            <TableHead>Product</TableHead>
-            <TableHead>Loading Start</TableHead>
-            <TableHead>Loading End</TableHead>
-            <TableHead>Counterparty</TableHead>
-            <TableHead>Pricing Type</TableHead>
-            <TableHead>Formula</TableHead>
-            <TableHead>Comments</TableHead>
-            <TableHead>Customs Status</TableHead>
-            <TableHead>Contract Status</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows}
-        </TableBody>
-      </Table>
+      <ScrollArea className="w-full" orientation="horizontal">
+        <div className="min-w-[1800px]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-white/10">
+                <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
+                <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Customs Status</TableHead>
+                <TableHead className="h-10 whitespace-nowrap">Contract Status</TableHead>
+                <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows}
+            </TableBody>
+          </Table>
+        </div>
+      </ScrollArea>
     </div>
   );
 };

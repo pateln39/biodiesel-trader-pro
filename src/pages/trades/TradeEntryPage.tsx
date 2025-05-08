@@ -30,7 +30,7 @@ const TradeEntryPage = () => {
         trade_reference: tradeData.tradeReference,
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
-        counterparty: tradeData.counterparty,
+        counterparty: tradeData.counterparty
       };
       
       // Insert parent trade
@@ -66,11 +66,12 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          customs_status: leg.customsStatus, // Updated: correctly map to customs_status column
+          customs_status: leg.customsStatus,
           pricing_formula: leg.formula,
           mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
-          mtm_future_month: leg.mtmFutureMonth
+          mtm_future_month: leg.mtmFutureMonth,
+          comments: leg.comments // Keep leg-specific comments
         };
 
         // Add EFP fields if they exist
@@ -136,11 +137,13 @@ const TradeEntryPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
-          <p className="text-muted-foreground">
-            Create a new trade by filling out the form below
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
+            <p className="text-muted-foreground">
+              Create a new trade by filling out the form below
+            </p>
+          </div>
         </div>
 
         <Separator />
@@ -168,7 +171,7 @@ const TradeEntryPage = () => {
                 <PhysicalTradeForm 
                   tradeReference={tradeReference} 
                   onSubmit={handlePhysicalSubmit} 
-                  onCancel={handleCancel} 
+                  onCancel={handleCancel}
                 />
               </TabsContent>
               

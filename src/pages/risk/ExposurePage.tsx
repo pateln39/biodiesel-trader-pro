@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
@@ -847,11 +848,11 @@ const ExposurePage = () => {
             </CardContent>
           </Card> : <Card className="overflow-hidden">
             <CardContent className="p-0 overflow-auto">
-              <div className="w-full overflow-auto">
-                <div style={{
-              width: "max-content",
-              minWidth: "100%"
-            }}>
+              <ScrollArea className="w-full" orientation="horizontal">
+                <div className="min-w-[1800px]" style={{
+                  width: "max-content",
+                  minWidth: "100%"
+                }}>
                   <Table className="border-collapse">
                     <TableHeader>
                       <TableRow className="bg-muted/50 border-b-[1px] border-black">
@@ -1142,7 +1143,7 @@ const ExposurePage = () => {
                     </TableBody>
                   </Table>
                 </div>
-              </div>
+              </ScrollArea>
             </CardContent>
           </Card>}
       </div>

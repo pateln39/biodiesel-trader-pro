@@ -4,7 +4,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { debounce } from 'lodash';
+import { MessageSquare } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 interface CommentsCellInputProps {
   tradeId: string;
@@ -14,6 +16,8 @@ interface CommentsCellInputProps {
   isMovement?: boolean;
   showButtons?: boolean;
   onCancel?: () => void;
+  useInlineIcon?: boolean;
+  className?: string;
 }
 
 const CommentsCellInput: React.FC<CommentsCellInputProps> = ({ 
@@ -23,12 +27,15 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
   onSave,
   isMovement = false,
   showButtons = false,
-  onCancel
+  onCancel,
+  useInlineIcon = false,
+  className
 }) => {
   const [comments, setComments] = useState<string>(initialValue);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [localComments, setLocalComments] = useState<string>(initialValue);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   
   // Function to save comments to the database
   const saveComments = useCallback(async (newComments: string, showToast: boolean = false) => {
@@ -72,7 +79,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
 
   // Set up auto-save timer if not using explicit buttons
   useEffect(() => {
-    if (!showButtons) {
+    if (!showButtons && !useInlineIcon) {
       // Clear existing timer if there is one
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -92,7 +99,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
         clearTimeout(timerRef.current);
       }
     };
-  }, [localComments, comments, initialValue, saveComments, showButtons]);
+  }, [localComments, comments, initialValue, saveComments, showButtons, useInlineIcon]);
 
   // Clear timer on unmount
   useEffect(() => {
@@ -108,7 +115,7 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
   };
 
   const handleBlur = () => {
-    if (!showButtons) {
+    if (!showButtons && !useInlineIcon) {
       // If there are unsaved changes, save them and show toast
       if (localComments !== comments) {
         setComments(localComments);
@@ -127,6 +134,10 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
     setComments(localComments);
     saveComments(localComments, true);
     
+    if (useInlineIcon) {
+      setIsOpen(false);
+    }
+    
     // Clear any pending auto-save
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -140,12 +151,65 @@ const CommentsCellInput: React.FC<CommentsCellInputProps> = ({
       onCancel();
     }
     
+    if (useInlineIcon) {
+      setIsOpen(false);
+    }
+    
     // Clear any pending auto-save
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
   };
+
+  if (useInlineIcon) {
+    return (
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <div
+            className={cn(
+              "cursor-pointer hover:bg-muted/30 px-1 py-0.5 rounded flex items-center gap-1 text-[10px]",
+              className,
+              localComments ? "text-purple-300" : "text-muted-foreground"
+            )}
+          >
+            <span className="truncate max-w-[120px]">
+              {localComments || '-'}
+            </span>
+            <MessageSquare className="h-3 w-3 flex-shrink-0" />
+          </div>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-3">
+          <div className="space-y-2">
+            <Textarea
+              value={localComments}
+              onChange={handleChange}
+              placeholder="Add comments..."
+              className="w-full min-h-[100px] text-xs"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={isLoading}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
   return (
     <div className="relative w-full space-y-2">
