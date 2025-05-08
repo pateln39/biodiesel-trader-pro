@@ -529,6 +529,7 @@ export type Database = {
           disport: string | null
           disport_inspector: string | null
           ead_checked: boolean | null
+          group_id: string | null
           id: string
           inco_term: string | null
           inventory_movement_date: string | null
@@ -574,6 +575,7 @@ export type Database = {
           disport?: string | null
           disport_inspector?: string | null
           ead_checked?: boolean | null
+          group_id?: string | null
           id?: string
           inco_term?: string | null
           inventory_movement_date?: string | null
@@ -619,6 +621,7 @@ export type Database = {
           disport?: string | null
           disport_inspector?: string | null
           ead_checked?: boolean | null
+          group_id?: string | null
           id?: string
           inco_term?: string | null
           inventory_movement_date?: string | null

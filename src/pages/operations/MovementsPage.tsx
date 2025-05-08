@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { Filter, Download } from 'lucide-react';
+import { Filter, Download, Rows, Group, X } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,7 +23,15 @@ const MovementsPage = () => {
     filters,
     updateFilters,
     refetch,
-    handleReorder
+    handleReorder,
+    selectedMovementIds,
+    toggleMovementSelection,
+    selectAllMovements,
+    clearSelection,
+    groupSelectedMovements,
+    ungroupMovement,
+    isGrouping,
+    isUngrouping
   } = useSortableMovements();
 
   React.useEffect(() => {
@@ -103,28 +110,69 @@ const MovementsPage = () => {
             <CardDescription className="flex justify-between items-center">
               <span>View and manage product movements</span>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleExportMovements}
-                  disabled={isExporting}
-                >
-                  <Download className="mr-2 h-4 w-4" /> Export
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setIsMovementsFilterOpen(true)}
-                  className="relative"
-                >
-                  <Filter className="mr-2 h-4 w-4" /> 
-                  Filter
-                  {getActiveFilterCount() > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                      {getActiveFilterCount()}
-                    </span>
-                  )}
-                </Button>
+                {selectedMovementIds.length > 0 ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={selectAllMovements}
+                      disabled={isGrouping}
+                    >
+                      <Rows className="mr-2 h-4 w-4" /> Select All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={clearSelection}
+                      disabled={isGrouping}
+                    >
+                      <X className="mr-2 h-4 w-4" /> Clear Selection ({selectedMovementIds.length})
+                    </Button>
+                    {selectedMovementIds.length >= 2 && (
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={groupSelectedMovements}
+                        disabled={isGrouping}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Group className="mr-2 h-4 w-4" /> Group Selected
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleExportMovements}
+                      disabled={isExporting}
+                    >
+                      <Download className="mr-2 h-4 w-4" /> Export
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setIsMovementsFilterOpen(true)}
+                      className="relative"
+                    >
+                      <Filter className="mr-2 h-4 w-4" /> 
+                      Filter
+                      {getActiveFilterCount() > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                          {getActiveFilterCount()}
+                        </span>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={selectAllMovements}
+                    >
+                      <Rows className="mr-2 h-4 w-4" /> Select
+                    </Button>
+                  </>
+                )}
               </div>
             </CardDescription>
           </CardHeader>
@@ -132,7 +180,11 @@ const MovementsPage = () => {
             <MovementsTable 
               key={`movements-${refreshTrigger}`}
               filteredMovements={filteredMovements}
+              selectedMovementIds={selectedMovementIds}
+              onToggleSelect={toggleMovementSelection}
               onReorder={handleReorder}
+              onUngroupMovement={ungroupMovement}
+              isUngrouping={isUngrouping}
             />
           </CardContent>
         </Card>

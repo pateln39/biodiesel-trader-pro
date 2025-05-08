@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +60,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
       createdAt: new Date(m.created_at),
       updatedAt: new Date(m.updated_at),
       sort_order: m.sort_order,
+      group_id: m.group_id,
     }));
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
@@ -108,6 +110,7 @@ const extractAvailableFilterOptions = (movements: Movement[]) => {
 export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => {
   const queryClient = useQueryClient();
   const [localMovements, setLocalMovements] = useState<Movement[]>([]);
+  const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([]);
 
   const emptyFilters: FilterOptions = {
     status: [],
@@ -275,12 +278,75 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   });
 
+  const groupMovementsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length < 2) {
+        throw new Error('At least 2 movements are required to create a group');
+      }
+
+      // Generate a new group ID
+      const groupId = crypto.randomUUID();
+      
+      console.log(`[MOVEMENTS] Creating movement group ${groupId} with ${ids.length} items`);
+      
+      // Update all selected movements with the new group ID
+      const { error } = await supabase
+        .from('movements')
+        .update({ group_id: groupId })
+        .in('id', ids);
+        
+      if (error) {
+        console.error('[MOVEMENTS] Error creating movement group:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully created movement group ${groupId}`);
+      return groupId;
+    },
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Group creation successful - invalidating queries');
+      setSelectedMovementIds([]);
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in groupMovementsMutation:', error);
+    }
+  });
+  
+  const ungroupMovementsMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      console.log(`[MOVEMENTS] Removing movements from group ${groupId}`);
+      
+      // Update all movements in the group to have null group_id
+      const { error } = await supabase
+        .from('movements')
+        .update({ group_id: null })
+        .eq('group_id', groupId);
+        
+      if (error) {
+        console.error('[MOVEMENTS] Error removing movements from group:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully removed movements from group ${groupId}`);
+      return groupId;
+    },
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Group removal successful - invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in ungroupMovementsMutation:', error);
+    }
+  });
+
   const handleReorder = useCallback(
     async (reorderedItems: Movement[]) => {
       console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
       
       setLocalMovements(reorderedItems);
 
+      // Update sort_order for all reordered items
       const updatedItems = reorderedItems.map((item, index) => ({
         id: item.id,
         sort_order: index + 1,
@@ -312,6 +378,36 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     setFilters(newFilters);
   }, []);
 
+  const toggleMovementSelection = useCallback((id: string) => {
+    setSelectedMovementIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(itemId => itemId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  }, []);
+  
+  const selectAllMovements = useCallback(() => {
+    setSelectedMovementIds(filteredMovements.map(m => m.id));
+  }, [filteredMovements]);
+  
+  const clearSelection = useCallback(() => {
+    setSelectedMovementIds([]);
+  }, []);
+  
+  const groupSelectedMovements = useCallback(() => {
+    if (selectedMovementIds.length >= 2) {
+      groupMovementsMutation.mutate(selectedMovementIds);
+    }
+  }, [selectedMovementIds, groupMovementsMutation]);
+  
+  const ungroupMovement = useCallback((groupId: string) => {
+    if (groupId) {
+      ungroupMovementsMutation.mutate(groupId);
+    }
+  }, [ungroupMovementsMutation]);
+
   return {
     movements: localMovements,
     filteredMovements,
@@ -322,5 +418,13 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     error,
     refetch,
     handleReorder,
+    selectedMovementIds,
+    toggleMovementSelection,
+    selectAllMovements,
+    clearSelection,
+    groupSelectedMovements,
+    ungroupMovement,
+    isGrouping: groupMovementsMutation.isPending,
+    isUngrouping: ungroupMovementsMutation.isPending,
   };
 };
