@@ -14,7 +14,7 @@ import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssig
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Waves } from 'lucide-react';
+import { Trash2, Waves, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SortableAssignmentListProps {
@@ -24,6 +24,7 @@ interface SortableAssignmentListProps {
   columnWidths: Record<string, number>;
   onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
   onDeleteStorageMovement?: (assignmentId: string) => void;
+  onDeleteStockReconciliation?: (assignmentId: string, movementId: string) => void;
 }
 
 const SortableAssignmentList = ({ 
@@ -32,7 +33,8 @@ const SortableAssignmentList = ({
   updateAssignmentComments,
   columnWidths,
   onDeletePumpOver,
-  onDeleteStorageMovement
+  onDeleteStorageMovement,
+  onDeleteStockReconciliation
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -51,12 +53,16 @@ const SortableAssignmentList = ({
       // Check if this is a pump over assignment
       const isPumpOver = assignment.comments === 'PUMP_OVER';
       
+      // Check if this is a stock reconciliation assignment
+      const isStockReconciliation = assignment.comments === 'STOCK_RECONCILIATION';
+      
       if (movement) {
         return {
           id: assignment.id as string,
           movement: {
             ...movement,
-            isPumpOver: isPumpOver
+            isPumpOver: isPumpOver,
+            isStockReconciliation: isStockReconciliation
           },
           assignment
         };
@@ -69,9 +75,26 @@ const SortableAssignmentList = ({
           movement: {
             id: assignment.movement_id,
             assignment_id: assignment.id,
-            buy_sell: null, // Neutral, neither buy nor sell
-            product: 'TRANSFERS', // Updated from "Transfer" to "TRANSFERS"
-            isPumpOver: true
+            buy_sell: null,
+            product: 'TRANSFERS',
+            isPumpOver: true,
+            isStockReconciliation: false
+          },
+          assignment
+        };
+      }
+      
+      // If movement is not found but this is a stock reconciliation, create a special movement-like object
+      if (isStockReconciliation) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            id: assignment.movement_id,
+            assignment_id: assignment.id,
+            buy_sell: null,
+            product: 'RECONCILIATION',
+            isPumpOver: false,
+            isStockReconciliation: true
           },
           assignment
         };
@@ -96,9 +119,14 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
+    // For stock reconciliation, use a distinct purple color
+    if (item.movement?.isStockReconciliation) {
+      return "bg-purple-900/10 hover:bg-purple-900/20";
+    }
+    
     // For pump overs, use a distinct color
     if (item.movement?.isPumpOver) {
-      return "bg-gray-900/10 hover:bg-gray-900/20"; // Changed from blue-900 to gray-900
+      return "bg-gray-900/10 hover:bg-gray-900/20";
     }
     
     // Handle the case where buy_sell might be null
@@ -228,6 +256,46 @@ const SortableAssignmentList = ({
       )}
       renderRow={(item) => {
         const { movement, assignment } = item;
+        
+        // Special rendering for stock reconciliation rows
+        if (movement?.isStockReconciliation) {
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                <div className="flex items-center justify-center space-x-2">
+                  <Package className="h-4 w-4 text-purple-500" />
+                  <div className="flex items-center space-x-1">
+                    <Badge variant="outline" className="bg-purple-100/10 border-purple-500 text-purple-500">
+                      Stock Reconciliation
+                    </Badge>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {/* No quantity needed for reconciliation */}
+                <div className="flex justify-center">
+                  <Badge variant="outline" className="bg-purple-100/10 border-purple-500 text-purple-500">
+                    N/A
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {onDeleteStockReconciliation && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => onDeleteStockReconciliation(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
+            </>
+          );
+        }
         
         // Special rendering for pump over rows
         if (movement?.isPumpOver) {
