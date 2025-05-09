@@ -23,7 +23,8 @@ export const PRODUCT_COLORS = {
   'HVO': 'bg-orange-500 text-white',
   'RME DC': 'bg-red-500 text-white',
   'UCOME-5': 'bg-yellow-500 text-white',
-  'TRANSFERS': 'bg-gray-500 text-white', // Changed from "Transfer" to "TRANSFERS" and kept gray-500
+  'TRANSFERS': 'bg-gray-500 text-white',
+  'RECONCILIATION': 'bg-purple-500 text-white',
 };
 
 export const useInventoryState = (terminalId?: string) => {
@@ -791,6 +792,126 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const createStockReconciliationMutation = useMutation({
+    mutationFn: async ({ comment }: { comment?: string }) => {
+      if (!terminalId) throw new Error('Terminal ID is required');
+      
+      console.log('Creating stock reconciliation for terminal:', terminalId);
+      
+      // First, get the current maximum sort_order for this terminal
+      const { data: maxSortOrderData, error: maxSortOrderError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('sort_order')
+        .eq('terminal_id', terminalId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      
+      if (maxSortOrderError) throw maxSortOrderError;
+      
+      // Calculate the new sort_order (max + 1, or 1 if no existing records)
+      const maxSortOrder = maxSortOrderData && maxSortOrderData.length > 0 && maxSortOrderData[0].sort_order
+        ? maxSortOrderData[0].sort_order
+        : 0;
+      
+      const newSortOrder = maxSortOrder + 1;
+      
+      // Create a movement record for the stock reconciliation
+      const reconciliationMovementId = crypto.randomUUID();
+      const currentDate = new Date();
+      const formattedDate = formatDateForStorage(currentDate);
+      
+      // Create a movement record for the reconciliation
+      const { data: movementData, error: movementError } = await supabase
+        .from('movements')
+        .insert({
+          id: reconciliationMovementId,
+          reference_number: `RECON-${reconciliationMovementId.slice(0, 6)}`,
+          bl_quantity: null, // No quantity for reconciliation
+          status: 'completed',
+          product: 'RECONCILIATION',
+          buy_sell: null, // Neutral, neither buy nor sell
+          comments: comment || 'Stock reconciliation entry',
+          terminal_id: terminalId,
+          inventory_movement_date: formattedDate,
+          sort_order: null
+        })
+        .select()
+        .single();
+      
+      if (movementError) throw movementError;
+      
+      // Then create the terminal assignment linked to this movement with the new sort_order
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .insert({
+          terminal_id: terminalId,
+          movement_id: reconciliationMovementId,
+          quantity_mt: 0, // Use 0 as the default value since quantity is not needed
+          assignment_date: formattedDate,
+          comments: 'STOCK_RECONCILIATION', // Special identifier for reconciliation
+          sort_order: newSortOrder
+        })
+        .select()
+        .single();
+      
+      if (assignmentError) throw assignmentError;
+      
+      return { movementData, assignmentData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Stock reconciliation created successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error creating stock reconciliation:', error);
+      toast.error(`Failed to create stock reconciliation: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const deleteStockReconciliationMutation = useMutation({
+    mutationFn: async ({ assignmentId, movementId }: { assignmentId: string, movementId: string }) => {
+      console.log('Deleting stock reconciliation:', { assignmentId, movementId });
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      // Finally, delete the movement record
+      const { error: movementError } = await supabase
+        .from('movements')
+        .delete()
+        .eq('id', movementId);
+      
+      if (movementError) throw movementError;
+      
+      return { assignmentId, movementId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Stock reconciliation deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting stock reconciliation:', error);
+      toast.error(`Failed to delete stock reconciliation: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   return {
     movements,
     tankMovements,
@@ -842,6 +963,10 @@ export const useInventoryState = (terminalId?: string) => {
       deletePumpOverMutation.mutate({ assignmentId, movementId }),
     deleteStorageMovement: (assignmentId: string) => 
       deleteStorageMovementMutation.mutate({ assignmentId }),
+    createStockReconciliation: (comment?: string) => 
+      createStockReconciliationMutation.mutate({ comment }),
+    deleteStockReconciliation: (assignmentId: string, movementId: string) => 
+      deleteStockReconciliationMutation.mutate({ assignmentId, movementId }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

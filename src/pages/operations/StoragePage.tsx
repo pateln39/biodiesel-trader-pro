@@ -1,9 +1,8 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Waves } from 'lucide-react';
+import { Filter, Thermometer, Database, Plus, Waves, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
@@ -18,7 +17,9 @@ import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
 import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
+import StockReconciliationFormDialog from '@/components/operations/storage/StockReconciliationFormDialog';
 import DeletePumpOverDialog from '@/components/operations/storage/DeletePumpOverDialog';
+import DeleteStockReconciliationDialog from '@/components/operations/storage/DeleteStockReconciliationDialog';
 import DeleteStorageMovementDialog from '@/components/operations/storage/DeleteStorageMovementDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +76,7 @@ const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
   const [isPumpOverFormOpen, setIsPumpOverFormOpen] = React.useState(false);
+  const [isStockReconciliationFormOpen, setIsStockReconciliationFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
   // Add state for pump over deletion
@@ -82,6 +84,11 @@ const StoragePage = () => {
     assignmentId: string;
     movementId: string;
     quantity: number;
+  } | null>(null);
+  // Add state for stock reconciliation deletion
+  const [stockReconciliationToDelete, setStockReconciliationToDelete] = React.useState<{
+    assignmentId: string;
+    movementId: string;
   } | null>(null);
   // Add state for storage movement deletion
   const [storageMovementToDelete, setStorageMovementToDelete] = React.useState<string | null>(null);
@@ -105,6 +112,8 @@ const StoragePage = () => {
     createPumpOver,
     deletePumpOver,
     deleteStorageMovement,
+    createStockReconciliation,
+    deleteStockReconciliation,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -133,9 +142,19 @@ const StoragePage = () => {
     setIsPumpOverFormOpen(true);
   };
 
+  const handleStockReconciliationClick = () => {
+    setIsStockReconciliationFormOpen(true);
+  };
+
   const handlePumpOverSubmit = (quantity: number, comment?: string) => {
     if (selectedTerminalId) {
       createPumpOver(quantity, comment);
+    }
+  };
+
+  const handleStockReconciliationSubmit = (comment: string) => {
+    if (selectedTerminalId) {
+      createStockReconciliation(comment);
     }
   };
 
@@ -150,6 +169,13 @@ const StoragePage = () => {
     }
   };
 
+  const handleDeleteStockReconciliation = (assignmentId: string, movementId: string) => {
+    setStockReconciliationToDelete({
+      assignmentId,
+      movementId
+    });
+  };
+
   const handleDeleteStorageMovement = (assignmentId: string) => {
     setStorageMovementToDelete(assignmentId);
   };
@@ -157,6 +183,15 @@ const StoragePage = () => {
   const confirmDeletePumpOver = () => {
     if (pumpOverToDelete) {
       deletePumpOver(pumpOverToDelete.assignmentId, pumpOverToDelete.movementId);
+    }
+  };
+
+  const confirmDeleteStockReconciliation = () => {
+    if (stockReconciliationToDelete) {
+      deleteStockReconciliation(
+        stockReconciliationToDelete.assignmentId, 
+        stockReconciliationToDelete.movementId
+      );
     }
   };
 
@@ -220,6 +255,10 @@ const StoragePage = () => {
               <span>Storage Movements</span>
               {selectedTerminalId && (
                 <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={handleStockReconciliationClick}>
+                    <Package className="h-4 w-4 mr-1" />
+                    Stock Reconciliation
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handlePumpOverClick}>
                     <Waves className="h-4 w-4 mr-1" />
                     Internal Pump Over
@@ -292,6 +331,7 @@ const StoragePage = () => {
                           columnWidths={stickyColumnWidths}
                           onDeletePumpOver={handleDeletePumpOver}
                           onDeleteStorageMovement={handleDeleteStorageMovement}
+                          onDeleteStockReconciliation={handleDeleteStockReconciliation}
                         />
                       )}
                     </Table>
@@ -727,11 +767,24 @@ const StoragePage = () => {
         onSubmit={handlePumpOverSubmit}
       />
 
+      <StockReconciliationFormDialog
+        open={isStockReconciliationFormOpen}
+        onOpenChange={setIsStockReconciliationFormOpen}
+        onSubmit={handleStockReconciliationSubmit}
+      />
+
       <DeletePumpOverDialog
         open={!!pumpOverToDelete}
         onOpenChange={(open) => !open && setPumpOverToDelete(null)}
         onConfirm={confirmDeletePumpOver}
         quantity={pumpOverToDelete?.quantity || 0}
+      />
+
+      <DeleteStockReconciliationDialog
+        open={!!stockReconciliationToDelete}
+        onOpenChange={(open) => !open && setStockReconciliationToDelete(null)}
+        onConfirm={confirmDeleteStockReconciliation}
+        assignmentId={stockReconciliationToDelete?.assignmentId || ''}
       />
 
       <DeleteStorageMovementDialog
