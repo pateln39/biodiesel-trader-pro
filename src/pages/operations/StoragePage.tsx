@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -645,9 +644,9 @@ const StoragePage = () => {
                             const isPumpOver = movement.terminal_comments === 'PUMP_OVER';
                             
                             // Check if this is a stock reconciliation row
-                            // Add optional chaining to safely check the product property
+                            // Use 'in' operator to safely check if product exists on the movement object
                             const isStockReconciliation = 
-                              movement?.product === 'RECONCILIATION' && 
+                              ('product' in movement && movement.product === 'RECONCILIATION') && 
                               movement.terminal_comments === 'STOCK_RECONCILIATION';
                             
                             const bgColorClass = movement.buy_sell === "buy" 
