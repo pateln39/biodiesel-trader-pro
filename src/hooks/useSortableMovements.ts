@@ -10,7 +10,8 @@ const fetchMovements = async (): Promise<Movement[]> => {
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
-      .not('product', 'in', ['Transfer', 'RECONCILIATION']) // Filter out pump over and reconciliation movements
+      .filter('product', 'neq', 'Transfer')
+      .filter('product', 'neq', 'RECONCILIATION')
       .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
