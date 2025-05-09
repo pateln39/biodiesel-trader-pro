@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -641,7 +642,10 @@ const StoragePage = () => {
                         <TableBody>
                           {sortedMovements.map((movement, index) => {
                             // Check if this is a pump over row
-                            const isPumpOver = movements.find(m => m.id === movement.id)?.terminal_comments === 'PUMP_OVER';
+                            const isPumpOver = movement.terminal_comments === 'PUMP_OVER';
+                            // Check if this is a stock reconciliation row
+                            const isStockReconciliation = movement.product === 'RECONCILIATION' && 
+                                                        movement.terminal_comments === 'STOCK_RECONCILIATION';
                             
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
@@ -684,12 +688,13 @@ const StoragePage = () => {
                                     const totalMTMoved = Math.round(movementSummary.totalMTMoved);
                                     const movementQuantity = Math.round(movement.assignment_quantity || 0);
                                     
-                                    if (isPumpOver) {
-                                      // For pump overs, show an exclamation if total is NOT zero
+                                    if (isPumpOver || isStockReconciliation) {
+                                      // For pump overs and stock reconciliations, show an exclamation if total is NOT zero
+                                      // but only for pump overs, never for stock reconciliations
                                       return (
                                         <div className="flex items-center justify-center space-x-1">
                                           <span>{totalMTMoved}</span>
-                                          {totalMTMoved !== 0 && (
+                                          {isPumpOver && totalMTMoved !== 0 && (
                                             <Badge 
                                               variant="outline" 
                                               className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
@@ -733,7 +738,7 @@ const StoragePage = () => {
                                   {Math.round(movementSummary.currentUllage)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {isPumpOver ? 
+                                  {isPumpOver || isStockReconciliation ? 
                                     <span className="text-white">-</span> : 
                                     Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))
                                   }
