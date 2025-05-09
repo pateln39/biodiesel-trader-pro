@@ -8,7 +8,7 @@ import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
-import { exportExposureToExcel, exportExposureByTrade } from '@/utils/export';
+import { exportExposureToExcel } from '@/utils/export';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -64,21 +64,6 @@ const ExposurePage = () => {
     }
   };
 
-  // Handler for exporting by trade
-  const handleExportByTrade = async () => {
-    try {
-      await exportExposureByTrade();
-      toast.success("Export successful", {
-        description: "Exposure by trade report has been downloaded"
-      });
-    } catch (error) {
-      console.error('[EXPOSURE] Export by trade error:', error);
-      toast.error("Export failed", {
-        description: "There was an error exporting the exposure by trade report"
-      });
-    }
-  };
-
   const isLoadingData = isLoading || instrumentsLoading;
 
   return (
@@ -97,7 +82,6 @@ const ExposurePage = () => {
           toggleCategory={toggleCategory}
           exposureCategories={CATEGORY_ORDER}
           onExportExcel={handleExportExcel}
-          onExportByTrade={handleExportByTrade}
         />
 
         <ExposureTable
