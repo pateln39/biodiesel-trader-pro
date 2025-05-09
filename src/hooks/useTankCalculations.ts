@@ -1,4 +1,4 @@
-import { TankMovement } from './useInventoryState';
+import { TankMovement } from '@/types';
 import { Tank } from './useTanks';
 
 interface TankState {

@@ -124,8 +124,7 @@ export const initializeMovementSortOrder = async (terminalId?: string): Promise<
     let query;
     if (terminalId) {
       query = supabase.rpc('initialize_sort_order', {
-        p_table_name: 'movements',
-        p_terminal_id: terminalId
+        p_table_name: 'movements'
       });
     } else {
       query = supabase.rpc('initialize_sort_order', {

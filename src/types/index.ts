@@ -96,3 +96,30 @@ export type {
   Instrument,
   ExposureResult
 };
+
+export interface MovementTerminalAssignment {
+  id: string;
+  terminal_id: string;
+  movement_id: string | null;
+  quantity_mt: number;
+  assignment_date: string;
+  comments: string | null;
+  created_at: string;
+  updated_at: string;
+  sort_order: number | null;
+}
+
+export interface TankMovement {
+  id: string;
+  tank_id: string;
+  movement_id: string | null;
+  quantity_mt: number;
+  quantity_m3: number;
+  movement_date: string;
+  assignment_id: string | null;
+  created_at: string;
+  updated_at: string;
+  sort_order: number | null;
+  product_at_time: string;
+  customs_status: string | null;
+}

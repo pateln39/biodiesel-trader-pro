@@ -152,7 +152,7 @@ const StoragePage = () => {
     }
   };
 
-  const handleStockReconciliationSubmit = (quantity: number, comment: string) => {
+  const handleStockReconciliationSubmit = (quantity: number, comment?: string) => {
     if (selectedTerminalId) {
       createStockReconciliation(quantity, comment);
     }
