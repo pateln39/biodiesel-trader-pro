@@ -1,6 +1,7 @@
 
 import { calculateNetExposure } from '@/utils/tradeUtils';
 import { MonthlyExposure, ExposureData, ProductExposure, GrandTotals, GroupTotals } from '@/types/exposure';
+import React from 'react';
 
 /**
  * Calculate total for a specific product group and category
@@ -109,6 +110,6 @@ export const getValueColorClass = (value: number): string => {
  * Format a numeric value for display in the exposure table
  */
 export const formatValue = (value: number): string | React.ReactElement => {
-  if (value === 0) return <span className="text-brand-lime text-xs">-</span>;
+  if (value === 0) return React.createElement('span', { className: "text-brand-lime text-xs" }, '-');
   return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
 };
