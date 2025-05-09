@@ -358,7 +358,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         
         // Sum up physical exposures
         if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-          physicalExposure = Object.values(exposuresData.physical).reduce(
+          physicalExposure = Object.values(exposuresData.physical).reduce<number>(
             (sum: number, value: unknown) => sum + (typeof value === 'number' ? value : Number(value) || 0), 
             0
           );
@@ -366,7 +366,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         
         // Sum up pricing exposures
         if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
-          pricingExposure = Object.values(exposuresData.pricing).reduce(
+          pricingExposure = Object.values(exposuresData.pricing).reduce<number>(
             (sum: number, value: unknown) => sum + (typeof value === 'number' ? value : Number(value) || 0), 
             0
           );
