@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -112,35 +113,5 @@ export const fixDuplicateSortOrders = async (terminalId?: string): Promise<void>
   } catch (error) {
     console.error('Error fixing duplicate sort orders:', error);
     toast.error('Failed to fix duplicate sort orders');
-  }
-};
-
-/**
- * Initialize sort_order for movements within a specific terminal
- */
-export const initializeMovementSortOrder = async (terminalId?: string): Promise<void> => {
-  try {
-    // If a terminal ID is provided, use that in the query
-    let query;
-    if (terminalId) {
-      query = supabase.rpc('initialize_sort_order', {
-        p_table_name: 'movements'
-      });
-    } else {
-      query = supabase.rpc('initialize_sort_order', {
-        p_table_name: 'movements'
-      });
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      throw error;
-    }
-    
-    return data;
-  } catch (error: any) {
-    console.error('[UTILS] Error in initializeMovementSortOrder:', error);
-    throw error;
   }
 };
