@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -642,9 +643,11 @@ const StoragePage = () => {
                           {sortedMovements.map((movement, index) => {
                             // Check if this is a pump over row
                             const isPumpOver = movement.terminal_comments === 'PUMP_OVER';
+                            
                             // Check if this is a stock reconciliation row
+                            // Add optional chaining to safely check the product property
                             const isStockReconciliation = 
-                              movement.product === 'RECONCILIATION' && 
+                              movement?.product === 'RECONCILIATION' && 
                               movement.terminal_comments === 'STOCK_RECONCILIATION';
                             
                             const bgColorClass = movement.buy_sell === "buy" 
