@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -833,7 +834,7 @@ export const useInventoryState = (terminalId?: string) => {
           comments: comment || 'Stock reconciliation entry',
           terminal_id: terminalId,
           inventory_movement_date: formattedDate,
-          sort_order: null
+          sort_order: null // Explicitly setting sort_order to null for reconciliation entries
         })
         .select()
         .single();
@@ -958,7 +959,8 @@ export const useInventoryState = (terminalId?: string) => {
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
-    createPumpOver: (quantity: number, comment?: string) => createPumpOverMutation.mutate({ quantity, comment }),
+    createPumpOver: (quantity: number, comment?: string) => 
+      createPumpOverMutation.mutate({ quantity, comment }),
     deletePumpOver: (assignmentId: string, movementId: string) => 
       deletePumpOverMutation.mutate({ assignmentId, movementId }),
     deleteStorageMovement: (assignmentId: string) => 
