@@ -1,45 +1,59 @@
 
 import { ExposureCategory } from '@/types/exposure';
-import { 
-  shouldUseSpecialBackground, 
-  formatExposureTableProduct 
-} from '@/utils/productMapping';
 
 /**
- * Get the color class for a category in the exposure table
+ * Order visible categories based on the canonical order
  */
-export const getCategoryColorClass = (category: string): string => {
-  switch (category) {
-    case 'Physical':
-      return 'bg-orange-800';
-    case 'Pricing':
-      return 'bg-green-800';
-    case 'Paper':
-      return 'bg-blue-800';
-    case 'Exposure':
-      return 'bg-green-600';
-    default:
-      return '';
-  }
+export const orderVisibleCategories = (
+  visibleCategories: string[],
+  categoryOrder: readonly string[]
+): string[] => {
+  return categoryOrder.filter(category => visibleCategories.includes(category));
 };
 
 /**
- * Determine if a product should be shown for a specific category
+ * Determine if a product should be shown in a given category column
  */
 export const shouldShowProductInCategory = (product: string, category: string): boolean => {
-  if (category === 'Physical' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'ICE GASOIL FUTURES' || product === 'EFP')) {
-    return false;
-  }
-  
-  if (category === 'Paper' && (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP')) {
-    return false;
-  }
-  
+  // For now, show all products in all categories
+  // This could be refined further based on product type
   return true;
 };
 
 /**
- * Get the appropriate background color class for a product in the exposure table
+ * Get the appropriate CSS class for a category header
+ */
+export const getCategoryColorClass = (category: string): string => {
+  switch (category) {
+    case 'Physical':
+      return 'bg-blue-600';
+    case 'Pricing':
+      return 'bg-purple-600';
+    case 'Paper':
+      return 'bg-yellow-600';
+    case 'Exposure':
+      return 'bg-green-600';
+    default:
+      return 'bg-gray-600';
+  }
+};
+
+/**
+ * Determines if a product is a biodiesel product
+ */
+export const isBiodieselProduct = (product: string): boolean => {
+  return product.includes('Argus');
+};
+
+/**
+ * Determines if a product is a pricing instrument
+ */
+export const isPricingInstrumentProduct = (product: string): boolean => {
+  return !isBiodieselProduct(product);
+};
+
+/**
+ * Get the background class for a product in the exposure table
  */
 export const getExposureProductBackgroundClass = (
   product: string, 
@@ -51,24 +65,15 @@ export const getExposureProductBackgroundClass = (
   }
   
   if (isPricingInstrumentTotal) {
-    return 'bg-purple-300'; // Pricing instrument total
+    return 'bg-purple-300'; // Pricing instrument total background
   }
   
-  // Light purple background for specific pricing instruments
-  if (shouldUseSpecialBackground(product)) {
-    return 'bg-purple-300'; // Light purple
+  // Special backgrounds for specific products
+  if (product === 'ICE GASOIL FUTURES' || product === 'EFP' || 
+      product === 'Platts LSGO' || product === 'Platts Diesel') {
+    return 'bg-purple-300';
   }
   
   // Default background for biodiesel products
   return 'bg-green-600';
-};
-
-/**
- * Order categories according to predefined order
- */
-export const orderVisibleCategories = (
-  visibleCategories: string[], 
-  categoryOrder: readonly string[]
-): string[] => {
-  return [...categoryOrder].filter(category => visibleCategories.includes(category));
 };
