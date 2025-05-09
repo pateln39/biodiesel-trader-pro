@@ -1,16 +1,14 @@
 import React from 'react';
 import Layout from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Waves, Package } from 'lucide-react';
+import { Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
-import { Button } from '@/components/ui/button';
 import EditableField from '@/components/operations/storage/EditableField';
 import EditableNumberField from '@/components/operations/storage/EditableNumberField';
 import EditableDropdownField from '@/components/operations/storage/EditableDropdownField';
-import ProductToken from '@/components/operations/storage/ProductToken';
 import ProductLegend from '@/components/operations/storage/ProductLegend';
 import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
@@ -25,6 +23,8 @@ import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
+import StorageHeader from '@/components/operations/storage/StorageHeader';
+import StorageCardHeader from '@/components/operations/storage/StorageCardHeader';
 
 const stickyColumnWidths = {
   counterparty: 110,
@@ -232,13 +232,7 @@ const StoragePage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filter</span>
-          </div>
-        </div>
+        <StorageHeader title="Storage Management" />
         
         <ProductLegend />
         
@@ -251,28 +245,13 @@ const StoragePage = () => {
         
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <span>Storage Movements</span>
-              {selectedTerminalId && (
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm" onClick={handleStockReconciliationClick}>
-                    <Package className="h-4 w-4 mr-1" />
-                    Stock Reconciliation
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handlePumpOverClick}>
-                    <Waves className="h-4 w-4 mr-1" />
-                    Internal Pump Over
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleAddTank}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Tank
-                  </Button>
-                </div>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Storage tank management for {terminals.find(t => t.id === selectedTerminalId)?.name || 'selected terminal'}
-            </CardDescription>
+            <StorageCardHeader
+              selectedTerminal={terminals.find(t => t.id === selectedTerminalId)}
+              selectedTerminalId={selectedTerminalId}
+              onStockReconciliationClick={handleStockReconciliationClick}
+              onPumpOverClick={handlePumpOverClick}
+              onAddTankClick={handleAddTank}
+            />
           </CardHeader>
           <CardContent>
             <div className="relative border rounded-md overflow-hidden">
