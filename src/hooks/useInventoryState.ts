@@ -793,10 +793,10 @@ export const useInventoryState = (terminalId?: string) => {
   });
 
   const createStockReconciliationMutation = useMutation({
-    mutationFn: async ({ comment }: { comment?: string }) => {
+    mutationFn: async ({ quantity, comment }: { quantity: number; comment?: string }) => {
       if (!terminalId) throw new Error('Terminal ID is required');
       
-      console.log('Creating stock reconciliation for terminal:', terminalId);
+      console.log('Creating stock reconciliation for terminal:', terminalId, 'with quantity:', quantity);
       
       // First, get the current maximum sort_order for this terminal
       const { data: maxSortOrderData, error: maxSortOrderError } = await supabase
@@ -826,7 +826,7 @@ export const useInventoryState = (terminalId?: string) => {
         .insert({
           id: reconciliationMovementId,
           reference_number: `RECON-${reconciliationMovementId.slice(0, 6)}`,
-          bl_quantity: null, // No quantity for reconciliation
+          bl_quantity: quantity, // Use the provided quantity
           status: 'completed',
           product: 'RECONCILIATION',
           buy_sell: null, // Neutral, neither buy nor sell
@@ -846,7 +846,7 @@ export const useInventoryState = (terminalId?: string) => {
         .insert({
           terminal_id: terminalId,
           movement_id: reconciliationMovementId,
-          quantity_mt: 0, // Use 0 as the default value since quantity is not needed
+          quantity_mt: quantity, // Use the provided quantity
           assignment_date: formattedDate,
           comments: 'STOCK_RECONCILIATION', // Special identifier for reconciliation
           sort_order: newSortOrder
@@ -963,8 +963,8 @@ export const useInventoryState = (terminalId?: string) => {
       deletePumpOverMutation.mutate({ assignmentId, movementId }),
     deleteStorageMovement: (assignmentId: string) => 
       deleteStorageMovementMutation.mutate({ assignmentId }),
-    createStockReconciliation: (comment?: string) => 
-      createStockReconciliationMutation.mutate({ comment }),
+    createStockReconciliation: (quantity: number, comment?: string) => 
+      createStockReconciliationMutation.mutate({ quantity, comment }),
     deleteStockReconciliation: (assignmentId: string, movementId: string) => 
       deleteStockReconciliationMutation.mutate({ assignmentId, movementId }),
     isLoading: loadingMovements || loadingTankMovements

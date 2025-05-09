@@ -22,14 +22,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface StockReconciliationFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (comment: string) => void;
+  onSubmit: (quantity: number, comment: string) => void;
 }
 
 const formSchema = z.object({
+  quantity: z.coerce.number().min(0.01, "Quantity must be greater than 0"),
   comment: z.string().optional()
 });
 
@@ -43,12 +45,13 @@ const StockReconciliationFormDialog: React.FC<StockReconciliationFormDialogProps
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      quantity: 0,
       comment: ""
     }
   });
 
   const handleSubmit = (values: FormValues) => {
-    onSubmit(values.comment || "");
+    onSubmit(values.quantity, values.comment || "");
     form.reset();
     onOpenChange(false);
   };
@@ -69,6 +72,25 @@ const StockReconciliationFormDialog: React.FC<StockReconciliationFormDialogProps
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)}>
             <div className="space-y-4 py-2">
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity (MT)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Enter reconciliation quantity"
+                        step="0.01"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
               <FormField
                 control={form.control}
                 name="comment"
