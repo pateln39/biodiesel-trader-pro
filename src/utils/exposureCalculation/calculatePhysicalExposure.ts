@@ -57,34 +57,42 @@ export const calculatePhysicalExposure = (
     if (physicalExposureMonth && periods.includes(physicalExposureMonth)) {
       const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
       if (canonicalProduct !== 'ICE GASOIL FUTURES') { // Skip ICE GASOIL FUTURES for physical exposure
-        const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-        const quantity = (leg.quantity || 0) * quantityMultiplier;
+        // CHANGE: Use pricing_formula.exposures.physical as the primary source
+        const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
+        let hasPhysicalExposure = false;
         
-        if (!physicalExposures[physicalExposureMonth][canonicalProduct]) {
-          physicalExposures[physicalExposureMonth][canonicalProduct] = 0;
+        // Check if pricing_formula has physical exposures
+        if (pricingFormula && 
+            pricingFormula.exposures && 
+            pricingFormula.exposures.physical) {
+          
+          Object.entries(pricingFormula.exposures.physical).forEach(([baseProduct, weight]) => {
+            const canonicalBaseProduct = mapProductToCanonical(baseProduct);
+            if (!physicalExposures[physicalExposureMonth][canonicalBaseProduct]) {
+              physicalExposures[physicalExposureMonth][canonicalBaseProduct] = 0;
+            }
+            const actualExposure = typeof weight === 'number' ? weight : 0;
+            physicalExposures[physicalExposureMonth][canonicalBaseProduct] += actualExposure;
+            hasPhysicalExposure = true;
+          });
         }
         
-        const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-        if (mtmFormula.tokens.length > 0) {
-          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-            Object.entries(mtmFormula.exposures.physical).forEach(([baseProduct, weight]) => {
-              const canonicalBaseProduct = mapProductToCanonical(baseProduct);
-              if (!physicalExposures[physicalExposureMonth][canonicalBaseProduct]) {
-                physicalExposures[physicalExposureMonth][canonicalBaseProduct] = 0;
-              }
-              const actualExposure = typeof weight === 'number' ? weight : 0;
-              physicalExposures[physicalExposureMonth][canonicalBaseProduct] += actualExposure;
-            });
-          } else {
-            physicalExposures[physicalExposureMonth][canonicalProduct] += quantity;
+        // If pricing_formula doesn't have physical exposures, fall back to default behavior
+        if (!hasPhysicalExposure) {
+          const quantityMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
+          const quantity = (leg.quantity || 0) * quantityMultiplier;
+          
+          if (!physicalExposures[physicalExposureMonth][canonicalProduct]) {
+            physicalExposures[physicalExposureMonth][canonicalProduct] = 0;
           }
-        } else {
+          
+          // Standard calculation for products without specific formula exposures
           physicalExposures[physicalExposureMonth][canonicalProduct] += quantity;
         }
       }
     }
     
-    // Process pricing exposure
+    // Process pricing exposure - this remains unchanged
     const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
 
     // Handle monthly distribution if exists
