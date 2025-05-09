@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,8 +11,7 @@ const fetchMovements = async (): Promise<Movement[]> => {
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
-      .filter('product', 'neq', 'Transfer')
-      .filter('product', 'neq', 'RECONCILIATION')
+      .not('product', 'in', ['Transfer', 'RECONCILIATION']) // Filter out pump over and reconciliation movements
       .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
