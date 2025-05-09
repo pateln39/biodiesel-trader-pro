@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
@@ -594,7 +594,7 @@ export const useExposureData = () => {
   }, [ALLOWED_PRODUCTS]);
 
   // Update selected products when allProducts changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (allProducts.length > 0) {
       setSelectedProducts([...allProducts]);
     }
