@@ -1,4 +1,7 @@
 
-// Re-export all export functions for backward compatibility
+// Re-export all export functions and types for backward compatibility
 export * from './exposureExportTypes';
-export * from './exposureExportUtils';
+export * from './exposureTableExport';
+export * from './exposureTradeExport';
+export * from './excelFormatUtils';
+

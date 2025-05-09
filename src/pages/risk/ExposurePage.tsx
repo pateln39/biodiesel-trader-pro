@@ -8,7 +8,7 @@ import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
-import { exportExposureToExcel, exportExposureByTrade } from '@/utils/export/exposureExportUtils';
+import { exportExposureToExcel, exportExposureByTrade } from '@/utils/export';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
