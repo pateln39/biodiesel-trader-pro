@@ -1,8 +1,6 @@
 
 import React from 'react';
-import { Filter, Download, Rows, Group, X } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,6 +9,8 @@ import MovementsTable from '@/components/operations/MovementsTable';
 import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel } from '@/utils/excelExportUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
+import MovementsHeader from '@/components/operations/movements/MovementsHeader';
+import MovementsActions from '@/components/operations/movements/MovementsActions';
 
 const MovementsPage = () => {
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
@@ -97,83 +97,24 @@ const MovementsPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Movements</h1>
-          <Button onClick={handleRefreshTable}>
-            Refresh Data
-          </Button>
-        </div>
+        <MovementsHeader onRefresh={handleRefreshTable} />
         
         <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
           <CardHeader>
             <CardTitle>Movements</CardTitle>
             <CardDescription className="flex justify-between items-center">
               <span>View and manage product movements</span>
-              <div className="flex gap-2">
-                {selectedMovementIds.length > 0 ? (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={selectAllMovements}
-                      disabled={isGrouping}
-                    >
-                      <Rows className="mr-2 h-4 w-4" /> Select All
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={clearSelection}
-                      disabled={isGrouping}
-                    >
-                      <X className="mr-2 h-4 w-4" /> Clear Selection ({selectedMovementIds.length})
-                    </Button>
-                    {selectedMovementIds.length >= 2 && (
-                      <Button 
-                        variant="default" 
-                        size="sm"
-                        onClick={groupSelectedMovements}
-                        disabled={isGrouping}
-                        className="bg-purple-600 hover:bg-purple-700"
-                      >
-                        <Group className="mr-2 h-4 w-4" /> Group Selected
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleExportMovements}
-                      disabled={isExporting}
-                    >
-                      <Download className="mr-2 h-4 w-4" /> Export
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setIsMovementsFilterOpen(true)}
-                      className="relative"
-                    >
-                      <Filter className="mr-2 h-4 w-4" /> 
-                      Filter
-                      {getActiveFilterCount() > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                          {getActiveFilterCount()}
-                        </span>
-                      )}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={selectAllMovements}
-                    >
-                      <Rows className="mr-2 h-4 w-4" /> Select
-                    </Button>
-                  </>
-                )}
-              </div>
+              <MovementsActions 
+                isExporting={isExporting}
+                selectedMovementIds={selectedMovementIds}
+                onExport={handleExportMovements}
+                onOpenFilter={() => setIsMovementsFilterOpen(true)}
+                onSelectAll={selectAllMovements}
+                onClearSelection={clearSelection}
+                onGroupSelected={groupSelectedMovements}
+                isGrouping={isGrouping}
+                activeFilterCount={getActiveFilterCount()}
+              />
             </CardDescription>
           </CardHeader>
           <CardContent>

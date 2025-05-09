@@ -3,37 +3,17 @@ import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
-import { format } from 'date-fns';
-import { Edit, Trash2, MessageSquare, FileText, Warehouse, Eye, Calculator, Ungroup, Group } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { Table, TableBody, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -42,36 +22,15 @@ import {
 } from "@/components/ui/dialog";
 import MovementEditDialog from './MovementEditDialog';
 import CommentsCellInput from '@/components/trades/physical/CommentsCellInput';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import TradeDetailsDialog from './TradeDetailsDialog';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
-import ProductToken from '@/components/operations/storage/ProductToken';
-import { DateSortHeader } from './DateSortHeader';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 import { getGroupColorClasses } from '@/utils/colorUtils';
-import { TruncatedCell } from './storage/TruncatedCell';
-
-// Constants for cell width to maintain consistency
-const CELL_WIDTHS = {
-  reference: 160,
-  buySell: 80,
-  incoterm: 100,
-  sustainability: 110,
-  product: 120,
-  date: 110,
-  counterparty: 150,
-  comments: 80,
-  creditStatus: 120,
-  quantity: 120,
-  location: 140,
-  inspector: 140,
-  bargeName: 140,
-  status: 130,
-  actions: 120
-};
+import MovementTableHeader from './movements/MovementTableHeader';
+import MovementRow from './movements/MovementRow';
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -105,38 +64,24 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [confirmUngroupDialogOpen, setConfirmUngroupDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Function to identify if an item is part of a group
-  const isGroupedMovement = (item: Movement) => {
-    return !!item.group_id;
-  };
-
-  // Function to determine if an item is the first in a group
-  const isFirstInGroup = (item: Movement, index: number, items: Movement[]) => {
-    if (!item.group_id) return false;
-    
-    if (index === 0) return true;
-    
-    const previousMovement = items[index - 1];
-    
-    return item.group_id !== previousMovement.group_id;
-  };
-
-  // Function to determine if an item is the last in a group
-  const isLastInGroup = (item: Movement, index: number, items: Movement[]) => {
-    if (!item.group_id) return false;
-    
-    if (index === items.length - 1) return true;
-    
-    const nextMovement = items[index + 1];
-    
-    return item.group_id !== nextMovement.group_id;
-  };
-
-  // Calculate row style based on group membership
+  // Get row group classes
   const getRowGroupClasses = (item: Movement, index: number, items: Movement[]) => {
     if (!item.group_id) return "";
     
-    // Use the color utility to get dynamic colors based on group_id
+    const isFirstInGroup = (i: Movement, idx: number, its: Movement[]) => {
+      if (!i.group_id) return false;
+      if (idx === 0) return true;
+      const previousMovement = its[idx - 1];
+      return i.group_id !== previousMovement.group_id;
+    };
+    
+    const isLastInGroup = (i: Movement, idx: number, its: Movement[]) => {
+      if (!i.group_id) return false;
+      if (idx === its.length - 1) return true;
+      const nextMovement = its[idx + 1];
+      return i.group_id !== nextMovement.group_id;
+    };
+    
     const colorClasses = getGroupColorClasses(item.group_id);
     let classes = colorClasses;
     
@@ -151,21 +96,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
     
     return classes;
-  };
-
-  // Extract the base color name from the class string for group icon colors
-  const getIconColorClass = (groupId: string): string => {
-    const colorClasses = getGroupColorClasses(groupId);
-    
-    // Update color mappings based on our new color palette
-    if (colorClasses.includes('amber')) return 'text-amber-400';
-    if (colorClasses.includes('emerald')) return 'text-emerald-400';
-    if (colorClasses.includes('sky')) return 'text-sky-400';
-    if (colorClasses.includes('rose')) return 'text-rose-400';
-    if (colorClasses.includes('lime')) return 'text-lime-400';
-    if (colorClasses.includes('orange')) return 'text-orange-400';
-    if (colorClasses.includes('cyan')) return 'text-cyan-400';
-    return 'text-purple-400'; // Default
   };
 
   // Handler functions
@@ -234,6 +164,31 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   };
 
+  // Toggle select all function
+  const handleToggleSelectAll = () => {
+    if (selectedMovementIds.length === filteredMovements.length) {
+      // Deselect all movements
+      filteredMovements.forEach(m => {
+        if (selectedMovementIds.includes(m.id)) {
+          onToggleSelect(m.id);
+        }
+      });
+    } else {
+      // Select all movements
+      const allIds = filteredMovements.map(m => m.id);
+      selectedMovementIds.forEach(id => {
+        if (!allIds.includes(id)) {
+          onToggleSelect(id);
+        }
+      });
+      allIds.forEach(id => {
+        if (!selectedMovementIds.includes(id)) {
+          onToggleSelect(id);
+        }
+      });
+    }
+  };
+
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string, status: string }) => {
       const { data, error } = await supabase
@@ -246,7 +201,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      console.log('[DEBUG] Status mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       toast.success("Status updated", {
@@ -273,7 +227,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      console.log('[DEBUG] Comments mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       setIsCommentsDialogOpen(false);
       setSelectedMovementForComments(null);
@@ -300,7 +253,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return id;
     },
     onSuccess: () => {
-      console.log('[DEBUG] Delete mutation successful - invalidating queries');
       queryClient.invalidateQueries({ queryKey: ['movements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
@@ -335,441 +287,34 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     );
   }
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return "default";
-      case 'in progress':
-        return "secondary";
-      case 'cancelled':
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
-
   const renderHeader = () => (
-    <>
-      <TableHead className="h-10">
-        <div className="flex items-center">
-          <div className="p-2 cursor-pointer" onClick={(e) => {
-            e.stopPropagation();
-            if (selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length) {
-              // Deselect all movements
-              filteredMovements.forEach(m => {
-                if (selectedMovementIds.includes(m.id)) {
-                  onToggleSelect(m.id);
-                }
-              });
-            } else {
-              // Select all movements
-              const allIds = filteredMovements.map(m => m.id);
-              selectedMovementIds.forEach(id => {
-                if (!allIds.includes(id)) {
-                  onToggleSelect(id);
-                }
-              });
-              allIds.forEach(id => {
-                if (!selectedMovementIds.includes(id)) {
-                  onToggleSelect(id);
-                }
-              });
-            }
-          }}>
-            <Checkbox
-              className="mr-2"
-              checked={selectedMovementIds.length > 0 && selectedMovementIds.length === filteredMovements.length}
-            />
-          </div>
-          <span className="whitespace-nowrap">Movement Reference Number</span>
-        </div>
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="loading_period_start"
-          label="Loading Start"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="loading_period_end"
-          label="Loading End"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Credit Status</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Scheduled Quantity</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="nominationEta"
-          label="Nomination ETA"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="nominationValid"
-          label="Nomination Valid"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="cashFlow"
-          label="Cash Flow Date"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="bg-gray-700 h-10 whitespace-nowrap">Barge Name</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Loadport</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Loadport Inspector</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Disport</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Disport Inspector</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="blDate"
-          label="BL Date"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Actual Quantity</TableHead>
-      <TableHead className="h-10 whitespace-nowrap">
-        <DateSortHeader
-          column="codDate"
-          label="COD Date"
-          sortColumns={sortColumns}
-          onSort={toggleSortColumn}
-        />
-      </TableHead>
-      <TableHead className="h-10 whitespace-nowrap">Status</TableHead>
-      <TableHead className="text-center h-10 whitespace-nowrap">Actions</TableHead>
-    </>
+    <MovementTableHeader
+      onToggleSelectAll={handleToggleSelectAll}
+      allSelected={selectedMovementIds.length === filteredMovements.length}
+      filteredMovementsLength={filteredMovements.length}
+      sortColumns={sortColumns}
+      onToggleSortColumn={toggleSortColumn}
+    />
   );
 
-  const renderRow = (movement: Movement, index: number) => {
-    const isInGroup = isGroupedMovement(movement);
-    const groupBgClass = getRowGroupClasses(movement, index, sortedMovements);
-    const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, sortedMovements);
-    
-    // Get icon color based on group ID
-    const iconColorClass = movement.group_id ? getIconColorClass(movement.group_id) : '';
-
-    return (
-      <>
-        <TableCell className="h-10">
-          <div className="flex items-center">
-            <div className="p-2 cursor-pointer" onClick={(e) => {
-              e.stopPropagation();
-              onToggleSelect(movement.id);
-            }}>
-              <Checkbox 
-                checked={selectedMovementIds.includes(movement.id)}
-              />
-            </div>
-            <div className="flex items-center">
-              {isInGroup && isFirstGroupItem && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-6 w-6 mr-1 ${groupBgClass.split(' ')[0]} hover:${groupBgClass.split(' ')[0].replace('/20', '/30')}`}
-                        onClick={() => handleUngroupClick(movement.group_id as string)}
-                        disabled={isUngrouping}
-                        data-ignore-row-click="true"
-                      >
-                        <Ungroup className={`h-3 w-3 ${iconColorClass}`} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Ungroup these movements</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {isInGroup && !isFirstGroupItem && (
-                <Group className={`h-3 w-3 ${iconColorClass} mr-1`} />
-              )}
-              <TruncatedCell 
-                text={movement.referenceNumber} 
-                width={CELL_WIDTHS.reference - 40} // Account for checkbox and icon
-                className="text-xs"
-              />
-            </div>
-          </div>
-        </TableCell>
-        <TableCell className="h-10">
-          {movement.buySell && (
-            <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              movement.buySell === 'buy' 
-                ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/20 dark:text-blue-300' 
-                : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
-            }`}>
-              {movement.buySell === 'buy' ? 'BUY' : 'SELL'}
-            </div>
-          )}
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.incoTerm} 
-            width={CELL_WIDTHS.incoterm} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.sustainability || '-'} 
-            width={CELL_WIDTHS.sustainability} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <ProductToken 
-            product={movement.product}
-            value={movement.product}
-            showTooltip={true}
-          />
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.loading_period_start ? format(new Date(movement.loading_period_start), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.loading_period_end ? format(new Date(movement.loading_period_end), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.counterpartyName} 
-            width={CELL_WIDTHS.counterparty} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => handleCommentsClick(movement)}
-                >
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  {movement.comments && (
-                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-blue-500"></span>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Add or view comments</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </TableCell>
-        <TableCell className="h-10">
-          {movement.creditStatus && (
-            <Badge variant={
-              movement.creditStatus === 'approved' ? "default" :
-              movement.creditStatus === 'rejected' ? "destructive" :
-              "outline"
-            }>
-              {movement.creditStatus}
-            </Badge>
-          )}
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.scheduledQuantity?.toLocaleString()} MT
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.nominationEta ? format(new Date(movement.nominationEta), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.nominationValid ? format(new Date(movement.nominationValid), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="bg-gray-700 h-10">
-          <TruncatedCell 
-            text={movement.bargeName || '-'} 
-            width={CELL_WIDTHS.bargeName} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.loadport || '-'} 
-            width={CELL_WIDTHS.location} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.loadportInspector || '-'} 
-            width={CELL_WIDTHS.inspector} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.disport || '-'} 
-            width={CELL_WIDTHS.location} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10">
-          <TruncatedCell 
-            text={movement.disportInspector || '-'} 
-            width={CELL_WIDTHS.inspector} 
-            className="text-xs"
-          />
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.blDate ? format(new Date(movement.blDate), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.actualQuantity?.toLocaleString()} MT
-        </TableCell>
-        <TableCell className="h-10 whitespace-nowrap">
-          {movement.codDate ? format(new Date(movement.codDate), 'dd MMM yyyy') : '-'}
-        </TableCell>
-        <TableCell className="h-10">
-          <Select
-            defaultValue={movement.status}
-            onValueChange={(value) => {
-              console.log(`[DEBUG] Status changing from ${movement.status} to ${value}`);
-              handleStatusChange(movement.id, value);
-            }}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue>
-                <Badge variant={getStatusBadgeVariant(movement.status)}>
-                  {movement.status.charAt(0).toUpperCase() + movement.status.slice(1)}
-                </Badge>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="scheduled">Scheduled</SelectItem>
-              <SelectItem value="in progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-        </TableCell>
-        <TableCell className="text-center h-10">
-          <div className="flex justify-center space-x-1" data-ignore-row-click="true">
-            {movement.parentTradeId && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => handleViewTradeDetails(movement.parentTradeId as string, movement.tradeLegId)}
-                      data-ignore-row-click="true"
-                    >
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>View Trade Details</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={() => handleEditMovement(movement)}
-              data-ignore-row-click="true"
-            >
-              <Edit className="h-4 w-4 text-muted-foreground" />
-            </Button>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => handleStorageClick(movement)}
-                    data-ignore-row-click="true"
-                  >
-                    <Warehouse className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Assign to Storage Terminal</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => handleDemurrageCalculatorClick(movement)}
-                    data-ignore-row-click="true"
-                  >
-                    <Calculator className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Demurrage Calculator</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  data-ignore-row-click="true"
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Movement</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this movement? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={() => handleDeleteMovement(movement.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </TableCell>
-      </>
-    );
-  };
+  const renderRow = (movement: Movement, index: number) => (
+    <MovementRow
+      movement={movement}
+      index={index}
+      movements={sortedMovements}
+      isSelected={selectedMovementIds.includes(movement.id)}
+      onToggleSelect={onToggleSelect}
+      onStatusChange={handleStatusChange}
+      onCommentsClick={handleCommentsClick}
+      onViewTradeDetails={handleViewTradeDetails}
+      onEditMovement={handleEditMovement}
+      onStorageClick={handleStorageClick}
+      onDemurrageCalculatorClick={handleDemurrageCalculatorClick}
+      onDeleteMovement={handleDeleteMovement}
+      onUngroupClick={handleUngroupClick}
+      isUngrouping={isUngrouping}
+    />
+  );
 
   return (
     <>
@@ -781,7 +326,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
             renderHeader={renderHeader}
             renderRow={renderRow}
             disableDragAndDrop={hasSorting}
-            getRowBgClass={(item, index, items) => getRowGroupClasses(item, index, items)}
+            getRowBgClass={getRowGroupClasses}
             disabledRowClassName=""
             onSelectItem={onToggleSelect}
             selectedItemIds={selectedMovementIds}
