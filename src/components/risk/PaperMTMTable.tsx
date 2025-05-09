@@ -8,7 +8,14 @@ import { Eye, AlertTriangle } from 'lucide-react';
 import { PaperTrade } from '@/types/paper';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
-import { PaperMTMPosition, calculatePaperTradePrice, calculatePaperMTMPrice, calculatePaperMTMValue, getMonthDates, getPeriodType } from '@/utils/paperTradeMTMUtils';
+import { 
+  PaperMTMPosition,
+  calculatePaperTradePrice, 
+  calculatePaperMTMPrice, 
+  calculatePaperMTMValue,
+  getMonthDates, 
+  getPeriodType 
+} from '@/utils/paperTrade'; // Updated import
 import PaperPriceDetails from './PaperPriceDetails';
 
 const PaperMTMTable: React.FC = () => {

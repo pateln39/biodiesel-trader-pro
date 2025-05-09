@@ -1,12 +1,11 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PaperTrade } from '@/types/paper';
 import { formatProductDisplay, calculateDisplayPrice } from '@/utils/productMapping';
-import { exportPaperTradesToExcel } from '@/utils/excelExportUtils';
 import { toast } from 'sonner';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
@@ -29,27 +28,16 @@ interface PaperTradeListProps {
   isLoading: boolean;
   error: Error | null;
   refetchPaperTrades: () => void;
+  onExport?: () => void;
 }
 
 const PaperTradeList: React.FC<PaperTradeListProps> = ({
   paperTrades,
   isLoading,
   error,
-  refetchPaperTrades
+  refetchPaperTrades,
+  onExport
 }) => {
-  const handleExport = async () => {
-    try {
-      toast.info("Exporting paper trades", { description: "Preparing Excel file..." });
-      const fileName = await exportPaperTradesToExcel();
-      toast.success("Export complete", { description: `Saved as ${fileName}` });
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Export failed", { 
-        description: error instanceof Error ? error.message : "An unknown error occurred" 
-      });
-    }
-  };
-
   if (isLoading) {
     return <TableLoadingState />;
   }
@@ -60,11 +48,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
 
   return (
     <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
-      <div className="flex justify-end p-2 bg-muted/30 border-b border-white/10">
-        <Button variant="outline" size="sm" onClick={handleExport}>
-          <FileDown className="mr-2 h-4 w-4" /> Export to Excel
-        </Button>
-      </div>
       <ScrollArea className="w-full" orientation="horizontal">
         <div className="min-w-[1200px]">
           <Table>
