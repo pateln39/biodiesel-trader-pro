@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -644,8 +643,9 @@ const StoragePage = () => {
                             // Check if this is a pump over row
                             const isPumpOver = movement.terminal_comments === 'PUMP_OVER';
                             // Check if this is a stock reconciliation row
-                            const isStockReconciliation = movement.product === 'RECONCILIATION' && 
-                                                        movement.terminal_comments === 'STOCK_RECONCILIATION';
+                            const isStockReconciliation = 
+                              movement.product === 'RECONCILIATION' && 
+                              movement.terminal_comments === 'STOCK_RECONCILIATION';
                             
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
