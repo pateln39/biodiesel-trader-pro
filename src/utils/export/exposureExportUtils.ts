@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -358,7 +359,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         // Sum up physical exposures
         if (exposuresData.physical && typeof exposuresData.physical === 'object') {
           physicalExposure = Object.values(exposuresData.physical).reduce(
-            (sum: number, value: unknown) => sum + (Number(value) || 0), 
+            (sum: number, value: unknown) => sum + (typeof value === 'number' ? value : Number(value) || 0), 
             0
           );
         }
@@ -366,7 +367,7 @@ export const exportExposureByTrade = async (): Promise<string> => {
         // Sum up pricing exposures
         if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
           pricingExposure = Object.values(exposuresData.pricing).reduce(
-            (sum: number, value: unknown) => sum + (Number(value) || 0), 
+            (sum: number, value: unknown) => sum + (typeof value === 'number' ? value : Number(value) || 0), 
             0
           );
         }
