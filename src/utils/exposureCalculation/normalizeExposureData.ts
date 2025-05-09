@@ -45,9 +45,9 @@ export const mergeExposureData = (
   
   // Process physical exposures
   Object.entries(physicalExposures).forEach(([month, products]) => {
+    if (!exposuresByMonth[month]) return;
+    
     Object.entries(products).forEach(([product, amount]) => {
-      if (!exposuresByMonth[month]) continue;
-      
       allProductsFound.add(product);
       
       if (!exposuresByMonth[month][product]) {
@@ -65,9 +65,9 @@ export const mergeExposureData = (
   
   // Process pricing exposures
   Object.entries(pricingExposures).forEach(([month, products]) => {
+    if (!exposuresByMonth[month]) return;
+    
     Object.entries(products).forEach(([product, amount]) => {
-      if (!exposuresByMonth[month]) continue;
-      
       allProductsFound.add(product);
       
       if (!exposuresByMonth[month][product]) {
@@ -85,9 +85,9 @@ export const mergeExposureData = (
   
   // Process paper exposures
   Object.entries(paperExposures).forEach(([month, products]) => {
+    if (!exposuresByMonth[month]) return;
+    
     Object.entries(products).forEach(([product, amount]) => {
-      if (!exposuresByMonth[month]) continue;
-      
       allProductsFound.add(product);
       
       if (!exposuresByMonth[month][product]) {
@@ -105,9 +105,9 @@ export const mergeExposureData = (
   
   // Process pricing from paper exposures
   Object.entries(pricingFromPaperExposures).forEach(([month, products]) => {
+    if (!exposuresByMonth[month]) return;
+    
     Object.entries(products).forEach(([product, amount]) => {
-      if (!exposuresByMonth[month]) continue;
-      
       allProductsFound.add(product);
       
       if (!exposuresByMonth[month][product]) {
