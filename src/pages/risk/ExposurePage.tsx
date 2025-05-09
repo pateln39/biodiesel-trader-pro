@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
@@ -42,15 +43,16 @@ const ExposurePage = () => {
   // Handler for exporting to Excel
   const handleExportExcel = () => {
     try {
-      exportExposureToExcel(
+      exportExposureToExcel({
         exposureData,
-        orderedVisibleCategories,
+        visibleCategories: orderedVisibleCategories,
         filteredProducts,
         grandTotals,
         groupGrandTotals,
-        BIODIESEL_PRODUCTS,
-        PRICING_INSTRUMENT_PRODUCTS
-      );
+        biodieselProducts: BIODIESEL_PRODUCTS,
+        pricingInstrumentProducts: PRICING_INSTRUMENT_PRODUCTS
+      });
+      
       toast.success("Export successful", {
         description: "Exposure report has been downloaded"
       });
