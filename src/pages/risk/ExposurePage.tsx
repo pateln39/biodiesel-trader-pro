@@ -1,14 +1,13 @@
-
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
-import { exportExposureToExcel, exportExposureByTrade } from '@/utils/excelExportUtils';
 import { CATEGORY_ORDER } from '@/types/exposure';
 import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
+import { exportExposureToExcel, exportExposureByTrade } from '@/utils/export/exposureExportUtils';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
