@@ -24,6 +24,13 @@ import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
 
+// Helper function to safely access nested object properties
+const safeGetNestedProperty = (obj: any, path: string[]): any => {
+  return path.reduce((prev, curr) => {
+    return (prev && typeof prev === 'object' && curr in prev) ? prev[curr] : undefined;
+  }, obj);
+};
+
 const TradeEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{id: string}>();
@@ -73,12 +80,20 @@ const TradeEditPage = () => {
             let mtmFormula = null;
             
             // Extract mtmTokens from pricing_formula if available
-            if (leg.pricing_formula && typeof leg.pricing_formula === 'object' && leg.pricing_formula.mtmTokens) {
-              // Check if pricing_formula is an object with mtmTokens property
+            // Carefully check for nested properties to avoid type errors
+            const hasMtmTokens = 
+              typeof leg.pricing_formula === 'object' && 
+              leg.pricing_formula !== null && 
+              'mtmTokens' in leg.pricing_formula;
+              
+            if (hasMtmTokens) {
+              // Get physical exposures safely
+              const physicalExposures = safeGetNestedProperty(leg.pricing_formula, ['exposures', 'physical']) || {};
+              
               mtmFormula = {
                 tokens: leg.pricing_formula.mtmTokens,
                 exposures: {
-                  physical: (leg.pricing_formula.exposures && leg.pricing_formula.exposures.physical) || {},
+                  physical: physicalExposures,
                   pricing: {}
                 }
               };
@@ -89,7 +104,7 @@ const TradeEditPage = () => {
             }
             
             // Remove mtmTokens from formula to avoid duplication
-            if (formula.mtmTokens) {
+            if (formula && formula.mtmTokens) {
               const { mtmTokens, ...formulaWithoutMtmTokens } = formula;
               formula = formulaWithoutMtmTokens;
             }
@@ -194,9 +209,10 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
-        // Consolidate the pricing formula and MTM formula data
-        const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures ? 
-          leg.mtmFormula.exposures.physical || {} : {};
+        // Safely extract physical exposures from mtmFormula
+        const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures 
+          ? leg.mtmFormula.exposures.physical || {} 
+          : {};
           
         const consolidatedFormula = {
           ...leg.formula,
