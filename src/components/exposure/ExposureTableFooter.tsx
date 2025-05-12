@@ -94,7 +94,7 @@ const ExposureTableFooter: React.FC<ExposureTableFooterProps> = ({
                 key={`total-pricing-instrument-total`} 
                 className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-blue-900`}
               >
-                {formatValue(groupGrandTotals.pricingInstrumentTotal)}
+                TOTAL PRICING INSTRUMENT
               </TableCell>
             );
           }
@@ -104,7 +104,7 @@ const ExposureTableFooter: React.FC<ExposureTableFooterProps> = ({
                 key={`total-total-row`} 
                 className={`text-right text-xs p-1 ${groupGrandTotals.totalRow > 0 ? 'text-green-300' : groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-gray-800 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
               >
-                {formatValue(groupGrandTotals.totalRow)}
+                TOTAL
               </TableCell>
             );
           }
