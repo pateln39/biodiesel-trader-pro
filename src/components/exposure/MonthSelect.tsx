@@ -21,14 +21,14 @@ export const MonthSelect: React.FC<MonthSelectProps> = ({
 }) => {
   return (
     <Select 
-      value={selectedMonth || ""} 
-      onValueChange={(value) => onMonthSelect(value || null)}
+      value={selectedMonth || "all"} 
+      onValueChange={(value) => onMonthSelect(value === "all" ? null : value)}
     >
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder="Select month" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="">All months</SelectItem>
+        <SelectItem value="all">All months</SelectItem>
         {months.map((month) => (
           <SelectItem key={month} value={month}>
             {month}
