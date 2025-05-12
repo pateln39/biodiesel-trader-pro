@@ -12,7 +12,7 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { MixerHorizontalIcon, CalendarIcon } from '@radix-ui/react-icons';
+import { CalendarIcon, MixerHorizontalIcon } from 'lucide-react';
 
 interface ExposureTableProps {
   exposureData: MonthlyExposure[];

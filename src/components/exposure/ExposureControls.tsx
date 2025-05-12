@@ -92,8 +92,8 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
               </Toggle>
               
               <DateRangePicker 
-                value={dateRange} 
-                onChange={onDateRangeChange}
+                dateRange={dateRange} 
+                onDateRangeChange={onDateRangeChange}
                 disabled={!dateRangeEnabled}
               />
               
