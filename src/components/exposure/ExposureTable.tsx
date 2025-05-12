@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Table } from "@/components/ui/table";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,7 +12,8 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { CalendarIcon, MoreHorizontalIcon } from 'lucide-react';
+import { CalendarIcon, InfoIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ExposureTableProps {
   exposureData: MonthlyExposure[];
@@ -80,14 +82,30 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
     <Card className="overflow-hidden">
       {dateRangeEnabled && dateRange?.from && (
         <div className="p-2 bg-blue-500/20 border-b border-blue-500/30">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <CalendarIcon className="h-4 w-4 text-blue-500" />
             <Badge variant="outline" className="bg-blue-500 text-white mb-0">
               Date Filter: {dateRange.from.toLocaleDateString()} to {(dateRange.to || dateRange.from).toLocaleDateString()}
             </Badge>
-            <span className="text-xs text-muted-foreground">
-              Physical exposures include full months covered by date range. Pricing & paper exposures are filtered by exact dates.
-            </span>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center cursor-help">
+                    <InfoIcon className="h-4 w-4 text-blue-500 mr-1" />
+                    <span className="text-xs text-muted-foreground">How filtering works</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p className="text-sm mb-1 font-medium">Date filter behavior:</p>
+                  <ul className="text-xs list-disc pl-4 space-y-1">
+                    <li>Physical exposures show entire months that overlap with the date range</li>
+                    <li>Pricing & paper exposures use daily distributions when available</li>
+                    <li>Monthly data is included when a month falls within the date range</li>
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       )}

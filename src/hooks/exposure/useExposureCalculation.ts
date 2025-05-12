@@ -50,13 +50,13 @@ export const useExposureCalculation = (
       const startDate = dateRange.from;
       const endDate = dateRange.to || dateRange.from;
       
-      console.log("[EXPOSURE] Filtering by date range:", startDate, "to", endDate);
+      console.log("[EXPOSURE] Filtering by date range:", startDate.toISOString(), "to", endDate.toISOString());
       
       // Identify months that are fully or partially covered by the date range
       const monthsInDateRange = getMonthCodesBetweenDates(startDate, endDate);
       console.log("[EXPOSURE] Months covered by date range:", monthsInDateRange);
       
-      // Step 1: For physical exposures, keep only the months that are in the date range
+      // Step 1: For physical exposures, KEEP ENTIRE MONTHS that are in the date range
       // Initialize with empty objects for all months
       filteredPhysicalExposures = {};
       periods.forEach(period => {
@@ -64,15 +64,16 @@ export const useExposureCalculation = (
       });
       
       // Copy physical exposures for months that are in the date range
+      // IMPORTANT: For physical exposures, we keep the entire month's data if it's in the range
       monthsInDateRange.forEach(month => {
         if (periods.includes(month) && physicalExposures[month]) {
           filteredPhysicalExposures[month] = { ...physicalExposures[month] };
         }
       });
       
-      console.log("[EXPOSURE] Filtered physical exposure months:", Object.keys(filteredPhysicalExposures).filter(m => Object.keys(filteredPhysicalExposures[m]).length > 0));
+      console.log("[EXPOSURE] Showing physical exposure for entire months:", monthsInDateRange);
       
-      // Step 2: Filter and adjust daily pricing exposures from physical trades
+      // Step 2: Filter pricing exposures from physical trades using daily distribution when available
       filteredPricingExposures = {};
       periods.forEach(period => {
         filteredPricingExposures[period] = {};
@@ -81,6 +82,7 @@ export const useExposureCalculation = (
       // Process physical trades with daily distributions
       if (tradeData.physicalTradeLegs) {
         tradeData.physicalTradeLegs.forEach(leg => {
+          // Check if the leg has daily distribution data for more precise filtering
           if (leg.pricing_formula?.dailyDistribution) {
             // Process each instrument in the daily distribution
             Object.entries(leg.pricing_formula.dailyDistribution).forEach(([instrument, dailyValues]) => {
@@ -90,7 +92,7 @@ export const useExposureCalculation = (
                   const date = parseISODate(dateStr);
                   
                   // Check if the date is in the specified range
-                  if (isDateInRange(date, startDate, endDate)) {
+                  if (date && isDateInRange(date, startDate, endDate)) {
                     const month = formatMonthCode(date);
                     
                     // Only process if this month is in our periods list
@@ -112,27 +114,64 @@ export const useExposureCalculation = (
               }
             });
           } else {
-            // For trades without daily distribution, use monthly distribution but only for months in date range
-            const periodStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : null;
-            if (periodStart) {
-              const month = formatMonthCode(periodStart);
+            // For trades without daily distribution, include monthly data if:
+            // 1. The pricing period start/end falls within our date range, OR
+            // 2. The date range falls entirely within the pricing period
+            if (leg.pricing_period_start && leg.pricing_period_end) {
+              const periodStart = new Date(leg.pricing_period_start);
+              const periodEnd = new Date(leg.pricing_period_end);
               
-              // If this month is in the date range and our periods list
-              if (monthsInDateRange.includes(month) && periods.includes(month) && pricingExposures[month]) {
-                // Copy all instruments for this month
-                Object.entries(pricingExposures[month]).forEach(([instrument, value]) => {
-                  if (!filteredPricingExposures[month]) {
-                    filteredPricingExposures[month] = {};
+              // Check if pricing period overlaps with our date range
+              const isOverlapping = 
+                (periodStart <= endDate && periodEnd >= startDate) ||
+                (startDate <= periodEnd && endDate >= periodStart);
+              
+              if (isOverlapping) {
+                // If overlapping, include the entire pricing exposure for each relevant month
+                const pricingMonths = getMonthCodesBetweenDates(periodStart, periodEnd);
+                
+                // Filter to only include months that are in both the pricing period and our date range
+                const relevantMonths = pricingMonths.filter(month => monthsInDateRange.includes(month));
+                
+                // Add pricing exposures for these months
+                relevantMonths.forEach(month => {
+                  if (periods.includes(month) && pricingExposures[month]) {
+                    Object.entries(pricingExposures[month]).forEach(([instrument, value]) => {
+                      if (!filteredPricingExposures[month]) {
+                        filteredPricingExposures[month] = {};
+                      }
+                      
+                      if (!filteredPricingExposures[month][instrument]) {
+                        filteredPricingExposures[month][instrument] = 0;
+                      }
+                      
+                      filteredPricingExposures[month][instrument] += value;
+                    });
                   }
-                  filteredPricingExposures[month][instrument] = value;
                 });
+              }
+            } else {
+              // Fallback: if no pricing period dates, use loading period start date to determine the month
+              const periodStart = leg.loading_period_start ? new Date(leg.loading_period_start) : null;
+              if (periodStart) {
+                const month = formatMonthCode(periodStart);
+                
+                // Include only if this month is in the date range
+                if (monthsInDateRange.includes(month) && periods.includes(month) && pricingExposures[month]) {
+                  Object.entries(pricingExposures[month]).forEach(([instrument, value]) => {
+                    if (!filteredPricingExposures[month]) {
+                      filteredPricingExposures[month] = {};
+                    }
+                    filteredPricingExposures[month][instrument] = value;
+                  });
+                }
               }
             }
           }
         });
       }
       
-      // Step 3: Filter paper exposures using daily distributions
+      // Step 3: Filter paper exposures using daily distributions when available
       filteredPaperExposures = {};
       filteredPricingFromPaperExposures = {};
       periods.forEach(period => {
@@ -144,11 +183,14 @@ export const useExposureCalculation = (
       if (tradeData.paperTradeLegs) {
         tradeData.paperTradeLegs.forEach(leg => {
           const month = leg.period || leg.trading_period || '';
+          
+          // Skip if month is invalid or not in our periods
           if (!month || !periods.includes(month)) {
             return;
           }
           
-          // Process paperDailyDistribution if available
+          // First handle paper exposures
+          // Check if we have daily distribution data for more precise filtering
           if (leg.exposures?.paperDailyDistribution) {
             Object.entries(leg.exposures.paperDailyDistribution).forEach(([product, dailyValues]) => {
               if (typeof dailyValues === 'object') {
@@ -156,10 +198,15 @@ export const useExposureCalculation = (
                   const date = parseISODate(dateStr);
                   
                   // Check if the date is in the date range
-                  if (isDateInRange(date, startDate, endDate)) {
-                    // Only process if this month is in our periods list
+                  if (date && isDateInRange(date, startDate, endDate)) {
+                    // Only process if exposure is a number
                     if (typeof exposure === 'number') {
                       const exposureMonth = formatMonthCode(date);
+                      
+                      // Skip if the month is not in our periods
+                      if (!periods.includes(exposureMonth)) {
+                        return;
+                      }
                       
                       if (!filteredPaperExposures[exposureMonth]) {
                         filteredPaperExposures[exposureMonth] = {};
@@ -176,7 +223,7 @@ export const useExposureCalculation = (
               }
             });
           } else if (monthsInDateRange.includes(month)) {
-            // If no daily distribution but month is in range, copy all exposures for this month
+            // Without daily distribution, use monthly data if the month is in our date range
             if (paperExposures[month]) {
               Object.entries(paperExposures[month]).forEach(([product, value]) => {
                 if (!filteredPaperExposures[month]) {
@@ -187,7 +234,8 @@ export const useExposureCalculation = (
             }
           }
           
-          // Process pricingDailyDistribution if available
+          // Now handle pricing exposures from paper trades
+          // Check if we have daily distribution data
           if (leg.exposures?.pricingDailyDistribution) {
             Object.entries(leg.exposures.pricingDailyDistribution).forEach(([product, dailyValues]) => {
               if (typeof dailyValues === 'object') {
@@ -195,10 +243,15 @@ export const useExposureCalculation = (
                   const date = parseISODate(dateStr);
                   
                   // Check if the date is in the date range
-                  if (isDateInRange(date, startDate, endDate)) {
+                  if (date && isDateInRange(date, startDate, endDate)) {
                     // Only process if exposure is a number
                     if (typeof exposure === 'number') {
                       const exposureMonth = formatMonthCode(date);
+                      
+                      // Skip if the month is not in our periods
+                      if (!periods.includes(exposureMonth)) {
+                        return;
+                      }
                       
                       if (!filteredPricingFromPaperExposures[exposureMonth]) {
                         filteredPricingFromPaperExposures[exposureMonth] = {};
@@ -215,7 +268,7 @@ export const useExposureCalculation = (
               }
             });
           } else if (monthsInDateRange.includes(month)) {
-            // If no daily pricing distribution but month is in range, copy all exposures for this month
+            // Without daily distribution, use monthly data if the month is in our date range
             if (pricingFromPaperExposures[month]) {
               Object.entries(pricingFromPaperExposures[month]).forEach(([product, value]) => {
                 if (!filteredPricingFromPaperExposures[month]) {
