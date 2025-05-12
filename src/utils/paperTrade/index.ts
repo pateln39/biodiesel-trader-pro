@@ -5,6 +5,9 @@ export * from './dateUtils';
 export * from './priceUtils';
 export * from './mtmCalculations';
 
+// Import the formatDateForDatabase function from dateUtils
+import { formatDateForDatabase } from './dateUtils';
+
 // Utility function to get month start and end dates from a period string (e.g., 'Dec-23')
 export const getMonthDates = (periodString: string): { startDate: Date; endDate: Date } | null => {
   try {
