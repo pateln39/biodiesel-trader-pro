@@ -1,6 +1,7 @@
 
+
 import { FormulaToken, PricingFormula } from '@/types/pricing';
-import { Instrument } from '@/types/common';
+import { Instrument, ExposureResult } from '@/types/common';
 import { 
   createEmptyExposureResult, 
   calculateExposures 

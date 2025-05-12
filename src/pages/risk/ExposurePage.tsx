@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
 import { exportExposureToExcel } from '@/utils/export';
+import { DateRange } from 'react-day-picker';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -23,28 +24,28 @@ const ExposurePage = () => {
     instrumentsLoading,
     error,
     refetch,
-    periods,
-    dateRangeEnabled,
-    setDateRangeEnabled,
-    dateRange,
-    setDateRange
+    periods
   } = useExposureData();
 
   // State for selected month in business days dropdown
-  const [selectedMonth, setSelectedMonth] = React.useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  
+  // State for date range filtering
+  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Toggle date range filtering
   const handleToggleDateRange = () => {
-    setDateRangeEnabled();
-    if (!dateRangeEnabled) {
-      toast.info("Date range filtering enabled", {
-        description: "Select a date range to filter exposure data"
-      });
+    setDateRangeEnabled(prev => !prev);
+    if (dateRangeEnabled && dateRange) {
+      // When disabling, reset the date range
+      setDateRange(undefined);
+      toast.info("Date range filtering disabled");
     }
   };
 
   // Handle date range change
-  const handleDateRangeChange = (range: any) => {
+  const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
     if (range?.from && (range?.to || range?.from)) {
       toast.success("Date range selected", {

@@ -3,9 +3,8 @@ import { validateAndParsePricingFormula, formulaToString } from './formulaUtils'
 import { fetchPreviousDayPrice } from './efpUtils';
 import { extractInstrumentsFromFormula } from './exposureUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { parseFormula, Node } from './formulaCalculation';
+import { parseFormula } from './formulaCalculation';
 import { isDateRangeInFuture, parseMonthCodeToDbDate } from './mtmUtils';
-import { parseISODate } from './dateUtils';
 
 export type PricingPeriodType = 'historical' | 'current' | 'future';
 
@@ -764,6 +763,14 @@ export const calculateMTMValue = (
   const direction = buySell === 'buy' ? -1 : 1;
   return (tradePrice - mtmPrice) * quantity * direction;
 };
+
+interface Node {
+  type: string;
+  value?: any;
+  left?: Node;
+  right?: Node;
+  operator?: string;
+}
 
 const evaluateFormulaAST = (node: Node, instrumentPrices: Record<string, number>): number => {
   if (!node) {
