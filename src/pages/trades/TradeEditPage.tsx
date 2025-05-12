@@ -43,7 +43,12 @@ const safeExtractMtmTokens = (formula: any): any[] | undefined => {
     return undefined;
   }
   
-  return hasProperty(formula, 'mtmTokens') ? formula.mtmTokens : undefined;
+  // Check if formula has mtmTokens property before accessing it
+  if (hasProperty(formula, 'mtmTokens')) {
+    return formula.mtmTokens;
+  }
+  
+  return undefined;
 };
 
 const TradeEditPage = () => {
@@ -96,17 +101,14 @@ const TradeEditPage = () => {
             
             // Extract mtmTokens from pricing_formula if available
             // Carefully check for nested properties to avoid type errors
-            const hasMtmTokens = 
-              typeof leg.pricing_formula === 'object' && 
-              leg.pricing_formula !== null && 
-              'mtmTokens' in leg.pricing_formula;
-              
-            if (hasMtmTokens) {
+            const mtmTokens = safeGetNestedProperty(leg.pricing_formula, ['mtmTokens']);
+            
+            if (mtmTokens) {
               // Get physical exposures safely
               const physicalExposures = safeGetNestedProperty(leg.pricing_formula, ['exposures', 'physical']) || {};
               
               mtmFormula = {
-                tokens: leg.pricing_formula.mtmTokens,
+                tokens: mtmTokens,
                 exposures: {
                   physical: physicalExposures,
                   pricing: {}
@@ -119,9 +121,7 @@ const TradeEditPage = () => {
             }
             
             // Remove mtmTokens from formula to avoid duplication
-            // Check if formula is an object and has mtmTokens property
             if (hasProperty(formula, 'mtmTokens')) {
-              // Use type assertion to tell TypeScript this is a safe operation
               const { mtmTokens, ...formulaWithoutMtmTokens } = formula as any;
               formula = formulaWithoutMtmTokens;
             }
