@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
-import { calculateExposures } from '@/utils/formulaCalculation';
+import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -86,6 +87,25 @@ const TradeEntryPage = () => {
           physicalExposures = mtmExposures.physical || {};
         }
         
+        // Calculate daily distribution if we have pricing period dates and formula tokens
+        let dailyDistribution = {};
+        if (leg.formula && 
+            leg.formula.tokens && 
+            leg.formula.tokens.length > 0 && 
+            leg.pricingPeriodStart && 
+            leg.pricingPeriodEnd) {
+          
+          dailyDistribution = calculateDailyPricingDistribution(
+            leg.formula.tokens,
+            leg.quantity,
+            leg.buySell,
+            new Date(leg.pricingPeriodStart),
+            new Date(leg.pricingPeriodEnd)
+          );
+          
+          console.log('[TRADE ENTRY] Calculated daily distribution:', dailyDistribution);
+        }
+        
         // Create consolidated formula
         const consolidatedFormula = {
           ...leg.formula,
@@ -93,7 +113,8 @@ const TradeEntryPage = () => {
           exposures: {
             pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
             physical: physicalExposures
-          }
+          },
+          dailyDistribution: dailyDistribution // Include daily distribution
         };
         
         // Add the consolidated formula to legData

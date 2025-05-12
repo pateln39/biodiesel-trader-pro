@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,7 @@ import {
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
-import { calculateExposures } from '@/utils/formulaCalculation';
+import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 
 // Helper function to safely access nested object properties
 const safeGetNestedProperty = (obj: any, path: string[]): any => {
@@ -239,6 +238,25 @@ const TradeEditPage = () => {
           
           physicalExposures = mtmExposures.physical || {};
         }
+        
+        // Calculate daily distribution if we have pricing period dates and formula tokens
+        let dailyDistribution = {};
+        if (leg.formula && 
+            leg.formula.tokens && 
+            leg.formula.tokens.length > 0 && 
+            leg.pricingPeriodStart && 
+            leg.pricingPeriodEnd) {
+          
+          dailyDistribution = calculateDailyPricingDistribution(
+            leg.formula.tokens,
+            leg.quantity,
+            leg.buySell,
+            new Date(leg.pricingPeriodStart),
+            new Date(leg.pricingPeriodEnd)
+          );
+          
+          console.log('[TRADE EDIT] Calculated daily distribution:', dailyDistribution);
+        }
           
         const consolidatedFormula = {
           ...leg.formula,
@@ -246,7 +264,8 @@ const TradeEditPage = () => {
           exposures: {
             pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
             physical: physicalExposures
-          }
+          },
+          dailyDistribution: dailyDistribution // Include daily distribution
         };
         
         const legData = {
