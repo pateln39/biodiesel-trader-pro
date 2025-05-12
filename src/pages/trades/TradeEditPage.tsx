@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,6 +67,60 @@ const TradeEditPage = () => {
 
         // Map trade data to the format expected by PhysicalTradeForm
         if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
+          const processedLegs = tradeLegs.map(leg => {
+            let formula = validateAndParsePricingFormula(leg.pricing_formula);
+            let mtmFormula = null;
+            
+            // Extract mtmTokens from pricing_formula if available
+            if (leg.pricing_formula && leg.pricing_formula.mtmTokens) {
+              mtmFormula = {
+                tokens: leg.pricing_formula.mtmTokens,
+                exposures: {
+                  physical: (leg.pricing_formula.exposures && leg.pricing_formula.exposures.physical) || {},
+                  pricing: {}
+                }
+              };
+            } 
+            // Fallback to the separate mtm_formula column if needed (for backward compatibility)
+            else if (leg.mtm_formula) {
+              mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+            }
+            
+            // Remove mtmTokens from formula to avoid duplication
+            if (formula.mtmTokens) {
+              const { mtmTokens, ...formulaWithoutMtmTokens } = formula;
+              formula = formulaWithoutMtmTokens;
+            }
+
+            return {
+              id: leg.id,
+              parentTradeId: leg.parent_trade_id,
+              legReference: leg.leg_reference,
+              buySell: leg.buy_sell as BuySell,
+              product: leg.product as Product,
+              sustainability: leg.sustainability || '',
+              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+              quantity: leg.quantity,
+              tolerance: leg.tolerance || 0,
+              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+              unit: (leg.unit || 'MT') as Unit,
+              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+              customsStatus: leg.customs_status as CustomsStatus,
+              formula: formula,
+              mtmFormula: mtmFormula,
+              pricingType: (leg.pricing_type as PricingType) || 'standard',
+              mtmFutureMonth: leg.mtm_future_month,
+              efpPremium: leg.efp_premium,
+              efpAgreedStatus: leg.efp_agreed_status,
+              efpFixedValue: leg.efp_fixed_value,
+              efpDesignatedMonth: leg.efp_designated_month
+            };
+          });
+
           const physicalTrade: PhysicalTrade = {
             id: parentTrade.id,
             tradeReference: parentTrade.trade_reference,
@@ -90,38 +143,13 @@ const TradeEditPage = () => {
             paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
             creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
             customsStatus: tradeLegs[0].customs_status as CustomsStatus,
-            formula: validateAndParsePricingFormula(tradeLegs[0].pricing_formula),
-            mtmFormula: validateAndParsePricingFormula(tradeLegs[0].mtm_formula),
+            formula: processedLegs[0].formula,
+            mtmFormula: processedLegs[0].mtmFormula,
             pricingType: (tradeLegs[0].pricing_type as PricingType) || 'standard',
             mtmFutureMonth: tradeLegs[0].mtm_future_month,
-            legs: tradeLegs.map(leg => ({
-              id: leg.id,
-              parentTradeId: leg.parent_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
-              sustainability: leg.sustainability || '',
-              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-              quantity: leg.quantity,
-              tolerance: leg.tolerance || 0,
-              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              unit: (leg.unit || 'MT') as Unit,
-              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              customsStatus: leg.customs_status as CustomsStatus,
-              formula: validateAndParsePricingFormula(leg.pricing_formula),
-              mtmFormula: validateAndParsePricingFormula(leg.mtm_formula),
-              pricingType: (leg.pricing_type as PricingType) || 'standard',
-              efpPremium: leg.efp_premium,
-              efpAgreedStatus: leg.efp_agreed_status,
-              efpFixedValue: leg.efp_fixed_value,
-              efpDesignatedMonth: leg.efp_designated_month,
-              mtmFutureMonth: leg.mtm_future_month
-            }))
+            legs: processedLegs
           };
+          
           setTradeData(physicalTrade);
         } else {
           throw new Error("Invalid trade data");
@@ -164,6 +192,19 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
+        // Consolidate the pricing formula and MTM formula data
+        const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures ? 
+          leg.mtmFormula.exposures.physical || {} : {};
+          
+        const consolidatedFormula = {
+          ...leg.formula,
+          mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
+          exposures: {
+            pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
+            physical: physicalExposures
+          }
+        };
+        
         const legData = {
           parent_trade_id: id,
           buy_sell: leg.buySell,
@@ -180,8 +221,8 @@ const TradeEditPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           customs_status: leg.customsStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
+          pricing_formula: consolidatedFormula,
+          mtm_formula: leg.mtmFormula, // Keep for backward compatibility
           pricing_type: leg.pricingType,
           mtm_future_month: leg.mtmFutureMonth,
           updated_at: new Date().toISOString()

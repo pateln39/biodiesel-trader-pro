@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,12 +66,30 @@ const TradeEntryPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           customs_status: leg.customsStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
           mtm_future_month: leg.mtmFutureMonth,
           comments: leg.comments // Keep leg-specific comments
         };
+        
+        // Consolidate the pricing formula and mtm formula
+        if (leg.formula) {
+          // Get physical exposures from the MTM formula
+          const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures ? 
+            leg.mtmFormula.exposures.physical || {} : {};
+          
+          // Create consolidated formula
+          legData.pricing_formula = {
+            ...leg.formula,
+            mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
+            exposures: {
+              pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
+              physical: physicalExposures
+            }
+          };
+          
+          // Keep MTM formula for backward compatibility temporarily
+          legData.mtm_formula = leg.mtmFormula;
+        }
 
         // Add EFP fields if they exist
         if (leg.efpPremium !== undefined) {
