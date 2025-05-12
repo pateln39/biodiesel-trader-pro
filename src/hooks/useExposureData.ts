@@ -24,7 +24,7 @@ export const useExposureData = () => {
   const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   
-  // Manage selected month state
+  // Manage selected month state - only for business days display, not for filtering
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   
   // Get fetched trade data for exposure calculation
@@ -35,14 +35,13 @@ export const useExposureData = () => {
     refetch
   } = useExposureFetching();
   
-  // Calculate exposure data with date filtering and month selection
+  // Calculate exposure data with date filtering only
   const { exposureData } = useExposureCalculation(
     tradeData, 
     periods, 
     allowedProducts, 
     dateRangeEnabled, 
-    dateRange,
-    selectedMonth
+    dateRange
   );
   
   // Manage UI state for visible categories
@@ -91,18 +90,11 @@ export const useExposureData = () => {
     }
   }, []);
 
-  // Handle month selection
+  // Handle month selection - only for business days display
   const handleMonthSelect = useCallback((month: string) => {
-    console.log('[EXPOSURE] Month selected:', month);
+    console.log('[EXPOSURE] Month selected for business days display:', month);
     setSelectedMonth(month);
-    
-    // If date range is enabled, don't show any toast as date range takes precedence
-    if (!dateRangeEnabled) {
-      toast.info(`Showing data for ${month}`, {
-        description: "Filter applied to exposure table"
-      });
-    }
-  }, [dateRangeEnabled]);
+  }, []);
 
   return {
     periods,

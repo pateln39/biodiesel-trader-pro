@@ -45,7 +45,7 @@ const ExposurePage = () => {
     PRICING_INSTRUMENT_PRODUCTS,
     visibleCategories,
     CATEGORY_ORDER,
-    dateRangeEnabled || selectedMonth !== null
+    dateRangeEnabled
   );
 
   // Handler for exporting to Excel
@@ -111,7 +111,6 @@ const ExposurePage = () => {
           refetch={refetch}
           dateRangeEnabled={dateRangeEnabled}
           dateRange={dateRange}
-          selectedMonth={selectedMonth}
         />
       </div>
     </Layout>

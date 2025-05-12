@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { MonthlyExposure } from '@/types/exposure';
 import { calculatePhysicalExposure } from '@/utils/exposureCalculation/calculatePhysicalExposure';
@@ -22,8 +21,7 @@ export const useExposureCalculation = (
   periods: string[],
   allowedProducts: string[],
   dateRangeEnabled: boolean = false,
-  dateRange: DateRange | undefined = undefined,
-  selectedMonth: string | null = null
+  dateRange: DateRange | undefined = undefined
 ) => {
   const exposureData = useMemo<MonthlyExposure[]>(() => {
     if (!tradeData) {
@@ -284,46 +282,10 @@ export const useExposureCalculation = (
       }
     }
     
-    // If month filtering is enabled (and date range is disabled), filter by selected month
-    if (selectedMonth && !dateRangeEnabled) {
-      console.log('[EXPOSURE] Filtering by selected month:', selectedMonth);
-      
-      // Initialize with empty objects for all months
-      filteredPhysicalExposures = {};
-      filteredPricingExposures = {};
-      filteredPaperExposures = {};
-      filteredPricingFromPaperExposures = {};
-      
-      // For each month, initialize an empty object
-      periods.forEach(period => {
-        filteredPhysicalExposures[period] = {};
-        filteredPricingExposures[period] = {};
-        filteredPaperExposures[period] = {};
-        filteredPricingFromPaperExposures[period] = {};
-      });
-      
-      // Copy data only for the selected month
-      if (physicalExposures[selectedMonth]) {
-        filteredPhysicalExposures[selectedMonth] = { ...physicalExposures[selectedMonth] };
-      }
-      
-      if (pricingExposures[selectedMonth]) {
-        filteredPricingExposures[selectedMonth] = { ...pricingExposures[selectedMonth] };
-      }
-      
-      if (paperExposures[selectedMonth]) {
-        filteredPaperExposures[selectedMonth] = { ...paperExposures[selectedMonth] };
-      }
-      
-      if (pricingFromPaperExposures[selectedMonth]) {
-        filteredPricingFromPaperExposures[selectedMonth] = { ...pricingFromPaperExposures[selectedMonth] };
-      }
-    }
-    
     // Choose which exposures to use based on filters
-    const useFilters = dateRangeEnabled || (selectedMonth !== null && !dateRangeEnabled);
+    const useFilters = dateRangeEnabled;
     
-    // Merge all exposures - use filtered ones if date range or month filtering is enabled
+    // Merge all exposures - use filtered ones if date range filtering is enabled
     const { allProductsFound, exposuresByMonth: mergedData } = mergeExposureData(
       exposuresByMonth,
       useFilters ? filteredPhysicalExposures : physicalExposures,
@@ -334,7 +296,7 @@ export const useExposureCalculation = (
     
     // Format the final data structure for the exposure table
     return formatExposureData(mergedData, periods, allowedProducts);
-  }, [tradeData, periods, allowedProducts, dateRangeEnabled, dateRange, selectedMonth]);
+  }, [tradeData, periods, allowedProducts, dateRangeEnabled, dateRange]);
 
   return {
     exposureData
