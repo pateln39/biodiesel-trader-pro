@@ -34,3 +34,36 @@ export function getMonthDates(monthCode: string): { startDate: Date; endDate: Da
   
   return { startDate, endDate };
 }
+
+/**
+ * Determines if a period is in the past, present, or future relative to a reference date
+ * @param startDate - Start date of the period
+ * @param endDate - End date of the period
+ * @param referenceDate - Date to compare against (default: current date)
+ * @returns 'past', 'current', or 'future'
+ */
+export function getPeriodType(
+  startDate: Date,
+  endDate: Date,
+  referenceDate: Date = new Date()
+): 'past' | 'current' | 'future' {
+  // Normalize reference date to remove time component
+  const normalizedRefDate = new Date(referenceDate);
+  normalizedRefDate.setHours(0, 0, 0, 0);
+  
+  // Normalize start and end dates to remove time component
+  const normalizedStartDate = new Date(startDate);
+  normalizedStartDate.setHours(0, 0, 0, 0);
+  
+  const normalizedEndDate = new Date(endDate);
+  normalizedEndDate.setHours(23, 59, 59, 999);
+  
+  // Determine period type
+  if (normalizedEndDate < normalizedRefDate) {
+    return 'past';
+  } else if (normalizedStartDate > normalizedRefDate) {
+    return 'future';
+  } else {
+    return 'current';
+  }
+}
