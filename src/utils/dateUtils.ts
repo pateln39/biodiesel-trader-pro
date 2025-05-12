@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for date operations
  */
@@ -207,4 +208,57 @@ export function formatDate(date: Date): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+/**
+ * Check if a date falls within a date range (inclusive)
+ * @param date The date to check
+ * @param startDate Start date of the range
+ * @param endDate End date of the range
+ * @returns True if the date is within the range
+ */
+export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
+  // Normalize all dates to beginning of day for comparison
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+  
+  const normalizedStart = new Date(startDate);
+  normalizedStart.setHours(0, 0, 0, 0);
+  
+  const normalizedEnd = new Date(endDate);
+  normalizedEnd.setHours(0, 0, 0, 0);
+  
+  return normalizedDate >= normalizedStart && normalizedDate <= normalizedEnd;
+}
+
+/**
+ * Get month codes between two dates
+ * @param startDate Start date
+ * @param endDate End date
+ * @returns Array of month codes (MMM-YY) between the dates
+ */
+export function getMonthCodesBetweenDates(startDate: Date, endDate: Date): string[] {
+  const months: string[] = [];
+  const currentDate = new Date(startDate);
+  
+  // Start from the first day of the month
+  currentDate.setDate(1);
+  
+  // Go month by month until we reach or exceed the end date
+  while (currentDate <= endDate) {
+    months.push(formatMonthCode(currentDate));
+    currentDate.setMonth(currentDate.getMonth() + 1);
+  }
+  
+  return months;
+}
+
+/**
+ * Parse a YYYY-MM-DD string into a Date object
+ * @param dateStr Date string in YYYY-MM-DD format
+ * @returns Date object
+ */
+export function parseISODate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(num => parseInt(num, 10));
+  return new Date(year, month - 1, day);
 }

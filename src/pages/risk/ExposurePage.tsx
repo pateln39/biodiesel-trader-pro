@@ -9,6 +9,7 @@ import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
 import { exportExposureToExcel } from '@/utils/export';
+import { DateRange } from 'react-day-picker';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -28,6 +29,30 @@ const ExposurePage = () => {
 
   // State for selected month in business days dropdown
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  
+  // State for date range filtering
+  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  // Toggle date range filtering
+  const handleToggleDateRange = () => {
+    setDateRangeEnabled(prev => !prev);
+    if (dateRangeEnabled && dateRange) {
+      // When disabling, reset the date range
+      setDateRange(undefined);
+      toast.info("Date range filtering disabled");
+    }
+  };
+
+  // Handle date range change
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from && (range?.to || range?.from)) {
+      toast.success("Date range selected", {
+        description: `Filtering exposure from ${range.from.toLocaleDateString()} to ${(range.to || range.from).toLocaleDateString()}`
+      });
+    }
+  };
 
   // Use the totals hook to calculate all totals and filtered products
   const {
@@ -41,7 +66,8 @@ const ExposurePage = () => {
     BIODIESEL_PRODUCTS, 
     PRICING_INSTRUMENT_PRODUCTS,
     visibleCategories,
-    CATEGORY_ORDER
+    CATEGORY_ORDER,
+    dateRangeEnabled
   );
 
   // Handler for exporting to Excel
@@ -89,6 +115,10 @@ const ExposurePage = () => {
           availableMonths={periods}
           selectedMonth={selectedMonth}
           onMonthSelect={setSelectedMonth}
+          dateRangeEnabled={dateRangeEnabled}
+          onToggleDateRange={handleToggleDateRange}
+          dateRange={dateRange}
+          onDateRangeChange={handleDateRangeChange}
         />
 
         <ExposureTable
@@ -101,6 +131,8 @@ const ExposurePage = () => {
           isLoadingData={isLoadingData}
           error={error as Error}
           refetch={refetch}
+          dateRangeEnabled={dateRangeEnabled}
+          dateRange={dateRange}
         />
       </div>
     </Layout>

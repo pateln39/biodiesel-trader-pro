@@ -4,6 +4,7 @@ import { useExposurePeriods } from './exposure/useExposurePeriods';
 import { useExposureProductMapping } from './exposure/useExposureProductMapping';
 import { useExposureFetching } from './exposure/useExposureFetching';
 import { useExposureCalculation } from './exposure/useExposureCalculation';
+import { DateRange } from 'react-day-picker';
 
 export const useExposureData = () => {
   // Get exposure periods (months for the table)
@@ -26,8 +27,18 @@ export const useExposureData = () => {
     refetch
   } = useExposureFetching();
   
+  // Manage date range state
+  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  
   // Calculate exposure data
-  const { exposureData } = useExposureCalculation(tradeData, periods, allowedProducts);
+  const { exposureData } = useExposureCalculation(
+    tradeData, 
+    periods, 
+    allowedProducts, 
+    dateRangeEnabled, 
+    dateRange
+  );
   
   // Manage UI state for visible categories
   const [visibleCategories, setVisibleCategories] = useState<string[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
@@ -52,6 +63,15 @@ export const useExposureData = () => {
     });
   };
 
+  // Toggle date range filtering
+  const toggleDateRangeEnabled = () => {
+    setDateRangeEnabled(prev => !prev);
+    if (dateRangeEnabled) {
+      // When disabling, clear the date range
+      setDateRange(undefined);
+    }
+  };
+
   return {
     periods,
     visibleCategories,
@@ -67,6 +87,10 @@ export const useExposureData = () => {
     instrumentsLoading,
     BIODIESEL_PRODUCTS: biodieselProducts,
     PRICING_INSTRUMENT_PRODUCTS: pricingInstrumentProducts,
-    ALLOWED_PRODUCTS: allowedProducts
+    ALLOWED_PRODUCTS: allowedProducts,
+    dateRangeEnabled,
+    setDateRangeEnabled: toggleDateRangeEnabled,
+    dateRange,
+    setDateRange
   };
 };

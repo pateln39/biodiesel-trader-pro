@@ -9,6 +9,9 @@ import ExposureTableBody from './ExposureTableBody';
 import ExposureTableFooter from './ExposureTableFooter';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { Badge } from '@/components/ui/badge';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 
 interface ExposureTableProps {
   exposureData: MonthlyExposure[];
@@ -20,6 +23,8 @@ interface ExposureTableProps {
   isLoadingData: boolean;
   error: Error | null;
   refetch: () => void;
+  dateRangeEnabled?: boolean;
+  dateRange?: DateRange;
 }
 
 const ExposureTable: React.FC<ExposureTableProps> = ({
@@ -31,7 +36,9 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
   BIODIESEL_PRODUCTS,
   isLoadingData,
   error,
-  refetch
+  refetch,
+  dateRangeEnabled,
+  dateRange
 }) => {
   const shouldShowBiodieselTotal = true;
   const shouldShowPricingInstrumentTotal = true;
@@ -71,6 +78,16 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
 
   return (
     <Card className="overflow-hidden">
+      {dateRangeEnabled && dateRange?.from && (
+        <div className="p-2 bg-blue-500/20 border-b border-blue-500/30">
+          <Badge variant="outline" className="bg-blue-500 text-white mb-0">
+            Filtered: {dateRange.from.toLocaleDateString()} to {(dateRange.to || dateRange.from).toLocaleDateString()}
+          </Badge>
+          <span className="text-xs text-muted-foreground ml-2">
+            Showing exposure data in selected date range only
+          </span>
+        </div>
+      )}
       <CardContent className="p-0 overflow-auto">
         <ScrollArea className="w-full" orientation="horizontal">
           <div className="min-w-[1800px]" style={{
@@ -94,6 +111,7 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
                 shouldShowBiodieselTotal={shouldShowBiodieselTotal}
                 shouldShowPricingInstrumentTotal={shouldShowPricingInstrumentTotal}
                 shouldShowTotalRow={shouldShowTotalRow}
+                dateRangeEnabled={dateRangeEnabled}
               />
               
               <ExposureTableFooter

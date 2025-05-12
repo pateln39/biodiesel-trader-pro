@@ -14,6 +14,11 @@ export interface FormulaToken {
   value: string | number;
 }
 
+// Daily distribution format: {[date: string]: number}
+export interface DailyDistribution {
+  [instrumentOrDate: string]: number | Record<string, number>;
+}
+
 // Update the MonthlyDistribution to handle both simple and nested formats
 // Ensure monthCode is in the format "MMM-YY"
 export interface MonthlyDistribution {
@@ -25,6 +30,7 @@ export interface PricingFormula {
   mtmTokens?: FormulaToken[]; // Added mtmTokens property
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
+  dailyDistribution?: DailyDistribution; // New property for daily distribution
   result?: number;
 }
 
@@ -39,6 +45,7 @@ export type PartialPricingFormula = {
   mtmTokens?: FormulaToken[]; // Added mtmTokens property
   exposures?: PartialExposureResult;
   monthlyDistribution?: MonthlyDistribution;
+  dailyDistribution?: DailyDistribution; // Add to partial type as well
 };
 
 // Define FixedComponent type for formula analysis

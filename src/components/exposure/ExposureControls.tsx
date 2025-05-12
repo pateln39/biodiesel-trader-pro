@@ -2,11 +2,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download, Calendar } from 'lucide-react';
+import { Download, Calendar, FilterIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { calculateBusinessDaysForMonth } from '@/utils/exposureTableUtils';
 import { Badge } from '@/components/ui/badge';
+import { DateRange } from 'react-day-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface ExposureControlsProps {
   visibleCategories: string[];
@@ -16,6 +20,10 @@ interface ExposureControlsProps {
   availableMonths: string[];
   selectedMonth: string | null;
   onMonthSelect: (month: string | null) => void;
+  dateRangeEnabled: boolean;
+  onToggleDateRange: () => void;
+  dateRange: DateRange | undefined;
+  onDateRangeChange: (range: DateRange | undefined) => void;
 }
 
 const ExposureControls: React.FC<ExposureControlsProps> = ({
@@ -25,13 +33,17 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
   onExportExcel,
   availableMonths,
   selectedMonth,
-  onMonthSelect
+  onMonthSelect,
+  dateRangeEnabled,
+  onToggleDateRange,
+  dateRange,
+  onDateRangeChange
 }) => {
   // Calculate business days for selected month
   const businessDays = selectedMonth ? calculateBusinessDaysForMonth(selectedMonth) : null;
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+    <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start">
       <Card className="mb-4 w-full md:w-3/5">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
@@ -54,6 +66,27 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center space-x-2 mb-3">
+                <FilterIcon className="h-4 w-4" />
+                <label className="text-sm font-medium">Date Range Filter</label>
+                <Switch
+                  checked={dateRangeEnabled}
+                  onCheckedChange={() => onToggleDateRange()}
+                  id="date-range-toggle"
+                />
+              </div>
+              
+              {dateRangeEnabled && (
+                <div className="mt-2">
+                  <DateRangePicker
+                    dateRange={dateRange}
+                    onDateRangeChange={onDateRangeChange}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
