@@ -1,4 +1,3 @@
-
 import { PhysicalTradeLeg, MTMPriceDetail, PricingFormula, Instrument } from '@/types';
 import { validateAndParsePricingFormula, formulaToString } from './formulaUtils';
 import { fetchPreviousDayPrice } from './efpUtils';
@@ -765,14 +764,6 @@ export const calculateMTMValue = (
   const direction = buySell === 'buy' ? -1 : 1;
   return (tradePrice - mtmPrice) * quantity * direction;
 };
-
-interface Node {
-  type: string;
-  value?: any;
-  left?: Node;
-  right?: Node;
-  operator?: string;
-}
 
 const evaluateFormulaAST = (node: Node, instrumentPrices: Record<string, number>): number => {
   if (!node) {
