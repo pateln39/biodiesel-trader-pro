@@ -1,3 +1,4 @@
+
 // Export from type modules
 export * from './pricing';
 export * from './physical';
@@ -73,7 +74,7 @@ import {
   Instrument,
   ExposureResult
 } from './common';
-import { PricingFormula, PricingComponent } from './pricing';
+import { PricingFormula, PricingComponent, PricingInstrument } from './pricing';
 
 // Re-export specific types explicitly to avoid ambiguities
 export type {
@@ -91,6 +92,7 @@ export type {
   ContractStatus,
   PricingFormula,
   PricingComponent,
+  PricingInstrument,
   DbParentTrade,
   DbTradeLeg,
   Instrument,

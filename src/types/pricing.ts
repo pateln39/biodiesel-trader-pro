@@ -1,5 +1,12 @@
-
 import { Instrument, OperatorType, ExposureResult } from './common';
+
+// Add PricingInstrument interface that was removed from exposure.ts
+export interface PricingInstrument {
+  id: string;
+  display_name: string;
+  instrument_code: string;
+  is_active: boolean;
+}
 
 export interface FormulaNode {
   id: string;
