@@ -31,6 +31,11 @@ const safeGetNestedProperty = (obj: any, path: string[]): any => {
   }, obj);
 };
 
+// Helper function to check if an object has a specific property
+const hasProperty = (obj: any, prop: string): boolean => {
+  return obj && typeof obj === 'object' && prop in obj;
+};
+
 const TradeEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{id: string}>();
@@ -104,8 +109,9 @@ const TradeEditPage = () => {
             }
             
             // Remove mtmTokens from formula to avoid duplication
-            if (formula && formula.mtmTokens) {
-              const { mtmTokens, ...formulaWithoutMtmTokens } = formula;
+            // Check if formula is an object and has mtmTokens property
+            if (hasProperty(formula, 'mtmTokens')) {
+              const { mtmTokens, ...formulaWithoutMtmTokens } = formula as any;
               formula = formulaWithoutMtmTokens;
             }
 
