@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
 import { toast } from 'sonner';
@@ -23,7 +23,11 @@ const ExposurePage = () => {
     instrumentsLoading,
     error,
     refetch,
+    periods
   } = useExposureData();
+
+  // State for selected month in business days dropdown
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   // Use the totals hook to calculate all totals and filtered products
   const {
@@ -82,6 +86,9 @@ const ExposurePage = () => {
           toggleCategory={toggleCategory}
           exposureCategories={CATEGORY_ORDER}
           onExportExcel={handleExportExcel}
+          availableMonths={periods}
+          selectedMonth={selectedMonth}
+          onMonthSelect={setSelectedMonth}
         />
 
         <ExposureTable

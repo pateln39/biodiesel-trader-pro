@@ -2,28 +2,37 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download } from 'lucide-react';
+import { Download, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { exportExposureToExcel } from '@/utils/excelExportUtils';
-import { MonthlyExposure, GrandTotals, GroupTotals } from '@/types/exposure';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { calculateBusinessDaysForMonth } from '@/utils/exposureTableUtils';
+import { Badge } from '@/components/ui/badge';
 
 interface ExposureControlsProps {
   visibleCategories: string[];
   toggleCategory: (category: string) => void;
   exposureCategories: readonly string[];
   onExportExcel: () => void;
+  availableMonths: string[];
+  selectedMonth: string | null;
+  onMonthSelect: (month: string | null) => void;
 }
 
 const ExposureControls: React.FC<ExposureControlsProps> = ({
   visibleCategories,
   toggleCategory,
   exposureCategories,
-  onExportExcel
+  onExportExcel,
+  availableMonths,
+  selectedMonth,
+  onMonthSelect
 }) => {
+  // Calculate business days for selected month
+  const businessDays = selectedMonth ? calculateBusinessDaysForMonth(selectedMonth) : null;
+
   return (
-    <div className="flex justify-between items-center">
-      <Card className="mb-4 w-full">
+    <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
+      <Card className="mb-4 w-full md:w-3/5">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
             <div>
@@ -50,7 +59,34 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
         </CardContent>
       </Card>
 
-      <div className="flex space-x-2 ml-4">
+      <div className="flex flex-col space-y-2 md:space-y-0 md:flex-row md:items-center md:space-x-4 mb-4 md:mb-0">
+        <div className="flex items-center space-x-2">
+          <Select
+            value={selectedMonth || ''}
+            onValueChange={(value) => onMonthSelect(value || null)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Select Month" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {availableMonths.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {businessDays !== null && selectedMonth && (
+            <Badge variant="secondary" className="bg-blue-500 text-white hover:bg-blue-600">
+              {selectedMonth}: {businessDays} business days
+            </Badge>
+          )}
+        </div>
+
         <Button variant="outline" size="sm" onClick={onExportExcel}>
           <Download className="mr-2 h-3 w-3" /> Export
         </Button>
