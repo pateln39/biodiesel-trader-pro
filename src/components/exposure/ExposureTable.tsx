@@ -12,6 +12,7 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
+import { MixerHorizontalIcon, CalendarIcon } from '@radix-ui/react-icons';
 
 interface ExposureTableProps {
   exposureData: MonthlyExposure[];
@@ -80,12 +81,15 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
     <Card className="overflow-hidden">
       {dateRangeEnabled && dateRange?.from && (
         <div className="p-2 bg-blue-500/20 border-b border-blue-500/30">
-          <Badge variant="outline" className="bg-blue-500 text-white mb-0">
-            Filtered: {dateRange.from.toLocaleDateString()} to {(dateRange.to || dateRange.from).toLocaleDateString()}
-          </Badge>
-          <span className="text-xs text-muted-foreground ml-2">
-            Showing exposure data in selected date range only
-          </span>
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="h-4 w-4 text-blue-500" />
+            <Badge variant="outline" className="bg-blue-500 text-white mb-0">
+              Date Filter: {dateRange.from.toLocaleDateString()} to {(dateRange.to || dateRange.from).toLocaleDateString()}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              Physical exposures include full months covered by date range. Pricing & paper exposures are filtered by exact dates.
+            </span>
+          </div>
         </div>
       )}
       <CardContent className="p-0 overflow-auto">

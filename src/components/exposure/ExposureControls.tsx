@@ -1,16 +1,15 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from "@/components/ui/checkbox";
-import { Download, Calendar, FilterIcon } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { calculateBusinessDaysForMonth } from '@/utils/exposureTableUtils';
-import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Toggle } from '@/components/ui/toggle';
+import { CalendarIcon, CheckIcon, FilterIcon, TableIcon } from 'lucide-react';
+import { MonthSelect } from '@/components/exposure/MonthSelect';
+import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 interface ExposureControlsProps {
   visibleCategories: string[];
@@ -39,92 +38,81 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
   dateRange,
   onDateRangeChange
 }) => {
-  // Calculate business days for selected month
-  const businessDays = selectedMonth ? calculateBusinessDaysForMonth(selectedMonth) : null;
-
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start">
-      <Card className="mb-4 w-full md:w-3/5">
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Category Filters</label>
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:justify-between md:items-center">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center space-x-2">
+              <FilterIcon className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium">Show Categories:</span>
+              
               <div className="flex flex-wrap gap-2">
-                {exposureCategories.map(category => (
-                  <div key={category} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`category-${category}`} 
-                      checked={visibleCategories.includes(category)} 
-                      onCheckedChange={() => toggleCategory(category)} 
-                    />
-                    <label 
-                      htmlFor={`category-${category}`} 
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {category}
-                    </label>
-                  </div>
+                {exposureCategories.map((category) => (
+                  <Toggle
+                    key={category}
+                    variant="outline"
+                    size="sm"
+                    pressed={visibleCategories.includes(category)}
+                    onPressedChange={() => toggleCategory(category)}
+                  >
+                    {visibleCategories.includes(category) && <CheckIcon className="mr-1 h-3 w-3" />}
+                    {category}
+                  </Toggle>
                 ))}
               </div>
             </div>
-
-            <div className="mt-4 border-t pt-4">
-              <div className="flex items-center space-x-2 mb-3">
-                <FilterIcon className="h-4 w-4" />
-                <label className="text-sm font-medium">Date Range Filter</label>
-                <Switch
-                  checked={dateRangeEnabled}
-                  onCheckedChange={() => onToggleDateRange()}
-                  id="date-range-toggle"
-                />
-              </div>
-              
-              {dateRangeEnabled && (
-                <div className="mt-2">
-                  <DateRangePicker
-                    dateRange={dateRange}
-                    onDateRangeChange={onDateRangeChange}
-                  />
-                </div>
-              )}
+            
+            <div className="flex items-center space-x-2">
+              <TableIcon className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium">Business Days:</span>
+              <MonthSelect
+                months={availableMonths}
+                selectedMonth={selectedMonth}
+                onMonthSelect={onMonthSelect}
+              />
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-col space-y-2 md:space-y-0 md:flex-row md:items-center md:space-x-4 mb-4 md:mb-0">
-        <div className="flex items-center space-x-2">
-          <Select
-            value={selectedMonth || ''}
-            onValueChange={(value) => onMonthSelect(value || null)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Select Month" />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {availableMonths.map((month) => (
-                <SelectItem key={month} value={month}>
-                  {month}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           
-          {businessDays !== null && selectedMonth && (
-            <Badge variant="secondary" className="bg-blue-500 text-white hover:bg-blue-600">
-              {selectedMonth}: {businessDays} business days
-            </Badge>
-          )}
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center space-x-2">
+              <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+              <Toggle
+                variant={dateRangeEnabled ? "default" : "outline"}
+                size="sm"
+                pressed={dateRangeEnabled}
+                onPressedChange={onToggleDateRange}
+                className={dateRangeEnabled ? "bg-blue-500 text-white hover:bg-blue-600" : ""}
+              >
+                {dateRangeEnabled ? 
+                  <CheckIcon className="mr-1 h-3 w-3" /> : 
+                  <span className="mr-1">🗓️</span>
+                }
+                Date Range Filter
+              </Toggle>
+              
+              <DateRangePicker 
+                value={dateRange} 
+                onChange={onDateRangeChange}
+                disabled={!dateRangeEnabled}
+              />
+              
+              {dateRangeEnabled && dateRange?.from && dateRange?.to && (
+                <Badge variant="outline" className="bg-blue-500/20 text-blue-600 border-blue-300">
+                  {dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={onExportExcel}>
+                Export to Excel
+              </Button>
+            </div>
+          </div>
         </div>
-
-        <Button variant="outline" size="sm" onClick={onExportExcel}>
-          <Download className="mr-2 h-3 w-3" /> Export
-        </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
