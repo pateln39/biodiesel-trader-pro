@@ -5,6 +5,7 @@ import { extractInstrumentsFromFormula } from './exposureUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { parseFormula } from './formulaCalculation';
 import { isDateRangeInFuture, parseMonthCodeToDbDate } from './mtmUtils';
+import { parseISODate } from './dateUtils';
 
 export type PricingPeriodType = 'historical' | 'current' | 'future';
 

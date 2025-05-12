@@ -1,3 +1,4 @@
+
 /**
  * Formats a Date object into a string with the format "MMM-YY" (e.g., "Dec-24").
  * @param {Date} date - The Date object to format.
@@ -86,3 +87,72 @@ export const doesMonthOverlapRange = (monthCode: string, startDate: Date, endDat
     (startDate <= monthEnd && endDate >= monthStart)
   );
 };
+
+/**
+ * Format a date for display (DD MMM YYYY)
+ */
+export const formatDate = (date: string | Date | null): string => {
+  if (!date) return 'N/A';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  return dateObj.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+/**
+ * Get an array of the next N months in "MMM-YY" format
+ */
+export const getNextMonths = (count: number = 12): string[] => {
+  const months = [];
+  const date = new Date();
+  
+  for (let i = 0; i < count; i++) {
+    months.push(formatMonthCode(date));
+    date.setMonth(date.getMonth() + 1);
+  }
+  
+  return months;
+};
+
+/**
+ * Count business days between two dates
+ */
+export const countBusinessDays = (startDate: Date, endDate: Date): number => {
+  const businessDays = getBusinessDaysBetweenDates(startDate, endDate);
+  return businessDays.length;
+};
+
+/**
+ * Get all business days (Mon-Fri) between two dates
+ */
+export const getBusinessDaysBetweenDates = (startDate: Date, endDate: Date): Date[] => {
+  const businessDays: Date[] = [];
+  const currentDate = new Date(startDate);
+  
+  // Adjust to start of day
+  currentDate.setHours(0, 0, 0, 0);
+  
+  // Adjust end date to end of day
+  const adjustedEndDate = new Date(endDate);
+  adjustedEndDate.setHours(23, 59, 59, 999);
+  
+  // Loop through days
+  while (currentDate <= adjustedEndDate) {
+    const dayOfWeek = currentDate.getDay();
+    
+    // Add only business days (Mon-Fri: 1-5)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      businessDays.push(new Date(currentDate));
+    }
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return businessDays;
+};
+
