@@ -67,3 +67,20 @@ export function getPeriodType(
     return 'current';
   }
 }
+
+/**
+ * Format a date for database storage without timezone issues
+ * Uses YYYY-MM-DD format and ensures the day is not off by one due to timezone conversion
+ * 
+ * @param date The date to format
+ * @returns Date string in YYYY-MM-DD format
+ */
+export function formatDateForDatabase(date: Date): string {
+  // Get the year, month, and day components directly (no timezone conversion)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-indexed
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  // Return in YYYY-MM-DD format
+  return `${year}-${month}-${day}`;
+}

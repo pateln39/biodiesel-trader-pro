@@ -68,7 +68,7 @@ export const calculateDailyDistribution = (
   const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
-      const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const dateStr = formatDateForDatabase(currentDate); // Use our timezone-safe formatter
       distribution[product][dateStr] = dailyExposure;
     }
     currentDate.setDate(currentDate.getDate() + 1);

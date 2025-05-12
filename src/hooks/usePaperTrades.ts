@@ -9,7 +9,7 @@ import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils
 import { mapProductToCanonical } from '@/utils/productMapping';
 
 // Import these from the paperTrade utility module
-import { getMonthDates } from '@/utils/paperTrade';
+import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
 import { countBusinessDays } from '@/utils/dateUtils';
 
 const debounce = (fn: Function, ms = 300) => {
@@ -47,7 +47,7 @@ const calculateDailyDistribution = (
   const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
-      const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const dateStr = formatDateForDatabase(currentDate); // Use timezone-safe formatter
       
       if (!dailyDistribution[product]) {
         dailyDistribution[product] = {};
@@ -96,17 +96,13 @@ export const createPaperTrade = async (
         
         if (tradingPeriod) {
           try {
-            const [month, year] = tradingPeriod.split('-');
-            const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-              .findIndex(m => m === month);
+            // Get the dates using our utility function
+            const dates = getMonthDates(tradingPeriod);
             
-            if (monthIndex !== -1) {
-              const fullYear = 2000 + parseInt(year);
-              
-              pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
-              
-              const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
-              pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+            if (dates) {
+              // Format dates for database storage without timezone issues
+              pricingPeriodStart = formatDateForDatabase(dates.startDate);
+              pricingPeriodEnd = formatDateForDatabase(dates.endDate);
             }
           } catch (e) {
             console.error('Error parsing period date:', e);
@@ -496,17 +492,13 @@ export const usePaperTrades = () => {
           
           if (tradingPeriod) {
             try {
-              const [month, year] = tradingPeriod.split('-');
-              const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                .findIndex(m => m === month);
+              // Get the dates using our utility function
+              const dates = getMonthDates(tradingPeriod);
               
-              if (monthIndex !== -1) {
-                const fullYear = 2000 + parseInt(year);
-                
-                pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
-                
-                const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
-                pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+              if (dates) {
+                // Format dates for database storage without timezone issues
+                pricingPeriodStart = formatDateForDatabase(dates.startDate);
+                pricingPeriodEnd = formatDateForDatabase(dates.endDate);
               }
             } catch (e) {
               console.error('Error parsing period date:', e);
