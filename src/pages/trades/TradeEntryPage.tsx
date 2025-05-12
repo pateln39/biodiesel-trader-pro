@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { TradeType } from '@/types';
+import { TradeType, PricingFormula } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,7 +78,7 @@ const TradeEntryPage = () => {
             leg.mtmFormula.exposures.physical || {} : {};
           
           // Create consolidated formula
-          legData.pricing_formula = {
+          const consolidatedFormula = {
             ...leg.formula,
             mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
             exposures: {
@@ -87,6 +86,9 @@ const TradeEntryPage = () => {
               physical: physicalExposures
             }
           };
+          
+          // Add the consolidated formula to legData
+          legData.pricing_formula = consolidatedFormula;
           
           // Keep MTM formula for backward compatibility temporarily
           legData.mtm_formula = leg.mtmFormula;

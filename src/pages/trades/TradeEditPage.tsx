@@ -36,6 +36,15 @@ const hasProperty = (obj: any, prop: string): boolean => {
   return obj && typeof obj === 'object' && prop in obj;
 };
 
+// Helper function to safely check and extract mtmTokens from formula
+const safeExtractMtmTokens = (formula: any): any[] | undefined => {
+  if (typeof formula !== 'object' || formula === null) {
+    return undefined;
+  }
+  
+  return hasProperty(formula, 'mtmTokens') ? formula.mtmTokens : undefined;
+};
+
 const TradeEditPage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{id: string}>();
@@ -111,6 +120,7 @@ const TradeEditPage = () => {
             // Remove mtmTokens from formula to avoid duplication
             // Check if formula is an object and has mtmTokens property
             if (hasProperty(formula, 'mtmTokens')) {
+              // Use type assertion to tell TypeScript this is a safe operation
               const { mtmTokens, ...formulaWithoutMtmTokens } = formula as any;
               formula = formulaWithoutMtmTokens;
             }
