@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { MonthlyExposure, ProductData, GrandTotals, GroupTotals } from '@/types/exposure';
+import { MonthlyExposure, ProductData, GrandTotals, GroupTotals, ExposureData } from '@/types/exposure';
 import { orderVisibleCategories } from '@/utils/exposureTableUtils';
 
 export const useExposureTotals = (
@@ -44,6 +44,14 @@ export const useExposureTotals = (
 
   // Calculate grand totals for each product across all months
   const grandTotals = useMemo((): GrandTotals => {
+    // Initialize the totals object with zeros
+    const totals: ExposureData = {
+      physical: 0,
+      pricing: 0,
+      paper: 0,
+      netExposure: 0
+    };
+    
     const productTotals: Record<string, ProductData> = {};
     
     // Initialize with zero values for all products
@@ -58,6 +66,12 @@ export const useExposureTotals = (
     
     // Loop through each month of data
     exposureData.forEach(monthData => {
+      // Accumulate monthly totals
+      totals.physical += monthData.totals.physical;
+      totals.pricing += monthData.totals.pricing;
+      totals.paper += monthData.totals.paper;
+      totals.netExposure += monthData.totals.netExposure;
+      
       // For each product, accumulate the month's values
       Object.entries(monthData.products).forEach(([product, data]) => {
         if (filteredProducts.includes(product)) {
@@ -70,6 +84,7 @@ export const useExposureTotals = (
     });
     
     return {
+      totals,
       productTotals
     };
   }, [exposureData, filteredProducts]);
