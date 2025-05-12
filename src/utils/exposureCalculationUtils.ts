@@ -81,3 +81,21 @@ export const getValueColorClass = (value: number): string => {
   if (value < 0) return 'text-red-500';
   return 'text-gray-500';
 };
+
+/**
+ * Calculate total exposure for a group of products
+ */
+export const calculateProductGroupTotal = (
+  products: Record<string, any>,
+  groupProducts: string[]
+): number => {
+  let total = 0;
+  
+  for (const product of groupProducts) {
+    if (products[product] && typeof products[product].netExposure === 'number') {
+      total += products[product].netExposure;
+    }
+  }
+  
+  return total;
+};

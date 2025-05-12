@@ -118,15 +118,42 @@ export const canAddTokenType = (tokens: FormulaToken[], type: string): boolean =
   }
 };
 
+// Define the Node type for AST parsing
+export interface Node {
+  type: string;
+  value?: any;
+  left?: Node;
+  right?: Node;
+  operator?: string;
+}
+
 /**
- * Parse formula from string representation
+ * Parse formula from formula tokens to AST
  */
-export const parseFormula = (formulaStr: string): FormulaToken[] => {
-  // Implementation of formula parsing
-  const tokens: FormulaToken[] = [];
+export const parseFormula = (tokens: FormulaToken[]): Node => {
+  // A simplified parser implementation
+  if (tokens.length === 0) {
+    return { type: 'value', value: 0 };
+  }
   
-  // Simplified implementation for now
-  return tokens;
+  if (tokens.length === 1) {
+    const token = tokens[0];
+    if (token.type === 'instrument') {
+      return { type: 'instrument', value: token.value };
+    } else if (token.type === 'fixedValue') {
+      return { type: 'value', value: Number(token.value) };
+    }
+  }
+  
+  // For simplicity, just handle the first token for now
+  const firstToken = tokens[0];
+  if (firstToken.type === 'instrument') {
+    return { type: 'instrument', value: firstToken.value };
+  } else if (firstToken.type === 'fixedValue') {
+    return { type: 'value', value: Number(firstToken.value) };
+  }
+  
+  return { type: 'value', value: 0 };
 };
 
 /**

@@ -155,4 +155,3 @@ export const getBusinessDaysBetweenDates = (startDate: Date, endDate: Date): Dat
   
   return businessDays;
 };
-
