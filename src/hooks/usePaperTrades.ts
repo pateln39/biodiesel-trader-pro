@@ -16,6 +16,47 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
+// Create a new function to calculate daily distribution
+const calculateDailyDistribution = (
+  period: string,
+  product: string,
+  quantity: number,
+  buySell: BuySell
+): Record<string, Record<string, number>> => {
+  const monthDates = getMonthDates(period);
+  if (!monthDates) {
+    return {};
+  }
+  
+  const { startDate, endDate } = monthDates;
+  const businessDaysInMonth = countBusinessDays(startDate, endDate);
+  
+  if (businessDaysInMonth === 0) {
+    return {};
+  }
+  
+  const dailyDistribution: Record<string, Record<string, number>> = {};
+  const buySellMultiplier = buySell === 'buy' ? 1 : -1;
+  const exposureValue = quantity * buySellMultiplier;
+  const dailyExposure = exposureValue / businessDaysInMonth;
+  
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
+      const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      if (!dailyDistribution[product]) {
+        dailyDistribution[product] = {};
+      }
+      
+      dailyDistribution[product][dateStr] = dailyExposure;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dailyDistribution;
+};
+
 export const createPaperTrade = async (
   formData: Partial<PaperTrade>,
   options?: { onSuccess?: () => void }
@@ -71,23 +112,47 @@ export const createPaperTrade = async (
         const exposures = {
           physical: {},
           paper: {},
-          pricing: {}
+          pricing: {},
+          paperDailyDistribution: {},
+          pricingDailyDistribution: {}
         };
         
         if (leg.relationshipType === 'FP') {
           const canonicalProduct = mapProductToCanonical(leg.product);
           exposures.paper[canonicalProduct] = leg.quantity || 0;
-          
           exposures.pricing[canonicalProduct] = leg.quantity || 0;
+          
+          // Calculate daily distributions
+          if (tradingPeriod) {
+            const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
+            exposures.paperDailyDistribution = paperDaily;
+            exposures.pricingDailyDistribution = paperDaily; // Same for pricing
+          }
         } else if (leg.rightSide) {
           const canonicalLeftProduct = mapProductToCanonical(leg.product);
           const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
           
+          // Left side exposures
           exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-          exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
-          
           exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-          exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
+          
+          // Right side exposures (negative values for DIFF/SPREAD)
+          const rightQuantity = -(leg.rightSide.quantity || 0);
+          exposures.paper[canonicalRightProduct] = rightQuantity;
+          exposures.pricing[canonicalRightProduct] = rightQuantity;
+          
+          // Calculate daily distributions
+          if (tradingPeriod) {
+            // Left product
+            const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
+            Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
+            Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
+            
+            // Right product (negative values for DIFF/SPREAD)
+            const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
+            Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
+            Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
+          }
         }
         
         const instrument = generateInstrumentName(
@@ -447,23 +512,47 @@ export const usePaperTrades = () => {
           const exposures = {
             physical: {},
             paper: {},
-            pricing: {}
+            pricing: {},
+            paperDailyDistribution: {},
+            pricingDailyDistribution: {}
           };
           
           if (leg.relationshipType === 'FP') {
             const canonicalProduct = mapProductToCanonical(leg.product);
             exposures.paper[canonicalProduct] = leg.quantity || 0;
-            
             exposures.pricing[canonicalProduct] = leg.quantity || 0;
+            
+            // Calculate daily distributions
+            if (tradingPeriod) {
+              const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
+              exposures.paperDailyDistribution = paperDaily;
+              exposures.pricingDailyDistribution = paperDaily; // Same for pricing
+            }
           } else if (leg.rightSide) {
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
+            // Left side exposures
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
-            
             exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
+            
+            // Right side exposures (negative values for DIFF/SPREAD)
+            const rightQuantity = -(leg.rightSide.quantity || 0);
+            exposures.paper[canonicalRightProduct] = rightQuantity;
+            exposures.pricing[canonicalRightProduct] = rightQuantity;
+            
+            // Calculate daily distributions
+            if (tradingPeriod) {
+              // Left product
+              const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
+              Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
+              Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
+              
+              // Right product (negative values for DIFF/SPREAD)
+              const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
+              Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
+              Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
+            }
           }
           
           const instrument = generateInstrumentName(
