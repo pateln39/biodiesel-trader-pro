@@ -10,7 +10,7 @@ export const useExposureTotals = (
   PRICING_INSTRUMENT_PRODUCTS: string[],
   visibleCategories: string[],
   CATEGORY_ORDER: readonly string[],
-  dateRangeFiltered: boolean = false
+  isFiltered: boolean = false
 ) => {
   // Calculate filtered products based on visible categories
   const filteredProducts = useMemo(() => {
@@ -87,7 +87,7 @@ export const useExposureTotals = (
       totals,
       productTotals
     };
-  }, [exposureData, filteredProducts, dateRangeFiltered]); // Add dateRangeFiltered as a dependency
+  }, [exposureData, filteredProducts, isFiltered]); // Use isFiltered dependency instead of dateRangeFiltered
 
   // Calculate grand totals for biodiesel and pricing instrument groups
   const groupGrandTotals = useMemo((): GroupTotals => {

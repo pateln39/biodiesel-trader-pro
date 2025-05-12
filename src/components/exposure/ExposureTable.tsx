@@ -12,7 +12,7 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { CalendarIcon, InfoIcon } from 'lucide-react';
+import { CalendarIcon, InfoIcon, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ExposureTableProps {
@@ -27,6 +27,7 @@ interface ExposureTableProps {
   refetch: () => void;
   dateRangeEnabled?: boolean;
   dateRange?: DateRange;
+  selectedMonth?: string | null;
 }
 
 const ExposureTable: React.FC<ExposureTableProps> = ({
@@ -40,7 +41,8 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
   error,
   refetch,
   dateRangeEnabled,
-  dateRange
+  dateRange,
+  selectedMonth
 }) => {
   const shouldShowBiodieselTotal = true;
   const shouldShowPricingInstrumentTotal = true;
@@ -53,8 +55,11 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
         dateRange?.from?.toLocaleDateString(), 'to', 
         dateRange?.to?.toLocaleDateString());
       console.log('[EXPOSURE TABLE] Filtered exposure data count:', exposureData.length);
+    } else if (selectedMonth) {
+      console.log('[EXPOSURE TABLE] Rendering with month filter:', selectedMonth);
+      console.log('[EXPOSURE TABLE] Filtered exposure data count:', exposureData.length);
     }
-  }, [dateRangeEnabled, dateRange, exposureData]);
+  }, [dateRangeEnabled, dateRange, selectedMonth, exposureData]);
 
   if (isLoadingData) {
     return (
@@ -119,6 +124,32 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
           </div>
         </div>
       )}
+      
+      {!dateRangeEnabled && selectedMonth && (
+        <div className="p-2 bg-green-500/20 border-b border-green-500/30">
+          <div className="flex flex-wrap items-center gap-2">
+            <Calendar className="h-4 w-4 text-green-500" />
+            <Badge variant="outline" className="bg-green-500 text-white mb-0">
+              Month Filter: {selectedMonth}
+            </Badge>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center cursor-help">
+                    <InfoIcon className="h-4 w-4 text-green-500 mr-1" />
+                    <span className="text-xs text-muted-foreground">Month filtering</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">Showing exposure data for the selected month only</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      )}
+      
       <CardContent className="p-0 overflow-auto">
         <ScrollArea className="w-full" orientation="horizontal">
           <div className="min-w-[1800px]" style={{

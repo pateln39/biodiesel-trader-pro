@@ -29,7 +29,7 @@ const ExposurePage = () => {
     dateRange,
     handleDateRangeChange,
     selectedMonth,
-    setSelectedMonth
+    handleMonthSelect
   } = useExposureData();
 
   // Use the totals hook to calculate all totals and filtered products
@@ -45,7 +45,7 @@ const ExposurePage = () => {
     PRICING_INSTRUMENT_PRODUCTS,
     visibleCategories,
     CATEGORY_ORDER,
-    dateRangeEnabled
+    dateRangeEnabled || selectedMonth !== null
   );
 
   // Handler for exporting to Excel
@@ -92,7 +92,7 @@ const ExposurePage = () => {
           onExportExcel={handleExportExcel}
           availableMonths={periods}
           selectedMonth={selectedMonth}
-          onMonthSelect={setSelectedMonth}
+          onMonthSelect={handleMonthSelect}
           dateRangeEnabled={dateRangeEnabled}
           onToggleDateRange={toggleDateRangeEnabled}
           dateRange={dateRange}
@@ -111,6 +111,7 @@ const ExposurePage = () => {
           refetch={refetch}
           dateRangeEnabled={dateRangeEnabled}
           dateRange={dateRange}
+          selectedMonth={selectedMonth}
         />
       </div>
     </Layout>

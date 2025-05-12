@@ -19,7 +19,7 @@ interface ExposureControlsProps {
   onExportExcel: () => void;
   availableMonths: string[];
   selectedMonth: string | null;
-  onMonthSelect: (month: string | null) => void;
+  onMonthSelect: (month: string) => void;
   dateRangeEnabled: boolean;
   onToggleDateRange: () => void;
   dateRange: DateRange | undefined;
@@ -72,7 +72,7 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
             
             <div className="flex items-center space-x-2">
               <TableIcon className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-medium">Business Days:</span>
+              <span className="text-sm font-medium">Period:</span>
               <MonthSelect
                 months={availableMonths}
                 selectedMonth={selectedMonth}
