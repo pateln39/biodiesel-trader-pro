@@ -23,6 +23,7 @@ import {
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { calculateExposures } from '@/utils/formulaCalculation';
 
 // Helper function to safely access nested object properties
 const safeGetNestedProperty = (obj: any, path: string[]): any => {
@@ -225,10 +226,19 @@ const TradeEditPage = () => {
 
       // For physical trades, we need to update all legs
       for (const leg of updatedTradeData.legs) {
-        // Safely extract physical exposures from mtmFormula
-        const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures 
-          ? leg.mtmFormula.exposures.physical || {} 
-          : {};
+        // Calculate physical exposures based on current quantity and mtmFormula tokens
+        let physicalExposures = {};
+        
+        if (leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+          const mtmExposures = calculateExposures(
+            leg.mtmFormula.tokens, 
+            leg.quantity, 
+            leg.buySell,
+            leg.product
+          );
+          
+          physicalExposures = mtmExposures.physical || {};
+        }
           
         const consolidatedFormula = {
           ...leg.formula,
@@ -256,7 +266,7 @@ const TradeEditPage = () => {
           credit_status: leg.creditStatus,
           customs_status: leg.customsStatus,
           pricing_formula: consolidatedFormula,
-          mtm_formula: leg.mtmFormula, // Keep for backward compatibility
+          mtm_formula: null, // Set to null as we no longer need it
           pricing_type: leg.pricingType,
           mtm_future_month: leg.mtmFutureMonth,
           updated_at: new Date().toISOString()

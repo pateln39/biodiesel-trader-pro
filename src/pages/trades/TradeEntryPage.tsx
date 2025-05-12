@@ -14,6 +14,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { calculateExposures } from '@/utils/formulaCalculation';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -71,28 +72,35 @@ const TradeEntryPage = () => {
           comments: leg.comments // Keep leg-specific comments
         };
         
-        // Consolidate the pricing formula and mtm formula
-        if (leg.formula) {
-          // Get physical exposures from the MTM formula
-          const physicalExposures = leg.mtmFormula && leg.mtmFormula.exposures ? 
-            leg.mtmFormula.exposures.physical || {} : {};
+        // Calculate physical exposures based on MTM formula tokens and quantity
+        let physicalExposures = {};
+        
+        if (leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+          const mtmExposures = calculateExposures(
+            leg.mtmFormula.tokens, 
+            leg.quantity, 
+            leg.buySell,
+            leg.product
+          );
           
-          // Create consolidated formula
-          const consolidatedFormula = {
-            ...leg.formula,
-            mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
-            exposures: {
-              pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
-              physical: physicalExposures
-            }
-          };
-          
-          // Add the consolidated formula to legData
-          legData.pricing_formula = consolidatedFormula;
-          
-          // Keep MTM formula for backward compatibility temporarily
-          legData.mtm_formula = leg.mtmFormula;
+          physicalExposures = mtmExposures.physical || {};
         }
+        
+        // Create consolidated formula
+        const consolidatedFormula = {
+          ...leg.formula,
+          mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
+          exposures: {
+            pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
+            physical: physicalExposures
+          }
+        };
+        
+        // Add the consolidated formula to legData
+        legData.pricing_formula = consolidatedFormula;
+        
+        // Set mtm_formula to null since we're consolidating all data into pricing_formula
+        legData.mtm_formula = null;
 
         // Add EFP fields if they exist
         if (leg.efpPremium !== undefined) {
