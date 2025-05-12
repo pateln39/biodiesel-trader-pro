@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,11 +9,12 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { TradeType } from '@/types';
+import { TradeType, PricingFormula } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { calculateExposures } from '@/utils/formulaCalculation';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ const TradeEntryPage = () => {
       // For physical trades, insert all legs
       const legs = tradeData.legs.map((leg: any) => {
         // Base leg data
-        const legData = {
+        const legData: any = {
           leg_reference: leg.legReference,
           parent_trade_id: parentTradeId,
           buy_sell: leg.buySell,
@@ -67,12 +67,40 @@ const TradeEntryPage = () => {
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
           customs_status: leg.customsStatus,
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
           pricing_type: leg.pricingType,
           mtm_future_month: leg.mtmFutureMonth,
           comments: leg.comments // Keep leg-specific comments
         };
+        
+        // Calculate physical exposures based on MTM formula tokens and quantity
+        let physicalExposures = {};
+        
+        if (leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+          const mtmExposures = calculateExposures(
+            leg.mtmFormula.tokens, 
+            leg.quantity, 
+            leg.buySell,
+            leg.product
+          );
+          
+          physicalExposures = mtmExposures.physical || {};
+        }
+        
+        // Create consolidated formula
+        const consolidatedFormula = {
+          ...leg.formula,
+          mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
+          exposures: {
+            pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
+            physical: physicalExposures
+          }
+        };
+        
+        // Add the consolidated formula to legData
+        legData.pricing_formula = consolidatedFormula;
+        
+        // Set mtm_formula to null since we're consolidating all data into pricing_formula
+        legData.mtm_formula = null;
 
         // Add EFP fields if they exist
         if (leg.efpPremium !== undefined) {

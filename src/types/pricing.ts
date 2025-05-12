@@ -22,6 +22,7 @@ export interface MonthlyDistribution {
 
 export interface PricingFormula {
   tokens: FormulaToken[];
+  mtmTokens?: FormulaToken[]; // Added mtmTokens property
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
   result?: number;
@@ -35,6 +36,7 @@ export type PartialExposureResult = {
 
 export type PartialPricingFormula = {
   tokens: FormulaToken[];
+  mtmTokens?: FormulaToken[]; // Added mtmTokens property
   exposures?: PartialExposureResult;
   monthlyDistribution?: MonthlyDistribution;
 };

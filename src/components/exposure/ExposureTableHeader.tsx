@@ -78,7 +78,7 @@ const ExposureTableHeader: React.FC<ExposureTableHeaderProps> = ({
                   key={`${category}-pricing-instrument-total`} 
                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 border-r-[1px] border-black ${getExposureProductBackgroundClass('', false, true)} text-white font-bold`}
                 >
-                  Total Pricing Instrument
+                  TOTAL PRICING INSTRUMENT
                 </TableHead>
               );
             }
@@ -88,7 +88,7 @@ const ExposureTableHeader: React.FC<ExposureTableHeaderProps> = ({
                   key={`${category}-total-row`} 
                   className={`text-right p-1 text-xs whitespace-nowrap border-t-0 ${getExposureProductBackgroundClass('', true)} ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''} text-white font-bold`}
                 >
-                  Total Row
+                  TOTAL
                 </TableHead>
               );
             }
