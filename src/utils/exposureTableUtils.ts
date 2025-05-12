@@ -65,13 +65,13 @@ export const getExposureProductBackgroundClass = (
   }
   
   if (isPricingInstrumentTotal) {
-    return 'bg-[#1A1F2C]'; // Changed: Pricing instrument total background to dark purple
+    return 'bg-purple-700'; // Changed: Pricing instrument total background to medium-dark purple
   }
   
   // Special backgrounds for specific products
   if (product === 'ICE GASOIL FUTURES' || product === 'EFP' || 
       product === 'Platts LSGO' || product === 'Platts Diesel') {
-    return 'bg-[#1A1F2C]'; // Changed: Specific product backgrounds to dark purple
+    return 'bg-purple-700'; // Changed: Specific product backgrounds to medium-dark purple
   }
   
   // Default background for biodiesel products

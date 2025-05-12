@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -27,6 +28,7 @@ export default {
 		'bg-[#1A1F2C]',
 		'bg-gray-500',
 		'bg-brand-navy',
+		'bg-purple-700',
 		// New color classes for group colors
 		'bg-purple-500/20',
 		'bg-amber-500/20',
