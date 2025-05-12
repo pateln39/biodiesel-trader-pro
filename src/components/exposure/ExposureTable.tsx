@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Table } from "@/components/ui/table";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +11,7 @@ import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { CalendarIcon, MixerHorizontalIcon } from 'lucide-react';
+import { CalendarIcon, MoreHorizontalIcon } from 'lucide-react';
 
 interface ExposureTableProps {
   exposureData: MonthlyExposure[];
