@@ -1,224 +1,53 @@
+/**
+ * Formats a Date object into a string with the format "MMM-YY" (e.g., "Dec-24").
+ * @param {Date} date - The Date object to format.
+ * @returns {string} The formatted date string.
+ */
+export const formatMonthCode = (date: Date): string => {
+  const month = date.toLocaleString('default', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `${month}-${year}`;
+};
 
 /**
- * Utility functions for date operations
+ * Formats a Date object into a string with the format "YYYY-MM-DD" (e.g., "2024-12-25").
+ * @param {Date} date - The Date object to format.
+ * @returns {string} The formatted date string.
  */
-
-/**
- * Formats a date into a month code (MMM-YY)
- * 
- * @param date The date to format
- * @returns Formatted month code
- */
-export function formatMonthCode(date: Date): string {
-  const monthCode = date.toLocaleDateString('en-US', { month: 'short' });
-  const yearCode = date.getFullYear().toString().slice(2);
-  return `${monthCode}-${yearCode}`;
-}
-
-/**
- * Generates an array of month codes for the next N months starting from the current month
- * Format: MMM-YY (e.g., "Mar-24")
- * 
- * @param count Number of months to generate
- * @returns Array of month codes
- */
-export function getNextMonths(count: number = 13): string[] {
-  const months = [];
-  const currentDate = new Date();
-  
-  // Start with current month
-  for (let i = 0; i < count; i++) {
-    const targetDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + i,
-      1
-    );
-    
-    months.push(formatMonthCode(targetDate));
+export const formatDateForStorage = (date: Date | null): string | null => {
+  if (!date) {
+    return null;
   }
-  
-  return months;
-}
-
-/**
- * Checks if a date is a business day (Monday-Friday)
- * @param date The date to check
- * @returns True if the date is a business day
- */
-export function isBusinessDay(date: Date): boolean {
-  const day = date.getDay();
-  return day !== 0 && day !== 6; // 0 = Sunday, 6 = Saturday
-}
-
-/**
- * Counts business days between two dates, inclusive
- * @param startDate Start date (inclusive)
- * @param endDate End date (inclusive)
- * @returns Number of business days
- */
-export function countBusinessDays(startDate: Date, endDate: Date): number {
-  let count = 0;
-  const currentDate = new Date(startDate);
-  
-  // Set to beginning of day
-  currentDate.setHours(0, 0, 0, 0);
-  
-  // Create end date copy and set to end of day
-  const endDateCopy = new Date(endDate);
-  endDateCopy.setHours(23, 59, 59, 999);
-  
-  while (currentDate <= endDateCopy) {
-    if (isBusinessDay(currentDate)) {
-      count++;
-    }
-    
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return count;
-}
-
-/**
- * Groups business days by month for a given date range
- * @param startDate Start date of the range (inclusive)
- * @param endDate End date of the range (inclusive)
- * @returns Object with month codes as keys and business day counts as values
- */
-export function getBusinessDaysByMonth(startDate: Date, endDate: Date): Record<string, number> {
-  const result: Record<string, number> = {};
-  const currentDate = new Date(startDate);
-  
-  // Set to beginning of day
-  currentDate.setHours(0, 0, 0, 0);
-  
-  // Create end date copy and set to end of day
-  const endDateCopy = new Date(endDate);
-  endDateCopy.setHours(23, 59, 59, 999);
-  
-  while (currentDate <= endDateCopy) {
-    if (isBusinessDay(currentDate)) {
-      const monthCode = formatMonthCode(currentDate);
-      
-      if (!result[monthCode]) {
-        result[monthCode] = 0;
-      }
-      
-      result[monthCode]++;
-    }
-    
-    // Move to next day
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-  
-  return result;
-}
-
-/**
- * Rounds a number to the nearest integer while preserving the sign
- * @param value The number to round
- * @returns Rounded integer with preserved sign
- */
-export function roundWithSign(value: number): number {
-  return value >= 0 ? Math.round(value) : -Math.round(Math.abs(value));
-}
-
-/**
- * Splits a value proportionally across months based on business day distribution,
- * ensuring the total remains the same after rounding
- * @param value The value to distribute
- * @param businessDaysByMonth Business days per month
- * @returns Distribution of the value by month
- */
-export function distributeValueByBusinessDays(
-  value: number,
-  businessDaysByMonth: Record<string, number>
-): Record<string, number> {
-  const totalBusinessDays = Object.values(businessDaysByMonth).reduce((sum, days) => sum + days, 0);
-  
-  if (totalBusinessDays === 0) {
-    return {};
-  }
-  
-  const distribution: Record<string, number> = {};
-  let remainingValue = value;
-  let processedMonths = 0;
-  const totalMonths = Object.keys(businessDaysByMonth).length;
-  
-  // Sort months chronologically to ensure consistent distribution
-  const sortedMonths = Object.keys(businessDaysByMonth).sort((a, b) => {
-    const [monthA, yearA] = a.split('-');
-    const [monthB, yearB] = b.split('-');
-    return (parseInt(yearA) * 100 + getMonthIndex(monthA)) - (parseInt(yearB) * 100 + getMonthIndex(monthB));
-  });
-  
-  for (const month of sortedMonths) {
-    processedMonths++;
-    const businessDays = businessDaysByMonth[month];
-    const proportion = businessDays / totalBusinessDays;
-    
-    // For the last month, use the remaining value to ensure the total matches exactly
-    if (processedMonths === totalMonths) {
-      distribution[month] = remainingValue;
-    } else {
-      const monthValue = value * proportion;
-      const roundedValue = roundWithSign(monthValue);
-      distribution[month] = roundedValue;
-      remainingValue -= roundedValue;
-    }
-  }
-  
-  return distribution;
-}
-
-/**
- * Helper function to get month index from month code
- * @param monthCode Three-letter month code (e.g., "Jan")
- * @returns Month index (0-11)
- */
-function getMonthIndex(monthCode: string): number {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return months.indexOf(monthCode);
-}
-
-/**
- * Format a date as YYYY-MM-DD for database storage,
- * preserving the date exactly as it appears in the UI without timezone adjustments
- * 
- * @param date The date to format
- * @returns Formatted date string in YYYY-MM-DD format
- */
-export function formatDateForStorage(date: Date): string {
-  // Extract the year, month, and day using local date methods to prevent timezone shifts
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
   const day = String(date.getDate()).padStart(2, '0');
-  
   return `${year}-${month}-${day}`;
-}
+};
 
 /**
- * Format a date to a standard display format
- * @param date The date to format
- * @returns Formatted date string (e.g., "Mar 15, 2024")
+ * Parse ISO date string to Date object
  */
-export function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
+export const parseISODate = (dateString: string): Date => {
+  try {
+    // Handle both full ISO strings and date-only strings
+    if (dateString.includes('T')) {
+      return new Date(dateString);
+    } else {
+      // If it's just a date string (YYYY-MM-DD), make sure we create the date correctly
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day); // month is 0-indexed in JS Date
+    }
+  } catch (error) {
+    console.error('Error parsing ISO date:', error);
+    return new Date(); // Return current date as fallback
+  }
+};
 
 /**
- * Check if a date falls within a date range (inclusive)
- * @param date The date to check
- * @param startDate Start date of the range
- * @param endDate End date of the range
- * @returns True if the date is within the range
+ * Check if a date is within a given range (inclusive)
  */
-export function isDateInRange(date: Date, startDate: Date, endDate: Date): boolean {
-  // Normalize all dates to beginning of day for comparison
+export const isDateInRange = (date: Date, startDate: Date, endDate: Date): boolean => {
+  // Set all dates to midnight for consistent comparison
   const normalizedDate = new Date(date);
   normalizedDate.setHours(0, 0, 0, 0);
   
@@ -229,36 +58,31 @@ export function isDateInRange(date: Date, startDate: Date, endDate: Date): boole
   normalizedEnd.setHours(0, 0, 0, 0);
   
   return normalizedDate >= normalizedStart && normalizedDate <= normalizedEnd;
-}
+};
 
 /**
- * Get month codes between two dates
- * @param startDate Start date
- * @param endDate End date
- * @returns Array of month codes (MMM-YY) between the dates
+ * Check if a month overlaps with a date range
  */
-export function getMonthCodesBetweenDates(startDate: Date, endDate: Date): string[] {
-  const months: string[] = [];
-  const currentDate = new Date(startDate);
+export const doesMonthOverlapRange = (monthCode: string, startDate: Date, endDate: Date): boolean => {
+  // Parse month code (e.g., "May-24")
+  const [monthName, yearStr] = monthCode.split('-');
+  const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    .findIndex(m => m === monthName);
   
-  // Start from the first day of the month
-  currentDate.setDate(1);
-  
-  // Go month by month until we reach or exceed the end date
-  while (currentDate <= endDate) {
-    months.push(formatMonthCode(currentDate));
-    currentDate.setMonth(currentDate.getMonth() + 1);
+  if (monthIndex === -1 || !yearStr) {
+    console.error('Invalid month code format:', monthCode);
+    return false;
   }
   
-  return months;
-}
-
-/**
- * Parse a YYYY-MM-DD string into a Date object
- * @param dateStr Date string in YYYY-MM-DD format
- * @returns Date object
- */
-export function parseISODate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(num => parseInt(num, 10));
-  return new Date(year, month - 1, day);
-}
+  const year = 2000 + parseInt(yearStr);
+  
+  // Create date range for the month
+  const monthStart = new Date(year, monthIndex, 1);
+  const monthEnd = new Date(year, monthIndex + 1, 0); // Last day of month
+  
+  // Check if ranges overlap
+  return (
+    (monthStart <= endDate && monthEnd >= startDate) ||
+    (startDate <= monthEnd && endDate >= monthStart)
+  );
+};

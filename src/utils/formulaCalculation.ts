@@ -1,552 +1,161 @@
-import { FormulaToken, DailyDistribution } from '@/types/pricing';
-import { Instrument, ExposureResult, OperatorType } from '@/types/common';
-import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays, isBusinessDay } from '@/utils/dateUtils';
-
-export function tokenizeFormula(formula: string): FormulaToken[] {
-  const tokens: FormulaToken[] = [];
-  let currentNumber = '';
-
-  for (let i = 0; i < formula.length; i++) {
-    const char = formula[i];
-
-    if (/\d|\./.test(char)) {
-      currentNumber += char;
-    } else if (char === '+' || char === '-' || char === '*' || char === '/') {
-      if (currentNumber !== '') {
-        tokens.push({ type: 'number', value: parseFloat(currentNumber) });
-        currentNumber = '';
-      }
-      tokens.push({ type: 'operator', value: char as OperatorType });
-    } else if (char === '(' || char === ')') {
-      if (currentNumber !== '') {
-        tokens.push({ type: 'number', value: parseFloat(currentNumber) });
-        currentNumber = '';
-      }
-      tokens.push({ type: 'parenthesis', value: char });
-    } else if (char === ' ') {
-      if (currentNumber !== '') {
-        tokens.push({ type: 'number', value: parseFloat(currentNumber) });
-        currentNumber = '';
-      }
-    } else {
-      if (currentNumber !== '') {
-        tokens.push({ type: 'number', value: parseFloat(currentNumber) });
-        currentNumber = '';
-      }
-      tokens.push({ type: 'variable', value: char });
-    }
-  }
-
-  if (currentNumber !== '') {
-    tokens.push({ type: 'number', value: parseFloat(currentNumber) });
-  }
-
-  return tokens;
-}
-
-export function evaluateFormula(formula: FormulaToken[]): number {
-  const getValueAsString = (value: string | number): string => {
-    return String(value);
-  };
-
-  function processNumericToken(token: FormulaToken): number {
-    if (typeof token.value === 'number') {
-      return token.value;
-    } else if (typeof token.value === 'string') {
-      const parsedValue = parseFloat(token.value);
-      if (!isNaN(parsedValue)) {
-        return parsedValue;
-      } else {
-        console.error(`Invalid number value: ${token.value}`);
-        return 0;
-      }
-    }
-    return Number(token.value);
-  }
-
-  let result = 0;
-  let currentOperator: OperatorType | null = null;
-
-  for (const token of formula) {
-    if (token.type === 'number') {
-      const numberValue = processNumericToken(token);
-
-      if (currentOperator === null) {
-        result = numberValue;
-      } else {
-        switch (currentOperator) {
-          case '+':
-            result += numberValue;
-            break;
-          case '-':
-            result -= numberValue;
-            break;
-          case '*':
-            result *= numberValue;
-            break;
-          case '/':
-            if (numberValue === 0) {
-              console.error('Division by zero!');
-              return NaN;
-            }
-            result /= numberValue;
-            break;
-          default:
-            console.error(`Unknown operator: ${currentOperator}`);
-            return NaN;
-        }
-        currentOperator = null;
-      }
-    } else if (token.type === 'operator') {
-      currentOperator = token.value as OperatorType;
-    }
-  }
-
-  return result;
-}
-
-export function canAddTokenType(tokens: FormulaToken[], type: string): boolean {
-  if (tokens.length === 0) {
-    return ['instrument', 'fixedValue', 'percentage', 'openBracket'].includes(type);
-  }
-
-  const lastToken = tokens[tokens.length - 1];
-
-  switch (type) {
-    case 'instrument':
-    case 'fixedValue':
-    case 'percentage':
-      return lastToken.type === 'operator' || lastToken.type === 'openBracket';
-    
-    case 'operator':
-      return ['number', 'instrument', 'fixedValue', 'percentage', 'closeBracket'].includes(lastToken.type);
-    
-    case 'openBracket':
-      return lastToken.type === 'operator' || lastToken.type === 'openBracket';
-    
-    case 'closeBracket':
-      const openBracketCount = tokens.filter(t => t.type === 'openBracket').length;
-      const closeBracketCount = tokens.filter(t => t.type === 'closeBracket').length;
-      return ['number', 'instrument', 'fixedValue', 'percentage', 'closeBracket'].includes(lastToken.type)
-        && openBracketCount > closeBracketCount;
-    
-    default:
-      return false;
-  }
-}
-
-export function createEmptyExposureResult(): ExposureResult {
-  return {
-    physical: {
-      'Argus UCOME': 0,
-      'Argus RME': 0,
-      'Argus FAME0': 0,
-      'Platts LSGO': 0,
-      'Platts Diesel': 0,
-      'Argus HVO': 0,
-      'ICE GASOIL FUTURES': 0,
-      'ICE GASOIL FUTURES (EFP)': 0
-    },
-    pricing: {
-      'Argus UCOME': 0,
-      'Argus RME': 0,
-      'Argus FAME0': 0,
-      'Platts LSGO': 0,
-      'Platts Diesel': 0,
-      'Argus HVO': 0,
-      'ICE GASOIL FUTURES': 0,
-      'ICE GASOIL FUTURES (EFP)': 0
-    }
-  };
-}
-
-export function calculateExposures(
-  tokens: FormulaToken[], 
-  quantity: number, 
-  buySell: 'buy' | 'sell',
-  selectedProduct?: string
-): ExposureResult {
-  const physicalExposure = calculatePhysicalExposure(tokens, quantity, buySell, selectedProduct);
-  const pricingExposure = calculatePricingExposure(tokens, quantity, buySell);
-  
-  return {
-    physical: physicalExposure,
-    pricing: pricingExposure
-  };
-}
-
-export function calculatePhysicalExposure(
-  tokens: FormulaToken[], 
-  quantity: number, 
-  buySell: 'buy' | 'sell',
-  selectedProduct?: string
-): Record<Instrument, number> {
-  const exposures = Object.fromEntries(
-    Object.keys(createEmptyExposureResult().physical).map(key => [key, 0])
-  ) as Record<Instrument, number>;
-  
-  const exposureDirection = buySell === 'buy' ? 1 : -1;
-  
-  if (tokens.length === 0 && selectedProduct) {
-    switch (selectedProduct) {
-      case 'UCOME':
-      case 'UCOME-5':
-        exposures['Argus UCOME'] = quantity * exposureDirection;
-        break;
-      case 'RME':
-      case 'RME DC':
-        exposures['Argus RME'] = quantity * exposureDirection;
-        break;
-      case 'FAME0':
-        exposures['Argus FAME0'] = quantity * exposureDirection;
-        break;
-      case 'HVO':
-        exposures['Argus HVO'] = quantity * exposureDirection;
-        break;
-      default:
-        break;
-    }
-    return exposures;
-  }
-  
-  const instrumentNodes = parseFormula(tokens);
-  
-  const instrumentCoefficients = calculateInstrumentCoefficients(instrumentNodes);
-  
-  Object.entries(instrumentCoefficients).forEach(([instrument, coefficient]) => {
-    if (instrument in exposures) {
-      exposures[instrument as Instrument] = quantity * exposureDirection * coefficient;
-    }
-  });
-  
-  return exposures;
-}
-
-export function calculatePricingExposure(
-  tokens: FormulaToken[], 
-  quantity: number, 
-  buySell: 'buy' | 'sell'
-): Record<Instrument, number> {
-  const exposures = Object.fromEntries(
-    Object.keys(createEmptyExposureResult().pricing).map(key => [key, 0])
-  ) as Record<Instrument, number>;
-  
-  if (tokens.length === 0) {
-    return exposures;
-  }
-  
-  const exposureDirection = buySell === 'buy' ? -1 : 1;
-  
-  const instrumentNodes = parseFormula(tokens);
-  
-  const instrumentCoefficients = calculateInstrumentCoefficients(instrumentNodes);
-  
-  Object.entries(instrumentCoefficients).forEach(([instrument, coefficient]) => {
-    if (instrument in exposures) {
-      exposures[instrument as Instrument] = quantity * exposureDirection * coefficient;
-    }
-  });
-  
-  return exposures;
-}
-
-function calculateInstrumentCoefficients(node: ParseNode): Record<string, number> {
-  const coefficients: Record<string, number> = {};
-  
-  if (node.type === 'instrument') {
-    const instrument = String(node.value);
-    coefficients[instrument] = 1;
-    return coefficients;
-  }
-  
-  if (node.type === 'value') {
-    return coefficients;
-  }
-  
-  if (node.type === 'binary' && node.left && node.right) {
-    const leftCoefficients = calculateInstrumentCoefficients(node.left);
-    const rightCoefficients = calculateInstrumentCoefficients(node.right);
-    
-    if (node.operator === '+') {
-      Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-      });
-      
-      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-      });
-    } 
-    else if (node.operator === '-') {
-      Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-      });
-      
-      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) - coefficient;
-      });
-    }
-    else if (node.operator === '*') {
-      if (node.left.type === 'value' && node.left.value !== undefined) {
-        const multiplier = Number(node.left.value);
-        Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-          coefficients[instrument] = (coefficients[instrument] || 0) + (multiplier * coefficient);
-        });
-      }
-      else if (node.right.type === 'value' && node.right.value !== undefined) {
-        const multiplier = Number(node.right.value);
-        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-          coefficients[instrument] = (coefficients[instrument] || 0) + (multiplier * coefficient);
-        });
-      }
-      else {
-        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-        });
-        
-        Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-        });
-      }
-    }
-    else if (node.operator === '/') {
-      if (node.right.type === 'value' && node.right.value !== undefined) {
-        const divisor = Number(node.right.value);
-        if (divisor !== 0) {
-          Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-            coefficients[instrument] = (coefficients[instrument] || 0) + (coefficient / divisor);
-          });
-        }
-      }
-      else {
-        Object.entries(leftCoefficients).forEach(([instrument, coefficient]) => {
-          coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-        });
-      }
-    }
-  }
-  
-  if (node.type === 'unary' && node.right) {
-    const rightCoefficients = calculateInstrumentCoefficients(node.right);
-    
-    if (node.operator === '-') {
-      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) - coefficient;
-      });
-    } else {
-      Object.entries(rightCoefficients).forEach(([instrument, coefficient]) => {
-        coefficients[instrument] = (coefficients[instrument] || 0) + coefficient;
-      });
-    }
-  }
-  
-  return coefficients;
-}
+import { calculateExposures } from './exposureCalculation';
 
 /**
- * Calculate the daily distribution of pricing exposure
- * @param tokens Formula tokens
- * @param quantity Trade quantity
- * @param buySell Buy or sell
- * @param startDate Pricing period start date
- * @param endDate Pricing period end date
- * @returns Distribution of pricing exposure by instrument and date (YYYY-MM-DD)
+ * Calculate daily pricing distribution for a given period
+ * Distributes the exposure evenly across business days in the period
  */
-export function calculateDailyPricingDistribution(
-  tokens: FormulaToken[],
+export const calculateDailyPricingDistribution = (
+  tokens: any[],
   quantity: number,
-  buySell: 'buy' | 'sell',
+  buySell: string,
   startDate: Date,
   endDate: Date
-): Record<string, Record<string, number>> {
+): Record<string, Record<string, number>> => {
   const distribution: Record<string, Record<string, number>> = {};
-  const instrumentExposures: Record<string, number> = {};
   
-  // Calculate pricing exposure for each instrument
-  const exposures = calculatePricingExposure(tokens, quantity, buySell);
+  // Get business days between start and end date
+  const businessDays = getBusinessDaysBetweenDates(startDate, endDate);
+  if (businessDays.length === 0) return distribution;
   
-  // Filter out zero exposures
-  Object.entries(exposures).forEach(([instrument, value]) => {
-    if (value !== 0) {
-      instrumentExposures[instrument] = value;
+  // Calculate exposures from tokens
+  const exposures = calculateExposures(tokens, quantity, buySell);
+  
+  // For each instrument in pricing exposures, distribute across business days
+  Object.entries(exposures.pricing || {}).forEach(([instrument, totalExposure]) => {
+    if (!distribution[instrument]) {
+      distribution[instrument] = {};
     }
+    
+    // Daily exposure amount (evenly distributed)
+    const dailyExposure = Number(totalExposure) / businessDays.length;
+    
+    // Assign to each business day
+    businessDays.forEach(date => {
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      distribution[instrument][dateStr] = dailyExposure;
+    });
   });
   
-  if (Object.keys(instrumentExposures).length === 0) {
+  return distribution;
+};
+
+/**
+ * Calculate paper daily distribution for a given period month
+ * Distributes the exposure evenly across business days in the month
+ */
+export const calculatePaperDailyDistribution = (
+  exposures: Record<string, number>,
+  period: string
+): Record<string, Record<string, number>> => {
+  const distribution: Record<string, Record<string, number>> = {};
+  
+  // Parse period (e.g., "May-24") to get start and end date of the month
+  const [monthName, yearStr] = period.split('-');
+  const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    .findIndex(m => m === monthName);
+  
+  if (monthIndex === -1 || !yearStr) {
+    console.error('Invalid period format:', period);
     return distribution;
   }
   
-  // Count business days in the period
-  let businessDayCount = 0;
-  const businessDays: string[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const year = 2000 + parseInt(yearStr);
+  const startDate = new Date(year, monthIndex, 1);
+  const endDate = new Date(year, monthIndex + 1, 0); // Last day of month
   
-  // Normalize to beginning of day
-  start.setHours(0, 0, 0, 0);
-  end.setHours(23, 59, 59, 999);
+  // Get business days in the month
+  const businessDays = getBusinessDaysBetweenDates(startDate, endDate);
+  if (businessDays.length === 0) return distribution;
   
-  const currentDate = new Date(start);
+  // For each instrument, distribute exposure across business days
+  Object.entries(exposures).forEach(([instrument, totalExposure]) => {
+    if (!distribution[instrument]) {
+      distribution[instrument] = {};
+    }
+    
+    // Daily exposure amount (evenly distributed)
+    const dailyExposure = Number(totalExposure) / businessDays.length;
+    
+    // Assign to each business day
+    businessDays.forEach(date => {
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      distribution[instrument][dateStr] = dailyExposure;
+    });
+  });
   
-  while (currentDate <= end) {
-    if (isBusinessDay(currentDate)) {
-      businessDayCount++;
-      // Format as YYYY-MM-DD
-      const dateString = currentDate.toISOString().split('T')[0];
-      businessDays.push(dateString);
+  return distribution;
+};
+
+/**
+ * Get all business days (Mon-Fri) between two dates
+ */
+export const getBusinessDaysBetweenDates = (startDate: Date, endDate: Date): Date[] => {
+  const businessDays: Date[] = [];
+  const currentDate = new Date(startDate);
+  
+  // Adjust to start of day
+  currentDate.setHours(0, 0, 0, 0);
+  
+  // Adjust end date to end of day
+  const adjustedEndDate = new Date(endDate);
+  adjustedEndDate.setHours(23, 59, 59, 999);
+  
+  // Loop through days
+  while (currentDate <= adjustedEndDate) {
+    const dayOfWeek = currentDate.getDay();
+    
+    // Add only business days (Mon-Fri: 1-5)
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      businessDays.push(new Date(currentDate));
     }
     
     // Move to next day
     currentDate.setDate(currentDate.getDate() + 1);
   }
   
-  if (businessDayCount === 0) {
-    return distribution; // No business days in the period
-  }
-  
-  // Distribute exposure evenly across business days
-  Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
-    if (!distribution[instrument]) {
-      distribution[instrument] = {};
-    }
-    
-    const dailyExposure = totalExposure / businessDayCount;
-    
-    // Assign the same daily exposure to each business day
-    businessDays.forEach(dateString => {
-      distribution[instrument][dateString] = dailyExposure;
-    });
-  });
-  
-  return distribution;
-}
+  return businessDays;
+};
 
-export function calculateMonthlyPricingDistribution(
-  tokens: FormulaToken[],
-  quantity: number,
-  buySell: 'buy' | 'sell',
-  startDate: Date,
-  endDate: Date
-): Record<string, Record<string, number>> {
-  const distribution: Record<string, Record<string, number>> = {};
-  const instrumentExposures: Record<string, number> = {};
+/**
+ * Check if a date is within a given range (inclusive)
+ */
+export const isDateInRange = (date: Date, startDate: Date, endDate: Date): boolean => {
+  // Set all dates to midnight for consistent comparison
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
   
-  const exposures = calculatePricingExposure(tokens, quantity, buySell);
+  const normalizedStart = new Date(startDate);
+  normalizedStart.setHours(0, 0, 0, 0);
   
-  Object.entries(exposures).forEach(([instrument, value]) => {
-    if (value !== 0) {
-      instrumentExposures[instrument] = value;
-    }
-  });
+  const normalizedEnd = new Date(endDate);
+  normalizedEnd.setHours(0, 0, 0, 0);
   
-  if (Object.keys(instrumentExposures).length === 0) {
-    return distribution;
-  }
-  
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  const businessDaysByMonth = getBusinessDaysByMonth(start, end);
-  
-  Object.keys(instrumentExposures).forEach(instrument => {
-    if (!distribution[instrument]) {
-      distribution[instrument] = {};
-    }
-    
-    const totalExposure = instrumentExposures[instrument];
-    const monthlyValues = distributeValueByBusinessDays(totalExposure, businessDaysByMonth);
-    
-    Object.entries(monthlyValues).forEach(([monthCode, value]) => {
-      distribution[instrument][monthCode] = value;
-    });
-  });
-  
-  return distribution;
-}
+  return normalizedDate >= normalizedStart && normalizedDate <= normalizedEnd;
+};
 
-interface ParseNode {
-  type: string;
-  value?: any;
-  left?: ParseNode;
-  right?: ParseNode;
-  operator?: string;
-}
-
-export function parseFormula(tokens: FormulaToken[]): ParseNode {
-  let position = 0;
+/**
+ * Check if a month overlaps with a date range
+ */
+export const doesMonthOverlapRange = (monthCode: string, startDate: Date, endDate: Date): boolean => {
+  // Parse month code (e.g., "May-24")
+  const [monthName, yearStr] = monthCode.split('-');
+  const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    .findIndex(m => m === monthName);
   
-  function parseExpression(): ParseNode {
-    let left = parseTerm();
-    
-    while (position < tokens.length && 
-           tokens[position].type === 'operator' && 
-           (tokens[position].value === '+' || tokens[position].value === '-')) {
-      const operator = String(tokens[position].value);
-      position++;
-      const right = parseTerm();
-      left = {
-        type: 'binary',
-        operator,
-        left,
-        right
-      };
-    }
-    
-    return left;
+  if (monthIndex === -1 || !yearStr) {
+    console.error('Invalid month code format:', monthCode);
+    return false;
   }
   
-  function parseTerm(): ParseNode {
-    let left = parseFactor();
-    
-    while (position < tokens.length && 
-           tokens[position].type === 'operator' && 
-           (tokens[position].value === '*' || tokens[position].value === '/')) {
-      const operator = String(tokens[position].value);
-      position++;
-      const right = parseFactor();
-      left = {
-        type: 'binary',
-        operator,
-        left,
-        right
-      };
-    }
-    
-    return left;
-  }
+  const year = 2000 + parseInt(yearStr);
   
-  function parseFactor(): ParseNode {
-    if (position < tokens.length && tokens[position].type === 'operator' && tokens[position].value === '-') {
-      position++;
-      const operand = parseFactor();
-      return { type: 'unary', operator: '-', right: operand };
-    }
-    
-    if (position < tokens.length && tokens[position].type === 'openBracket') {
-      position++;
-      const expr = parseExpression();
-      if (position < tokens.length && tokens[position].type === 'closeBracket') {
-        position++;
-      } else {
-        console.error('Expected closing bracket');
-      }
-      return expr;
-    }
-    
-    if (position < tokens.length) {
-      const token = tokens[position];
-      position++;
-      
-      if (token.type === 'instrument') {
-        return { type: 'instrument', value: String(token.value) };
-      } else if (token.type === 'fixedValue' || token.type === 'number') {
-        return { type: 'value', value: Number(token.value) };
-      } else if (token.type === 'percentage') {
-        return { type: 'value', value: Number(token.value) / 100 };
-      }
-    }
-    
-    return { type: 'value', value: 0 };
-  }
+  // Create date range for the month
+  const monthStart = new Date(year, monthIndex, 1);
+  const monthEnd = new Date(year, monthIndex + 1, 0); // Last day of month
   
-  return parseExpression();
-}
+  // Check if ranges overlap
+  return (
+    (monthStart <= endDate && monthEnd >= startDate) ||
+    (startDate <= monthEnd && endDate >= monthStart)
+  );
+};

@@ -10,7 +10,6 @@ import {
 } from '@/utils/exposureCalculation/normalizeExposureData';
 import { ExposureTradeData } from './useExposureFetching';
 import { DateRange } from 'react-day-picker';
-import { isDateInRange, parseISODate } from '@/utils/dateUtils';
 
 export const useExposureCalculation = (
   tradeData: ExposureTradeData | undefined,
@@ -27,63 +26,27 @@ export const useExposureCalculation = (
     // Initialize exposure data structure
     const exposuresByMonth = initializeExposureData(periods, allowedProducts);
     
-    // Calculate physical exposures - reading from pricing_formula.exposures.physical
-    // This was already reading from pricing_formula.exposures.physical so no changes needed
+    // Calculate physical exposures with date range filtering if enabled
     const { physicalExposures, pricingExposures } = 
-      calculatePhysicalExposure(tradeData.physicalTradeLegs, periods);
+      calculatePhysicalExposure(
+        tradeData.physicalTradeLegs, 
+        periods,
+        dateRangeEnabled,
+        dateRange?.from && dateRange?.to ? 
+          { from: dateRange.from, to: dateRange.to || dateRange.from } : 
+          undefined
+      );
     
-    // Calculate paper exposures
+    // Calculate paper exposures with date range filtering if enabled
     const { paperExposures, pricingFromPaperExposures } = 
-      calculatePaperExposure(tradeData.paperTradeLegs, periods);
-    
-    // If date range filtering is enabled, filter the exposures accordingly
-    if (dateRangeEnabled && dateRange?.from && dateRange?.to) {
-      const startDate = dateRange.from;
-      const endDate = dateRange.to || dateRange.from;
-      
-      // Filter and adjust monthly exposures based on daily distributions 
-      // for trades that have daily distribution data
-      if (tradeData.physicalTradeLegs) {
-        tradeData.physicalTradeLegs.forEach(leg => {
-          if (leg.pricing_formula?.dailyDistribution) {
-            // Process each instrument in the daily distribution
-            Object.entries(leg.pricing_formula.dailyDistribution).forEach(([instrument, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
-                // Process each day's exposure
-                Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-                  const date = parseISODate(dateStr);
-                  
-                  // Check if the date is in the specified range
-                  if (isDateInRange(date, startDate, endDate)) {
-                    const month = date.toLocaleDateString('en-US', { month: 'short' }) + '-' + 
-                                  date.getFullYear().toString().slice(2);
-                    
-                    // Only process if this month is in our periods list
-                    if (periods.includes(month) && typeof exposure === 'number') {
-                      // Add this daily exposure to the pricing exposure for this month and instrument
-                      if (!pricingExposures[month]) {
-                        pricingExposures[month] = {};
-                      }
-                      
-                      if (!pricingExposures[month][instrument]) {
-                        pricingExposures[month][instrument] = 0;
-                      }
-                      
-                      pricingExposures[month][instrument] += exposure;
-                    }
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
-      
-      // Similarly, filter paper trade exposures if they have daily distribution data
-      if (tradeData.paperTradeLegs) {
-        // Similar logic for paper trades (if implemented)
-      }
-    }
+      calculatePaperExposure(
+        tradeData.paperTradeLegs, 
+        periods,
+        dateRangeEnabled,
+        dateRange?.from && dateRange?.to ? 
+          { from: dateRange.from, to: dateRange.to || dateRange.from } : 
+          undefined
+      );
     
     // Merge all exposures
     const { allProductsFound, exposuresByMonth: mergedData } = mergeExposureData(
