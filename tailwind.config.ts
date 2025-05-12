@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -15,6 +14,7 @@ export default {
 		'text-white',
 		'text-black',
 		'text-muted-foreground',
+		'bg-orange-600',
 		'bg-orange-800',
 		'bg-green-800',
 		'bg-blue-800',

@@ -26,11 +26,11 @@ export const shouldShowProductInCategory = (product: string, category: string): 
 export const getCategoryColorClass = (category: string): string => {
   switch (category) {
     case 'Physical':
-      return 'bg-blue-600';
+      return 'bg-orange-600';
     case 'Pricing':
-      return 'bg-purple-600';
+      return 'bg-green-800';
     case 'Paper':
-      return 'bg-yellow-600';
+      return 'bg-blue-800';
     case 'Exposure':
       return 'bg-green-600';
     default:
