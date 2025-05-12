@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Table } from "@/components/ui/table";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,6 +45,16 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
   const shouldShowBiodieselTotal = true;
   const shouldShowPricingInstrumentTotal = true;
   const shouldShowTotalRow = true;
+
+  // Log when table data changes to help with debugging
+  useEffect(() => {
+    if (dateRangeEnabled) {
+      console.log('[EXPOSURE TABLE] Rendering with date range filter:', 
+        dateRange?.from?.toLocaleDateString(), 'to', 
+        dateRange?.to?.toLocaleDateString());
+      console.log('[EXPOSURE TABLE] Filtered exposure data count:', exposureData.length);
+    }
+  }, [dateRangeEnabled, dateRange, exposureData]);
 
   if (isLoadingData) {
     return (

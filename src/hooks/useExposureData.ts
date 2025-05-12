@@ -1,10 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useExposurePeriods } from './exposure/useExposurePeriods';
 import { useExposureProductMapping } from './exposure/useExposureProductMapping';
 import { useExposureFetching } from './exposure/useExposureFetching';
 import { useExposureCalculation } from './exposure/useExposureCalculation';
 import { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 export const useExposureData = () => {
   // Get exposure periods (months for the table)
@@ -19,6 +20,10 @@ export const useExposureData = () => {
     allProducts
   } = useExposureProductMapping();
   
+  // Manage date range state
+  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  
   // Get fetched trade data for exposure calculation
   const { 
     tradeData,
@@ -27,11 +32,7 @@ export const useExposureData = () => {
     refetch
   } = useExposureFetching();
   
-  // Manage date range state
-  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  
-  // Calculate exposure data
+  // Calculate exposure data with date filtering
   const { exposureData } = useExposureCalculation(
     tradeData, 
     periods, 
@@ -43,6 +44,7 @@ export const useExposureData = () => {
   // Manage UI state for visible categories
   const [visibleCategories, setVisibleCategories] = useState<string[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   
   // Update selected products when allProducts changes
   useEffect(() => {
@@ -64,13 +66,27 @@ export const useExposureData = () => {
   };
 
   // Toggle date range filtering
-  const toggleDateRangeEnabled = () => {
-    setDateRangeEnabled(prev => !prev);
-    if (dateRangeEnabled) {
-      // When disabling, clear the date range
-      setDateRange(undefined);
+  const toggleDateRangeEnabled = useCallback(() => {
+    setDateRangeEnabled(prev => {
+      const newValue = !prev;
+      if (!newValue && dateRange) {
+        // When disabling, clear the date range
+        setDateRange(undefined);
+        toast.info("Date range filtering disabled");
+      }
+      return newValue;
+    });
+  }, [dateRange]);
+
+  // Handle date range change
+  const handleDateRangeChange = useCallback((range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from && (range?.to || range?.from)) {
+      toast.success("Date range selected", {
+        description: `Filtering exposure from ${range.from.toLocaleDateString()} to ${(range.to || range.from).toLocaleDateString()}`
+      });
     }
-  };
+  }, []);
 
   return {
     periods,
@@ -89,8 +105,10 @@ export const useExposureData = () => {
     PRICING_INSTRUMENT_PRODUCTS: pricingInstrumentProducts,
     ALLOWED_PRODUCTS: allowedProducts,
     dateRangeEnabled,
-    setDateRangeEnabled: toggleDateRangeEnabled,
+    toggleDateRangeEnabled,
     dateRange,
-    setDateRange
+    handleDateRangeChange,
+    selectedMonth,
+    setSelectedMonth
   };
 };

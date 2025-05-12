@@ -1,15 +1,14 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
-import { toast } from 'sonner';
 import { CATEGORY_ORDER } from '@/types/exposure';
 import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
 import { exportExposureToExcel } from '@/utils/export';
-import { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -24,35 +23,14 @@ const ExposurePage = () => {
     instrumentsLoading,
     error,
     refetch,
-    periods
+    periods,
+    dateRangeEnabled,
+    toggleDateRangeEnabled,
+    dateRange,
+    handleDateRangeChange,
+    selectedMonth,
+    setSelectedMonth
   } = useExposureData();
-
-  // State for selected month in business days dropdown
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  
-  // State for date range filtering
-  const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-
-  // Toggle date range filtering
-  const handleToggleDateRange = () => {
-    setDateRangeEnabled(prev => !prev);
-    if (dateRangeEnabled && dateRange) {
-      // When disabling, reset the date range
-      setDateRange(undefined);
-      toast.info("Date range filtering disabled");
-    }
-  };
-
-  // Handle date range change
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    if (range?.from && (range?.to || range?.from)) {
-      toast.success("Date range selected", {
-        description: `Filtering exposure from ${range.from.toLocaleDateString()} to ${(range.to || range.from).toLocaleDateString()}`
-      });
-    }
-  };
 
   // Use the totals hook to calculate all totals and filtered products
   const {
@@ -116,7 +94,7 @@ const ExposurePage = () => {
           selectedMonth={selectedMonth}
           onMonthSelect={setSelectedMonth}
           dateRangeEnabled={dateRangeEnabled}
-          onToggleDateRange={handleToggleDateRange}
+          onToggleDateRange={toggleDateRangeEnabled}
           dateRange={dateRange}
           onDateRangeChange={handleDateRangeChange}
         />

@@ -87,7 +87,7 @@ export const useExposureTotals = (
       totals,
       productTotals
     };
-  }, [exposureData, filteredProducts]);
+  }, [exposureData, filteredProducts, dateRangeFiltered]); // Add dateRangeFiltered as a dependency
 
   // Calculate grand totals for biodiesel and pricing instrument groups
   const groupGrandTotals = useMemo((): GroupTotals => {

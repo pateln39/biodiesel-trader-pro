@@ -39,6 +39,12 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
   dateRange,
   onDateRangeChange
 }) => {
+  // Log when date range controls change to help with debugging
+  React.useEffect(() => {
+    console.log('[EXPOSURE CONTROLS] Date range enabled:', dateRangeEnabled);
+    console.log('[EXPOSURE CONTROLS] Date range:', dateRange);
+  }, [dateRangeEnabled, dateRange]);
+
   return (
     <Card>
       <CardContent className="p-4">
