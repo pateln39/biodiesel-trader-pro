@@ -15,8 +15,21 @@ export const orderVisibleCategories = (
  * Determine if a product should be shown in a given category column
  */
 export const shouldShowProductInCategory = (product: string, category: string): boolean => {
-  // For now, show all products in all categories
-  // This could be refined further based on product type
+  // Products to exclude from Physical section
+  if (category === 'Physical' && (
+    product === 'EFP' || 
+    product === 'ICE GASOIL FUTURES' || 
+    product === 'Platts Diesel'
+  )) {
+    return false;
+  }
+  
+  // Products to exclude from Paper section
+  if (category === 'Paper' && product === 'EFP') {
+    return false;
+  }
+  
+  // Default case - show all other products in all other categories
   return true;
 };
 
