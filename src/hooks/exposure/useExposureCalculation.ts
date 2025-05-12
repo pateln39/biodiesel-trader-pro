@@ -24,6 +24,7 @@ export const useExposureCalculation = (
     const exposuresByMonth = initializeExposureData(periods, allowedProducts);
     
     // Calculate physical exposures - reading from pricing_formula.exposures.physical
+    // This was already reading from pricing_formula.exposures.physical so no changes needed
     const { physicalExposures, pricingExposures } = 
       calculatePhysicalExposure(tradeData.physicalTradeLegs, periods);
     

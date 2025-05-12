@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +50,7 @@ const TradeEntryPage = () => {
       // For physical trades, insert all legs
       const legs = tradeData.legs.map((leg: any) => {
         // Base leg data
-        const legData = {
+        const legData: any = {
           leg_reference: leg.legReference,
           parent_trade_id: parentTradeId,
           buy_sell: leg.buySell,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,7 +73,8 @@ const TradeEditPage = () => {
             let mtmFormula = null;
             
             // Extract mtmTokens from pricing_formula if available
-            if (leg.pricing_formula && leg.pricing_formula.mtmTokens) {
+            if (leg.pricing_formula && typeof leg.pricing_formula === 'object' && leg.pricing_formula.mtmTokens) {
+              // Check if pricing_formula is an object with mtmTokens property
               mtmFormula = {
                 tokens: leg.pricing_formula.mtmTokens,
                 exposures: {
