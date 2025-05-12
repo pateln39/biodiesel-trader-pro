@@ -1,3 +1,4 @@
+
 import { Instrument, OperatorType, ExposureResult } from './common';
 
 // Add PricingInstrument interface that was removed from exposure.ts
@@ -37,7 +38,9 @@ export interface PricingFormula {
   mtmTokens?: FormulaToken[]; // Added mtmTokens property
   exposures: ExposureResult;
   monthlyDistribution?: MonthlyDistribution;
-  dailyDistribution?: DailyDistribution; // New property for daily distribution
+  dailyDistribution?: DailyDistribution; // Property for daily distribution
+  paperDailyDistribution?: Record<string, Record<string, number>>; // New property for paper daily distribution
+  pricingDailyDistribution?: Record<string, Record<string, number>>; // New property for pricing daily distribution
   result?: number;
 }
 
@@ -53,6 +56,8 @@ export type PartialPricingFormula = {
   exposures?: PartialExposureResult;
   monthlyDistribution?: MonthlyDistribution;
   dailyDistribution?: DailyDistribution; // Add to partial type as well
+  paperDailyDistribution?: Record<string, Record<string, number>>; // Add to partial type as well
+  pricingDailyDistribution?: Record<string, Record<string, number>>; // Add to partial type as well
 };
 
 // Define FixedComponent type for formula analysis

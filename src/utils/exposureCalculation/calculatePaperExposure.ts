@@ -268,8 +268,7 @@ export const calculatePaperExposure = (
         }
         
         // Add the daily distributions to MTM formula if they don't exist
-        if (Object.keys(paperDailyDistributions).length > 0 && !mtmFormula.paperDailyDistribution) {
-          mtmFormula.paperDailyDistribution = paperDailyDistributions;
+        if (Object.keys(paperDailyDistributions).length > 0) {
           if (!leg.exposures) {
             leg.exposures = {
               physical: {},
