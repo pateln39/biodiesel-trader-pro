@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TableCell, TableRow } from "@/components/ui/table";
 import { GrandTotals, GroupTotals } from '@/types/exposure';
@@ -94,7 +93,7 @@ const ExposureTableFooter: React.FC<ExposureTableFooterProps> = ({
                 key={`total-pricing-instrument-total`} 
                 className={`text-right text-xs p-1 border-r-[1px] border-black ${groupGrandTotals.pricingInstrumentTotal > 0 ? 'text-green-300' : groupGrandTotals.pricingInstrumentTotal < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-blue-900`}
               >
-                TOTAL PRICING INSTRUMENT
+                {formatValue(groupGrandTotals.pricingInstrumentTotal)}
               </TableCell>
             );
           }
@@ -104,7 +103,7 @@ const ExposureTableFooter: React.FC<ExposureTableFooterProps> = ({
                 key={`total-total-row`} 
                 className={`text-right text-xs p-1 ${groupGrandTotals.totalRow > 0 ? 'text-green-300' : groupGrandTotals.totalRow < 0 ? 'text-red-300' : 'text-gray-300'} font-bold bg-gray-800 ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
               >
-                TOTAL
+                {formatValue(groupGrandTotals.totalRow)}
               </TableCell>
             );
           }
