@@ -8,6 +8,10 @@ import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtil
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 
+// Import these from the paperTrade utility module
+import { getMonthDates } from '@/utils/paperTrade';
+import { countBusinessDays } from '@/utils/dateUtils';
+
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   return function(...args: any[]) {

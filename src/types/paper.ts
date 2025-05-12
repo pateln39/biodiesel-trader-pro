@@ -43,6 +43,8 @@ export interface PaperTradeLeg {
     physical?: Record<string, number>;
     pricing?: Record<string, number>;
     paper?: Record<string, number>;
+    paperDailyDistribution?: Record<string, Record<string, number>>;
+    pricingDailyDistribution?: Record<string, Record<string, number>>;
   };
 }
 

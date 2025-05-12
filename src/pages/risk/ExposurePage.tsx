@@ -10,9 +10,6 @@ import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
 import { exportExposureToExcel } from '@/utils/export';
 import { DateRange } from 'react-day-picker';
-import { updatePaperTradeDistributions } from '@/utils/migrations/updatePaperTradeDistributions';
-import { Button } from '@/components/ui/button';
-import { DatabaseZap } from 'lucide-react';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -36,7 +33,6 @@ const ExposurePage = () => {
   // State for date range filtering
   const [dateRangeEnabled, setDateRangeEnabled] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [isMigrating, setIsMigrating] = useState<boolean>(false);
 
   // Toggle date range filtering
   const handleToggleDateRange = () => {
@@ -97,19 +93,6 @@ const ExposurePage = () => {
       });
     }
   };
-  
-  // Handler for running the paper trade migration
-  const handleMigratePaperTrades = async () => {
-    setIsMigrating(true);
-    try {
-      await updatePaperTradeDistributions();
-      refetch(); // Refresh the data after migration
-    } catch (error) {
-      console.error('Migration error:', error);
-    } finally {
-      setIsMigrating(false);
-    }
-  };
 
   const isLoadingData = isLoading || instrumentsLoading;
 
@@ -122,17 +105,6 @@ const ExposurePage = () => {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exposure Reporting</h1>
-          
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleMigratePaperTrades} 
-            disabled={isMigrating}
-            className="text-xs"
-          >
-            <DatabaseZap className="h-3.5 w-3.5 mr-1" />
-            {isMigrating ? 'Updating...' : 'Update Paper Daily Distribution'}
-          </Button>
         </div>
 
         <ExposureControls 
