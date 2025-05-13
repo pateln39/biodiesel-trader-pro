@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,7 @@ export const MonthSelect: React.FC<MonthSelectProps> = ({
         </SelectContent>
       </Select>
       
-      {businessDays !== null && selectedMonth && <Badge variant="outline" className="bg-slate-100">
+      {businessDays !== null && selectedMonth && <Badge variant="outline" className="bg-blue-800 text-white">
           {businessDays} business days
         </Badge>}
     </div>;
