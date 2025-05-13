@@ -95,6 +95,7 @@ const PaperTradeEditPage = () => {
         }
         
         // Build a complete, correctly normalized exposures object
+        // This now ensures right-side products have negative sign in the exposures
         let exposures = buildCompleteExposuresObject(leg);
         
         let pricingPeriodStart = null;

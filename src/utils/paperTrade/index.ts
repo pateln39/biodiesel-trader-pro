@@ -59,9 +59,8 @@ export const calculateDailyDistribution = (
     return {};
   }
   
-  // Calculate daily exposure
-  const buySellMultiplier = buySell === 'buy' ? 1 : -1;
-  const exposureValue = quantity * buySellMultiplier;
+  // Use the quantity directly, since the sign is already included in the quantity parameter
+  const exposureValue = quantity;
   const dailyExposure = exposureValue / businessDays;
   
   // Create distribution object
@@ -96,7 +95,7 @@ export const getBusinessDaysCount = (startDate: Date, endDate: Date): number => 
   return count;
 };
 
-// New function to normalize trade exposures for paper trade legs
+// Fixed function to normalize trade exposures for paper trade legs
 export const normalizeTradeExposures = (
   leg: any
 ): { paper: Record<string, number>, pricing: Record<string, number> } => {
@@ -118,9 +117,9 @@ export const normalizeTradeExposures = (
   if ((leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') && leg.rightSide) {
     const rightProduct = leg.rightSide.product;
     
-    // Right side quantity must be negative of left side for DIFF/SPREAD, regardless of buy/sell
-    // Note the minus sign here to make it negative
-    const rightQuantity = -(leg.rightSide.quantity || 0);
+    // Right side quantity must be negative of left side for DIFF/SPREAD
+    // Important: Apply the negative sign directly here to ensure storage in database is correct
+    const rightQuantity = -(leg.rightSide.quantity || 0) * buySellMultiplier;
     
     exposures.paper[rightProduct] = rightQuantity;
     exposures.pricing[rightProduct] = rightQuantity;
@@ -149,17 +148,18 @@ export const buildCompleteExposuresObject = (
   if (leg.period) {
     // For each product in paper exposures, calculate daily distribution
     Object.entries(paper).forEach(([product, quantity]) => {
-      // We don't need buySell here since the quantity already has the correct sign
+      // We pass the quantity directly, since it already has the correct sign from normalizeTradeExposures
       const dailyDist = calculateDailyDistribution(leg.period, product, quantity, 'buy');
       
       if (Object.keys(dailyDist).length > 0) {
+        // For paperDailyDistribution
         if (!exposuresObj.paperDailyDistribution[product]) {
           exposuresObj.paperDailyDistribution[product] = {};
         }
         
         Object.assign(exposuresObj.paperDailyDistribution, dailyDist);
         
-        // Use the same daily distribution for pricing
+        // For pricingDailyDistribution
         if (!exposuresObj.pricingDailyDistribution[product]) {
           exposuresObj.pricingDailyDistribution[product] = {};
         }

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -180,6 +181,7 @@ const TradeEntryPage = () => {
   const handlePaperSubmit = async (tradeData: any) => {
     try {
       // Use the createPaperTrade from usePaperTrades hook
+      // This will now properly calculate and store exposures with correct signs
       createPaperTrade(tradeData, {
         onSuccess: () => {
           navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });

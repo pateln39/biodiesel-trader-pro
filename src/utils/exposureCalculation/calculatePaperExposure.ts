@@ -55,66 +55,10 @@ export const calculatePaperExposure = (
     const paperDailyDistributions: Record<string, Record<string, number>> = {};
     const pricingDailyDistributions: Record<string, Record<string, number>> = {};
     
-    // CASE 1: Process using instrument field if available
-    if (leg.instrument) {
-      const { baseProduct, oppositeProduct, relationshipType } = parsePaperInstrument(leg.instrument);
-      
-      if (baseProduct) {
-        if (!paperExposures[month][baseProduct]) {
-          paperExposures[month][baseProduct] = 0;
-        }
-        if (!pricingFromPaperExposures[month][baseProduct]) {
-          pricingFromPaperExposures[month][baseProduct] = 0;
-        }
-        
-        const buySellMultiplier = leg.buy_sell === 'buy' ? 1 : -1;
-        const quantity = (leg.quantity || 0) * buySellMultiplier;
-        
-        paperExposures[month][baseProduct] += quantity;
-        pricingFromPaperExposures[month][baseProduct] += quantity;
-        
-        // Create daily distribution for base product
-        if (businessDaysInMonth > 0) {
-          const dailyExposure = quantity / businessDaysInMonth;
-          
-          Object.keys(businessDaysByDate).forEach(dateStr => {
-            if (!paperDailyDistributions[baseProduct]) paperDailyDistributions[baseProduct] = {};
-            if (!pricingDailyDistributions[baseProduct]) pricingDailyDistributions[baseProduct] = {};
-            
-            paperDailyDistributions[baseProduct][dateStr] = dailyExposure;
-            pricingDailyDistributions[baseProduct][dateStr] = dailyExposure;
-          });
-        }
-        
-        // Handle DIFF or SPREAD relationships
-        if ((relationshipType === 'DIFF' || relationshipType === 'SPREAD') && oppositeProduct) {
-          if (!paperExposures[month][oppositeProduct]) {
-            paperExposures[month][oppositeProduct] = 0;
-          }
-          if (!pricingFromPaperExposures[month][oppositeProduct]) {
-            pricingFromPaperExposures[month][oppositeProduct] = 0;
-          }
-          
-          paperExposures[month][oppositeProduct] += -quantity;
-          pricingFromPaperExposures[month][oppositeProduct] += -quantity;
-          
-          // Create daily distribution for opposite product
-          if (businessDaysInMonth > 0) {
-            const dailyExposure = -quantity / businessDaysInMonth;
-            
-            Object.keys(businessDaysByDate).forEach(dateStr => {
-              if (!paperDailyDistributions[oppositeProduct]) paperDailyDistributions[oppositeProduct] = {};
-              if (!pricingDailyDistributions[oppositeProduct]) pricingDailyDistributions[oppositeProduct] = {};
-              
-              paperDailyDistributions[oppositeProduct][dateStr] = dailyExposure;
-              pricingDailyDistributions[oppositeProduct][dateStr] = dailyExposure;
-            });
-          }
-        }
-      }
-    } 
-    // CASE 2: Process using exposures object if available
-    else if (leg.exposures && typeof leg.exposures === 'object') {
+    // CASE 1 has been removed - no more instrument field parsing
+    
+    // Process using exposures object if available (Primary method now)
+    if (leg.exposures && typeof leg.exposures === 'object') {
       const exposuresData = leg.exposures as Record<string, any>;
       
       // Process physical exposures
@@ -130,7 +74,7 @@ export const calculatePaperExposure = (
           paperExposures[month][canonicalProduct] += exposureValue;
           
           // Create daily distribution for this product
-          if (businessDaysInMonth > 0) {
+          if (businessDaysInMonth > 0 && !exposuresData.paperDailyDistribution) {
             const dailyExposure = exposureValue / businessDaysInMonth;
             
             Object.keys(businessDaysByDate).forEach(dateStr => {
@@ -147,7 +91,7 @@ export const calculatePaperExposure = (
             pricingFromPaperExposures[month][canonicalProduct] += exposureValue;
             
             // Create daily distribution for pricing
-            if (businessDaysInMonth > 0) {
+            if (businessDaysInMonth > 0 && !exposuresData.pricingDailyDistribution) {
               const dailyExposure = exposureValue / businessDaysInMonth;
               
               Object.keys(businessDaysByDate).forEach(dateStr => {
@@ -156,6 +100,20 @@ export const calculatePaperExposure = (
               });
             }
           }
+        });
+      }
+      
+      // Process paper exposures
+      if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+        Object.entries(exposuresData.paper).forEach(([prodName, value]) => {
+          const canonicalProduct = mapProductToCanonical(prodName);
+          
+          if (!paperExposures[month][canonicalProduct]) {
+            paperExposures[month][canonicalProduct] = 0;
+          }
+          
+          const exposureValue = Number(value) || 0;
+          paperExposures[month][canonicalProduct] += exposureValue;
         });
       }
       
@@ -170,31 +128,65 @@ export const calculatePaperExposure = (
           
           const exposureValue = Number(value) || 0;
           pricingFromPaperExposures[month][canonicalInstrument] += exposureValue;
-          
-          // Create daily distribution for this instrument
-          if (businessDaysInMonth > 0) {
-            const dailyExposure = exposureValue / businessDaysInMonth;
-            
-            Object.keys(businessDaysByDate).forEach(dateStr => {
-              if (!pricingDailyDistributions[canonicalInstrument]) pricingDailyDistributions[canonicalInstrument] = {};
-              pricingDailyDistributions[canonicalInstrument][dateStr] = dailyExposure;
-            });
-          }
         });
       }
       
-      // Add the daily distributions to the exposures object if they don't already exist
-      if (Object.keys(paperDailyDistributions).length > 0 && !exposuresData.paperDailyDistribution) {
-        exposuresData.paperDailyDistribution = paperDailyDistributions;
-        leg.exposures.paperDailyDistribution = paperDailyDistributions;
+      // Use the pre-calculated daily distributions if available
+      if (exposuresData.paperDailyDistribution && typeof exposuresData.paperDailyDistribution === 'object') {
+        Object.entries(exposuresData.paperDailyDistribution).forEach(([product, dailyValues]) => {
+          if (typeof dailyValues !== 'object') return;
+          
+          Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return;
+            
+            const monthOfDate = new Date(date).toLocaleString('en-US', { month: 'short' }) + '-' + 
+                              date.getFullYear().toString().slice(2);
+                              
+            if (monthOfDate === month) {
+              const canonicalProduct = mapProductToCanonical(product);
+              
+              if (!paperExposures[month][canonicalProduct]) {
+                paperExposures[month][canonicalProduct] = 0;
+              }
+              
+              // For monthly summary, add up all daily values
+              if (typeof exposure === 'number') {
+                paperExposures[month][canonicalProduct] += exposure;
+              }
+            }
+          });
+        });
       }
       
-      if (Object.keys(pricingDailyDistributions).length > 0 && !exposuresData.pricingDailyDistribution) {
-        exposuresData.pricingDailyDistribution = pricingDailyDistributions;
-        leg.exposures.pricingDailyDistribution = pricingDailyDistributions;
+      if (exposuresData.pricingDailyDistribution && typeof exposuresData.pricingDailyDistribution === 'object') {
+        Object.entries(exposuresData.pricingDailyDistribution).forEach(([product, dailyValues]) => {
+          if (typeof dailyValues !== 'object') return;
+          
+          Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return;
+            
+            const monthOfDate = new Date(date).toLocaleString('en-US', { month: 'short' }) + '-' + 
+                              date.getFullYear().toString().slice(2);
+                              
+            if (monthOfDate === month) {
+              const canonicalProduct = mapProductToCanonical(product);
+              
+              if (!pricingFromPaperExposures[month][canonicalProduct]) {
+                pricingFromPaperExposures[month][canonicalProduct] = 0;
+              }
+              
+              // For monthly summary, add up all daily values
+              if (typeof exposure === 'number') {
+                pricingFromPaperExposures[month][canonicalProduct] += exposure;
+              }
+            }
+          });
+        });
       }
     } 
-    // CASE 3: Process using MTM formula
+    // CASE 2: Process using MTM formula - retained for backward compatibility
     else if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
       const mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
       
@@ -266,25 +258,9 @@ export const calculatePaperExposure = (
             }
           });
         }
-        
-        // Add the daily distributions to MTM formula if they don't exist
-        if (Object.keys(paperDailyDistributions).length > 0) {
-          if (!leg.exposures) {
-            leg.exposures = {
-              physical: {},
-              pricing: {},
-              paper: {},
-              paperDailyDistribution: paperDailyDistributions,
-              pricingDailyDistribution: pricingDailyDistributions
-            };
-          } else if (typeof leg.exposures === 'object') {
-            leg.exposures.paperDailyDistribution = paperDailyDistributions;
-            leg.exposures.pricingDailyDistribution = pricingDailyDistributions;
-          }
-        }
       }
     } 
-    // CASE 4: Simple product-based approach
+    // CASE 3: Simple product-based approach (fallback)
     else {
       const canonicalProduct = mapProductToCanonical(leg.product || 'Unknown');
       
@@ -316,21 +292,21 @@ export const calculatePaperExposure = (
           pricingDailyDistributions[canonicalProduct][dateStr] = dailyExposure;
         });
       }
-      
-      // Add the daily distributions to the leg
-      if (Object.keys(paperDailyDistributions).length > 0) {
-        if (!leg.exposures) {
-          leg.exposures = {
-            physical: {},
-            pricing: {},
-            paper: {},
-            paperDailyDistribution: paperDailyDistributions,
-            pricingDailyDistribution: pricingDailyDistributions
-          };
-        } else if (typeof leg.exposures === 'object') {
-          leg.exposures.paperDailyDistribution = paperDailyDistributions;
-          leg.exposures.pricingDailyDistribution = pricingDailyDistributions;
-        }
+    }
+    
+    // Add the daily distributions to the leg if they don't exist
+    if (Object.keys(paperDailyDistributions).length > 0) {
+      if (!leg.exposures) {
+        leg.exposures = {
+          physical: {},
+          pricing: {},
+          paper: {},
+          paperDailyDistribution: paperDailyDistributions,
+          pricingDailyDistribution: pricingDailyDistributions
+        };
+      } else if (typeof leg.exposures === 'object' && !leg.exposures.paperDailyDistribution) {
+        leg.exposures.paperDailyDistribution = paperDailyDistributions;
+        leg.exposures.pricingDailyDistribution = pricingDailyDistributions;
       }
     }
   }
