@@ -46,6 +46,7 @@ export const useExposureData = () => {
   );
   
   // Manage UI state for visible categories
+  // Update type to ExposureCategory[] explicitly
   const [visibleCategories, setVisibleCategories] = useState<ExposureCategory[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   
@@ -65,6 +66,7 @@ export const useExposureData = () => {
         return prev.filter(cat => cat !== validCategory);
       } else {
         const newCategories = [...prev, validCategory];
+        // Return categories in the order defined by CATEGORY_ORDER
         return CATEGORY_ORDER.filter(cat => newCategories.includes(cat));
       }
     });

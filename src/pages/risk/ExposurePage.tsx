@@ -43,7 +43,7 @@ const ExposurePage = () => {
     allProducts, 
     BIODIESEL_PRODUCTS, 
     PRICING_INSTRUMENT_PRODUCTS,
-    visibleCategories as ExposureCategory[], // Type cast to fix the TypeScript error
+    visibleCategories, // No need for type cast as useExposureData now returns ExposureCategory[]
     CATEGORY_ORDER,
     dateRangeEnabled
   );
@@ -53,7 +53,7 @@ const ExposurePage = () => {
     try {
       exportExposureToExcel({
         exposureData,
-        visibleCategories: orderedVisibleCategories,
+        visibleCategories: orderedVisibleCategories as ExposureCategory[], // Type cast here
         filteredProducts,
         grandTotals,
         groupGrandTotals,
