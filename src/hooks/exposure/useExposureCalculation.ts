@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import { MonthlyExposure } from '@/types/exposure';
 import { calculatePhysicalExposure } from '@/utils/exposureCalculation/calculatePhysicalExposure';
@@ -29,6 +28,8 @@ export const useExposureCalculation = (
       return [];
     }
 
+    console.log('[EXPOSURE] Starting exposure calculation. Date range enabled:', dateRangeEnabled);
+    
     // Initialize exposure data structure
     const exposuresByMonth = initializeExposureData(periods, allowedProducts);
     
@@ -36,9 +37,10 @@ export const useExposureCalculation = (
     const { physicalExposures, pricingExposures } = 
       calculatePhysicalExposure(tradeData.physicalTradeLegs, periods);
     
-    // Calculate paper exposures
+    // Calculate paper exposures - pass the useOnlyDailyDistribution flag
+    // We only use daily distribution when date filtering is enabled
     const { paperExposures, pricingFromPaperExposures } = 
-      calculatePaperExposure(tradeData.paperTradeLegs, periods);
+      calculatePaperExposure(tradeData.paperTradeLegs, periods, false);
     
     // Create a deep copy of the exposures for date filtered results
     let filteredPhysicalExposures = { ...physicalExposures };
@@ -210,7 +212,14 @@ export const useExposureCalculation = (
         });
       }
       
-      // Step 3: Filter paper exposures using daily distributions when available
+      // Step 3: For paper trades, we now calculate filtered exposures using daily distributions
+      console.log("[EXPOSURE] Calculating paper exposures for date filtering using ONLY daily distribution data");
+      
+      // Instead of filtering existing exposures, recalculate them using only daily distributions
+      const { paperExposures: recalculatedPaperExposures, pricingFromPaperExposures: recalculatedPricingExposures } = 
+        calculatePaperExposure(tradeData.paperTradeLegs, periods, true);
+      
+      // Initialize with empty objects
       filteredPaperExposures = {};
       filteredPricingFromPaperExposures = {};
       periods.forEach(period => {
@@ -218,119 +227,20 @@ export const useExposureCalculation = (
         filteredPricingFromPaperExposures[period] = {};
       });
       
-      // Process paper trades
-      if (tradeData.paperTradeLegs) {
-        console.log("[EXPOSURE] Processing paper trades for date range filtering, count:", tradeData.paperTradeLegs.length);
-        
-        tradeData.paperTradeLegs.forEach(leg => {
-          const month = leg.period || leg.trading_period || '';
+      // For each month in our date range, copy the calculated exposures
+      monthsInDateRange.forEach(month => {
+        if (periods.includes(month)) {
+          // Copy paper exposures for this month
+          Object.entries(recalculatedPaperExposures[month] || {}).forEach(([product, value]) => {
+            filteredPaperExposures[month][product] = value;
+          });
           
-          // Skip if month is invalid or not in our periods
-          if (!month || !periods.includes(month)) {
-            return;
-          }
-          
-          console.log(`[EXPOSURE] Processing paper leg: ${leg.leg_reference}, month: ${month}`);
-          
-          // First handle paper exposures
-          // Check if we have daily distribution data for more precise filtering
-          if (leg.exposures?.paperDailyDistribution) {
-            console.log(`[EXPOSURE] Paper leg has paperDailyDistribution: ${leg.leg_reference}`);
-            
-            Object.entries(leg.exposures.paperDailyDistribution).forEach(([product, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
-                Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-                  const date = parseISODate(dateStr);
-                  
-                  // Check if the date is in the date range
-                  if (date && isDateInRange(date, startDate, endDate)) {
-                    // Only process if exposure is a number
-                    if (typeof exposure === 'number') {
-                      const exposureMonth = formatMonthCode(date);
-                      
-                      // Skip if the month is not in our periods
-                      if (!periods.includes(exposureMonth)) {
-                        return;
-                      }
-                      
-                      if (!filteredPaperExposures[exposureMonth]) {
-                        filteredPaperExposures[exposureMonth] = {};
-                      }
-                      
-                      if (!filteredPaperExposures[exposureMonth][product]) {
-                        filteredPaperExposures[exposureMonth][product] = 0;
-                      }
-                      
-                      filteredPaperExposures[exposureMonth][product] += exposure;
-                      console.log(`[EXPOSURE] Adding paper daily exposure: ${exposureMonth}, ${product}, ${exposure}`);
-                    }
-                  }
-                });
-              }
-            });
-          } else if (monthsInDateRange.includes(month)) {
-            // Without daily distribution, use monthly data if the month is in our date range
-            if (paperExposures[month]) {
-              Object.entries(paperExposures[month]).forEach(([product, value]) => {
-                if (!filteredPaperExposures[month]) {
-                  filteredPaperExposures[month] = {};
-                }
-                filteredPaperExposures[month][product] = value;
-                console.log(`[EXPOSURE] Adding monthly paper exposure: ${month}, ${product}, ${value}`);
-              });
-            }
-          }
-          
-          // Now handle pricing exposures from paper trades
-          // Check if we have daily distribution data
-          if (leg.exposures?.pricingDailyDistribution) {
-            console.log(`[EXPOSURE] Paper leg has pricingDailyDistribution: ${leg.leg_reference}`);
-            
-            Object.entries(leg.exposures.pricingDailyDistribution).forEach(([product, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
-                Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-                  const date = parseISODate(dateStr);
-                  
-                  // Check if the date is in the date range
-                  if (date && isDateInRange(date, startDate, endDate)) {
-                    // Only process if exposure is a number
-                    if (typeof exposure === 'number') {
-                      const exposureMonth = formatMonthCode(date);
-                      
-                      // Skip if the month is not in our periods
-                      if (!periods.includes(exposureMonth)) {
-                        return;
-                      }
-                      
-                      if (!filteredPricingFromPaperExposures[exposureMonth]) {
-                        filteredPricingFromPaperExposures[exposureMonth] = {};
-                      }
-                      
-                      if (!filteredPricingFromPaperExposures[exposureMonth][product]) {
-                        filteredPricingFromPaperExposures[exposureMonth][product] = 0;
-                      }
-                      
-                      filteredPricingFromPaperExposures[exposureMonth][product] += exposure;
-                      console.log(`[EXPOSURE] Adding pricing from paper daily exposure: ${exposureMonth}, ${product}, ${exposure}`);
-                    }
-                  }
-                });
-              }
-            });
-          } else if (monthsInDateRange.includes(month)) {
-            // Without daily distribution, use monthly data if the month is in our date range
-            if (pricingFromPaperExposures[month]) {
-              Object.entries(pricingFromPaperExposures[month]).forEach(([product, value]) => {
-                if (!filteredPricingFromPaperExposures[month]) {
-                  filteredPricingFromPaperExposures[month] = {};
-                }
-                filteredPricingFromPaperExposures[month][product] = value;
-                console.log(`[EXPOSURE] Adding monthly pricing from paper exposure: ${month}, ${product}, ${value}`);
-              });
-            }
-          }
-        });
-      }
+          // Copy pricing exposures for this month
+          Object.entries(recalculatedPricingExposures[month] || {}).forEach(([product, value]) => {
+            filteredPricingFromPaperExposures[month][product] = value;
+          });
+        }
+      });
       
       // Additional logging to verify we've processed all types of exposures
       console.log("[EXPOSURE] Date range filtering summary:");
