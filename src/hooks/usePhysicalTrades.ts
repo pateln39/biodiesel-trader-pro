@@ -1,10 +1,12 @@
 
+
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula, createEmptyFormula } from '@/utils/formulaUtils';
 import { createEmptyExposureResult, calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
+import { updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -44,9 +46,28 @@ export const usePhysicalTrades = () => {
         });
       }
       
-      // Calculate daily pricing distribution if we have pricing period dates and tokens
+      // Handle special case for EFP pricing type
       let dailyDistribution = {};
-      if (updatedTrade.formula?.tokens?.length > 0 && 
+      if (updatedTrade.pricingType === 'efp' && !updatedTrade.efpAgreedStatus) {
+        // For EFP trades, use the updateFormulaWithEfpExposure function
+        const efpFormula = updateFormulaWithEfpExposure(
+          validatedFormula,
+          updatedTrade.quantity,
+          updatedTrade.buySell,
+          updatedTrade.efpAgreedStatus,
+          updatedTrade.efpDesignatedMonth
+        );
+        
+        // Extract the dailyDistribution from the EFP formula
+        dailyDistribution = efpFormula.dailyDistribution || {};
+        
+        // Update validatedFormula with EFP-specific values
+        validatedFormula = efpFormula;
+        
+        console.log('[PHYSICAL] Generated EFP daily distribution:', dailyDistribution);
+      }
+      // Calculate daily pricing distribution if standard pricing with tokens
+      else if (updatedTrade.formula?.tokens?.length > 0 && 
           updatedTrade.pricingPeriodStart && 
           updatedTrade.pricingPeriodEnd) {
         

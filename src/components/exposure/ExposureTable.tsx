@@ -117,6 +117,7 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
                     <li>Physical exposures show entire months that overlap with the date range</li>
                     <li>Pricing & paper exposures use daily distributions when available</li>
                     <li>Monthly data is included when a month falls within the date range</li>
+                    <li>EFP exposures are distributed across business days in the designated month</li>
                   </ul>
                 </TooltipContent>
               </Tooltip>
