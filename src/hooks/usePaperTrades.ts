@@ -8,12 +8,57 @@ import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtil
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 
+// Import these from the paperTrade utility module
+import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
+import { countBusinessDays } from '@/utils/dateUtils';
+
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
   return function(...args: any[]) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
   };
+};
+
+// Create a new function to calculate daily distribution
+const calculateDailyDistribution = (
+  period: string,
+  product: string,
+  quantity: number,
+  buySell: BuySell
+): Record<string, Record<string, number>> => {
+  const monthDates = getMonthDates(period);
+  if (!monthDates) {
+    return {};
+  }
+  
+  const { startDate, endDate } = monthDates;
+  const businessDaysInMonth = countBusinessDays(startDate, endDate);
+  
+  if (businessDaysInMonth === 0) {
+    return {};
+  }
+  
+  const dailyDistribution: Record<string, Record<string, number>> = {};
+  const buySellMultiplier = buySell === 'buy' ? 1 : -1;
+  const exposureValue = quantity * buySellMultiplier;
+  const dailyExposure = exposureValue / businessDaysInMonth;
+  
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
+      const dateStr = formatDateForDatabase(currentDate); // Use timezone-safe formatter
+      
+      if (!dailyDistribution[product]) {
+        dailyDistribution[product] = {};
+      }
+      
+      dailyDistribution[product][dateStr] = dailyExposure;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dailyDistribution;
 };
 
 export const createPaperTrade = async (
@@ -51,17 +96,13 @@ export const createPaperTrade = async (
         
         if (tradingPeriod) {
           try {
-            const [month, year] = tradingPeriod.split('-');
-            const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-              .findIndex(m => m === month);
+            // Get the dates using our utility function
+            const dates = getMonthDates(tradingPeriod);
             
-            if (monthIndex !== -1) {
-              const fullYear = 2000 + parseInt(year);
-              
-              pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
-              
-              const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
-              pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+            if (dates) {
+              // Format dates for database storage without timezone issues
+              pricingPeriodStart = formatDateForDatabase(dates.startDate);
+              pricingPeriodEnd = formatDateForDatabase(dates.endDate);
             }
           } catch (e) {
             console.error('Error parsing period date:', e);
@@ -71,23 +112,47 @@ export const createPaperTrade = async (
         const exposures = {
           physical: {},
           paper: {},
-          pricing: {}
+          pricing: {},
+          paperDailyDistribution: {},
+          pricingDailyDistribution: {}
         };
         
         if (leg.relationshipType === 'FP') {
           const canonicalProduct = mapProductToCanonical(leg.product);
           exposures.paper[canonicalProduct] = leg.quantity || 0;
-          
           exposures.pricing[canonicalProduct] = leg.quantity || 0;
+          
+          // Calculate daily distributions
+          if (tradingPeriod) {
+            const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
+            exposures.paperDailyDistribution = paperDaily;
+            exposures.pricingDailyDistribution = paperDaily; // Same for pricing
+          }
         } else if (leg.rightSide) {
           const canonicalLeftProduct = mapProductToCanonical(leg.product);
           const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
           
+          // Left side exposures
           exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-          exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
-          
           exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-          exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
+          
+          // Right side exposures (negative values for DIFF/SPREAD)
+          const rightQuantity = -(leg.rightSide.quantity || 0);
+          exposures.paper[canonicalRightProduct] = rightQuantity;
+          exposures.pricing[canonicalRightProduct] = rightQuantity;
+          
+          // Calculate daily distributions
+          if (tradingPeriod) {
+            // Left product
+            const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
+            Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
+            Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
+            
+            // Right product (negative values for DIFF/SPREAD)
+            const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
+            Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
+            Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
+          }
         }
         
         const instrument = generateInstrumentName(
@@ -427,17 +492,13 @@ export const usePaperTrades = () => {
           
           if (tradingPeriod) {
             try {
-              const [month, year] = tradingPeriod.split('-');
-              const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                .findIndex(m => m === month);
+              // Get the dates using our utility function
+              const dates = getMonthDates(tradingPeriod);
               
-              if (monthIndex !== -1) {
-                const fullYear = 2000 + parseInt(year);
-                
-                pricingPeriodStart = new Date(fullYear, monthIndex, 1).toISOString();
-                
-                const lastDay = new Date(fullYear, monthIndex + 1, 0).getDate();
-                pricingPeriodEnd = new Date(fullYear, monthIndex, lastDay).toISOString();
+              if (dates) {
+                // Format dates for database storage without timezone issues
+                pricingPeriodStart = formatDateForDatabase(dates.startDate);
+                pricingPeriodEnd = formatDateForDatabase(dates.endDate);
               }
             } catch (e) {
               console.error('Error parsing period date:', e);
@@ -447,23 +508,47 @@ export const usePaperTrades = () => {
           const exposures = {
             physical: {},
             paper: {},
-            pricing: {}
+            pricing: {},
+            paperDailyDistribution: {},
+            pricingDailyDistribution: {}
           };
           
           if (leg.relationshipType === 'FP') {
             const canonicalProduct = mapProductToCanonical(leg.product);
             exposures.paper[canonicalProduct] = leg.quantity || 0;
-            
             exposures.pricing[canonicalProduct] = leg.quantity || 0;
+            
+            // Calculate daily distributions
+            if (tradingPeriod) {
+              const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
+              exposures.paperDailyDistribution = paperDaily;
+              exposures.pricingDailyDistribution = paperDaily; // Same for pricing
+            }
           } else if (leg.rightSide) {
             const canonicalLeftProduct = mapProductToCanonical(leg.product);
             const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
             
+            // Left side exposures
             exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.paper[canonicalRightProduct] = leg.rightSide.quantity || 0;
-            
             exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.pricing[canonicalRightProduct] = leg.rightSide.quantity || 0;
+            
+            // Right side exposures (negative values for DIFF/SPREAD)
+            const rightQuantity = -(leg.rightSide.quantity || 0);
+            exposures.paper[canonicalRightProduct] = rightQuantity;
+            exposures.pricing[canonicalRightProduct] = rightQuantity;
+            
+            // Calculate daily distributions
+            if (tradingPeriod) {
+              // Left product
+              const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
+              Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
+              Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
+              
+              // Right product (negative values for DIFF/SPREAD)
+              const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
+              Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
+              Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
+            }
           }
           
           const instrument = generateInstrumentName(

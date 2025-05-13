@@ -1,9 +1,10 @@
+
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula, createEmptyFormula } from '@/utils/formulaUtils';
-import { createEmptyExposureResult, calculateExposures } from '@/utils/formulaCalculation';
+import { createEmptyExposureResult, calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
@@ -43,6 +44,23 @@ export const usePhysicalTrades = () => {
         });
       }
       
+      // Calculate daily pricing distribution if we have pricing period dates and tokens
+      let dailyDistribution = {};
+      if (updatedTrade.formula?.tokens?.length > 0 && 
+          updatedTrade.pricingPeriodStart && 
+          updatedTrade.pricingPeriodEnd) {
+        
+        dailyDistribution = calculateDailyPricingDistribution(
+          updatedTrade.formula.tokens,
+          updatedTrade.quantity,
+          updatedTrade.buySell,
+          new Date(updatedTrade.pricingPeriodStart),
+          new Date(updatedTrade.pricingPeriodEnd)
+        );
+        
+        console.log('[PHYSICAL] Calculated daily distribution:', dailyDistribution);
+      }
+      
       // Consolidate everything into the pricing_formula
       const consolidatedFormula = {
         ...validatedFormula,
@@ -50,7 +68,8 @@ export const usePhysicalTrades = () => {
         exposures: {
           pricing: validatedFormula.exposures?.pricing || {},
           physical: physicalExposures
-        }
+        },
+        dailyDistribution: dailyDistribution // Add the daily distribution
       };
       
       console.log('[PHYSICAL] Consolidated formula:', consolidatedFormula);

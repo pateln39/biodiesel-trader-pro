@@ -8,6 +8,9 @@ export interface ExposureData {
   netExposure: number;
 }
 
+// Add ProductData type which is the same as ExposureData
+export type ProductData = ExposureData;
+
 export interface ProductExposure {
   [product: string]: ExposureData;
 }
@@ -20,20 +23,13 @@ export interface MonthlyExposure {
 
 export interface GrandTotals {
   totals: ExposureData;
-  productTotals: Record<string, ExposureData>;
+  productTotals: Record<string, ProductData>;
 }
 
 export interface GroupTotals {
   biodieselTotal: number;
   pricingInstrumentTotal: number;
   totalRow: number;
-}
-
-export interface PricingInstrument {
-  id: string;
-  display_name: string;
-  instrument_code: string;
-  is_active: boolean;
 }
 
 export const CATEGORY_ORDER = ['Physical', 'Pricing', 'Paper', 'Exposure'] as const;

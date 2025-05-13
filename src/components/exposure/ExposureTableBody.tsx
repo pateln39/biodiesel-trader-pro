@@ -13,6 +13,7 @@ interface ExposureTableBodyProps {
   shouldShowBiodieselTotal: boolean;
   shouldShowPricingInstrumentTotal: boolean;
   shouldShowTotalRow: boolean;
+  dateRangeEnabled?: boolean;
 }
 
 const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
@@ -23,6 +24,7 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
   shouldShowBiodieselTotal,
   shouldShowPricingInstrumentTotal,
   shouldShowTotalRow,
+  dateRangeEnabled
 }) => {
   return (
     <TableBody>

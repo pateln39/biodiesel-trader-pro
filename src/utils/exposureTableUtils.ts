@@ -15,8 +15,21 @@ export const orderVisibleCategories = (
  * Determine if a product should be shown in a given category column
  */
 export const shouldShowProductInCategory = (product: string, category: string): boolean => {
-  // For now, show all products in all categories
-  // This could be refined further based on product type
+  // Products to exclude from Physical section
+  if (category === 'Physical' && (
+    product === 'EFP' || 
+    product === 'ICE GASOIL FUTURES' || 
+    product === 'Platts Diesel'
+  )) {
+    return false;
+  }
+  
+  // Products to exclude from Paper section
+  if (category === 'Paper' && product === 'EFP') {
+    return false;
+  }
+  
+  // Default case - show all other products in all other categories
   return true;
 };
 
@@ -77,3 +90,33 @@ export const getExposureProductBackgroundClass = (
   // Default background for biodiesel products
   return 'bg-green-600';
 };
+
+/**
+ * Calculate business days for a specific month
+ * @param monthCode Month code in format "MMM-YY" (e.g., "May-24")
+ * @returns Number of business days in the month
+ */
+export const calculateBusinessDaysForMonth = (monthCode: string): number => {
+  // Parse the month code to get year and month
+  const [monthStr, yearStr] = monthCode.split('-');
+  
+  // Map month name to month number (0-based)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthIndex = monthNames.findIndex(m => m === monthStr);
+  
+  if (monthIndex === -1) return 0;
+  
+  // Create year number (assuming 20xx for two-digit years)
+  const year = 2000 + parseInt(yearStr);
+  
+  // Create date objects for first and last day of month
+  const firstDayOfMonth = new Date(year, monthIndex, 1);
+  const lastDayOfMonth = new Date(year, monthIndex + 1, 0);
+  
+  // Use the existing utility function to count business days
+  return countBusinessDays(firstDayOfMonth, lastDayOfMonth);
+};
+
+// Import the countBusinessDays function from dateUtils to avoid duplicating code
+import { countBusinessDays } from '@/utils/dateUtils';
+

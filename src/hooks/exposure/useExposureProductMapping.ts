@@ -3,7 +3,9 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { mapProductToCanonical } from '@/utils/productMapping';
-import { PricingInstrument } from '@/types/exposure';
+// Import PricingInstrument from types/index which re-exports it from the correct module
+// instead of from types/exposure which no longer has this type
+import { PricingInstrument } from '@/types';
 
 export const useExposureProductMapping = () => {
   // Fetch pricing instruments

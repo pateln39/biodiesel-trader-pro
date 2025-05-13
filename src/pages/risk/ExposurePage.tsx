@@ -2,13 +2,13 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
-import { toast } from 'sonner';
 import { CATEGORY_ORDER } from '@/types/exposure';
 import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
 import ExposureTable from '@/components/exposure/ExposureTable';
 import { exportExposureToExcel } from '@/utils/export';
+import { toast } from 'sonner';
 
 const ExposurePage = () => {
   // Use the custom hook to handle data fetching and state
@@ -23,6 +23,13 @@ const ExposurePage = () => {
     instrumentsLoading,
     error,
     refetch,
+    periods,
+    dateRangeEnabled,
+    toggleDateRangeEnabled,
+    dateRange,
+    handleDateRangeChange,
+    selectedMonth,
+    handleMonthSelect
   } = useExposureData();
 
   // Use the totals hook to calculate all totals and filtered products
@@ -37,7 +44,8 @@ const ExposurePage = () => {
     BIODIESEL_PRODUCTS, 
     PRICING_INSTRUMENT_PRODUCTS,
     visibleCategories,
-    CATEGORY_ORDER
+    CATEGORY_ORDER,
+    dateRangeEnabled
   );
 
   // Handler for exporting to Excel
@@ -82,6 +90,13 @@ const ExposurePage = () => {
           toggleCategory={toggleCategory}
           exposureCategories={CATEGORY_ORDER}
           onExportExcel={handleExportExcel}
+          availableMonths={periods}
+          selectedMonth={selectedMonth}
+          onMonthSelect={handleMonthSelect}
+          dateRangeEnabled={dateRangeEnabled}
+          onToggleDateRange={toggleDateRangeEnabled}
+          dateRange={dateRange}
+          onDateRangeChange={handleDateRangeChange}
         />
 
         <ExposureTable
@@ -94,6 +109,8 @@ const ExposurePage = () => {
           isLoadingData={isLoadingData}
           error={error as Error}
           refetch={refetch}
+          dateRangeEnabled={dateRangeEnabled}
+          dateRange={dateRange}
         />
       </div>
     </Layout>
