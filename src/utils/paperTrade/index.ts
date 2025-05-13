@@ -1,4 +1,11 @@
 
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
 // Re-export all functions and types for backward compatibility
 export * from './mtmTypes';
 export * from './dateUtils';
@@ -59,7 +66,7 @@ export const calculateDailyDistribution = (
     return {};
   }
   
-  // Use the quantity directly, since the sign is already included in the quantity parameter
+  // Use the quantity directly - preserving its sign
   const exposureValue = quantity;
   const dailyExposure = exposureValue / businessDays;
   
@@ -96,6 +103,7 @@ export const getBusinessDaysCount = (startDate: Date, endDate: Date): number => 
 };
 
 // Fixed function to normalize trade exposures for paper trade legs
+// Now correctly preserves the sign of right-side quantities
 export const normalizeTradeExposures = (
   leg: any
 ): { paper: Record<string, number>, pricing: Record<string, number> } => {
@@ -117,9 +125,9 @@ export const normalizeTradeExposures = (
   if ((leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') && leg.rightSide) {
     const rightProduct = leg.rightSide.product;
     
-    // Right side quantity must be negative of left side for DIFF/SPREAD
-    // Important: Apply the negative sign directly here to ensure storage in database is correct
-    const rightQuantity = -(leg.rightSide.quantity || 0) * buySellMultiplier;
+    // Important: Use the rightSide quantity directly - it already has the correct sign
+    // The UI component already sets it as negative of left side
+    const rightQuantity = leg.rightSide.quantity * buySellMultiplier;
     
     exposures.paper[rightProduct] = rightQuantity;
     exposures.pricing[rightProduct] = rightQuantity;
@@ -148,23 +156,21 @@ export const buildCompleteExposuresObject = (
   if (leg.period) {
     // For each product in paper exposures, calculate daily distribution
     Object.entries(paper).forEach(([product, quantity]) => {
-      // We pass the quantity directly, since it already has the correct sign from normalizeTradeExposures
+      // We pass the quantity directly since it already has the correct sign
       const dailyDist = calculateDailyDistribution(leg.period, product, quantity, 'buy');
       
       if (Object.keys(dailyDist).length > 0) {
         // For paperDailyDistribution
-        if (!exposuresObj.paperDailyDistribution[product]) {
-          exposuresObj.paperDailyDistribution[product] = {};
-        }
-        
-        Object.assign(exposuresObj.paperDailyDistribution, dailyDist);
+        exposuresObj.paperDailyDistribution = {
+          ...exposuresObj.paperDailyDistribution,
+          ...dailyDist
+        };
         
         // For pricingDailyDistribution
-        if (!exposuresObj.pricingDailyDistribution[product]) {
-          exposuresObj.pricingDailyDistribution[product] = {};
-        }
-        
-        Object.assign(exposuresObj.pricingDailyDistribution, dailyDist);
+        exposuresObj.pricingDailyDistribution = {
+          ...exposuresObj.pricingDailyDistribution,
+          ...dailyDist
+        };
       }
     });
   }

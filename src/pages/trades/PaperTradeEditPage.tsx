@@ -94,8 +94,7 @@ const PaperTradeEditPage = () => {
           mtmFormula.rightSide = leg.rightSide;
         }
         
-        // Build a complete, correctly normalized exposures object
-        // This now ensures right-side products have negative sign in the exposures
+        // Build a complete, correctly normalized exposures object using our fixed function
         let exposures = buildCompleteExposuresObject(leg);
         
         let pricingPeriodStart = null;
@@ -115,6 +114,8 @@ const PaperTradeEditPage = () => {
             console.error('Error parsing period date:', e);
           }
         }
+        
+        console.log('[PAPER_EDIT] Updated exposures for leg:', exposures);
         
         // Create each leg
         const legData = {

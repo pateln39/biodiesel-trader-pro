@@ -180,8 +180,10 @@ const TradeEntryPage = () => {
   
   const handlePaperSubmit = async (tradeData: any) => {
     try {
-      // Use the createPaperTrade from usePaperTrades hook
-      // This will now properly calculate and store exposures with correct signs
+      console.log('[PAPER_SUBMIT] Creating paper trade with data:', tradeData);
+      
+      // This will now use our fixed buildCompleteExposuresObject function
+      // which correctly preserves the sign of right-side quantities
       createPaperTrade(tradeData, {
         onSuccess: () => {
           navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });

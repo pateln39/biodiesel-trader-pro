@@ -463,8 +463,10 @@ export const usePaperTrades = () => {
             }
           }
           
-          // Build properly normalized exposures object
+          // Build properly normalized exposures object using our fixed function
           const exposures = buildCompleteExposuresObject(leg);
+          
+          console.log(`[PAPER] Built exposures for leg ${i}:`, exposures);
           
           const instrument = generateInstrumentName(
             leg.product, 
