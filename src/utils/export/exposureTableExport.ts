@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ExposureExportParams } from './exposureExportTypes';
@@ -24,15 +25,6 @@ export const exportExposureToExcel = ({
 }: ExposureExportParams) => {
   try {
     console.log('[EXPORT] Starting exposure data export');
-    const {
-      exposureData,
-      visibleCategories,
-      filteredProducts,
-      grandTotals,
-      groupGrandTotals,
-      biodieselProducts,
-      pricingInstrumentProducts
-    } = params;
     
     // Create a new workbook
     const workbook = XLSX.utils.book_new();
