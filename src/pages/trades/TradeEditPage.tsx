@@ -23,6 +23,7 @@ import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDateForStorage } from '@/utils/dateUtils';
 import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
+import { updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
 
 // Helper function to safely access nested object properties
 const safeGetNestedProperty = (obj: any, path: string[]): any => {
@@ -33,7 +34,7 @@ const safeGetNestedProperty = (obj: any, path: string[]): any => {
 
 // Helper function to check if an object has a specific property
 const hasProperty = (obj: any, prop: string): boolean => {
-  return obj && typeof obj === 'object' && prop in obj;
+  return obj && typeof obj === 'object' && prop in obj && obj.hasOwnProperty(prop);
 };
 
 // Helper function to safely check and extract mtmTokens from formula
@@ -239,9 +240,27 @@ const TradeEditPage = () => {
           physicalExposures = mtmExposures.physical || {};
         }
         
-        // Calculate daily distribution if we have pricing period dates and formula tokens
+        // Calculate daily distribution based on pricing type
         let dailyDistribution = {};
-        if (leg.formula && 
+        
+        if (leg.pricingType === 'efp') {
+          // For EFP trades, generate the formula with daily distribution included
+          const efpFormula = updateFormulaWithEfpExposure(
+            leg.formula,
+            leg.quantity,
+            leg.buySell,
+            leg.efpAgreedStatus,
+            leg.efpDesignatedMonth
+          );
+          
+          dailyDistribution = efpFormula.dailyDistribution || {};
+          
+          // Update the formula with EFP-specific values
+          leg.formula = efpFormula;
+          
+          console.log('[TRADE EDIT] Generated EFP daily distribution:', dailyDistribution);
+        }
+        else if (leg.formula && 
             leg.formula.tokens && 
             leg.formula.tokens.length > 0 && 
             leg.pricingPeriodStart && 

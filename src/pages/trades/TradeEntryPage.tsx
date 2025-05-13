@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
 import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
+import { buildCompleteExposuresObject } from '@/utils/paperTrade';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -87,9 +88,23 @@ const TradeEntryPage = () => {
           physicalExposures = mtmExposures.physical || {};
         }
         
-        // Calculate daily distribution if we have pricing period dates and formula tokens
+        // Calculate daily distribution based on pricing type
         let dailyDistribution = {};
-        if (leg.formula && 
+        
+        if (leg.pricingType === 'efp' && !leg.efpAgreedStatus) {
+          // For EFP trades, calculate daily distribution based on the designated month
+          const exposureDirection = leg.buySell === 'buy' ? -1 : 1;
+          const exposureValue = leg.quantity * exposureDirection;
+          
+          const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
+          // We're using the updated formula, which should already have the dailyDistribution
+          if (leg.formula && leg.formula.dailyDistribution && leg.formula.dailyDistribution[instrumentKey]) {
+            dailyDistribution = {
+              [instrumentKey]: leg.formula.dailyDistribution[instrumentKey]
+            };
+          }
+        }
+        else if (leg.formula && 
             leg.formula.tokens && 
             leg.formula.tokens.length > 0 && 
             leg.pricingPeriodStart && 
@@ -165,7 +180,10 @@ const TradeEntryPage = () => {
   
   const handlePaperSubmit = async (tradeData: any) => {
     try {
-      // Use the createPaperTrade from usePaperTrades hook
+      console.log('[PAPER_SUBMIT] Creating paper trade with data:', tradeData);
+      
+      // This will now use our fixed buildCompleteExposuresObject function
+      // which correctly preserves the sign of right-side quantities
       createPaperTrade(tradeData, {
         onSuccess: () => {
           navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });

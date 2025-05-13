@@ -7,6 +7,7 @@ import { PaperTrade, PaperTradeLeg } from '@/types/paper';
 import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
+import { buildCompleteExposuresObject } from '@/utils/paperTrade';
 
 // Import these from the paperTrade utility module
 import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
@@ -109,51 +110,8 @@ export const createPaperTrade = async (
           }
         }
         
-        const exposures = {
-          physical: {},
-          paper: {},
-          pricing: {},
-          paperDailyDistribution: {},
-          pricingDailyDistribution: {}
-        };
-        
-        if (leg.relationshipType === 'FP') {
-          const canonicalProduct = mapProductToCanonical(leg.product);
-          exposures.paper[canonicalProduct] = leg.quantity || 0;
-          exposures.pricing[canonicalProduct] = leg.quantity || 0;
-          
-          // Calculate daily distributions
-          if (tradingPeriod) {
-            const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
-            exposures.paperDailyDistribution = paperDaily;
-            exposures.pricingDailyDistribution = paperDaily; // Same for pricing
-          }
-        } else if (leg.rightSide) {
-          const canonicalLeftProduct = mapProductToCanonical(leg.product);
-          const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
-          
-          // Left side exposures
-          exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-          exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-          
-          // Right side exposures (negative values for DIFF/SPREAD)
-          const rightQuantity = -(leg.rightSide.quantity || 0);
-          exposures.paper[canonicalRightProduct] = rightQuantity;
-          exposures.pricing[canonicalRightProduct] = rightQuantity;
-          
-          // Calculate daily distributions
-          if (tradingPeriod) {
-            // Left product
-            const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
-            Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
-            Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
-            
-            // Right product (negative values for DIFF/SPREAD)
-            const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
-            Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
-            Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
-          }
-        }
+        // Build properly normalized exposures object
+        const exposures = buildCompleteExposuresObject(leg);
         
         const instrument = generateInstrumentName(
           leg.product, 
@@ -192,7 +150,7 @@ export const createPaperTrade = async (
           pricing_period_start: pricingPeriodStart,
           pricing_period_end: pricingPeriodEnd,
           instrument: instrument,
-          exposures: JSON.parse(JSON.stringify(exposures))
+          exposures: exposures
         };
         
         const { error: legError } = await supabase
@@ -505,51 +463,10 @@ export const usePaperTrades = () => {
             }
           }
           
-          const exposures = {
-            physical: {},
-            paper: {},
-            pricing: {},
-            paperDailyDistribution: {},
-            pricingDailyDistribution: {}
-          };
+          // Build properly normalized exposures object using our fixed function
+          const exposures = buildCompleteExposuresObject(leg);
           
-          if (leg.relationshipType === 'FP') {
-            const canonicalProduct = mapProductToCanonical(leg.product);
-            exposures.paper[canonicalProduct] = leg.quantity || 0;
-            exposures.pricing[canonicalProduct] = leg.quantity || 0;
-            
-            // Calculate daily distributions
-            if (tradingPeriod) {
-              const paperDaily = calculateDailyDistribution(tradingPeriod, canonicalProduct, leg.quantity || 0, leg.buySell);
-              exposures.paperDailyDistribution = paperDaily;
-              exposures.pricingDailyDistribution = paperDaily; // Same for pricing
-            }
-          } else if (leg.rightSide) {
-            const canonicalLeftProduct = mapProductToCanonical(leg.product);
-            const canonicalRightProduct = mapProductToCanonical(leg.rightSide.product);
-            
-            // Left side exposures
-            exposures.paper[canonicalLeftProduct] = leg.quantity || 0;
-            exposures.pricing[canonicalLeftProduct] = leg.quantity || 0;
-            
-            // Right side exposures (negative values for DIFF/SPREAD)
-            const rightQuantity = -(leg.rightSide.quantity || 0);
-            exposures.paper[canonicalRightProduct] = rightQuantity;
-            exposures.pricing[canonicalRightProduct] = rightQuantity;
-            
-            // Calculate daily distributions
-            if (tradingPeriod) {
-              // Left product
-              const leftPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalLeftProduct, leg.quantity || 0, leg.buySell);
-              Object.assign(exposures.paperDailyDistribution, leftPaperDaily);
-              Object.assign(exposures.pricingDailyDistribution, leftPaperDaily);
-              
-              // Right product (negative values for DIFF/SPREAD)
-              const rightPaperDaily = calculateDailyDistribution(tradingPeriod, canonicalRightProduct, rightQuantity, 'buy');
-              Object.assign(exposures.paperDailyDistribution, rightPaperDaily);
-              Object.assign(exposures.pricingDailyDistribution, rightPaperDaily);
-            }
-          }
+          console.log(`[PAPER] Built exposures for leg ${i}:`, exposures);
           
           const instrument = generateInstrumentName(
             leg.product, 
@@ -588,7 +505,7 @@ export const usePaperTrades = () => {
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
             instrument: instrument,
-            exposures: JSON.parse(JSON.stringify(exposures))
+            exposures: exposures
           };
           
           const { error: legError } = await supabase
