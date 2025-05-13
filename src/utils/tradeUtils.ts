@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { supabase } from '@/integrations/supabase/client';
@@ -220,8 +219,8 @@ export const copyTradeLegAsSpot = async (tradeId: string, legId: string): Promis
         counterparty: parentTradeData.counterparty,
         trade_type: 'physical',
         physical_type: 'spot', // Always set to spot when copying a single leg
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -250,8 +249,8 @@ export const copyTradeLegAsSpot = async (tradeId: string, legId: string): Promis
         ...legDataToCopy,
         parent_trade_id: newParentTradeData.id,
         leg_reference: newLegReference,
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -312,8 +311,8 @@ export const copyEntireTrade = async (tradeId: string): Promise<string | null> =
         counterparty: parentTradeData.counterparty,
         trade_type: parentTradeData.trade_type,
         physical_type: parentTradeData.physical_type, // Preserve term/spot type
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -341,8 +340,8 @@ export const copyEntireTrade = async (tradeId: string): Promise<string | null> =
         ...legDataToCopy,
         parent_trade_id: newParentTradeData.id,
         leg_reference: newLegReference,
-        created_at: new Date(),
-        updated_at: new Date(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
     });
     
