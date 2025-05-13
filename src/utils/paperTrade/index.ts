@@ -95,3 +95,79 @@ export const getBusinessDaysCount = (startDate: Date, endDate: Date): number => 
   
   return count;
 };
+
+// New function to normalize trade exposures for paper trade legs
+export const normalizeTradeExposures = (
+  leg: any
+): { paper: Record<string, number>, pricing: Record<string, number> } => {
+  const exposures = {
+    paper: {} as Record<string, number>,
+    pricing: {} as Record<string, number>
+  };
+  
+  const buySellMultiplier = leg.buySell === 'buy' ? 1 : -1;
+  
+  // Process the main product (left side)
+  const leftProduct = leg.product;
+  const leftQuantity = (leg.quantity || 0) * buySellMultiplier;
+  
+  exposures.paper[leftProduct] = leftQuantity;
+  exposures.pricing[leftProduct] = leftQuantity;
+  
+  // Process right side for DIFF or SPREAD relationships
+  if ((leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') && leg.rightSide) {
+    const rightProduct = leg.rightSide.product;
+    
+    // Right side quantity must be negative of left side for DIFF/SPREAD, regardless of buy/sell
+    // Note the minus sign here to make it negative
+    const rightQuantity = -(leg.rightSide.quantity || 0);
+    
+    exposures.paper[rightProduct] = rightQuantity;
+    exposures.pricing[rightProduct] = rightQuantity;
+  }
+  
+  return exposures;
+};
+
+// Add a function to calculate and return complete exposures object
+export const buildCompleteExposuresObject = (
+  leg: any
+): Record<string, any> => {
+  // Get normalized paper and pricing exposures
+  const { paper, pricing } = normalizeTradeExposures(leg);
+  
+  // Create the exposures object
+  const exposuresObj = {
+    physical: {}, // Always empty for paper trades
+    paper,
+    pricing,
+    paperDailyDistribution: {},
+    pricingDailyDistribution: {}
+  };
+  
+  // Calculate daily distributions if period is available
+  if (leg.period) {
+    // For each product in paper exposures, calculate daily distribution
+    Object.entries(paper).forEach(([product, quantity]) => {
+      // We don't need buySell here since the quantity already has the correct sign
+      const dailyDist = calculateDailyDistribution(leg.period, product, quantity, 'buy');
+      
+      if (Object.keys(dailyDist).length > 0) {
+        if (!exposuresObj.paperDailyDistribution[product]) {
+          exposuresObj.paperDailyDistribution[product] = {};
+        }
+        
+        Object.assign(exposuresObj.paperDailyDistribution, dailyDist);
+        
+        // Use the same daily distribution for pricing
+        if (!exposuresObj.pricingDailyDistribution[product]) {
+          exposuresObj.pricingDailyDistribution[product] = {};
+        }
+        
+        Object.assign(exposuresObj.pricingDailyDistribution, dailyDist);
+      }
+    });
+  }
+  
+  return exposuresObj;
+};

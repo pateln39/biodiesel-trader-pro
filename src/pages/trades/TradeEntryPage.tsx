@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
 import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
+import { buildCompleteExposuresObject } from '@/utils/paperTrade';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();

@@ -11,7 +11,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
+import { getMonthDates, formatDateForDatabase, buildCompleteExposuresObject } from '@/utils/paperTrade';
 
 const PaperTradeEditPage = () => {
   const { id } = useParams();
@@ -88,31 +88,14 @@ const PaperTradeEditPage = () => {
       
       // 4. Insert all legs from the form
       for (const leg of updatedTrade.legs) {
-        // Make sure rightSide data is properly formatted for the database
+        // Create properly structured mtmFormula with rightSide if needed
         let mtmFormula = leg.mtmFormula || {};
         if (leg.rightSide && leg.relationshipType !== 'FP') {
           mtmFormula.rightSide = leg.rightSide;
         }
         
-        // Make sure exposures are properly updated
-        let exposures = leg.exposures || { physical: {}, pricing: {}, paper: {} };
-        
-        // Always ensure physical is an empty object for paper trades
-        exposures.physical = {};
-        
-        if (leg.relationshipType === 'FP' && leg.product) {
-          exposures.paper = { [leg.product]: leg.quantity };
-          exposures.pricing = { [leg.product]: leg.quantity };
-        } else if (leg.rightSide && leg.product) {
-          exposures.paper = { 
-            [leg.product]: leg.quantity,
-            [leg.rightSide.product]: leg.rightSide.quantity 
-          };
-          exposures.pricing = { 
-            [leg.product]: leg.quantity,
-            [leg.rightSide.product]: leg.rightSide.quantity 
-          };
-        }
+        // Build a complete, correctly normalized exposures object
+        let exposures = buildCompleteExposuresObject(leg);
         
         let pricingPeriodStart = null;
         let pricingPeriodEnd = null;
