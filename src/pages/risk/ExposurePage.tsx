@@ -2,7 +2,7 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
-import { CATEGORY_ORDER } from '@/types/exposure';
+import { CATEGORY_ORDER, ExposureCategory } from '@/types/exposure';
 import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
@@ -43,7 +43,7 @@ const ExposurePage = () => {
     allProducts, 
     BIODIESEL_PRODUCTS, 
     PRICING_INSTRUMENT_PRODUCTS,
-    visibleCategories,
+    visibleCategories as ExposureCategory[], // Type cast to fix the TypeScript error
     CATEGORY_ORDER,
     dateRangeEnabled
   );
