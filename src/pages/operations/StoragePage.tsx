@@ -1,47 +1,43 @@
 import React from 'react';
 import Layout from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Filter, Thermometer, Database, Plus, Wrench } from 'lucide-react';
+import { Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useInventoryState } from '@/hooks/useInventoryState';
-import { Button } from '@/components/ui/button';
+import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import EditableField from '@/components/operations/storage/EditableField';
 import EditableNumberField from '@/components/operations/storage/EditableNumberField';
 import EditableDropdownField from '@/components/operations/storage/EditableDropdownField';
-import ProductToken from '@/components/operations/storage/ProductToken';
 import ProductLegend from '@/components/operations/storage/ProductLegend';
 import { useTerminals } from '@/hooks/useTerminals';
 import { useTanks, Tank } from '@/hooks/useTanks';
 import TerminalTabs from '@/components/operations/storage/TerminalTabs';
 import TankForm from '@/components/operations/storage/TankForm';
+import PumpOverFormDialog from '@/components/operations/storage/PumpOverFormDialog';
+import StockReconciliationFormDialog from '@/components/operations/storage/StockReconciliationFormDialog';
+import DeletePumpOverDialog from '@/components/operations/storage/DeletePumpOverDialog';
+import DeleteStockReconciliationDialog from '@/components/operations/storage/DeleteStockReconciliationDialog';
+import DeleteStorageMovementDialog from '@/components/operations/storage/DeleteStorageMovementDialog';
 import { useTankCalculations } from '@/hooks/useTankCalculations';
 import { Badge } from '@/components/ui/badge';
 import SortableAssignmentList from '@/components/operations/storage/SortableAssignmentList';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
-import { 
-  cleanupOrphanedTankMovements, 
-  initializeAssignmentSortOrder, 
-  fixDuplicateSortOrders 
-} from '@/utils/cleanupUtils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import StorageHeader from '@/components/operations/storage/StorageHeader';
+import StorageCardHeader from '@/components/operations/storage/StorageCardHeader';
 
 const stickyColumnWidths = {
   counterparty: 110,
   tradeRef: 80,
   bargeName: 90,
+  bargeImo: 85,
   movementDate: 75,
   nominationDate: 75,
   customs: 75,
   sustainability: 90,
   comments: 100,
   quantity: 70,
+  actions: 50,  // New column for actions
 };
 
 const totalStickyWidth = Object.values(stickyColumnWidths).reduce((sum, width) => sum + width, 0);
@@ -60,6 +56,7 @@ const truncatedHeaders = {
   counterparty: "Counterparty",
   tradeRef: "Trade Ref",
   bargeName: "Barge",
+  bargeImo: "IMO",
   movementDate: "Move Date",
   nominationDate: "Nom. Valid",
   customs: "Customs",
@@ -78,8 +75,23 @@ const truncatedHeaders = {
 const StoragePage = () => {
   const [selectedTerminalId, setSelectedTerminalId] = React.useState<string>();
   const [isTankFormOpen, setIsTankFormOpen] = React.useState(false);
+  const [isPumpOverFormOpen, setIsPumpOverFormOpen] = React.useState(false);
+  const [isStockReconciliationFormOpen, setIsStockReconciliationFormOpen] = React.useState(false);
   const [isNewTerminal, setIsNewTerminal] = React.useState(false);
   const [selectedTank, setSelectedTank] = React.useState<Tank>();
+  // Add state for pump over deletion
+  const [pumpOverToDelete, setPumpOverToDelete] = React.useState<{
+    assignmentId: string;
+    movementId: string;
+    quantity: number;
+  } | null>(null);
+  // Add state for stock reconciliation deletion
+  const [stockReconciliationToDelete, setStockReconciliationToDelete] = React.useState<{
+    assignmentId: string;
+    movementId: string;
+  } | null>(null);
+  // Add state for storage movement deletion
+  const [storageMovementToDelete, setStorageMovementToDelete] = React.useState<string | null>(null);
 
   const { terminals } = useTerminals();
   const { tanks, refetchTanks } = useTanks(selectedTerminalId);
@@ -97,6 +109,11 @@ const StoragePage = () => {
     updateTankHeating,
     updateTankCapacity,
     updateTankNumber,
+    createPumpOver,
+    deletePumpOver,
+    deleteStorageMovement,
+    createStockReconciliation,
+    deleteStockReconciliation,
   } = useInventoryState(selectedTerminalId);
 
   React.useEffect(() => {
@@ -121,17 +138,81 @@ const StoragePage = () => {
     refetchTanks();
   };
 
-  const handleMaintenance = async () => {
+  const handlePumpOverClick = () => {
+    setIsPumpOverFormOpen(true);
+  };
+
+  const handleStockReconciliationClick = () => {
+    setIsStockReconciliationFormOpen(true);
+  };
+
+  const handlePumpOverSubmit = (quantity: number, comment?: string) => {
     if (selectedTerminalId) {
-      await cleanupOrphanedTankMovements(selectedTerminalId);
-      await initializeAssignmentSortOrder(selectedTerminalId);
-      await fixDuplicateSortOrders(selectedTerminalId);
-      refetchTanks();
+      createPumpOver(quantity, comment);
+    }
+  };
+
+  const handleStockReconciliationSubmit = (quantity: number, comment: string) => {
+    if (selectedTerminalId) {
+      createStockReconciliation(quantity, comment);
+    }
+  };
+
+  const handleDeletePumpOver = (assignmentId: string, movementId: string) => {
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (assignment) {
+      setPumpOverToDelete({
+        assignmentId,
+        movementId,
+        quantity: assignment.quantity_mt
+      });
+    }
+  };
+
+  const handleDeleteStockReconciliation = (assignmentId: string, movementId: string) => {
+    setStockReconciliationToDelete({
+      assignmentId,
+      movementId
+    });
+  };
+
+  const handleDeleteStorageMovement = (assignmentId: string) => {
+    setStorageMovementToDelete(assignmentId);
+  };
+
+  const confirmDeletePumpOver = () => {
+    if (pumpOverToDelete) {
+      deletePumpOver(pumpOverToDelete.assignmentId, pumpOverToDelete.movementId);
+    }
+  };
+
+  const confirmDeleteStockReconciliation = () => {
+    if (stockReconciliationToDelete) {
+      deleteStockReconciliation(
+        stockReconciliationToDelete.assignmentId, 
+        stockReconciliationToDelete.movementId
+      );
+    }
+  };
+
+  const confirmDeleteStorageMovement = () => {
+    if (storageMovementToDelete) {
+      deleteStorageMovement(storageMovementToDelete);
     }
   };
 
   const { calculateTankUtilization, calculateSummary } = useTankCalculations(tanks, tankMovements);
   const summaryCalculator = calculateSummary();
+  
+  // Get assignments from movements for deletion functionality
+  const assignments = React.useMemo(() => {
+    return movements.map(movement => ({
+      id: movement.assignment_id,
+      quantity_mt: movement.assignment_quantity || 0,
+      movement_id: movement.id,
+      comments: movement.terminal_comments
+    }));
+  }, [movements]);
   
   const sortedMovements = React.useMemo(() => {
     return [...movements].sort((a, b) => {
@@ -141,8 +222,9 @@ const StoragePage = () => {
       if (a.sort_order !== null) return -1;
       if (b.sort_order !== null) return 1;
       
-      const dateA = new Date(a.assignment_date || a.created_at);
-      const dateB = new Date(b.assignment_date || b.created_at);
+      // Use nullish coalescing for possibly missing properties
+      const dateA = new Date(a.assignment_date || a.created_at || new Date());
+      const dateB = new Date(b.assignment_date || b.created_at || new Date());
       return dateA.getTime() - dateB.getTime();
     });
   }, [movements]);
@@ -150,27 +232,7 @@ const StoragePage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Storage Management</h1>
-          <div className="flex items-center space-x-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="mr-2">
-                  <Wrench className="h-4 w-4 mr-1" />
-                  Maintenance
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleMaintenance}>
-                  <Wrench className="h-4 w-4 mr-2" />
-                  Cleanup Tank Data
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Filter className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Filter</span>
-          </div>
-        </div>
+        <StorageHeader title="Storage Management" />
         
         <ProductLegend />
         
@@ -183,18 +245,13 @@ const StoragePage = () => {
         
         <Card className="border-r-[3px] border-brand-lime/60 bg-gradient-to-br from-brand-navy/75 to-brand-navy/90">
           <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <span>Storage Movements</span>
-              {selectedTerminalId && (
-                <Button variant="outline" size="sm" onClick={handleAddTank}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Tank
-                </Button>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Storage tank management for {terminals.find(t => t.id === selectedTerminalId)?.name || 'selected terminal'}
-            </CardDescription>
+            <StorageCardHeader
+              selectedTerminal={terminals.find(t => t.id === selectedTerminalId)}
+              selectedTerminalId={selectedTerminalId}
+              onStockReconciliationClick={handleStockReconciliationClick}
+              onPumpOverClick={handlePumpOverClick}
+              onAddTankClick={handleAddTank}
+            />
           </CardHeader>
           <CardContent>
             <div className="relative border rounded-md overflow-hidden">
@@ -251,6 +308,9 @@ const StoragePage = () => {
                           movements={movements}
                           updateAssignmentComments={updateAssignmentComments}
                           columnWidths={stickyColumnWidths}
+                          onDeletePumpOver={handleDeletePumpOver}
+                          onDeleteStorageMovement={handleDeleteStorageMovement}
+                          onDeleteStockReconciliation={handleDeleteStockReconciliation}
                         />
                       )}
                     </Table>
@@ -559,6 +619,15 @@ const StoragePage = () => {
                         
                         <TableBody>
                           {sortedMovements.map((movement, index) => {
+                            // Check if this is a pump over row
+                            const isPumpOver = movement.terminal_comments === 'PUMP_OVER';
+                            
+                            // Check if this is a stock reconciliation row
+                            // Use 'in' operator to safely check if product exists on the movement object
+                            const isStockReconciliation = 
+                              ('product' in movement && movement.product === 'RECONCILIATION') && 
+                              movement.terminal_comments === 'STOCK_RECONCILIATION';
+                            
                             const bgColorClass = movement.buy_sell === "buy" 
                               ? "bg-green-900/10 hover:bg-green-900/20" 
                               : "bg-red-900/10 hover:bg-red-900/20";
@@ -600,19 +669,38 @@ const StoragePage = () => {
                                     const totalMTMoved = Math.round(movementSummary.totalMTMoved);
                                     const movementQuantity = Math.round(movement.assignment_quantity || 0);
                                     
-                                    return (
-                                      <div className="flex items-center justify-center space-x-1">
-                                        <span>{totalMTMoved}</span>
-                                        {totalMTMoved !== movementQuantity && (
-                                          <Badge 
-                                            variant="outline" 
-                                            className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
-                                          >
-                                            !
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    );
+                                    if (isPumpOver || isStockReconciliation) {
+                                      // For pump overs and stock reconciliations, show an exclamation if total is NOT zero
+                                      // but only for pump overs, never for stock reconciliations
+                                      return (
+                                        <div className="flex items-center justify-center space-x-1">
+                                          <span>{totalMTMoved}</span>
+                                          {isPumpOver && totalMTMoved !== 0 && (
+                                            <Badge 
+                                              variant="outline" 
+                                              className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                            >
+                                              !
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    } else {
+                                      // For normal movements, show an exclamation if total doesn't match quantity
+                                      return (
+                                        <div className="flex items-center justify-center space-x-1">
+                                          <span>{totalMTMoved}</span>
+                                          {totalMTMoved !== movementQuantity && (
+                                            <Badge 
+                                              variant="outline" 
+                                              className="bg-yellow-100 text-yellow-800 border-yellow-300 px-1 py-0 text-[8px] rounded-full"
+                                            >
+                                              !
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      );
+                                    }
                                   })()}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2">
@@ -631,7 +719,10 @@ const StoragePage = () => {
                                   {Math.round(movementSummary.currentUllage)}
                                 </TableCell>
                                 <TableCell className="text-center text-[10px] py-2 font-medium border-r border-white/30">
-                                  {Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))}
+                                  {isPumpOver || isStockReconciliation ? 
+                                    <span className="text-white">-</span> : 
+                                    Math.round(movementSummary.totalMTMoved - (movement.assignment_quantity || 0))
+                                  }
                                 </TableCell>
                               </TableRow>
                             );
@@ -654,6 +745,39 @@ const StoragePage = () => {
         terminal={terminals.find(t => t.id === selectedTerminalId)}
         tank={selectedTank}
         isNewTerminal={isNewTerminal}
+      />
+
+      <PumpOverFormDialog
+        open={isPumpOverFormOpen}
+        onOpenChange={setIsPumpOverFormOpen}
+        onSubmit={handlePumpOverSubmit}
+      />
+
+      <StockReconciliationFormDialog
+        open={isStockReconciliationFormOpen}
+        onOpenChange={setIsStockReconciliationFormOpen}
+        onSubmit={handleStockReconciliationSubmit}
+      />
+
+      <DeletePumpOverDialog
+        open={!!pumpOverToDelete}
+        onOpenChange={(open) => !open && setPumpOverToDelete(null)}
+        onConfirm={confirmDeletePumpOver}
+        quantity={pumpOverToDelete?.quantity || 0}
+      />
+
+      <DeleteStockReconciliationDialog
+        open={!!stockReconciliationToDelete}
+        onOpenChange={(open) => !open && setStockReconciliationToDelete(null)}
+        onConfirm={confirmDeleteStockReconciliation}
+        assignmentId={stockReconciliationToDelete?.assignmentId || ''}
+      />
+
+      <DeleteStorageMovementDialog
+        open={!!storageMovementToDelete}
+        onOpenChange={(open) => !open && setStorageMovementToDelete(null)}
+        onConfirm={confirmDeleteStorageMovement}
+        assignmentId={storageMovementToDelete || ''}
       />
     </Layout>
   );

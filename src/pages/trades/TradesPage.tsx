@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Filter, AlertCircle } from 'lucide-react';
+import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -16,6 +16,8 @@ import PaperTradeList from './PaperTradeList';
 import { useTrades } from '@/hooks/useTrades';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PhysicalTrade } from '@/types';
+import { exportPhysicalTradesToExcel, exportPaperTradesToExcel } from '@/utils/excelExportUtils';
+import { toast } from 'sonner';
 
 const TradesPage = () => {
   const [searchParams] = useSearchParams();
@@ -60,6 +62,33 @@ const TradesPage = () => {
     }
   }, [tabParam]);
 
+  // Export handlers
+  const handleExportPhysicalTrades = async () => {
+    try {
+      toast.info("Exporting trades", { description: "Preparing Excel file..." });
+      const fileName = await exportPhysicalTradesToExcel();
+      toast.success("Export complete", { description: `Saved as ${fileName}` });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred" 
+      });
+    }
+  };
+
+  const handleExportPaperTrades = async () => {
+    try {
+      toast.info("Exporting paper trades", { description: "Preparing Excel file..." });
+      const fileName = await exportPaperTradesToExcel();
+      toast.success("Export complete", { description: `Saved as ${fileName}` });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Export failed", { 
+        description: error instanceof Error ? error.message : "An unknown error occurred" 
+      });
+    }
+  };
+
   const showErrorAlert = () => {
     if (!pageError) return null;
     
@@ -92,9 +121,14 @@ const TradesPage = () => {
           <CardTitle>Physical Trades</CardTitle>
           <CardDescription className="flex justify-between items-center">
             <span>View and manage physical trade positions</span>
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" /> Filter
-            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" /> Filter
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPhysicalTrades}>
+                <FileDown className="mr-2 h-4 w-4" /> Export
+              </Button>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -116,9 +150,14 @@ const TradesPage = () => {
           <CardTitle>Paper Trades</CardTitle>
           <CardDescription className="flex justify-between items-center">
             <span>View and manage paper trade positions</span>
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" /> Filter
-            </Button>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" /> Filter
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPaperTrades}>
+                <FileDown className="mr-2 h-4 w-4" /> Export
+              </Button>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,16 +1,17 @@
+
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PhysicalTrade, PricingFormula } from '@/types';
 import { validateAndParsePricingFormula, createEmptyFormula } from '@/utils/formulaUtils';
-import { createEmptyExposureResult, calculateExposures } from '@/utils/formulaCalculation';
+import { createEmptyExposureResult, calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 
 export const usePhysicalTrades = () => {
   const { mutate: updatePhysicalTrade } = useMutation({
     mutationFn: async (updatedTrade: any) => {
       console.log('[PHYSICAL] Updating trade:', updatedTrade);
 
-      // First validate and ensure proper formula structure for both formulas
+      // First validate and ensure proper formula structure for the pricing formula
       let validatedFormula: PricingFormula;
       if (updatedTrade.formula) {
         validatedFormula = validateAndParsePricingFormula(updatedTrade.formula);
@@ -18,59 +19,67 @@ export const usePhysicalTrades = () => {
         validatedFormula = createEmptyFormula();
       }
       
-      // Create a deep copy of the formula for MTM to avoid reference issues
-      let validatedMtmFormula: PricingFormula;
+      // Get the MTM formula tokens and physical exposures
+      let mtmTokens = [];
+      let physicalExposures = {};
+      
       if (updatedTrade.mtmFormula) {
-        // Keep existing MTM formula tokens and structure
-        validatedMtmFormula = validateAndParsePricingFormula(updatedTrade.mtmFormula);
+        // Parse the MTM formula to extract its tokens and physical exposures
+        const mtmFormulaObj = validateAndParsePricingFormula(updatedTrade.mtmFormula);
+        mtmTokens = mtmFormulaObj.tokens || [];
         
-        // Recalculate exposures with new quantity while preserving formula structure
+        // Calculate physical exposures with MTM formula tokens
         const mtmExposures = calculateExposures(
-          validatedMtmFormula.tokens || [], 
-          updatedTrade.quantity, 
-          updatedTrade.buySell,
-          updatedTrade.product
-        );
-
-        console.log('[PHYSICAL] Calculated MTM exposures with new quantity:', mtmExposures);
-        
-        // Update MTM formula exposures
-        validatedMtmFormula.exposures = mtmExposures;
-      } else if (validatedFormula) {
-        // Deep clone the validatedFormula for mtmFormula
-        validatedMtmFormula = JSON.parse(JSON.stringify(validatedFormula));
-        
-        // Calculate exposures for the cloned MTM formula
-        const mtmExposures = calculateExposures(
-          validatedMtmFormula.tokens || [], 
+          mtmTokens, 
           updatedTrade.quantity, 
           updatedTrade.buySell,
           updatedTrade.product
         );
         
-        validatedMtmFormula.exposures = mtmExposures;
-      } else {
-        // Create an empty formula with the proper structure
-        validatedMtmFormula = createEmptyFormula();
-      }
-
-      // Now sync physical exposures from MTM formula to pricing formula
-      if (validatedFormula && validatedMtmFormula.exposures?.physical) {
-        if (!validatedFormula.exposures) {
-          validatedFormula.exposures = createEmptyExposureResult();
-        }
+        physicalExposures = mtmExposures.physical || {};
         
-        validatedFormula.exposures = {
-          ...validatedFormula.exposures,
-          physical: { ...validatedMtmFormula.exposures.physical }
-        };
+        console.log('[PHYSICAL] Extracted MTM tokens and physical exposures:', { 
+          mtmTokens, 
+          physicalExposures 
+        });
       }
+      
+      // Calculate daily pricing distribution if we have pricing period dates and tokens
+      let dailyDistribution = {};
+      if (updatedTrade.formula?.tokens?.length > 0 && 
+          updatedTrade.pricingPeriodStart && 
+          updatedTrade.pricingPeriodEnd) {
+        
+        dailyDistribution = calculateDailyPricingDistribution(
+          updatedTrade.formula.tokens,
+          updatedTrade.quantity,
+          updatedTrade.buySell,
+          new Date(updatedTrade.pricingPeriodStart),
+          new Date(updatedTrade.pricingPeriodEnd)
+        );
+        
+        console.log('[PHYSICAL] Calculated daily distribution:', dailyDistribution);
+      }
+      
+      // Consolidate everything into the pricing_formula
+      const consolidatedFormula = {
+        ...validatedFormula,
+        mtmTokens: mtmTokens,
+        exposures: {
+          pricing: validatedFormula.exposures?.pricing || {},
+          physical: physicalExposures
+        },
+        dailyDistribution: dailyDistribution // Add the daily distribution
+      };
+      
+      console.log('[PHYSICAL] Consolidated formula:', consolidatedFormula);
 
-      console.log('[PHYSICAL] Final formulas after exposure sync:');
-      console.log('Pricing Formula:', validatedFormula);
-      console.log('MTM Formula:', validatedMtmFormula);
+      // For backward compatibility, keep the mtm_formula but it's no longer the primary source
+      const mtmFormulaForDb = updatedTrade.mtmFormula ? 
+        validateAndParsePricingFormula(updatedTrade.mtmFormula) : 
+        createEmptyFormula();
 
-      // Update parent trade with synced formulas
+      // Update parent trade with consolidated formula
       const { data, error: tradeUpdateError } = await supabase
         .from('trade_legs')
         .update({
@@ -80,8 +89,8 @@ export const usePhysicalTrades = () => {
           loading_period_end: updatedTrade.loadingPeriodEnd,
           pricing_period_start: updatedTrade.pricingPeriodStart,
           pricing_period_end: updatedTrade.pricingPeriodEnd,
-          pricing_formula: validatedFormula as any,
-          mtm_formula: validatedMtmFormula as any,
+          pricing_formula: consolidatedFormula as any,
+          mtm_formula: mtmFormulaForDb as any, // Keep for backward compatibility temporarily
           buy_sell: updatedTrade.buySell,
           product: updatedTrade.product,
           sustainability: updatedTrade.sustainability,

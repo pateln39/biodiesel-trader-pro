@@ -11,6 +11,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
 
 const PaperTradeEditPage = () => {
   const { id } = useParams();
@@ -113,6 +114,24 @@ const PaperTradeEditPage = () => {
           };
         }
         
+        let pricingPeriodStart = null;
+        let pricingPeriodEnd = null;
+        
+        if (leg.period) {
+          try {
+            // Get the dates using our utility function
+            const dates = getMonthDates(leg.period);
+            
+            if (dates) {
+              // Format dates for database storage without timezone issues
+              pricingPeriodStart = formatDateForDatabase(dates.startDate);
+              pricingPeriodEnd = formatDateForDatabase(dates.endDate);
+            }
+          } catch (e) {
+            console.error('Error parsing period date:', e);
+          }
+        }
+        
         // Create each leg
         const legData = {
           paper_trade_id: id,
@@ -127,7 +146,9 @@ const PaperTradeEditPage = () => {
           trading_period: leg.period,
           formula: leg.formula,
           mtm_formula: mtmFormula,
-          exposures: exposures
+          exposures: exposures,
+          pricing_period_start: pricingPeriodStart,
+          pricing_period_end: pricingPeriodEnd
         };
         
         const { error: createLegError } = await supabase

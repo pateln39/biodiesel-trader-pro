@@ -1,8 +1,10 @@
+
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { OpenTrade } from '@/hooks/useOpenTrades';
 import { formatDate } from '@/utils/dateUtils';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
@@ -375,16 +377,18 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
 
   return (
     <>
-      <div className="data-table-container">
-        <SortableTable
-          items={filteredTrades}
-          onReorder={onReorder}
-          renderHeader={renderHeader}
-          renderRow={renderRow}
-          isItemDisabled={isTradeDisabled}
-          disabledRowClassName="opacity-50 text-muted-foreground bg-muted/50"
-        />
-      </div>
+      <ScrollArea className="w-full" orientation="horizontal">
+        <div className="w-full min-w-[1800px]">
+          <SortableTable
+            items={filteredTrades}
+            onReorder={onReorder}
+            renderHeader={renderHeader}
+            renderRow={renderRow}
+            isItemDisabled={isTradeDisabled}
+            disabledRowClassName="opacity-50 text-muted-foreground bg-muted/50"
+          />
+        </div>
+      </ScrollArea>
 
       <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

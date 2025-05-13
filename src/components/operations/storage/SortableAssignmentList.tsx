@@ -13,19 +13,28 @@ import { TerminalAssignment } from '@/hooks/useTerminalAssignments';
 import { useSortableTerminalAssignments } from '@/hooks/useSortableTerminalAssignments';
 import EditableAssignmentComments from '@/components/operations/storage/EditableAssignmentComments';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, Waves, Package } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface SortableAssignmentListProps {
   terminalId: string;
   movements: any[];
   updateAssignmentComments: (assignmentId: string, comments: string) => void;
   columnWidths: Record<string, number>;
+  onDeletePumpOver?: (assignmentId: string, movementId: string) => void;
+  onDeleteStorageMovement?: (assignmentId: string) => void;
+  onDeleteStockReconciliation?: (assignmentId: string, movementId: string) => void;
 }
 
 const SortableAssignmentList = ({ 
   terminalId, 
   movements, 
   updateAssignmentComments,
-  columnWidths
+  columnWidths,
+  onDeletePumpOver,
+  onDeleteStorageMovement,
+  onDeleteStockReconciliation
 }: SortableAssignmentListProps) => {
   const { 
     assignments, 
@@ -38,14 +47,60 @@ const SortableAssignmentList = ({
     assignment: TerminalAssignment 
   })[] = assignments
     .map(assignment => {
-      const movement = movements.find(m => m.assignment_id === assignment.id);
-      if (!movement) return null;
+      // Find the corresponding movement
+      const movement = movements.find(m => m.assignment_id === assignment.id || m.id === assignment.movement_id);
       
-      return {
-        id: assignment.id as string,
-        movement,
-        assignment
-      };
+      // Check if this is a pump over assignment
+      const isPumpOver = assignment.comments === 'PUMP_OVER';
+      
+      // Check if this is a stock reconciliation assignment
+      const isStockReconciliation = assignment.comments === 'STOCK_RECONCILIATION';
+      
+      if (movement) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            ...movement,
+            isPumpOver: isPumpOver,
+            isStockReconciliation: isStockReconciliation
+          },
+          assignment
+        };
+      }
+      
+      // If movement is not found but this is a pump over, create a special movement-like object
+      if (isPumpOver) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            id: assignment.movement_id,
+            assignment_id: assignment.id,
+            buy_sell: null,
+            product: 'TRANSFERS',
+            isPumpOver: true,
+            isStockReconciliation: false
+          },
+          assignment
+        };
+      }
+      
+      // If movement is not found but this is a stock reconciliation, create a special movement-like object
+      if (isStockReconciliation) {
+        return {
+          id: assignment.id as string,
+          movement: {
+            id: assignment.movement_id,
+            assignment_id: assignment.id,
+            buy_sell: null,
+            product: 'RECONCILIATION',
+            isPumpOver: false,
+            isStockReconciliation: true
+          },
+          assignment
+        };
+      }
+      
+      return null;
     })
     .filter(Boolean) as any[];
 
@@ -64,6 +119,17 @@ const SortableAssignmentList = ({
     movement: any; 
     assignment: TerminalAssignment; 
   }) => {
+    // For stock reconciliation, use a distinct purple color
+    if (item.movement?.isStockReconciliation) {
+      return "bg-purple-900/10 hover:bg-purple-900/20";
+    }
+    
+    // For pump overs, use a distinct color
+    if (item.movement?.isPumpOver) {
+      return "bg-gray-900/10 hover:bg-gray-900/20";
+    }
+    
+    // Handle the case where buy_sell might be null
     return item.movement?.buy_sell === "buy" 
       ? "bg-green-900/10 hover:bg-green-900/20" 
       : "bg-red-900/10 hover:bg-red-900/20";
@@ -103,6 +169,16 @@ const SortableAssignmentList = ({
             <TruncatedCell 
               text="Barge" 
               width={columnWidths.bargeName - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
+          <TableHead 
+            className={`w-[${columnWidths.bargeImo}px] h-10`}
+            style={{ width: `${columnWidths.bargeImo}px` }}
+          >
+            <TruncatedCell 
+              text="IMO" 
+              width={columnWidths.bargeImo - 8} 
               className="text-[10px] font-medium"
             />
           </TableHead>
@@ -166,11 +242,102 @@ const SortableAssignmentList = ({
               className="text-[10px] font-medium"
             />
           </TableHead>
+          <TableHead 
+            className={`w-[${columnWidths.actions}px] h-10`}
+            style={{ width: `${columnWidths.actions}px` }}
+          >
+            <TruncatedCell 
+              text="Actions" 
+              width={columnWidths.actions - 8} 
+              className="text-[10px] font-medium"
+            />
+          </TableHead>
         </>
       )}
       renderRow={(item) => {
         const { movement, assignment } = item;
         
+        // Special rendering for stock reconciliation rows
+        if (movement?.isStockReconciliation) {
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                <div className="flex items-center justify-center space-x-2">
+                  <Package className="h-4 w-4 text-purple-500" />
+                  <div className="flex items-center space-x-1">
+                    <Badge variant="outline" className="bg-purple-100/10 border-purple-500 text-purple-500">
+                      Stock Reconciliation
+                    </Badge>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {/* No quantity needed for reconciliation */}
+                <div className="flex justify-center">
+                  <Badge variant="outline" className="bg-purple-100/10 border-purple-500 text-purple-500">
+                    N/A
+                  </Badge>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {onDeleteStockReconciliation && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => onDeleteStockReconciliation(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
+            </>
+          );
+        }
+        
+        // Special rendering for pump over rows
+        if (movement?.isPumpOver) {
+          return (
+            <>
+              <TableCell className="py-2 text-[10px] h-10" colSpan={9}>
+                <div className="flex items-center justify-center space-x-2">
+                  <Waves className="h-4 w-4 text-gray-500" />
+                  <div className="flex items-center space-x-1">
+                    <Badge variant="outline" className="bg-gray-100/10 border-gray-500 text-gray-500">
+                      Internal Pump Over
+                    </Badge>
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                <div className="flex justify-center">
+                  <ProductToken 
+                    product="TRANSFERS"
+                    value={assignment.quantity_mt.toString()}
+                  />
+                </div>
+              </TableCell>
+              <TableCell className="py-2 text-[10px] h-10">
+                {onDeletePumpOver && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 p-0" 
+                      onClick={() => onDeletePumpOver(assignment.id as string, movement.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
+            </>
+          );
+        }
+        
+        // Regular row rendering
         return (
           <>
             <TableCell className="py-2 text-[10px] h-10">
@@ -196,6 +363,13 @@ const SortableAssignmentList = ({
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
               <TruncatedCell 
+                text={movement?.barge_imo || 'N/A'} 
+                width={columnWidths.bargeImo - 16} 
+                className="text-[10px]"
+              />
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              <TruncatedCell 
                 text={assignment?.assignment_date ? new Date(assignment.assignment_date).toLocaleDateString() : '-'} 
                 width={columnWidths.movementDate - 16} 
                 className="text-[10px]"
@@ -215,7 +389,7 @@ const SortableAssignmentList = ({
                   ? "bg-green-900/60 text-green-200" 
                   : "bg-blue-900/60 text-blue-200"}
               `} style={{ maxWidth: `${columnWidths.customs - 16}px` }}>
-                {movement?.customs_status}
+                {movement?.customs_status || 'N/A'}
               </span>
             </TableCell>
             <TableCell className="py-2 text-[10px] h-10">
@@ -240,6 +414,20 @@ const SortableAssignmentList = ({
                   value={assignment?.quantity_mt?.toString() || '0'}
                 />
               </div>
+            </TableCell>
+            <TableCell className="py-2 text-[10px] h-10">
+              {onDeleteStorageMovement && (
+                <div className="flex justify-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 p-0" 
+                    onClick={() => onDeleteStorageMovement(assignment.id as string)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              )}
             </TableCell>
           </>
         );

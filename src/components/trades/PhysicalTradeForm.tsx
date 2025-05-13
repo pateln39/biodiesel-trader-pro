@@ -29,6 +29,7 @@ interface PhysicalTradeFormProps {
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: PhysicalTrade;
+  comments?: string;
 }
 
 interface LegFormState {
@@ -138,7 +139,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   onSubmit,
   onCancel,
   isEditMode = false,
-  initialData
+  initialData,
+  comments
 }) => {
   const {
     counterparties,

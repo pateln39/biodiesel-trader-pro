@@ -1,3 +1,4 @@
+
 // Export from type modules
 export * from './pricing';
 export * from './physical';
@@ -51,6 +52,7 @@ export interface Movement {
   sort_order?: number; // Added sort_order property
   terminal_id?: string; // Added terminal_id property for terminal assignment
   inventory_movement_date?: Date; // Added inventory_movement_date for terminal assignments
+  group_id?: string; // Added group_id property for grouping movements
 }
 
 // Explicit re-exports to avoid name conflicts when importing
@@ -72,7 +74,7 @@ import {
   Instrument,
   ExposureResult
 } from './common';
-import { PricingFormula, PricingComponent } from './pricing';
+import { PricingFormula, PricingComponent, PricingInstrument } from './pricing';
 
 // Re-export specific types explicitly to avoid ambiguities
 export type {
@@ -90,6 +92,7 @@ export type {
   ContractStatus,
   PricingFormula,
   PricingComponent,
+  PricingInstrument,
   DbParentTrade,
   DbTradeLeg,
   Instrument,

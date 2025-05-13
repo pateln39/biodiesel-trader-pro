@@ -1,9 +1,7 @@
+
 import React from 'react';
-import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -11,6 +9,8 @@ import MovementsTable from '@/components/operations/MovementsTable';
 import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel } from '@/utils/excelExportUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
+import MovementsHeader from '@/components/operations/movements/MovementsHeader';
+import MovementsActions from '@/components/operations/movements/MovementsActions';
 
 const MovementsPage = () => {
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
@@ -23,12 +23,21 @@ const MovementsPage = () => {
     filters,
     updateFilters,
     refetch,
-    handleReorder
+    handleReorder,
+    selectedMovementIds,
+    toggleMovementSelection,
+    selectAllMovements,
+    clearSelection,
+    groupSelectedMovements,
+    ungroupMovement,
+    isGrouping,
+    isUngrouping
   } = useSortableMovements();
 
   React.useEffect(() => {
     const initializeSortOrder = async () => {
       try {
+        // This will now exclude pump overs (product='Transfer') thanks to our updated function
         const { error: movementsError } = await supabase.rpc('initialize_sort_order', {
           p_table_name: 'movements'
         });
@@ -88,49 +97,35 @@ const MovementsPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Movements</h1>
-          <Button onClick={handleRefreshTable}>
-            Refresh Data
-          </Button>
-        </div>
+        <MovementsHeader onRefresh={handleRefreshTable} />
         
         <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
           <CardHeader>
             <CardTitle>Movements</CardTitle>
             <CardDescription className="flex justify-between items-center">
               <span>View and manage product movements</span>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleExportMovements}
-                  disabled={isExporting}
-                >
-                  <Download className="mr-2 h-4 w-4" /> Export
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setIsMovementsFilterOpen(true)}
-                  className="relative"
-                >
-                  <Filter className="mr-2 h-4 w-4" /> 
-                  Filter
-                  {getActiveFilterCount() > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                      {getActiveFilterCount()}
-                    </span>
-                  )}
-                </Button>
-              </div>
+              <MovementsActions 
+                isExporting={isExporting}
+                selectedMovementIds={selectedMovementIds}
+                onExport={handleExportMovements}
+                onOpenFilter={() => setIsMovementsFilterOpen(true)}
+                onSelectAll={selectAllMovements}
+                onClearSelection={clearSelection}
+                onGroupSelected={groupSelectedMovements}
+                isGrouping={isGrouping}
+                activeFilterCount={getActiveFilterCount()}
+              />
             </CardDescription>
           </CardHeader>
           <CardContent>
             <MovementsTable 
               key={`movements-${refreshTrigger}`}
               filteredMovements={filteredMovements}
+              selectedMovementIds={selectedMovementIds}
+              onToggleSelect={toggleMovementSelection}
               onReorder={handleReorder}
+              onUngroupMovement={ungroupMovement}
+              isUngrouping={isUngrouping}
             />
           </CardContent>
         </Card>

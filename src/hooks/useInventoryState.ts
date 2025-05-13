@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,7 +23,9 @@ export const PRODUCT_COLORS = {
   'FAME0': 'bg-purple-500 text-white',
   'HVO': 'bg-orange-500 text-white',
   'RME DC': 'bg-red-500 text-white',
-  'UCOME-5': 'bg-yellow-500 text-white'
+  'UCOME-5': 'bg-yellow-500 text-white',
+  'TRANSFERS': 'bg-gray-500 text-white',
+  'RECONCILIATION': 'bg-purple-500 text-white',
 };
 
 export const useInventoryState = (terminalId?: string) => {
@@ -33,7 +36,8 @@ export const useInventoryState = (terminalId?: string) => {
     queryFn: async () => {
       if (!terminalId) return [];
 
-      const { data, error } = await supabase
+      // First, query the movement_terminal_assignments with their movements
+      const { data: assignmentsData, error } = await supabase
         .from('movement_terminal_assignments')
         .select(`
           *,
@@ -48,14 +52,64 @@ export const useInventoryState = (terminalId?: string) => {
         throw error;
       }
 
-      return data.map(assignment => ({
-        ...assignment.movements,
-        assignment_id: assignment.id,
-        assignment_quantity: assignment.quantity_mt,
-        assignment_date: assignment.assignment_date,
-        terminal_comments: assignment.comments,
-        sort_order: assignment.sort_order
-      }));
+      // Fetch all barges' IMO numbers to use for mapping
+      const { data: bargesData, error: bargesError } = await supabase
+        .from('barges_vessels')
+        .select('name, imo_number');
+
+      if (bargesError) {
+        console.error('Error fetching barges data:', bargesError);
+        throw bargesError;
+      }
+
+      // Create a map of barge name to IMO number for easy lookup
+      const bargeImoMap = new Map();
+      bargesData.forEach(barge => {
+        bargeImoMap.set(barge.name, barge.imo_number);
+      });
+      
+      // Process the returned data to ensure we always have movement data and IMO information
+      return assignmentsData.map(assignment => {
+        // If there's no movement data, create a default object with consistent properties
+        if (!assignment.movements) {
+          return {
+            id: null, // Use null as a placeholder
+            assignment_id: assignment.id,
+            assignment_date: assignment.assignment_date,
+            assignment_quantity: 0,
+            terminal_comments: assignment.comments,
+            sort_order: assignment.sort_order,
+            barge_name: null,
+            barge_imo: null,
+            buy_sell: null,
+            customs_status: null,
+            created_at: assignment.created_at || new Date().toISOString(),
+            updated_at: assignment.created_at || new Date().toISOString()
+          };
+        }
+        
+        // Get the IMO number from the map if the barge name exists
+        const bargeImo = assignment.movements.barge_name ? 
+          bargeImoMap.get(assignment.movements.barge_name) || 'Unknown' : 
+          'N/A';
+
+        // Return the complete movement data with IMO information
+        return {
+          ...assignment.movements,
+          // Include the barge IMO number for display
+          barge_imo: bargeImo,
+          assignment_id: assignment.id,
+          assignment_quantity: assignment.quantity_mt,
+          assignment_date: assignment.assignment_date,
+          terminal_comments: assignment.comments,
+          sort_order: assignment.sort_order,
+          // Ensure all required properties exist
+          buy_sell: assignment.movements.buy_sell || null,
+          customs_status: assignment.movements.customs_status || null,
+          created_at: assignment.movements.created_at || assignment.created_at || new Date().toISOString(),
+          updated_at: assignment.movements.updated_at || assignment.updated_at || new Date().toISOString()
+        };
+      }).filter(item => item !== null);
     },
     enabled: !!terminalId,
     staleTime: 0
@@ -365,7 +419,7 @@ export const useInventoryState = (terminalId?: string) => {
         quantity_m3: quantity * 1.1,
         product_at_time: tankData.current_product,
         movement_date: movement.assignment_date || new Date().toISOString(),
-        customs_status: movement.customs_status,
+        customs_status: movement.customs_status || null,
         assignment_id: assignmentId,
         sort_order: sortOrder
       };
@@ -519,6 +573,88 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
+  const deletePumpOverMutation = useMutation({
+    mutationFn: async ({ 
+      assignmentId, 
+      movementId 
+    }: { 
+      assignmentId: string, 
+      movementId: string 
+    }) => {
+      console.log('Deleting pump over:', { assignmentId, movementId });
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      // Finally, delete the movement record
+      const { error: movementError } = await supabase
+        .from('movements')
+        .delete()
+        .eq('id', movementId);
+      
+      if (movementError) throw movementError;
+      
+      return { assignmentId, movementId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Pump over deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting pump over:', error);
+      toast.error(`Failed to delete pump over: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const deleteStorageMovementMutation = useMutation({
+    mutationFn: async ({ assignmentId }: { assignmentId: string }) => {
+      console.log('Deleting storage movement assignment:', assignmentId);
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      return { assignmentId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Storage movement deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting storage movement:', error);
+      toast.error(`Failed to delete storage movement: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   const updateTankNumber = useMutation({
     mutationFn: async ({ tankId, tankNumber }: { tankId: string, tankNumber: string }) => {
       const { data: tank } = await supabase
@@ -579,6 +715,204 @@ export const useInventoryState = (terminalId?: string) => {
     { label: 'No', value: 'false' }
   ];
 
+  const createPumpOverMutation = useMutation({
+    mutationFn: async ({ quantity, comment }: { quantity: number; comment?: string }) => {
+      if (!terminalId) throw new Error('Terminal ID is required');
+      
+      console.log('Creating pump over for terminal:', terminalId, 'with quantity:', quantity);
+      
+      // First, get the current maximum sort_order for this terminal
+      const { data: maxSortOrderData, error: maxSortOrderError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('sort_order')
+        .eq('terminal_id', terminalId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      
+      if (maxSortOrderError) throw maxSortOrderError;
+      
+      // Calculate the new sort_order (max + 1, or 1 if no existing records)
+      const maxSortOrder = maxSortOrderData && maxSortOrderData.length > 0 && maxSortOrderData[0].sort_order
+        ? maxSortOrderData[0].sort_order
+        : 0;
+      
+      const newSortOrder = maxSortOrder + 1;
+      
+      // Create a movement record for the pump over
+      const pumpOverMovementId = crypto.randomUUID();
+      const currentDate = new Date();
+      const formattedDate = formatDateForStorage(currentDate);
+      
+      // Create a movement record for the pump over
+      const { data: movementData, error: movementError } = await supabase
+        .from('movements')
+        .insert({
+          id: pumpOverMovementId,
+          reference_number: `PUMP-${pumpOverMovementId.slice(0, 6)}`,
+          bl_quantity: quantity,
+          status: 'completed',
+          product: 'Transfer', // Generic product name for pump overs
+          buy_sell: null, // Neutral, neither buy nor sell
+          comments: comment || 'Internal tank transfer',
+          terminal_id: terminalId,
+          inventory_movement_date: formattedDate,
+          sort_order: null // Explicitly setting sort_order to null for pump overs in movements table
+        })
+        .select()
+        .single();
+      
+      if (movementError) throw movementError;
+      
+      // Then create the terminal assignment linked to this movement with the new sort_order
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .insert({
+          terminal_id: terminalId,
+          movement_id: pumpOverMovementId,
+          quantity_mt: quantity,
+          assignment_date: formattedDate,
+          comments: 'PUMP_OVER', // Special identifier for pump overs
+          sort_order: newSortOrder // Explicitly set the calculated sort_order
+        })
+        .select()
+        .single();
+      
+      if (assignmentError) throw assignmentError;
+      
+      return { movementData, assignmentData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Pump over created successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error creating pump over:', error);
+      toast.error(`Failed to create pump over: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const createStockReconciliationMutation = useMutation({
+    mutationFn: async ({ quantity, comment }: { quantity: number; comment?: string }) => {
+      if (!terminalId) throw new Error('Terminal ID is required');
+      
+      console.log('Creating stock reconciliation for terminal:', terminalId, 'with quantity:', quantity);
+      
+      // First, get the current maximum sort_order for this terminal
+      const { data: maxSortOrderData, error: maxSortOrderError } = await supabase
+        .from('movement_terminal_assignments')
+        .select('sort_order')
+        .eq('terminal_id', terminalId)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+      
+      if (maxSortOrderError) throw maxSortOrderError;
+      
+      // Calculate the new sort_order (max + 1, or 1 if no existing records)
+      const maxSortOrder = maxSortOrderData && maxSortOrderData.length > 0 && maxSortOrderData[0].sort_order
+        ? maxSortOrderData[0].sort_order
+        : 0;
+      
+      const newSortOrder = maxSortOrder + 1;
+      
+      // Create a movement record for the stock reconciliation
+      const reconciliationMovementId = crypto.randomUUID();
+      const currentDate = new Date();
+      const formattedDate = formatDateForStorage(currentDate);
+      
+      // Create a movement record for the reconciliation
+      const { data: movementData, error: movementError } = await supabase
+        .from('movements')
+        .insert({
+          id: reconciliationMovementId,
+          reference_number: `RECON-${reconciliationMovementId.slice(0, 6)}`,
+          bl_quantity: quantity, // Use the provided quantity
+          status: 'completed',
+          product: 'RECONCILIATION',
+          buy_sell: null, // Neutral, neither buy nor sell
+          comments: comment || 'Stock reconciliation entry',
+          terminal_id: terminalId,
+          inventory_movement_date: formattedDate,
+          sort_order: null // Explicitly setting sort_order to null for reconciliation entries
+        })
+        .select()
+        .single();
+      
+      if (movementError) throw movementError;
+      
+      // Then create the terminal assignment linked to this movement with the new sort_order
+      const { data: assignmentData, error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .insert({
+          terminal_id: terminalId,
+          movement_id: reconciliationMovementId,
+          quantity_mt: quantity, // Use the provided quantity
+          assignment_date: formattedDate,
+          comments: 'STOCK_RECONCILIATION', // Special identifier for reconciliation
+          sort_order: newSortOrder
+        })
+        .select()
+        .single();
+      
+      if (assignmentError) throw assignmentError;
+      
+      return { movementData, assignmentData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Stock reconciliation created successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error creating stock reconciliation:', error);
+      toast.error(`Failed to create stock reconciliation: ${error.message || 'Unknown error'}`);
+    }
+  });
+
+  const deleteStockReconciliationMutation = useMutation({
+    mutationFn: async ({ assignmentId, movementId }: { assignmentId: string, movementId: string }) => {
+      console.log('Deleting stock reconciliation:', { assignmentId, movementId });
+      
+      // First, delete all tank movements related to this assignment
+      const { error: tankMovementsError } = await supabase
+        .from('tank_movements')
+        .delete()
+        .eq('assignment_id', assignmentId);
+      
+      if (tankMovementsError) throw tankMovementsError;
+      
+      // Next, delete the assignment record
+      const { error: assignmentError } = await supabase
+        .from('movement_terminal_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (assignmentError) throw assignmentError;
+      
+      // Finally, delete the movement record
+      const { error: movementError } = await supabase
+        .from('movements')
+        .delete()
+        .eq('id', movementId);
+      
+      if (movementError) throw movementError;
+      
+      return { assignmentId, movementId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sortable-terminal-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['tank_movements'] });
+      toast.success('Stock reconciliation deleted successfully');
+    },
+    onError: (error: any) => {
+      console.error('Error deleting stock reconciliation:', error);
+      toast.error(`Failed to delete stock reconciliation: ${error.message || 'Unknown error'}`);
+    }
+  });
+
   return {
     movements,
     tankMovements,
@@ -625,6 +959,16 @@ export const useInventoryState = (terminalId?: string) => {
       deleteTankMovementMutation.mutate({ terminalAssignmentId, tankId }),
     updateTankNumber: (tankId: string, tankNumber: string) => 
       updateTankNumber.mutate({ tankId, tankNumber }),
+    createPumpOver: (quantity: number, comment?: string) => 
+      createPumpOverMutation.mutate({ quantity, comment }),
+    deletePumpOver: (assignmentId: string, movementId: string) => 
+      deletePumpOverMutation.mutate({ assignmentId, movementId }),
+    deleteStorageMovement: (assignmentId: string) => 
+      deleteStorageMovementMutation.mutate({ assignmentId }),
+    createStockReconciliation: (quantity: number, comment?: string) => 
+      createStockReconciliationMutation.mutate({ quantity, comment }),
+    deleteStockReconciliation: (assignmentId: string, movementId: string) => 
+      deleteStockReconciliationMutation.mutate({ assignmentId, movementId }),
     isLoading: loadingMovements || loadingTankMovements
   };
 };

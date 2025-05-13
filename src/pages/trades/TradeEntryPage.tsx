@@ -10,11 +10,12 @@ import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { TradeType } from '@/types';
+import { TradeType, PricingFormula } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -30,7 +31,7 @@ const TradeEntryPage = () => {
         trade_reference: tradeData.tradeReference,
         trade_type: tradeData.tradeType,
         physical_type: tradeData.physicalType,
-        counterparty: tradeData.counterparty,
+        counterparty: tradeData.counterparty
       };
       
       // Insert parent trade
@@ -50,7 +51,7 @@ const TradeEntryPage = () => {
       // For physical trades, insert all legs
       const legs = tradeData.legs.map((leg: any) => {
         // Base leg data
-        const legData = {
+        const legData: any = {
           leg_reference: leg.legReference,
           parent_trade_id: parentTradeId,
           buy_sell: leg.buySell,
@@ -66,12 +67,61 @@ const TradeEntryPage = () => {
           unit: leg.unit,
           payment_term: leg.paymentTerm,
           credit_status: leg.creditStatus,
-          customs_status: leg.customsStatus, // Updated: correctly map to customs_status column
-          pricing_formula: leg.formula,
-          mtm_formula: leg.mtmFormula,
+          customs_status: leg.customsStatus,
           pricing_type: leg.pricingType,
-          mtm_future_month: leg.mtmFutureMonth
+          mtm_future_month: leg.mtmFutureMonth,
+          comments: leg.comments // Keep leg-specific comments
         };
+        
+        // Calculate physical exposures based on MTM formula tokens and quantity
+        let physicalExposures = {};
+        
+        if (leg.mtmFormula && leg.mtmFormula.tokens && leg.mtmFormula.tokens.length > 0) {
+          const mtmExposures = calculateExposures(
+            leg.mtmFormula.tokens, 
+            leg.quantity, 
+            leg.buySell,
+            leg.product
+          );
+          
+          physicalExposures = mtmExposures.physical || {};
+        }
+        
+        // Calculate daily distribution if we have pricing period dates and formula tokens
+        let dailyDistribution = {};
+        if (leg.formula && 
+            leg.formula.tokens && 
+            leg.formula.tokens.length > 0 && 
+            leg.pricingPeriodStart && 
+            leg.pricingPeriodEnd) {
+          
+          dailyDistribution = calculateDailyPricingDistribution(
+            leg.formula.tokens,
+            leg.quantity,
+            leg.buySell,
+            new Date(leg.pricingPeriodStart),
+            new Date(leg.pricingPeriodEnd)
+          );
+          
+          console.log('[TRADE ENTRY] Calculated daily distribution:', dailyDistribution);
+        }
+        
+        // Create consolidated formula
+        const consolidatedFormula = {
+          ...leg.formula,
+          mtmTokens: leg.mtmFormula ? leg.mtmFormula.tokens || [] : [],
+          exposures: {
+            pricing: (leg.formula.exposures && leg.formula.exposures.pricing) || {},
+            physical: physicalExposures
+          },
+          dailyDistribution: dailyDistribution // Include daily distribution
+        };
+        
+        // Add the consolidated formula to legData
+        legData.pricing_formula = consolidatedFormula;
+        
+        // Set mtm_formula to null since we're consolidating all data into pricing_formula
+        legData.mtm_formula = null;
 
         // Add EFP fields if they exist
         if (leg.efpPremium !== undefined) {
@@ -136,11 +186,13 @@ const TradeEntryPage = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
-          <p className="text-muted-foreground">
-            Create a new trade by filling out the form below
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">New Trade</h1>
+            <p className="text-muted-foreground">
+              Create a new trade by filling out the form below
+            </p>
+          </div>
         </div>
 
         <Separator />
@@ -168,7 +220,7 @@ const TradeEntryPage = () => {
                 <PhysicalTradeForm 
                   tradeReference={tradeReference} 
                   onSubmit={handlePhysicalSubmit} 
-                  onCancel={handleCancel} 
+                  onCancel={handleCancel}
                 />
               </TabsContent>
               

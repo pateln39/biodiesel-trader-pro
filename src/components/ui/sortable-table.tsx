@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -57,6 +58,8 @@ interface SortableRowProps {
   className?: string;
   disabled?: boolean;
   bgColorClass?: string;
+  onSelect?: (id: string) => void;
+  isSelected?: boolean;
 }
 
 export const SortableRow = ({ 
@@ -64,7 +67,9 @@ export const SortableRow = ({
   children, 
   className, 
   disabled = false,
-  bgColorClass = "" 
+  bgColorClass = "",
+  onSelect,
+  isSelected = false
 }: SortableRowProps) => {
   const {
     attributes,
@@ -93,9 +98,11 @@ export const SortableRow = ({
       className={cn(
         "transition-colors data-[state=selected]:bg-muted h-10",
         isDragging ? "bg-accent" : "",
-        disabled ? "opacity-50" : "",  // Always apply opacity when disabled
+        disabled ? "opacity-50" : "",
+        isSelected ? "bg-muted" : "",
         bgColorClass,
-        className
+        className,
+        "hover:bg-accent/20" // Add hover effect for all rows
       )}
       {...attributes}
     >
@@ -117,11 +124,13 @@ export interface SortableTableProps<T extends SortableItem> {
   onReorder: (items: T[]) => void;
   renderHeader: () => React.ReactNode;
   renderRow: (item: T, index: number) => React.ReactNode;
-  isItemDisabled?: (item: T) => boolean;
+  isItemDisabled?: (item: T, index: number, items: T[]) => boolean;
   className?: string;
-  getRowBgClass?: (item: T) => string;
+  getRowBgClass?: (item: T, index: number, items: T[]) => string;
   disableDragAndDrop?: boolean;
   disabledRowClassName?: string;
+  onSelectItem?: (id: string) => void;
+  selectedItemIds?: string[];
 }
 
 export function SortableTable<T extends SortableItem>({
@@ -133,7 +142,9 @@ export function SortableTable<T extends SortableItem>({
   className,
   getRowBgClass,
   disableDragAndDrop = false,
-  disabledRowClassName = "opacity-50 text-muted-foreground bg-muted/50"
+  disabledRowClassName = "opacity-50 text-muted-foreground bg-muted/50",
+  onSelectItem,
+  selectedItemIds = []
 }: SortableTableProps<T>) {
   const [activeId, setActiveId] = useState<string | null>(null);
   
@@ -149,14 +160,15 @@ export function SortableTable<T extends SortableItem>({
   );
 
   const activeItem = activeId ? items.find(item => item.id === activeId) : null;
-
+  
   const handleDragStart = (event: DragStartEvent) => {
     if (disableDragAndDrop) return;
     
     const itemId = event.active.id as string;
-    const item = items.find(item => item.id === itemId);
+    const itemIndex = items.findIndex(item => item.id === itemId);
+    const item = items[itemIndex];
     
-    if (item && isItemDisabled && isItemDisabled(item)) {
+    if (item && isItemDisabled && isItemDisabled(item, itemIndex, items)) {
       return;
     }
     
@@ -167,19 +179,23 @@ export function SortableTable<T extends SortableItem>({
     if (disableDragAndDrop) return;
     
     const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = items.findIndex(item => item.id === active.id);
-      const newIndex = items.findIndex(item => item.id === over.id);
-      
-      const newItems = [...items];
-      const [movedItem] = newItems.splice(oldIndex, 1);
-      newItems.splice(newIndex, 0, movedItem);
-      
-      onReorder(newItems);
-    }
-    
     setActiveId(null);
+    
+    if (!over) return;
+    
+    const activeIndex = items.findIndex(item => item.id === active.id);
+    const overIndex = items.findIndex(item => item.id === over.id);
+    
+    // If the item hasn't moved or if activeItem is not found, do nothing
+    if (activeIndex === -1 || activeIndex === overIndex) return;
+
+    // Simple individual row reordering
+    const reordered = [...items];
+    const [movedItem] = reordered.splice(activeIndex, 1);
+    reordered.splice(overIndex, 0, movedItem);
+    
+    console.log('[SORTABLE] Reordering individual row');
+    onReorder(reordered);
   };
 
   return (
@@ -208,8 +224,9 @@ export function SortableTable<T extends SortableItem>({
             strategy={verticalListSortingStrategy}
           >
             {items.map((item, index) => {
-              const isDisabled = (isItemDisabled ? isItemDisabled(item) : false) || disableDragAndDrop;
-              const bgColorClass = getRowBgClass ? getRowBgClass(item) : "";
+              const isDisabled = (isItemDisabled ? isItemDisabled(item, index, items) : false) || disableDragAndDrop;
+              const bgColorClass = getRowBgClass ? getRowBgClass(item, index, items) : "";
+              const isSelected = selectedItemIds.includes(item.id);
               
               return (
                 <SortableRow 
@@ -221,6 +238,7 @@ export function SortableTable<T extends SortableItem>({
                     "h-10",
                     isDisabled && disabledRowClassName
                   )}
+                  isSelected={isSelected}
                 >
                   {renderRow(item, index)}
                 </SortableRow>
@@ -233,7 +251,7 @@ export function SortableTable<T extends SortableItem>({
       {activeId && createPortal(
         <DragOverlay adjustScale={false}>
           {activeItem && (
-            <TableRow className="border border-primary bg-background shadow-lg opacity-80 h-10">
+            <TableRow className="border border-primary bg-background opacity-90 rounded-md h-10">
               <TableCell className="p-0 pl-2 h-10">
                 <DragHandle />
               </TableCell>

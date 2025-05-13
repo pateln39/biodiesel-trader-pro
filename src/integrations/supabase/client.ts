@@ -18,6 +18,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, 
 });
 
 // Run the following SQL to enable real-time on our tables:
-// ALTER PUBLICATION supabase_realtime ADD TABLE parent_trades, trade_legs;
+// ALTER PUBLICATION supabase_realtime ADD TABLE parent_trades, trade_legs, movements;
 // ALTER TABLE parent_trades REPLICA IDENTITY FULL;
 // ALTER TABLE trade_legs REPLICA IDENTITY FULL;
+// ALTER TABLE movements REPLICA IDENTITY FULL;
+

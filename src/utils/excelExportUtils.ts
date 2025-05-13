@@ -547,12 +547,12 @@ export const exportPhysicalTradesToExcel = async (): Promise<string> => {
         }
       }
       
-      // Format physical exposures from mtm_formula (as requested)
+      // Format physical exposures from pricing_formula
       let physicalExposures = '';
-      if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-        const mtmFormula = leg.mtm_formula as any;
-        if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-          const physicalExp = mtmFormula.exposures.physical;
+      if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+        const pricingFormula = leg.pricing_formula as any;
+        if (pricingFormula.exposures && pricingFormula.exposures.physical) {
+          const physicalExp = pricingFormula.exposures.physical;
           physicalExposures = Object.entries(physicalExp)
             // Filter out products with zero exposure
             .filter(([_, value]) => value !== 0)
@@ -1011,12 +1011,12 @@ export const exportExposureByTrade = async (): Promise<string> => {
           }
         }
         
-        // Format physical exposures from mtm_formula
+        // Format physical exposures from pricing_formula
         let physicalExposures = '';
-        if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-          const mtmFormula = leg.mtm_formula as any;
-          if (mtmFormula.exposures && mtmFormula.exposures.physical) {
-            const physicalExp = mtmFormula.exposures.physical;
+        if (leg.pricing_formula && typeof leg.pricing_formula === 'object') {
+          const pricingFormula = leg.pricing_formula as any;
+          if (pricingFormula.exposures && pricingFormula.exposures.physical) {
+            const physicalExp = pricingFormula.exposures.physical;
             physicalExposures = Object.entries(physicalExp)
               .filter(([_, value]) => value !== 0) // Filter out zero exposures
               .map(([product, value]) => `${product}: ${value}`)

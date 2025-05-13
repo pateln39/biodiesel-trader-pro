@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -23,6 +22,7 @@ interface PaperTradeFormProps {
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: any;
+  comments?: string;
 }
 
 interface BrokerOption {
@@ -44,7 +44,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   onSubmit, 
   onCancel,
   isEditMode = false,
-  initialData
+  initialData,
+  comments
 }) => {
   const [selectedBroker, setSelectedBroker] = useState('');
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);

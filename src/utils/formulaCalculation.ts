@@ -1,6 +1,6 @@
-import { FormulaToken } from '@/types/pricing';
+import { FormulaToken, DailyDistribution } from '@/types/pricing';
 import { Instrument, ExposureResult, OperatorType } from '@/types/common';
-import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays } from '@/utils/dateUtils';
+import { formatMonthCode, getBusinessDaysByMonth, distributeValueByBusinessDays, isBusinessDay } from '@/utils/dateUtils';
 
 export function tokenizeFormula(formula: string): FormulaToken[] {
   const tokens: FormulaToken[] = [];
@@ -340,6 +340,84 @@ function calculateInstrumentCoefficients(node: ParseNode): Record<string, number
   }
   
   return coefficients;
+}
+
+/**
+ * Calculate the daily distribution of pricing exposure
+ * @param tokens Formula tokens
+ * @param quantity Trade quantity
+ * @param buySell Buy or sell
+ * @param startDate Pricing period start date
+ * @param endDate Pricing period end date
+ * @returns Distribution of pricing exposure by instrument and date (YYYY-MM-DD)
+ */
+export function calculateDailyPricingDistribution(
+  tokens: FormulaToken[],
+  quantity: number,
+  buySell: 'buy' | 'sell',
+  startDate: Date,
+  endDate: Date
+): Record<string, Record<string, number>> {
+  const distribution: Record<string, Record<string, number>> = {};
+  const instrumentExposures: Record<string, number> = {};
+  
+  // Calculate pricing exposure for each instrument
+  const exposures = calculatePricingExposure(tokens, quantity, buySell);
+  
+  // Filter out zero exposures
+  Object.entries(exposures).forEach(([instrument, value]) => {
+    if (value !== 0) {
+      instrumentExposures[instrument] = value;
+    }
+  });
+  
+  if (Object.keys(instrumentExposures).length === 0) {
+    return distribution;
+  }
+  
+  // Count business days in the period
+  let businessDayCount = 0;
+  const businessDays: string[] = [];
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Normalize to beginning of day
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  
+  const currentDate = new Date(start);
+  
+  while (currentDate <= end) {
+    if (isBusinessDay(currentDate)) {
+      businessDayCount++;
+      // Format as YYYY-MM-DD
+      const dateString = currentDate.toISOString().split('T')[0];
+      businessDays.push(dateString);
+    }
+    
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  if (businessDayCount === 0) {
+    return distribution; // No business days in the period
+  }
+  
+  // Distribute exposure evenly across business days
+  Object.entries(instrumentExposures).forEach(([instrument, totalExposure]) => {
+    if (!distribution[instrument]) {
+      distribution[instrument] = {};
+    }
+    
+    const dailyExposure = totalExposure / businessDayCount;
+    
+    // Assign the same daily exposure to each business day
+    businessDays.forEach(dateString => {
+      distribution[instrument][dateString] = dailyExposure;
+    });
+  });
+  
+  return distribution;
 }
 
 export function calculateMonthlyPricingDistribution(
