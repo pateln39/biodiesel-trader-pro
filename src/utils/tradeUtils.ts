@@ -1,3 +1,7 @@
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+import { supabase } from '@/integrations/supabase/client';
+
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
   // Format: YYMMDD-XXXXX where XXXXX is a random 5-digit number
