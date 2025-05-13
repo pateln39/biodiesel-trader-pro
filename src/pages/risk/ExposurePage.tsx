@@ -58,7 +58,8 @@ const ExposurePage = () => {
         grandTotals,
         groupGrandTotals,
         biodieselProducts: BIODIESEL_PRODUCTS,
-        pricingInstrumentProducts: PRICING_INSTRUMENT_PRODUCTS
+        pricingInstrumentProducts: PRICING_INSTRUMENT_PRODUCTS,
+        dateRange: dateRangeEnabled ? dateRange : undefined
       });
       
       toast.success("Export successful", {

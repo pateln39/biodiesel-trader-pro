@@ -1,22 +1,14 @@
 
-import { ExposureData, MonthlyExposure } from '@/types/exposure';
+import { MonthlyExposure, GrandTotals, GroupTotals } from '@/types/exposure';
+import { DateRange } from 'react-day-picker';
 
-/**
- * Type definition for exposure export parameters
- */
 export interface ExposureExportParams {
   exposureData: MonthlyExposure[];
   visibleCategories: string[];
   filteredProducts: string[];
-  grandTotals: {
-    totals: ExposureData;
-    productTotals: Record<string, ExposureData>;
-  };
-  groupGrandTotals: {
-    biodieselTotal: number;
-    pricingInstrumentTotal: number;
-    totalRow: number;
-  };
+  grandTotals: GrandTotals;
+  groupGrandTotals: GroupTotals;
   biodieselProducts: string[];
   pricingInstrumentProducts: string[];
+  dateRange?: DateRange;
 }

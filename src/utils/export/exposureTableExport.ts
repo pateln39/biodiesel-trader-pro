@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ExposureExportParams } from './exposureExportTypes';
@@ -7,12 +6,22 @@ import {
   applyCellMerges, 
   generateExcelFileName 
 } from './excelFormatUtils';
+import { formatDateRangeForExport } from './exposureExportUtils';
 
 /**
  * Export exposure data to Excel
  * @param params - Exposure export parameters
  */
-export const exportExposureToExcel = (params: ExposureExportParams): void => {
+export const exportExposureToExcel = ({
+  exposureData,
+  visibleCategories,
+  filteredProducts,
+  grandTotals,
+  groupGrandTotals,
+  biodieselProducts,
+  pricingInstrumentProducts,
+  dateRange
+}: ExposureExportParams) => {
   try {
     console.log('[EXPORT] Starting exposure data export');
     const {
@@ -25,7 +34,22 @@ export const exportExposureToExcel = (params: ExposureExportParams): void => {
       pricingInstrumentProducts
     } = params;
     
+    // Create a new workbook
     const workbook = XLSX.utils.book_new();
+    
+    // Format the data for Excel
+    const data = [];
+    
+    // Add headers
+    const headers: Record<string, string> = { Month: "Month" };
+    
+    // Add date range information to the report
+    const dateInfo = dateRange ? 
+      { 'Date Range': formatDateRangeForExport(dateRange) } : 
+      { 'Date Range': 'All Dates' };
+    
+    data.push(dateInfo);
+    data.push({}); // Empty row
     
     // Create header rows
     const categoryRow: any[] = [{ v: "", t: 's' }];
