@@ -93,10 +93,11 @@ export const calculatePhysicalExposure = (
       }
     }
     
-    // Process pricing exposure - using daily distribution for all trades including EFP
+    // Process pricing exposure - using daily distribution for all trades 
+    // SIMPLIFIED: Treat EFP trades the same as other trades with dailyDistribution
     const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
 
-    // Primary approach: Use daily distribution if it exists for all trades (including EFP)
+    // Primary approach: Use daily distribution if it exists for all trades 
     if (pricingFormula.dailyDistribution) {
       // Process daily distribution data - this will be filtered by date range in useExposureCalculation.ts
       Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
@@ -137,28 +138,6 @@ export const calculatePhysicalExposure = (
         }
         pricingExposures[pricingExposureMonth][canonicalInstrument] += Number(value) || 0;
       });
-    }
-    
-    // IMPORTANT: Legacy fallback handling for EFP trades - ONLY use if no dailyDistribution exists
-    // This should rarely be triggered as we now create dailyDistribution for all EFP trades
-    if (leg.pricing_type === 'efp' && pricingExposureMonth && periods.includes(pricingExposureMonth)) {
-      // Check if this EFP trade has NO daily distribution data AND is NOT agreed
-      if (!leg.efp_agreed_status && !pricingFormula.dailyDistribution) {
-        console.warn(`[EFP] Using legacy fallback for EFP trade without dailyDistribution. Month: ${pricingExposureMonth}`);
-        
-        const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
-        
-        if (!pricingExposures[pricingExposureMonth][instrumentKey]) {
-          pricingExposures[pricingExposureMonth][instrumentKey] = 0;
-        }
-        
-        const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-        const direction = leg.buy_sell === 'buy' ? 1 : -1;
-        
-        // For EFP trades, the direction is opposite of the physical trade
-        const pricingDirection = direction * -1;
-        pricingExposures[pricingExposureMonth][instrumentKey] += volume * pricingDirection;
-      }
     }
   }
   

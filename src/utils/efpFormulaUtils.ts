@@ -69,7 +69,6 @@ const calculateEfpDailyDistribution = (
     // Log successful distribution creation with sample of dates
     const dateKeys = Object.keys(dailyDistribution);
     console.log(`[EFP] Created daily distribution for ${designatedMonth} with ${businessDaysCount} business days, total exposure: ${exposureValue}`);
-    console.log(`[EFP] Sample dates: ${dateKeys.slice(0, 3).join(', ')} (${dateKeys.length} total days)`);
     
     return dailyDistribution;
   } catch (error) {
@@ -96,7 +95,6 @@ export const createEfpFormula = (
   };
   
   // Set the appropriate exposure only for unagreed EFPs
-  // For EFP, we track exposure in ICE GASOIL FUTURES (EFP) only
   if (!isAgreed) {
     // The exposure direction is opposite of the physical trade
     // Buy physical = sell futures = negative pricing exposure
@@ -113,10 +111,8 @@ export const createEfpFormula = (
       'ICE GASOIL FUTURES (EFP)': dailyDist
     };
     
-    // Log the distribution creation
-    console.log(`[EFP] Created formula with ${Object.keys(dailyDist).length} days of distribution for ${designatedMonth}`);
-  } else {
-    console.log(`[EFP] Created formula for agreed EFP trade (no exposure tracking needed)`);
+    // Log the total exposure being created
+    console.log(`[EFP] Created formula with total exposure ${exposureValue} for ${designatedMonth}`);
   }
   
   return formula;
@@ -163,8 +159,8 @@ export const updateFormulaWithEfpExposure = (
     // Add or replace the ICE GASOIL FUTURES (EFP) distribution
     updatedFormula.dailyDistribution['ICE GASOIL FUTURES (EFP)'] = dailyDist;
     
-    // Log the distribution update
-    console.log(`[EFP] Updated EFP formula for ${designatedMonth} with ${Object.keys(dailyDist).length} days of distribution`);
+    // Log the exposure value for debugging
+    console.log(`[EFP] Updated formula with exposure ${exposureValue} for ${designatedMonth}`);
   } else {
     // For agreed EFPs, remove any existing daily distribution for this instrument
     if (updatedFormula.dailyDistribution?.['ICE GASOIL FUTURES (EFP)']) {
