@@ -26,6 +26,11 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
   shouldShowTotalRow,
   dateRangeEnabled
 }) => {
+  // Utility function to check if product is an EFP instrument
+  const isEfpInstrument = (product: string): boolean => {
+    return product === 'ICE GASOIL FUTURES (EFP)';
+  };
+  
   return (
     <TableBody>
       {exposureData.map(monthData => (
@@ -71,7 +76,7 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-pricing-${product}`} 
-                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
+                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''} ${isEfpInstrument(product) ? 'bg-blue-950' : ''}`}
                   >
                     {formatValue(productData.pricing)}
                     {dateRangeEnabled && productData.pricing !== 0 && (
@@ -112,7 +117,7 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-net-${product}`} 
-                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} bg-brand-navy`}
+                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} ${isEfpInstrument(product) ? 'bg-blue-950' : ''} bg-brand-navy`}
                   >
                     {formatValue(productData.netExposure)}
                     {dateRangeEnabled && productData.netExposure !== 0 && (

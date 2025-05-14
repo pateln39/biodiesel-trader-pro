@@ -258,7 +258,15 @@ const TradeEditPage = () => {
           // Update the formula with EFP-specific values
           leg.formula = efpFormula;
           
-          console.log('[TRADE EDIT] Generated EFP daily distribution:', dailyDistribution);
+          // Debug log for EFP daily distribution
+          const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
+          if (dailyDistribution[instrumentKey]) {
+            const dates = Object.keys(dailyDistribution[instrumentKey]);
+            console.log(`[TRADE EDIT] Generated EFP daily distribution for ${leg.efpDesignatedMonth} with ${dates.length} dates`, 
+              dates.length > 0 ? `First: ${dates[0]}, Last: ${dates[dates.length-1]}` : 'No dates');
+          } else {
+            console.warn('[TRADE EDIT] No EFP daily distribution generated!');
+          }
         }
         else if (leg.formula && 
             leg.formula.tokens && 
@@ -311,12 +319,16 @@ const TradeEditPage = () => {
         };
 
         if (leg.pricingType === 'efp') {
+          // For EFP trades, ensure we capture all relevant EFP fields
           Object.assign(legData, {
             efp_premium: leg.efpPremium,
             efp_agreed_status: leg.efpAgreedStatus,
             efp_fixed_value: leg.efpFixedValue,
             efp_designated_month: leg.efpDesignatedMonth,
           });
+          
+          // Add extra debugging for EFP trades
+          console.log(`[TRADE EDIT] Saving EFP trade with designated month: ${leg.efpDesignatedMonth}, agreed status: ${leg.efpAgreedStatus}`);
         }
 
         const { error: legUpdateError } = await supabase
