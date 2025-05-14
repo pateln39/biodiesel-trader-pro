@@ -11,9 +11,10 @@ import { DateRangePicker } from '../ui/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ExposureCategory } from '@/types/exposure';
 
 interface ExposureControlsProps {
-  visibleCategories: string[];
+  visibleCategories: ExposureCategory[];  // Updated to use ExposureCategory type
   toggleCategory: (category: string) => void;
   exposureCategories: readonly string[];
   onExportExcel: () => void;
@@ -60,10 +61,10 @@ const ExposureControls: React.FC<ExposureControlsProps> = ({
                     key={category}
                     variant="outline"
                     size="sm"
-                    pressed={visibleCategories.includes(category)}
+                    pressed={visibleCategories.includes(category as ExposureCategory)}  // Type cast here
                     onPressedChange={() => toggleCategory(category)}
                   >
-                    {visibleCategories.includes(category) && <CheckIcon className="mr-1 h-3 w-3" />}
+                    {visibleCategories.includes(category as ExposureCategory) && <CheckIcon className="mr-1 h-3 w-3" />}
                     {category}
                   </Toggle>
                 ))}

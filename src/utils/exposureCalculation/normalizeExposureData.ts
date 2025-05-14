@@ -43,12 +43,22 @@ export const mergeExposureData = (
 ): NormalizedExposureResult => {
   const allProductsFound = new Set<string>();
   
+  // Debug counters for monitoring the merge process
+  const mergeStats = {
+    physicalProducts: 0,
+    pricingProducts: 0,
+    paperProducts: 0,
+    pricingFromPaperProducts: 0,
+    efpProductsFound: 0
+  };
+  
   // Process physical exposures
   Object.entries(physicalExposures).forEach(([month, products]) => {
     if (!exposuresByMonth[month]) return;
     
     Object.entries(products).forEach(([product, amount]) => {
       allProductsFound.add(product);
+      mergeStats.physicalProducts++;
       
       if (!exposuresByMonth[month][product]) {
         exposuresByMonth[month][product] = {
@@ -69,6 +79,12 @@ export const mergeExposureData = (
     
     Object.entries(products).forEach(([product, amount]) => {
       allProductsFound.add(product);
+      mergeStats.pricingProducts++;
+      
+      if (product === 'ICE GASOIL FUTURES (EFP)') {
+        mergeStats.efpProductsFound++;
+        console.log(`[EXPOSURE] Merging EFP pricing exposure for ${month}: ${amount}`);
+      }
       
       if (!exposuresByMonth[month][product]) {
         exposuresByMonth[month][product] = {
@@ -79,7 +95,14 @@ export const mergeExposureData = (
         };
       }
       
-      exposuresByMonth[month][product].pricing += amount;
+      // For EFP, explicitly log the before and after values
+      if (product === 'ICE GASOIL FUTURES (EFP)') {
+        const beforeValue = exposuresByMonth[month][product].pricing;
+        exposuresByMonth[month][product].pricing += amount;
+        console.log(`[EXPOSURE] EFP pricing exposure for ${month} updated: ${beforeValue} → ${exposuresByMonth[month][product].pricing}`);
+      } else {
+        exposuresByMonth[month][product].pricing += amount;
+      }
     });
   });
   
@@ -89,6 +112,7 @@ export const mergeExposureData = (
     
     Object.entries(products).forEach(([product, amount]) => {
       allProductsFound.add(product);
+      mergeStats.paperProducts++;
       
       if (!exposuresByMonth[month][product]) {
         exposuresByMonth[month][product] = {
@@ -109,6 +133,7 @@ export const mergeExposureData = (
     
     Object.entries(products).forEach(([product, amount]) => {
       allProductsFound.add(product);
+      mergeStats.pricingFromPaperProducts++;
       
       if (!exposuresByMonth[month][product]) {
         exposuresByMonth[month][product] = {
@@ -130,6 +155,19 @@ export const mergeExposureData = (
       exposure.netExposure = calculateNetExposure(exposure.physical, exposure.pricing);
     });
   });
+  
+  // Log merge statistics to help with debugging
+  console.log(`[EXPOSURE] Merge statistics:`, mergeStats);
+  
+  // If EFP products were found, log their final values
+  if (mergeStats.efpProductsFound > 0) {
+    console.log(`[EXPOSURE] Final EFP exposures after merging:`);
+    Object.entries(exposuresByMonth).forEach(([month, products]) => {
+      if (products['ICE GASOIL FUTURES (EFP)'] && products['ICE GASOIL FUTURES (EFP)'].pricing !== 0) {
+        console.log(`  ${month}: ${products['ICE GASOIL FUTURES (EFP)'].pricing}`);
+      }
+    });
+  }
   
   return { allProductsFound, exposuresByMonth };
 };

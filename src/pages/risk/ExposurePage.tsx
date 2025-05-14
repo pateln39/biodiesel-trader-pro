@@ -2,7 +2,7 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Helmet } from 'react-helmet-async';
-import { CATEGORY_ORDER } from '@/types/exposure';
+import { CATEGORY_ORDER, ExposureCategory } from '@/types/exposure';
 import { useExposureData } from '@/hooks/useExposureData';
 import { useExposureTotals } from '@/hooks/useExposureTotals';
 import ExposureControls from '@/components/exposure/ExposureControls';
@@ -43,7 +43,7 @@ const ExposurePage = () => {
     allProducts, 
     BIODIESEL_PRODUCTS, 
     PRICING_INSTRUMENT_PRODUCTS,
-    visibleCategories,
+    visibleCategories, // No need for type cast as useExposureData now returns ExposureCategory[]
     CATEGORY_ORDER,
     dateRangeEnabled
   );
@@ -53,12 +53,13 @@ const ExposurePage = () => {
     try {
       exportExposureToExcel({
         exposureData,
-        visibleCategories: orderedVisibleCategories,
+        visibleCategories: orderedVisibleCategories as ExposureCategory[], // Type cast here
         filteredProducts,
         grandTotals,
         groupGrandTotals,
         biodieselProducts: BIODIESEL_PRODUCTS,
-        pricingInstrumentProducts: PRICING_INSTRUMENT_PRODUCTS
+        pricingInstrumentProducts: PRICING_INSTRUMENT_PRODUCTS,
+        dateRange: dateRangeEnabled ? dateRange : undefined
       });
       
       toast.success("Export successful", {

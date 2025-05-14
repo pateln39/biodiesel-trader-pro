@@ -6,6 +6,7 @@ import { useExposureFetching } from './exposure/useExposureFetching';
 import { useExposureCalculation } from './exposure/useExposureCalculation';
 import { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
+import { ExposureCategory, CATEGORY_ORDER } from '@/types/exposure';
 
 export const useExposureData = () => {
   // Get exposure periods (months for the table)
@@ -45,7 +46,8 @@ export const useExposureData = () => {
   );
   
   // Manage UI state for visible categories
-  const [visibleCategories, setVisibleCategories] = useState<string[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
+  // Update type to ExposureCategory[] explicitly
+  const [visibleCategories, setVisibleCategories] = useState<ExposureCategory[]>(['Physical', 'Pricing', 'Paper', 'Exposure']);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   
   // Update selected products when allProducts changes
@@ -58,11 +60,14 @@ export const useExposureData = () => {
   // Toggle category visibility
   const toggleCategory = (category: string) => {
     setVisibleCategories(prev => {
-      if (prev.includes(category)) {
-        return prev.filter(cat => cat !== category);
+      // Make sure we're working with the correct type
+      const validCategory = category as ExposureCategory;
+      if (prev.includes(validCategory)) {
+        return prev.filter(cat => cat !== validCategory);
       } else {
-        const newCategories = [...prev, category];
-        return ['Physical', 'Pricing', 'Paper', 'Exposure'].filter(cat => newCategories.includes(cat));
+        const newCategories = [...prev, validCategory];
+        // Return categories in the order defined by CATEGORY_ORDER
+        return CATEGORY_ORDER.filter(cat => newCategories.includes(cat));
       }
     });
   };

@@ -28,22 +28,24 @@ export const useExposureCalculation = (
       return [];
     }
 
+    console.log('[EXPOSURE] Starting exposure calculation. Date range enabled:', dateRangeEnabled);
+    
     // Initialize exposure data structure
     const exposuresByMonth = initializeExposureData(periods, allowedProducts);
     
-    // Calculate physical exposures - reading from pricing_formula.exposures.physical
+    // Calculate physical exposures
     const { physicalExposures, pricingExposures } = 
       calculatePhysicalExposure(tradeData.physicalTradeLegs, periods);
     
-    // Calculate paper exposures
+    // Calculate paper exposures - without date filtering for initial calculation
     const { paperExposures, pricingFromPaperExposures } = 
-      calculatePaperExposure(tradeData.paperTradeLegs, periods);
+      calculatePaperExposure(tradeData.paperTradeLegs, periods, false);
     
     // Create a deep copy of the exposures for date filtered results
     let filteredPhysicalExposures = { ...physicalExposures };
-    let filteredPricingExposures = { ...pricingExposures };
-    let filteredPaperExposures = { ...paperExposures };
-    let filteredPricingFromPaperExposures = { ...pricingFromPaperExposures };
+    let filteredPricingExposures = {};
+    let filteredPaperExposures = {};
+    let filteredPricingFromPaperExposures = {};
     
     // If date range filtering is enabled, apply filtering
     if (dateRangeEnabled && dateRange?.from) {
@@ -73,26 +75,86 @@ export const useExposureCalculation = (
       
       console.log("[EXPOSURE] Showing physical exposure for entire months:", monthsInDateRange);
       
-      // Step 2: Filter pricing exposures from physical trades using daily distribution when available
+      // Step 2: Initialize filtered pricing exposures
       filteredPricingExposures = {};
       periods.forEach(period => {
         filteredPricingExposures[period] = {};
       });
       
-      // Process physical trades with daily distributions
+      // Step 3: Process all physical trades' daily distributions
       if (tradeData.physicalTradeLegs) {
+        // Counter to track EFP filtering statistics
+        let efpTradesProcessed = 0;
+        let efpDailyDistributionFound = 0;
+        let efpTotalExposureAdded = 0;
+        
+        // Process each physical trade leg
         tradeData.physicalTradeLegs.forEach(leg => {
-          // Check if the leg has daily distribution data for more precise filtering
-          if (leg.pricing_formula?.dailyDistribution) {
+          // Determine if this is an EFP trade
+          const isEfpTrade = leg.pricing_type === 'efp';
+          
+          if (isEfpTrade) {
+            efpTradesProcessed++;
+            console.log(`[EXPOSURE] Processing EFP trade #${efpTradesProcessed}:`, {
+              month: leg.efp_designated_month,
+              quantity: leg.quantity,
+              agreed: leg.efp_agreed_status,
+              buySell: leg.buy_sell,
+              legId: leg.id
+            });
+          }
+          
+          // Ensure pricing_formula is properly parsed
+          const pricingFormula = leg.pricing_formula ? 
+            (typeof leg.pricing_formula === 'string' ? 
+              JSON.parse(leg.pricing_formula) : leg.pricing_formula) : {};
+          
+          // Check if the leg has daily distribution data
+          if (pricingFormula.dailyDistribution) {
+            if (isEfpTrade) {
+              efpDailyDistributionFound++;
+              const instrumentKeys = Object.keys(pricingFormula.dailyDistribution);
+              console.log(`[EXPOSURE] EFP trade #${efpTradesProcessed} has dailyDistribution with instruments:`, instrumentKeys);
+              
+              // Log daily entries count
+              instrumentKeys.forEach(instrument => {
+                const dailyEntries = pricingFormula.dailyDistribution[instrument];
+                console.log(`[EXPOSURE] EFP instrument ${instrument} has ${Object.keys(dailyEntries).length} daily entries`);
+              });
+            }
+            
             // Process each instrument in the daily distribution
-            Object.entries(leg.pricing_formula.dailyDistribution).forEach(([instrument, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
+            Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
+              const isEfpInstrument = instrument.includes('EFP');
+              
+              if (isEfpTrade) {
+                console.log(`[EXPOSURE] Processing ${isEfpInstrument ? 'EFP' : 'standard'} dailyDistribution for instrument: ${instrument}`);
+              }
+              
+              if (typeof dailyValues === 'object' && dailyValues !== null) {
+                // Debug daily values data structure
+                if (isEfpTrade) {
+                  const dateKeys = Object.keys(dailyValues);
+                  console.log(`[EXPOSURE] EFP trade #${efpTradesProcessed} dailyDistribution dates sample:`, 
+                    dateKeys.slice(0, 3), '... (and', dateKeys.length - 3, 'more)');
+                }
+                
+                // Create counters for included/excluded dates
+                let includedDatesCount = 0;
+                let excludedDatesCount = 0;
+                
                 // Filter and aggregate daily values that fall within the date range
                 Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
                   const date = parseISODate(dateStr);
                   
+                  if (!date) {
+                    console.warn(`[EXPOSURE] Invalid date format in dailyDistribution: ${dateStr}`);
+                    return;
+                  }
+                  
                   // Check if the date is in the specified range
-                  if (date && isDateInRange(date, startDate, endDate)) {
+                  if (isDateInRange(date, startDate, endDate)) {
+                    includedDatesCount++;
                     const month = formatMonthCode(date);
                     
                     // Only process if this month is in our periods list
@@ -108,12 +170,63 @@ export const useExposureCalculation = (
                       
                       // Add this daily exposure to the filtered pricing exposure
                       filteredPricingExposures[month][instrument] += exposure;
+                      
+                      // For EFP trades, log each date's contribution
+                      if (isEfpTrade && isEfpInstrument) {
+                        console.log(`[EXPOSURE] Adding EFP daily exposure: ${month}, ${instrument}, ${exposure}, date: ${dateStr}`);
+                        efpTotalExposureAdded += exposure;
+                      }
+                    }
+                  } else {
+                    excludedDatesCount++;
+                    
+                    // Only log a sample of excluded dates to avoid console spam
+                    if (excludedDatesCount <= 3 && isEfpTrade) {
+                      console.log(`[EXPOSURE] Excluding EFP date: ${dateStr} outside range: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
                     }
                   }
                 });
+                
+                if (isEfpTrade) {
+                  console.log(`[EXPOSURE] EFP trade #${efpTradesProcessed}: Included ${includedDatesCount} dates, excluded ${excludedDatesCount} dates`);
+                }
               }
             });
+          } else if (isEfpTrade) {
+            // Handle EFP trades without daily distribution
+            console.warn(`[EXPOSURE] EFP trade #${efpTradesProcessed} (id: ${leg.id}) has NO dailyDistribution data!`);
+            
+            // For EFP trades without daily distribution, use fallback
+            if (leg.efp_designated_month && !leg.efp_agreed_status) {
+              console.log(`[EXPOSURE] Using synthetic daily distribution for EFP trade #${efpTradesProcessed}`);
+              
+              const month = leg.efp_designated_month;
+              const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
+              
+              // Calculate exposure value
+              const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+              const direction = leg.buy_sell === 'buy' ? -1 : 1; // Opposite for EFP trades
+              const exposureValue = volume * direction;
+              
+              // Use the designated month to determine if it overlaps with our date range
+              const monthOverlaps = monthsInDateRange.includes(month);
+              
+              if (monthOverlaps) {
+                if (!filteredPricingExposures[month]) {
+                  filteredPricingExposures[month] = {};
+                }
+                
+                if (!filteredPricingExposures[month][instrumentKey]) {
+                  filteredPricingExposures[month][instrumentKey] = 0;
+                }
+                
+                filteredPricingExposures[month][instrumentKey] += exposureValue;
+                console.log(`[EXPOSURE] Added synthetic EFP exposure for ${month}: ${exposureValue}`);
+                efpTotalExposureAdded += exposureValue;
+              }
+            }
           } else {
+            // Handle trades without daily distribution using other methods
             // For trades without daily distribution, include monthly data if:
             // 1. The pricing period start/end falls within our date range, OR
             // 2. The date range falls entirely within the pricing period
@@ -162,16 +275,39 @@ export const useExposureCalculation = (
                     if (!filteredPricingExposures[month]) {
                       filteredPricingExposures[month] = {};
                     }
-                    filteredPricingExposures[month][instrument] = value;
+                    
+                    if (!filteredPricingExposures[month][instrument]) {
+                      filteredPricingExposures[month][instrument] = 0;
+                    }
+                    
+                    filteredPricingExposures[month][instrument] += value;
                   });
                 }
               }
             }
           }
         });
+        
+        // Log EFP filtering summary
+        if (efpTradesProcessed > 0) {
+          console.log(`[EXPOSURE] EFP Summary: ${efpTradesProcessed} trades processed, ${efpDailyDistributionFound} with dailyDistribution, total exposure added: ${efpTotalExposureAdded}`);
+        }
       }
       
-      // Step 3: Filter paper exposures using daily distributions when available
+      // Process paper trade exposures with date filtering
+      // Step 4: For paper trades, recalculate exposures using ONLY daily distributions and date filtering
+      console.log("[EXPOSURE] Calculating paper exposures for date filtering using ONLY daily distribution data with date range");
+      
+      // Use the enhanced calculatePaperExposure with date range filter
+      const { paperExposures: recalculatedPaperExposures, pricingFromPaperExposures: recalculatedPricingExposures } = 
+        calculatePaperExposure(
+          tradeData.paperTradeLegs, 
+          periods, 
+          true, // useOnlyDailyDistribution
+          { startDate, endDate } // Pass date range for explicit filtering
+        );
+      
+      // Initialize with empty objects - these will be populated from recalculated exposures
       filteredPaperExposures = {};
       filteredPricingFromPaperExposures = {};
       periods.forEach(period => {
@@ -179,106 +315,35 @@ export const useExposureCalculation = (
         filteredPricingFromPaperExposures[period] = {};
       });
       
-      // Process paper trades
-      if (tradeData.paperTradeLegs) {
-        tradeData.paperTradeLegs.forEach(leg => {
-          const month = leg.period || leg.trading_period || '';
-          
-          // Skip if month is invalid or not in our periods
-          if (!month || !periods.includes(month)) {
-            return;
-          }
-          
-          // First handle paper exposures
-          // Check if we have daily distribution data for more precise filtering
-          if (leg.exposures?.paperDailyDistribution) {
-            Object.entries(leg.exposures.paperDailyDistribution).forEach(([product, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
-                Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-                  const date = parseISODate(dateStr);
-                  
-                  // Check if the date is in the date range
-                  if (date && isDateInRange(date, startDate, endDate)) {
-                    // Only process if exposure is a number
-                    if (typeof exposure === 'number') {
-                      const exposureMonth = formatMonthCode(date);
-                      
-                      // Skip if the month is not in our periods
-                      if (!periods.includes(exposureMonth)) {
-                        return;
-                      }
-                      
-                      if (!filteredPaperExposures[exposureMonth]) {
-                        filteredPaperExposures[exposureMonth] = {};
-                      }
-                      
-                      if (!filteredPaperExposures[exposureMonth][product]) {
-                        filteredPaperExposures[exposureMonth][product] = 0;
-                      }
-                      
-                      filteredPaperExposures[exposureMonth][product] += exposure;
-                    }
-                  }
-                });
-              }
-            });
-          } else if (monthsInDateRange.includes(month)) {
-            // Without daily distribution, use monthly data if the month is in our date range
-            if (paperExposures[month]) {
-              Object.entries(paperExposures[month]).forEach(([product, value]) => {
-                if (!filteredPaperExposures[month]) {
-                  filteredPaperExposures[month] = {};
-                }
-                filteredPaperExposures[month][product] = value;
-              });
-            }
-          }
-          
-          // Now handle pricing exposures from paper trades
-          // Check if we have daily distribution data
-          if (leg.exposures?.pricingDailyDistribution) {
-            Object.entries(leg.exposures.pricingDailyDistribution).forEach(([product, dailyValues]) => {
-              if (typeof dailyValues === 'object') {
-                Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-                  const date = parseISODate(dateStr);
-                  
-                  // Check if the date is in the date range
-                  if (date && isDateInRange(date, startDate, endDate)) {
-                    // Only process if exposure is a number
-                    if (typeof exposure === 'number') {
-                      const exposureMonth = formatMonthCode(date);
-                      
-                      // Skip if the month is not in our periods
-                      if (!periods.includes(exposureMonth)) {
-                        return;
-                      }
-                      
-                      if (!filteredPricingFromPaperExposures[exposureMonth]) {
-                        filteredPricingFromPaperExposures[exposureMonth] = {};
-                      }
-                      
-                      if (!filteredPricingFromPaperExposures[exposureMonth][product]) {
-                        filteredPricingFromPaperExposures[exposureMonth][product] = 0;
-                      }
-                      
-                      filteredPricingFromPaperExposures[exposureMonth][product] += exposure;
-                    }
-                  }
-                });
-              }
-            });
-          } else if (monthsInDateRange.includes(month)) {
-            // Without daily distribution, use monthly data if the month is in our date range
-            if (pricingFromPaperExposures[month]) {
-              Object.entries(pricingFromPaperExposures[month]).forEach(([product, value]) => {
-                if (!filteredPricingFromPaperExposures[month]) {
-                  filteredPricingFromPaperExposures[month] = {};
-                }
-                filteredPricingFromPaperExposures[month][product] = value;
-              });
-            }
-          }
-        });
+      // Copy the recalculated (and already date-filtered) exposures
+      Object.entries(recalculatedPaperExposures).forEach(([month, products]) => {
+        if (periods.includes(month)) {
+          filteredPaperExposures[month] = { ...products };
+        }
+      });
+      
+      Object.entries(recalculatedPricingExposures).forEach(([month, products]) => {
+        if (periods.includes(month)) {
+          filteredPricingFromPaperExposures[month] = { ...products };
+        }
+      });
+      
+      // Additional logging to verify we've processed all types of exposures
+      console.log("[EXPOSURE] Date range filtering summary:");
+      console.log("Physical months processed:", Object.keys(filteredPhysicalExposures).filter(m => Object.keys(filteredPhysicalExposures[m]).length > 0).length);
+      console.log("Pricing months processed:", Object.keys(filteredPricingExposures).filter(m => Object.keys(filteredPricingExposures[m]).length > 0).length);
+      console.log("Paper months processed:", Object.keys(filteredPaperExposures).filter(m => Object.keys(filteredPaperExposures[m]).length > 0).length);
+      console.log("Pricing from paper months processed:", Object.keys(filteredPricingFromPaperExposures).filter(m => Object.keys(filteredPricingFromPaperExposures[m]).length > 0).length);
+      
+      // Debug the pricing exposures specifically for ICE GASOIL FUTURES (EFP)
+      const efpMonths = Object.entries(filteredPricingExposures)
+        .filter(([month, products]) => products['ICE GASOIL FUTURES (EFP)'])
+        .map(([month, products]) => `${month}: ${products['ICE GASOIL FUTURES (EFP)']}`);
+      
+      if (efpMonths.length > 0) {
+        console.log("[EXPOSURE] Filtered ICE GASOIL FUTURES (EFP) exposures:", efpMonths);
+      } else {
+        console.warn("[EXPOSURE] No filtered ICE GASOIL FUTURES (EFP) exposures found!");
       }
     }
     
@@ -293,9 +358,31 @@ export const useExposureCalculation = (
       useFilters ? filteredPaperExposures : paperExposures,
       useFilters ? filteredPricingFromPaperExposures : pricingFromPaperExposures
     );
+
+    // Debug the merging results specifically for EFP
+    if (dateRangeEnabled) {
+      console.log("[EXPOSURE] Checking merged EFP exposures in final data:");
+      Object.entries(mergedData).forEach(([month, products]) => {
+        if (products['ICE GASOIL FUTURES (EFP)']?.pricing) {
+          console.log(`[EXPOSURE] Merged data: ${month} EFP exposure = ${products['ICE GASOIL FUTURES (EFP)'].pricing}`);
+        }
+      });
+    }
     
     // Format the final data structure for the exposure table
-    return formatExposureData(mergedData, periods, allowedProducts);
+    const formattedData = formatExposureData(mergedData, periods, allowedProducts);
+    
+    // Final verification of EFP exposures in formatted data
+    if (dateRangeEnabled) {
+      console.log("[EXPOSURE] Final verification of EFP exposures in formatted data:");
+      formattedData.forEach(monthData => {
+        if (monthData.products['ICE GASOIL FUTURES (EFP)']?.pricing) {
+          console.log(`[EXPOSURE] Final data: ${monthData.month} EFP pricing = ${monthData.products['ICE GASOIL FUTURES (EFP)'].pricing}`);
+        }
+      });
+    }
+    
+    return formattedData;
   }, [tradeData, periods, allowedProducts, dateRangeEnabled, dateRange]);
 
   return {

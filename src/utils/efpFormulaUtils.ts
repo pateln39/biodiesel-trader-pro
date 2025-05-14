@@ -1,5 +1,5 @@
 
-import { PricingFormula } from '@/types/pricing';
+import { PricingFormula } from '@/types';
 import { BuySell } from '@/types';
 import { createEmptyExposureResult } from './formulaCalculation';
 import { addDays, format, isWeekend, parse, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
@@ -28,36 +28,54 @@ const calculateEfpDailyDistribution = (
   exposureValue: number,
   designatedMonth: string
 ): Record<string, number> => {
-  // Parse the designated month (format: "Jun-25" or "June-25")
-  const parsedDate = parse(designatedMonth, 'MMM-yy', new Date());
-  
-  // Get first and last day of the month
-  const firstDay = startOfMonth(parsedDate);
-  const lastDay = endOfMonth(parsedDate);
-  
-  // Count business days in the month
-  const businessDaysCount = countBusinessDays(firstDay, lastDay);
-  
-  if (businessDaysCount === 0) {
-    return {}; // No valid business days
-  }
-  
-  // Calculate daily exposure (exposure divided equally among business days)
-  const dailyExposure = exposureValue / businessDaysCount;
-  
-  // Build daily distribution object
-  const dailyDistribution: Record<string, number> = {};
-  let currentDate = new Date(firstDay);
-  
-  while (currentDate <= lastDay) {
-    if (!isWeekend(currentDate)) {
-      const dateKey = format(currentDate, 'yyyy-MM-dd');
-      dailyDistribution[dateKey] = dailyExposure;
+  try {
+    // Parse the designated month (format: "Jun-25" or "June-25")
+    const parsedDate = parse(designatedMonth, 'MMM-yy', new Date());
+    
+    // If parsing failed, log and return empty object
+    if (isNaN(parsedDate.getTime())) {
+      console.error(`[EFP] Failed to parse designated month: ${designatedMonth}`);
+      return {};
     }
-    currentDate = addDays(currentDate, 1);
+    
+    // Get first and last day of the month
+    const firstDay = startOfMonth(parsedDate);
+    const lastDay = endOfMonth(parsedDate);
+    
+    // Count business days in the month
+    const businessDaysCount = countBusinessDays(firstDay, lastDay);
+    
+    if (businessDaysCount === 0) {
+      console.error(`[EFP] No business days found in month: ${designatedMonth}`);
+      return {}; // No valid business days
+    }
+    
+    // Calculate daily exposure (exposure divided equally among business days)
+    const dailyExposure = exposureValue / businessDaysCount;
+    
+    // Build daily distribution object
+    const dailyDistribution: Record<string, number> = {};
+    let currentDate = new Date(firstDay);
+    
+    while (currentDate <= lastDay) {
+      if (!isWeekend(currentDate)) {
+        // Use ISO date format (YYYY-MM-DD) for consistency
+        const dateKey = format(currentDate, 'yyyy-MM-dd');
+        dailyDistribution[dateKey] = dailyExposure;
+      }
+      currentDate = addDays(currentDate, 1);
+    }
+    
+    // Log successful distribution creation with sample of dates
+    const dateKeys = Object.keys(dailyDistribution);
+    console.log(`[EFP] Created daily distribution for ${designatedMonth} with ${businessDaysCount} business days, total exposure: ${exposureValue}`);
+    console.log(`[EFP] Sample dates: ${dateKeys.slice(0, 3).join(', ')} (${dateKeys.length} total days)`);
+    
+    return dailyDistribution;
+  } catch (error) {
+    console.error(`[EFP] Error calculating daily distribution for ${designatedMonth}:`, error);
+    return {};
   }
-  
-  return dailyDistribution;
 };
 
 /**
@@ -75,7 +93,6 @@ export const createEfpFormula = (
   const formula: PricingFormula = {
     tokens: [], // EFP trades don't use formula tokens
     exposures: createEmptyExposureResult(),
-    // We don't create monthlyDistribution for EFP because it's handled directly in exposureUtils.ts
   };
   
   // Set the appropriate exposure only for unagreed EFPs
@@ -91,9 +108,15 @@ export const createEfpFormula = (
     formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
+    const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
     formula.dailyDistribution = {
-      'ICE GASOIL FUTURES (EFP)': calculateEfpDailyDistribution(exposureValue, designatedMonth)
+      'ICE GASOIL FUTURES (EFP)': dailyDist
     };
+    
+    // Log the distribution creation
+    console.log(`[EFP] Created formula with ${Object.keys(dailyDist).length} days of distribution for ${designatedMonth}`);
+  } else {
+    console.log(`[EFP] Created formula for agreed EFP trade (no exposure tracking needed)`);
   }
   
   return formula;
@@ -132,13 +155,20 @@ export const updateFormulaWithEfpExposure = (
     updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
-    updatedFormula.dailyDistribution = {
-      ...(updatedFormula.dailyDistribution || {}),
-      'ICE GASOIL FUTURES (EFP)': calculateEfpDailyDistribution(exposureValue, designatedMonth)
-    };
+    const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
+    
+    // Ensure the dailyDistribution object exists
+    updatedFormula.dailyDistribution = updatedFormula.dailyDistribution || {};
+    
+    // Add or replace the ICE GASOIL FUTURES (EFP) distribution
+    updatedFormula.dailyDistribution['ICE GASOIL FUTURES (EFP)'] = dailyDist;
+    
+    // Log the distribution update
+    console.log(`[EFP] Updated EFP formula for ${designatedMonth} with ${Object.keys(dailyDist).length} days of distribution`);
   } else {
     // For agreed EFPs, remove any existing daily distribution for this instrument
     if (updatedFormula.dailyDistribution?.['ICE GASOIL FUTURES (EFP)']) {
+      console.log('[EFP] Removing dailyDistribution for agreed EFP trade');
       const { ['ICE GASOIL FUTURES (EFP)']: _, ...restDistribution } = updatedFormula.dailyDistribution;
       updatedFormula.dailyDistribution = restDistribution;
     }

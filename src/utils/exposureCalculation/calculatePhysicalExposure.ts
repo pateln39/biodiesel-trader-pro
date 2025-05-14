@@ -1,3 +1,4 @@
+
 import { formatMonthCode } from '@/utils/dateUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
@@ -92,11 +93,26 @@ export const calculatePhysicalExposure = (
       }
     }
     
-    // Process pricing exposure - this remains unchanged
+    // Process pricing exposure - using daily distribution for all trades including EFP
     const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
 
-    // Handle monthly distribution if exists
-    if (pricingFormula.monthlyDistribution) {
+    // Primary approach: Use daily distribution if it exists for all trades (including EFP)
+    if (pricingFormula.dailyDistribution) {
+      // Process daily distribution data - this will be filtered by date range in useExposureCalculation.ts
+      Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
+        const canonicalInstrument = mapProductToCanonical(instrument);
+        
+        if (typeof dailyValues === 'object') {
+          // Daily distribution will be processed in useExposureCalculation.ts
+          // Just set up the structure here
+          if (!pricingExposures[pricingExposureMonth][canonicalInstrument]) {
+            pricingExposures[pricingExposureMonth][canonicalInstrument] = 0;
+          }
+        }
+      });
+    } 
+    // Secondary approach: Handle monthly distribution if available
+    else if (pricingFormula.monthlyDistribution) {
       Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
         const canonicalInstrument = mapProductToCanonical(instrument);
         
@@ -110,7 +126,7 @@ export const calculatePhysicalExposure = (
         });
       });
     } 
-    // Otherwise use direct pricing exposures
+    // Tertiary approach: Use direct pricing exposures
     else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && 
              pricingFormula.exposures && pricingFormula.exposures.pricing) {
       Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
@@ -123,9 +139,13 @@ export const calculatePhysicalExposure = (
       });
     }
     
-    // Special handling for EFP trades
+    // IMPORTANT: Legacy fallback handling for EFP trades - ONLY use if no dailyDistribution exists
+    // This should rarely be triggered as we now create dailyDistribution for all EFP trades
     if (leg.pricing_type === 'efp' && pricingExposureMonth && periods.includes(pricingExposureMonth)) {
-      if (!leg.efp_agreed_status) {
+      // Check if this EFP trade has NO daily distribution data AND is NOT agreed
+      if (!leg.efp_agreed_status && !pricingFormula.dailyDistribution) {
+        console.warn(`[EFP] Using legacy fallback for EFP trade without dailyDistribution. Month: ${pricingExposureMonth}`);
+        
         const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
         
         if (!pricingExposures[pricingExposureMonth][instrumentKey]) {
