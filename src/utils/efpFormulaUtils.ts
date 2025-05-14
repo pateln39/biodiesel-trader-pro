@@ -3,6 +3,7 @@ import { PricingFormula } from '@/types';
 import { BuySell } from '@/types';
 import { createEmptyExposureResult } from './formulaCalculation';
 import { addDays, format, isWeekend, parse, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { mapProductToCanonical } from '@/utils/productMapping';
 
 /**
  * Count the number of business days (Monday-Friday) in a date range
@@ -69,7 +70,6 @@ const calculateEfpDailyDistribution = (
     // Log successful distribution creation with sample of dates
     const dateKeys = Object.keys(dailyDistribution);
     console.log(`[EFP] Created daily distribution for ${designatedMonth} with ${businessDaysCount} business days, total exposure: ${exposureValue}`);
-    console.log(`[EFP] Sample dates: ${dateKeys.slice(0, 3).join(', ')} (${dateKeys.length} total days)`);
     
     return dailyDistribution;
   } catch (error) {
@@ -96,7 +96,6 @@ export const createEfpFormula = (
   };
   
   // Set the appropriate exposure only for unagreed EFPs
-  // For EFP, we track exposure in ICE GASOIL FUTURES (EFP) only
   if (!isAgreed) {
     // The exposure direction is opposite of the physical trade
     // Buy physical = sell futures = negative pricing exposure
@@ -104,19 +103,25 @@ export const createEfpFormula = (
     const exposureDirection = buySell === 'buy' ? -1 : 1;
     const exposureValue = quantity * exposureDirection;
     
-    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
-    formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
+    // Store the raw instrument name for daily distribution
+    const rawInstrumentName = 'ICE GASOIL FUTURES (EFP)';
+    
+    // Get the canonical name for consistent mapping in the exposure table
+    const canonicalName = mapProductToCanonical(rawInstrumentName);
+    
+    console.log(`[EFP] Creating formula with raw instrument name: ${rawInstrumentName}, maps to: ${canonicalName}`);
+    
+    // Set the exposure using the raw instrument name which will be mapped later
+    formula.exposures.pricing[rawInstrumentName] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
     const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
     formula.dailyDistribution = {
-      'ICE GASOIL FUTURES (EFP)': dailyDist
+      [rawInstrumentName]: dailyDist
     };
     
-    // Log the distribution creation
-    console.log(`[EFP] Created formula with ${Object.keys(dailyDist).length} days of distribution for ${designatedMonth}`);
-  } else {
-    console.log(`[EFP] Created formula for agreed EFP trade (no exposure tracking needed)`);
+    // Log the total exposure being created
+    console.log(`[EFP] Created formula with total exposure ${exposureValue} for ${designatedMonth}`);
   }
   
   return formula;
@@ -141,9 +146,15 @@ export const updateFormulaWithEfpExposure = (
   updatedFormula.exposures = { ...updatedFormula.exposures };
   updatedFormula.exposures.pricing = { ...updatedFormula.exposures.pricing };
   
+  // Store the raw instrument name for daily distribution
+  const rawInstrumentName = 'ICE GASOIL FUTURES (EFP)';
+  
+  // Get the canonical name for consistent mapping in the exposure table
+  const canonicalName = mapProductToCanonical(rawInstrumentName);
+  
   // Reset both EFP instruments to avoid contamination
   updatedFormula.exposures.pricing['ICE GASOIL FUTURES'] = 0;
-  updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = 0;
+  updatedFormula.exposures.pricing[rawInstrumentName] = 0;
   
   // Only set exposure for unagreed EFPs
   if (!isAgreed) {
@@ -151,8 +162,11 @@ export const updateFormulaWithEfpExposure = (
     const exposureDirection = buySell === 'buy' ? -1 : 1;
     const exposureValue = quantity * exposureDirection;
     
-    // Set the exposure - use the consistent 'ICE GASOIL FUTURES (EFP)' name
-    updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
+    // Log the mapping for debugging
+    console.log(`[EFP] Updating formula with raw instrument name: ${rawInstrumentName}, maps to: ${canonicalName}`);
+    
+    // Set the exposure using the raw instrument name which will be mapped later
+    updatedFormula.exposures.pricing[rawInstrumentName] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
     const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
@@ -160,16 +174,16 @@ export const updateFormulaWithEfpExposure = (
     // Ensure the dailyDistribution object exists
     updatedFormula.dailyDistribution = updatedFormula.dailyDistribution || {};
     
-    // Add or replace the ICE GASOIL FUTURES (EFP) distribution
-    updatedFormula.dailyDistribution['ICE GASOIL FUTURES (EFP)'] = dailyDist;
+    // Add or replace the distribution using the raw instrument name
+    updatedFormula.dailyDistribution[rawInstrumentName] = dailyDist;
     
-    // Log the distribution update
-    console.log(`[EFP] Updated EFP formula for ${designatedMonth} with ${Object.keys(dailyDist).length} days of distribution`);
+    // Log the exposure value for debugging
+    console.log(`[EFP] Updated formula with exposure ${exposureValue} for ${designatedMonth}`);
   } else {
     // For agreed EFPs, remove any existing daily distribution for this instrument
-    if (updatedFormula.dailyDistribution?.['ICE GASOIL FUTURES (EFP)']) {
+    if (updatedFormula.dailyDistribution?.[rawInstrumentName]) {
       console.log('[EFP] Removing dailyDistribution for agreed EFP trade');
-      const { ['ICE GASOIL FUTURES (EFP)']: _, ...restDistribution } = updatedFormula.dailyDistribution;
+      const { [rawInstrumentName]: _, ...restDistribution } = updatedFormula.dailyDistribution;
       updatedFormula.dailyDistribution = restDistribution;
     }
   }
