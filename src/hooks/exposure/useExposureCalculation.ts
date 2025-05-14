@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import { MonthlyExposure } from '@/types/exposure';
 import { calculatePhysicalExposure } from '@/utils/exposureCalculation/calculatePhysicalExposure';
@@ -15,6 +16,7 @@ import {
   getMonthCodesBetweenDates,
   formatMonthCode 
 } from '@/utils/dateUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
 
 export const useExposureCalculation = (
   tradeData: ExposureTradeData | undefined,
@@ -94,6 +96,11 @@ export const useExposureCalculation = (
             // Process each instrument in the daily distribution
             Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
               if (typeof dailyValues === 'object' && dailyValues !== null) {
+                // Map the instrument name to canonical form for consistency
+                const canonicalInstrument = mapProductToCanonical(instrument);
+                
+                console.log(`[EXPOSURE] Processing daily distribution for instrument: ${instrument}, mapped to: ${canonicalInstrument}`);
+                
                 // Filter and aggregate daily values that fall within the date range
                 Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
                   const date = parseISODate(dateStr);
@@ -114,12 +121,18 @@ export const useExposureCalculation = (
                         filteredPricingExposures[month] = {};
                       }
                       
-                      if (!filteredPricingExposures[month][instrument]) {
-                        filteredPricingExposures[month][instrument] = 0;
+                      // Use the canonical instrument name for the filtered exposures
+                      if (!filteredPricingExposures[month][canonicalInstrument]) {
+                        filteredPricingExposures[month][canonicalInstrument] = 0;
                       }
                       
                       // Add this daily exposure to the filtered pricing exposure
-                      filteredPricingExposures[month][instrument] += exposure;
+                      filteredPricingExposures[month][canonicalInstrument] += exposure;
+                      
+                      // Log specifically for EFP instruments to track the mapping
+                      if (instrument === 'ICE GASOIL FUTURES (EFP)' || canonicalInstrument === 'EFP') {
+                        console.log(`[EFP EXPOSURE] Adding ${exposure} to ${canonicalInstrument} for ${month} on ${dateStr}`);
+                      }
                     }
                   }
                 });
@@ -148,15 +161,18 @@ export const useExposureCalculation = (
                 relevantMonths.forEach(month => {
                   if (periods.includes(month) && pricingExposures[month]) {
                     Object.entries(pricingExposures[month]).forEach(([instrument, value]) => {
+                      // Apply product mapping here too
+                      const canonicalInstrument = mapProductToCanonical(instrument);
+                      
                       if (!filteredPricingExposures[month]) {
                         filteredPricingExposures[month] = {};
                       }
                       
-                      if (!filteredPricingExposures[month][instrument]) {
-                        filteredPricingExposures[month][instrument] = 0;
+                      if (!filteredPricingExposures[month][canonicalInstrument]) {
+                        filteredPricingExposures[month][canonicalInstrument] = 0;
                       }
                       
-                      filteredPricingExposures[month][instrument] += value;
+                      filteredPricingExposures[month][canonicalInstrument] += value;
                     });
                   }
                 });
@@ -170,15 +186,18 @@ export const useExposureCalculation = (
                 // Include only if this month is in the date range
                 if (monthsInDateRange.includes(month) && periods.includes(month) && pricingExposures[month]) {
                   Object.entries(pricingExposures[month]).forEach(([instrument, value]) => {
+                    // Apply product mapping here too
+                    const canonicalInstrument = mapProductToCanonical(instrument);
+                    
                     if (!filteredPricingExposures[month]) {
                       filteredPricingExposures[month] = {};
                     }
                     
-                    if (!filteredPricingExposures[month][instrument]) {
-                      filteredPricingExposures[month][instrument] = 0;
+                    if (!filteredPricingExposures[month][canonicalInstrument]) {
+                      filteredPricingExposures[month][canonicalInstrument] = 0;
                     }
                     
-                    filteredPricingExposures[month][instrument] += value;
+                    filteredPricingExposures[month][canonicalInstrument] += value;
                   });
                 }
               }
@@ -207,16 +226,32 @@ export const useExposureCalculation = (
         filteredPricingFromPaperExposures[period] = {};
       });
       
-      // Copy the recalculated (and already date-filtered) exposures
+      // Copy the recalculated (and already date-filtered) exposures, applying product mapping
       Object.entries(recalculatedPaperExposures).forEach(([month, products]) => {
         if (periods.includes(month)) {
-          filteredPaperExposures[month] = { ...products };
+          Object.entries(products).forEach(([product, value]) => {
+            const canonicalProduct = mapProductToCanonical(product);
+            
+            if (!filteredPaperExposures[month][canonicalProduct]) {
+              filteredPaperExposures[month][canonicalProduct] = 0;
+            }
+            
+            filteredPaperExposures[month][canonicalProduct] += value;
+          });
         }
       });
       
       Object.entries(recalculatedPricingExposures).forEach(([month, products]) => {
         if (periods.includes(month)) {
-          filteredPricingFromPaperExposures[month] = { ...products };
+          Object.entries(products).forEach(([product, value]) => {
+            const canonicalProduct = mapProductToCanonical(product);
+            
+            if (!filteredPricingFromPaperExposures[month][canonicalProduct]) {
+              filteredPricingFromPaperExposures[month][canonicalProduct] = 0;
+            }
+            
+            filteredPricingFromPaperExposures[month][canonicalProduct] += value;
+          });
         }
       });
       

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { MonthlyExposure, GroupTotals } from '@/types/exposure';
@@ -28,7 +27,8 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
 }) => {
   // Utility function to check if product is an EFP instrument
   const isEfpInstrument = (product: string): boolean => {
-    return product === 'ICE GASOIL FUTURES (EFP)';
+    // Use the canonical name 'EFP' to match with the mapped product
+    return product === 'EFP';
   };
   
   return (
@@ -78,6 +78,11 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                 const isEfp = isEfpInstrument(product);
                 const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
                 
+                // Add DEBUG logging if this is an EFP to track it in the filtered data
+                if (isEfp && dateRangeEnabled) {
+                  console.log(`[EFP TABLE] ${monthData.month} EFP pricing value: ${productData.pricing}`);
+                }
+                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-pricing-${product}`} 
@@ -126,6 +131,11 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                 // Special highlighting for EFP instruments in the exposure column
                 const isEfp = isEfpInstrument(product);
                 const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
+                
+                // Add DEBUG logging if this is an EFP to track it in the filtered data
+                if (isEfp && dateRangeEnabled) {
+                  console.log(`[EFP TABLE] ${monthData.month} EFP netExposure value: ${productData.netExposure}`);
+                }
                 
                 cells.push(
                   <TableCell 

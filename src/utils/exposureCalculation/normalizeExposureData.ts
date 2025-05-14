@@ -1,6 +1,7 @@
 
 import { MonthlyExposure, ExposureData, ProductExposure } from '@/types/exposure';
 import { calculateNetExposure } from '@/utils/tradeUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
 
 export interface NormalizedExposureResult {
   allProductsFound: Set<string>;
@@ -55,16 +56,35 @@ export const mergeExposureData = (
   // Log the incoming exposure data size
   console.log(`[EXPOSURE] Merging exposures - physical months: ${Object.keys(physicalExposures).length}, pricing months: ${Object.keys(pricingExposures).length}`);
   
+  // Special logging for EFP exposures
+  const logEfpExposures = (data: Record<string, Record<string, number>>, type: string) => {
+    Object.entries(data).forEach(([month, products]) => {
+      Object.entries(products).forEach(([product, amount]) => {
+        // Check if this is an EFP product (either before or after mapping)
+        if (product === 'ICE GASOIL FUTURES (EFP)' || product === 'EFP' || 
+            mapProductToCanonical(product) === 'EFP') {
+          console.log(`[EFP MERGE] Found ${type} exposure for ${product} in ${month}: ${amount}`);
+        }
+      });
+    });
+  };
+  
+  // Check for EFP exposures in incoming data
+  logEfpExposures(pricingExposures, 'pricing');
+  
   // Process physical exposures
   Object.entries(physicalExposures).forEach(([month, products]) => {
     if (!exposuresByMonth[month]) return;
     
     Object.entries(products).forEach(([product, amount]) => {
-      allProductsFound.add(product);
+      // Ensure canonical product name for consistent mapping
+      const canonicalProduct = mapProductToCanonical(product);
+      
+      allProductsFound.add(canonicalProduct);
       mergeStats.physicalProducts++;
       
-      if (!exposuresByMonth[month][product]) {
-        exposuresByMonth[month][product] = {
+      if (!exposuresByMonth[month][canonicalProduct]) {
+        exposuresByMonth[month][canonicalProduct] = {
           physical: 0,
           pricing: 0,
           paper: 0,
@@ -72,7 +92,7 @@ export const mergeExposureData = (
         };
       }
       
-      exposuresByMonth[month][product].physical += amount;
+      exposuresByMonth[month][canonicalProduct].physical += amount;
       
       // Track significant values
       if (Math.abs(amount) > 100) {
@@ -86,11 +106,14 @@ export const mergeExposureData = (
     if (!exposuresByMonth[month]) return;
     
     Object.entries(products).forEach(([product, amount]) => {
-      allProductsFound.add(product);
+      // Ensure canonical product name for consistent mapping
+      const canonicalProduct = mapProductToCanonical(product);
+      
+      allProductsFound.add(canonicalProduct);
       mergeStats.pricingProducts++;
       
-      if (!exposuresByMonth[month][product]) {
-        exposuresByMonth[month][product] = {
+      if (!exposuresByMonth[month][canonicalProduct]) {
+        exposuresByMonth[month][canonicalProduct] = {
           physical: 0,
           pricing: 0,
           paper: 0,
@@ -98,14 +121,19 @@ export const mergeExposureData = (
         };
       }
       
+      // Special logging for EFP exposures
+      if (product === 'ICE GASOIL FUTURES (EFP)' || canonicalProduct === 'EFP') {
+        console.log(`[EFP MERGE] Adding pricing exposure for ${product} (as ${canonicalProduct}) in ${month}: ${amount}`);
+      }
+      
       // Track significant values to help with debugging
       if (Math.abs(amount) > 100) {
-        console.log(`[EXPOSURE] Significant pricing exposure: ${month} ${product} ${amount}`);
+        console.log(`[EXPOSURE] Significant pricing exposure: ${month} ${canonicalProduct} (from ${product}) ${amount}`);
         mergeStats.productsWithSignificantValues++;
       }
       
-      // Add the pricing exposure without special handling based on product type
-      exposuresByMonth[month][product].pricing += amount;
+      // Add the pricing exposure using the canonical product name
+      exposuresByMonth[month][canonicalProduct].pricing += amount;
     });
   });
   
@@ -114,11 +142,14 @@ export const mergeExposureData = (
     if (!exposuresByMonth[month]) return;
     
     Object.entries(products).forEach(([product, amount]) => {
-      allProductsFound.add(product);
+      // Ensure canonical product name for consistent mapping
+      const canonicalProduct = mapProductToCanonical(product);
+      
+      allProductsFound.add(canonicalProduct);
       mergeStats.paperProducts++;
       
-      if (!exposuresByMonth[month][product]) {
-        exposuresByMonth[month][product] = {
+      if (!exposuresByMonth[month][canonicalProduct]) {
+        exposuresByMonth[month][canonicalProduct] = {
           physical: 0,
           pricing: 0,
           paper: 0,
@@ -126,7 +157,7 @@ export const mergeExposureData = (
         };
       }
       
-      exposuresByMonth[month][product].paper += amount;
+      exposuresByMonth[month][canonicalProduct].paper += amount;
     });
   });
   
@@ -135,11 +166,14 @@ export const mergeExposureData = (
     if (!exposuresByMonth[month]) return;
     
     Object.entries(products).forEach(([product, amount]) => {
-      allProductsFound.add(product);
+      // Ensure canonical product name for consistent mapping
+      const canonicalProduct = mapProductToCanonical(product);
+      
+      allProductsFound.add(canonicalProduct);
       mergeStats.pricingFromPaperProducts++;
       
-      if (!exposuresByMonth[month][product]) {
-        exposuresByMonth[month][product] = {
+      if (!exposuresByMonth[month][canonicalProduct]) {
+        exposuresByMonth[month][canonicalProduct] = {
           physical: 0,
           pricing: 0,
           paper: 0,
@@ -148,7 +182,7 @@ export const mergeExposureData = (
       }
       
       // Add paper exposure as pricing exposure too
-      exposuresByMonth[month][product].pricing += amount;
+      exposuresByMonth[month][canonicalProduct].pricing += amount;
     });
   });
   
@@ -161,6 +195,13 @@ export const mergeExposureData = (
   
   // Log merge statistics to help with debugging
   console.log(`[EXPOSURE] Merge statistics:`, mergeStats);
+  
+  // Check for EFP values in the merged data
+  Object.entries(exposuresByMonth).forEach(([month, products]) => {
+    if (products['EFP'] && (products['EFP'].physical !== 0 || products['EFP'].pricing !== 0 || products['EFP'].paper !== 0)) {
+      console.log(`[EFP MERGE] Final merged values for EFP in ${month}:`, products['EFP']);
+    }
+  });
   
   // Log a sample of the merged data to verify
   console.log(`[EXPOSURE] Merged data sample - first month:`);
