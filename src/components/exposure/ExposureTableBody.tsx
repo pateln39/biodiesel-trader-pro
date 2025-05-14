@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { MonthlyExposure, GroupTotals } from '@/types/exposure';
@@ -74,26 +75,14 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   netExposure: 0
                 };
                 
-                // Special handling for EFP instruments to make them more visible
-                const isEfp = isEfpInstrument(product);
-                const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
-                
-                // Add DEBUG logging if this is an EFP to track it in the filtered data
-                if (isEfp && dateRangeEnabled) {
-                  console.log(`[EFP TABLE] ${monthData.month} EFP pricing value: ${productData.pricing}`);
-                }
-                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-pricing-${product}`} 
-                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''} ${efpHighlight}`}
+                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                   >
                     {formatValue(productData.pricing)}
                     {dateRangeEnabled && productData.pricing !== 0 && (
                       <span className="ml-1 text-xs text-brand-lime">*</span>
-                    )}
-                    {isEfp && dateRangeEnabled && productData.pricing !== 0 && (
-                      <span className="ml-1 text-xs text-yellow-300">⚡</span>
                     )}
                   </TableCell>
                 );
@@ -128,26 +117,14 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   netExposure: 0
                 };
                 
-                // Special highlighting for EFP instruments in the exposure column
-                const isEfp = isEfpInstrument(product);
-                const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
-                
-                // Add DEBUG logging if this is an EFP to track it in the filtered data
-                if (isEfp && dateRangeEnabled) {
-                  console.log(`[EFP TABLE] ${monthData.month} EFP netExposure value: ${productData.netExposure}`);
-                }
-                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-net-${product}`} 
-                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} ${efpHighlight} bg-brand-navy`}
+                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} bg-brand-navy`}
                   >
                     {formatValue(productData.netExposure)}
                     {dateRangeEnabled && productData.netExposure !== 0 && (
                       <span className="ml-1 text-xs text-brand-lime">*</span>
-                    )}
-                    {isEfp && dateRangeEnabled && productData.netExposure !== 0 && (
-                      <span className="ml-1 text-xs text-yellow-300">⚡</span>
                     )}
                   </TableCell>
                 );
