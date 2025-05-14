@@ -34,9 +34,9 @@ const FormulaCellDisplay: React.FC<FormulaCellDisplayProps> = ({
       const premium = efpPremium || 0;
       displayText = `${fixedValue + premium}`;
     } else {
-      // For unagreed EFP trades, show "EFP + premium"
-      // IMPORTANT FIX: Use 'EFP' consistently instead of 'ICE GASOIL FUTURES (EFP)'
-      displayText = `EFP + ${efpPremium || 0}`;
+      // For unagreed EFP trades, show "ICE GASOIL FUTURES (EFP) + premium"
+      // Note: We no longer include the designated month in the display
+      displayText = `ICE GASOIL FUTURES (EFP) + ${efpPremium || 0}`;
     }
     
     return (

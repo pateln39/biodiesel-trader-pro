@@ -1,3 +1,4 @@
+
 /**
  * Maps product codes to their canonical display names for exposure reporting
  */
@@ -35,8 +36,6 @@ export const mapProductToCanonical = (product: string): string => {
       return 'Platts Diesel';
     case 'ICE GASOIL FUTURES (EFP)':
     case 'EFP':
-    case 'GASOIL EFP':
-    case 'GASOIL_EFP':
       return 'EFP';
     default:
       // If the product is already in canonical form, don't modify it
@@ -227,7 +226,7 @@ export const isPricingInstrument = (product: string): boolean => {
   // These are the only products that should appear in the exposure table
   const pricingInstruments = [
     'ICE GASOIL FUTURES',
-    'EFP', // Use consistent 'EFP' naming
+    'EFP',
     'Platts LSGO',
     'Platts Diesel',
     'Argus UCOME',
@@ -245,7 +244,7 @@ export const isPricingInstrument = (product: string): boolean => {
 export const shouldUseSpecialBackground = (product: string): boolean => {
   const specialBackgroundProducts = [
     'ICE GASOIL FUTURES',
-    'EFP', // Use consistent 'EFP' naming
+    'EFP',
     'Platts LSGO',
     'Platts Diesel',
   ];

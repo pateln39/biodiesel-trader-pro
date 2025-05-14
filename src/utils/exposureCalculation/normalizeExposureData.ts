@@ -49,20 +49,11 @@ export const mergeExposureData = (
     pricingProducts: 0,
     paperProducts: 0,
     pricingFromPaperProducts: 0,
-    productsWithSignificantValues: 0,
-    efpProducts: 0  // Add counter for EFP products specifically
+    productsWithSignificantValues: 0
   };
   
   // Log the incoming exposure data size
   console.log(`[EXPOSURE] Merging exposures - physical months: ${Object.keys(physicalExposures).length}, pricing months: ${Object.keys(pricingExposures).length}`);
-  
-  // Add more detailed logging for EFP
-  console.log('[EXPOSURE] Checking for EFP exposures in pricing data:');
-  Object.entries(pricingExposures).forEach(([month, products]) => {
-    if (products['EFP']) {
-      console.log(`[EXPOSURE] Found EFP in ${month}: ${products['EFP']}`);
-    }
-  });
   
   // Process physical exposures
   Object.entries(physicalExposures).forEach(([month, products]) => {
@@ -97,12 +88,6 @@ export const mergeExposureData = (
     Object.entries(products).forEach(([product, amount]) => {
       allProductsFound.add(product);
       mergeStats.pricingProducts++;
-      
-      // Specifically track EFP products
-      if (product === 'EFP') {
-        mergeStats.efpProducts++;
-        console.log(`[EXPOSURE] Processing EFP pricing exposure for ${month}: ${amount}`);
-      }
       
       if (!exposuresByMonth[month][product]) {
         exposuresByMonth[month][product] = {
@@ -176,14 +161,6 @@ export const mergeExposureData = (
   
   // Log merge statistics to help with debugging
   console.log(`[EXPOSURE] Merge statistics:`, mergeStats);
-  
-  // Log specific EFP data after merging
-  console.log('[EXPOSURE] EFP data after merging:');
-  Object.entries(exposuresByMonth).forEach(([month, products]) => {
-    if (products['EFP'] && (products['EFP'].physical !== 0 || products['EFP'].pricing !== 0 || products['EFP'].paper !== 0)) {
-      console.log(`  ${month} EFP: Physical=${products['EFP'].physical}, Pricing=${products['EFP'].pricing}, Paper=${products['EFP'].paper}, Net=${products['EFP'].netExposure}`);
-    }
-  });
   
   // Log a sample of the merged data to verify
   console.log(`[EXPOSURE] Merged data sample - first month:`);
