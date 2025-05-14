@@ -11,7 +11,6 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
 import { CalendarIcon, InfoIcon, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 

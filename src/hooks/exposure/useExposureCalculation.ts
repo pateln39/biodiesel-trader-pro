@@ -88,33 +88,46 @@ export const useExposureCalculation = (
         // Add a counter to track how many EFP trades were processed
         let efpTradesProcessed = 0;
         let efpDailyDistributionFound = 0;
+        let efpTotalExposureAdded = 0;
         
+        // Process each physical trade leg
         tradeData.physicalTradeLegs.forEach(leg => {
           // Track if this is an EFP trade
           const isEfpTrade = leg.pricing_type === 'efp';
           if (isEfpTrade) {
             efpTradesProcessed++;
-            console.log(`[EXPOSURE] Processing EFP trade #${efpTradesProcessed} with agreed status:`, leg.efp_agreed_status);
+            console.log(`[EXPOSURE] Processing EFP trade #${efpTradesProcessed}:`, {
+              month: leg.efp_designated_month,
+              quantity: leg.quantity,
+              agreed: leg.efp_agreed_status,
+              buySell: leg.buy_sell
+            });
           }
           
+          // Parse the pricing formula to access daily distribution
+          const pricingFormula = leg.pricing_formula ? 
+            (typeof leg.pricing_formula === 'string' ? 
+              JSON.parse(leg.pricing_formula) : leg.pricing_formula) : {};
+          
           // Check if the leg has daily distribution data for more precise filtering
-          if (leg.pricing_formula?.dailyDistribution) {
+          if (pricingFormula.dailyDistribution) {
             // For EFP trades, log the daily distribution data
             if (isEfpTrade) {
               efpDailyDistributionFound++;
               console.log(`[EXPOSURE] Found dailyDistribution for EFP trade #${efpTradesProcessed}:`, 
-                Object.keys(leg.pricing_formula.dailyDistribution));
+                Object.keys(pricingFormula.dailyDistribution).join(', '));
             }
             
             // Process each instrument in the daily distribution
-            Object.entries(leg.pricing_formula.dailyDistribution).forEach(([instrument, dailyValues]) => {
+            Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
               // For EFP trades, log more details about the instrument
+              const isEfpInstrument = instrument.includes('EFP');
               if (isEfpTrade) {
-                console.log(`[EXPOSURE] Processing EFP dailyDistribution for instrument: ${instrument}`);
+                console.log(`[EXPOSURE] Processing ${isEfpInstrument ? 'EFP' : 'standard'} dailyDistribution for instrument: ${instrument}`);
               }
               
-              if (typeof dailyValues === 'object') {
-                // Count dates within range for EFP trades
+              if (typeof dailyValues === 'object' && dailyValues !== null) {
+                // Count dates within range for EFP trades for better debugging
                 if (isEfpTrade) {
                   let datesInRange = 0;
                   let totalDates = Object.keys(dailyValues).length;
@@ -142,21 +155,24 @@ export const useExposureCalculation = (
                         filteredPricingExposures[month] = {};
                       }
                       
-                      if (!filteredPricingExposures[month][instrument]) {
-                        filteredPricingExposures[month][instrument] = 0;
+                      const canonicalInstrument = instrument;
+                      
+                      if (!filteredPricingExposures[month][canonicalInstrument]) {
+                        filteredPricingExposures[month][canonicalInstrument] = 0;
                       }
                       
                       // Add this daily exposure to the filtered pricing exposure
-                      filteredPricingExposures[month][instrument] += exposure;
+                      filteredPricingExposures[month][canonicalInstrument] += exposure;
                       
                       // For EFP trades, log each date's contribution
                       if (isEfpTrade) {
-                        console.log(`[EXPOSURE] Adding EFP daily exposure: ${month}, ${instrument}, ${exposure}, date: ${dateStr}`);
+                        console.log(`[EXPOSURE] Adding EFP daily exposure: ${month}, ${canonicalInstrument}, ${exposure}, date: ${dateStr}`);
+                        efpTotalExposureAdded += exposure;
                       }
                     }
                   } else if (isEfpTrade) {
                     // Debug when dates are excluded
-                    console.log(`[EXPOSURE] Excluding EFP date: ${dateStr} outside range: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+                    console.log(`[EXPOSURE] Excluding EFP date: ${dateStr} outside range: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
                   }
                 });
               }
@@ -164,10 +180,41 @@ export const useExposureCalculation = (
           } else if (isEfpTrade) {
             // Log when EFP trades don't have daily distribution
             console.warn(`[EXPOSURE] EFP trade #${efpTradesProcessed} has NO dailyDistribution data!`);
+            
+            // For EFP trades without daily distribution, try to add exposure based on the designated month
+            if (leg.efp_designated_month && !leg.efp_agreed_status) {
+              // FALLBACK: Create a synthetic daily distribution
+              console.log(`[EXPOSURE] Adding synthetic daily distribution for EFP trade #${efpTradesProcessed}`);
+              
+              const month = leg.efp_designated_month;
+              const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
+              
+              // Calculate exposure value using the same logic as in efpFormulaUtils.ts
+              const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
+              const direction = leg.buy_sell === 'buy' ? -1 : 1; // Opposite for EFP trades
+              const exposureValue = volume * direction;
+              
+              // Use the designated month to determine if it overlaps with our date range
+              const monthOverlaps = monthsInDateRange.includes(month);
+              
+              if (monthOverlaps) {
+                if (!filteredPricingExposures[month]) {
+                  filteredPricingExposures[month] = {};
+                }
+                
+                if (!filteredPricingExposures[month][instrumentKey]) {
+                  filteredPricingExposures[month][instrumentKey] = 0;
+                }
+                
+                filteredPricingExposures[month][instrumentKey] += exposureValue;
+                console.log(`[EXPOSURE] Added synthetic EFP exposure for ${month}: ${exposureValue}`);
+                efpTotalExposureAdded += exposureValue;
+              }
+            }
           }
           
           // Handle trades without daily distribution
-          if (!leg.pricing_formula?.dailyDistribution) {
+          if (!pricingFormula.dailyDistribution && !isEfpTrade) {
             // For trades without daily distribution, include monthly data if:
             // 1. The pricing period start/end falls within our date range, OR
             // 2. The date range falls entirely within the pricing period
@@ -200,11 +247,6 @@ export const useExposureCalculation = (
                       }
                       
                       filteredPricingExposures[month][instrument] += value;
-                      
-                      // For EFP trades, log this fallback logic
-                      if (isEfpTrade && instrument === 'ICE GASOIL FUTURES (EFP)') {
-                        console.log(`[EXPOSURE] Adding EFP monthly exposure (no daily data): ${month}, ${instrument}, ${value}`);
-                      }
                     });
                   }
                 });
@@ -227,11 +269,6 @@ export const useExposureCalculation = (
                     }
                     
                     filteredPricingExposures[month][instrument] += value;
-                    
-                    // For EFP trades, log this last-resort fallback logic
-                    if (isEfpTrade && instrument === 'ICE GASOIL FUTURES (EFP)') {
-                      console.log(`[EXPOSURE] Adding EFP loading date exposure: ${month}, ${instrument}, ${value}`);
-                    }
                   });
                 }
               }
@@ -240,7 +277,7 @@ export const useExposureCalculation = (
         });
         
         // Summary of EFP trades processed
-        console.log(`[EXPOSURE] Summary: ${efpTradesProcessed} EFP trades processed, ${efpDailyDistributionFound} with dailyDistribution`);
+        console.log(`[EXPOSURE] EFP Summary: ${efpTradesProcessed} trades processed, ${efpDailyDistributionFound} with dailyDistribution, total exposure added: ${efpTotalExposureAdded}`);
       }
       
       // Step 4: For paper trades, recalculate exposures using ONLY daily distributions and date filtering

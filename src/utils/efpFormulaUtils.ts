@@ -1,5 +1,5 @@
 
-import { PricingFormula } from '@/types/pricing';
+import { PricingFormula } from '@/types';
 import { BuySell } from '@/types';
 import { createEmptyExposureResult } from './formulaCalculation';
 import { addDays, format, isWeekend, parse, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';

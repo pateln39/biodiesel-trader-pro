@@ -139,10 +139,13 @@ export const calculatePhysicalExposure = (
       });
     }
     
-    // Fallback special handling for EFP trades without daily distribution
-    // This will only be used for EFP trades that don't have daily distribution data
+    // IMPORTANT: Legacy fallback handling for EFP trades - ONLY use if no dailyDistribution exists
+    // This should rarely be triggered as we now create dailyDistribution for all EFP trades
     if (leg.pricing_type === 'efp' && pricingExposureMonth && periods.includes(pricingExposureMonth)) {
+      // Check if this EFP trade has NO daily distribution data AND is NOT agreed
       if (!leg.efp_agreed_status && !pricingFormula.dailyDistribution) {
+        console.warn(`[EFP] Using legacy fallback for EFP trade without dailyDistribution. Month: ${pricingExposureMonth}`);
+        
         const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
         
         if (!pricingExposures[pricingExposureMonth][instrumentKey]) {
