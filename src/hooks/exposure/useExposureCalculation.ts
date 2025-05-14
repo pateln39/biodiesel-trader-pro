@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import { MonthlyExposure } from '@/types/exposure';
 import { calculatePhysicalExposure } from '@/utils/exposureCalculation/calculatePhysicalExposure';
@@ -82,6 +83,7 @@ export const useExposureCalculation = (
       });
       
       // Step 3: Process all physical trades' daily distributions in a unified way
+      // No separation of EFP and non-EFP trades - treat all trades the same way
       if (tradeData.physicalTradeLegs) {
         tradeData.physicalTradeLegs.forEach(leg => {
           // Check if the leg has daily distribution data for more precise filtering

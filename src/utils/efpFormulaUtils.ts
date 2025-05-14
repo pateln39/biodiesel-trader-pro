@@ -75,7 +75,6 @@ export const createEfpFormula = (
   const formula: PricingFormula = {
     tokens: [], // EFP trades don't use formula tokens
     exposures: createEmptyExposureResult(),
-    // We don't create monthlyDistribution for EFP because it's handled directly in exposureUtils.ts
   };
   
   // Set the appropriate exposure only for unagreed EFPs
