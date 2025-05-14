@@ -32,6 +32,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
         <TableRow key={monthData.month} className="bg-brand-navy">
           <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 z-10 bg-brand-navy text-white">
             {monthData.month}
+            {dateRangeEnabled && (
+              <span className="ml-1 text-xs text-brand-lime">*</span>
+            )}
           </TableCell>
           
           {orderedVisibleCategories.map((category, catIndex) => {

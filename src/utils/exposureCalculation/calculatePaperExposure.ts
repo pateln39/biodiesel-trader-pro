@@ -3,6 +3,7 @@ import { mapProductToCanonical, parsePaperInstrument } from '@/utils/productMapp
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { getBusinessDaysByMonth, distributeValueByBusinessDays, countBusinessDays } from '@/utils/dateUtils';
 import { getMonthDates } from '@/utils/paperTrade';
+import { isDateInRange, parseISODate } from '@/utils/dateUtils';
 
 export interface PaperExposureResult {
   paperExposures: Record<string, Record<string, number>>;
@@ -10,16 +11,55 @@ export interface PaperExposureResult {
 }
 
 /**
+ * Filter daily distribution data based on a date range
+ * @param dailyDistribution Daily distribution object { product: { date: value } }
+ * @param startDate Start date of filter range
+ * @param endDate End date of filter range
+ * @returns Filtered daily distribution
+ */
+export const filterDailyDistributionByDateRange = (
+  dailyDistribution: Record<string, Record<string, number>>,
+  startDate: Date,
+  endDate: Date
+): Record<string, Record<string, number>> => {
+  const filteredDistribution: Record<string, Record<string, number>> = {};
+  
+  Object.entries(dailyDistribution).forEach(([product, dailyValues]) => {
+    if (typeof dailyValues !== 'object') return;
+    
+    filteredDistribution[product] = {};
+    
+    Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
+      const date = parseISODate(dateStr);
+      
+      // Only include dates within the specified range
+      if (date && isDateInRange(date, startDate, endDate)) {
+        filteredDistribution[product][dateStr] = exposure;
+      }
+    });
+    
+    // If no dates remain for this product after filtering, remove the empty product entry
+    if (Object.keys(filteredDistribution[product]).length === 0) {
+      delete filteredDistribution[product];
+    }
+  });
+  
+  return filteredDistribution;
+};
+
+/**
  * Calculate exposure for paper trade legs
  * @param paperTradeLegs Array of paper trade legs
  * @param periods Array of periods (months) to calculate for
  * @param useOnlyDailyDistribution Whether to use only daily distribution data (for date filtering)
+ * @param dateRangeFilter Optional date range for filtering daily distributions
  * @returns Object containing paper exposures and pricing exposures from paper trades
  */
 export const calculatePaperExposure = (
   paperTradeLegs: any[],
   periods: string[],
-  useOnlyDailyDistribution: boolean = false
+  useOnlyDailyDistribution: boolean = false,
+  dateRangeFilter?: { startDate: Date; endDate: Date }
 ): PaperExposureResult => {
   // Initialize exposure objects
   const paperExposures: Record<string, Record<string, number>> = {};
@@ -36,7 +76,11 @@ export const calculatePaperExposure = (
   const processedPricingProducts = new Set<string>();
   
   // Log which processing mode we're in
-  console.log(`[EXPOSURE] Processing paper exposures with ${useOnlyDailyDistribution ? 'ONLY daily distribution' : 'direct exposure data'}`);
+  const filterMode = useOnlyDailyDistribution 
+    ? (dateRangeFilter ? 'filtered daily distribution' : 'ONLY daily distribution') 
+    : 'direct exposure data';
+  
+  console.log(`[EXPOSURE] Processing paper exposures with ${filterMode}`);
 
   for (const leg of paperTradeLegs) {
     const month = leg.period || leg.trading_period || '';
@@ -71,16 +115,29 @@ export const calculatePaperExposure = (
       if (useOnlyDailyDistribution) {
         // Only process daily distribution data when filter is applied
         if (exposuresData.paperDailyDistribution && typeof exposuresData.paperDailyDistribution === 'object') {
-          // Skip processing if we've already processed this leg's daily distribution
-          Object.entries(exposuresData.paperDailyDistribution).forEach(([product, dailyValues]) => {
+          let paperDailyDist = exposuresData.paperDailyDistribution;
+          
+          // Apply date range filter if provided
+          if (dateRangeFilter && dateRangeFilter.startDate && dateRangeFilter.endDate) {
+            paperDailyDist = filterDailyDistributionByDateRange(
+              paperDailyDist, 
+              dateRangeFilter.startDate, 
+              dateRangeFilter.endDate
+            );
+            
+            console.log(`[EXPOSURE] Date-filtered paper daily distribution for leg ${leg.id || 'unknown'}, products: ${Object.keys(paperDailyDist).join(', ')}`);
+          }
+          
+          // Process filtered daily distribution
+          Object.entries(paperDailyDist).forEach(([product, dailyValues]) => {
             if (typeof dailyValues !== 'object') return;
             
             Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-              const date = new Date(dateStr);
-              if (isNaN(date.getTime())) return;
+              const date = parseISODate(dateStr);
+              if (!date) return;
               
-              const monthOfDate = new Date(date).toLocaleString('en-US', { month: 'short' }) + '-' + 
-                              date.getFullYear().toString().slice(2);
+              const monthOfDate = date.toLocaleString('en-US', { month: 'short' }) + '-' + 
+                                  date.getFullYear().toString().slice(2);
                               
               if (monthOfDate === month) {
                 const canonicalProduct = mapProductToCanonical(product);
@@ -101,15 +158,29 @@ export const calculatePaperExposure = (
         }
         
         if (exposuresData.pricingDailyDistribution && typeof exposuresData.pricingDailyDistribution === 'object') {
-          Object.entries(exposuresData.pricingDailyDistribution).forEach(([product, dailyValues]) => {
+          let pricingDailyDist = exposuresData.pricingDailyDistribution;
+          
+          // Apply date range filter if provided
+          if (dateRangeFilter && dateRangeFilter.startDate && dateRangeFilter.endDate) {
+            pricingDailyDist = filterDailyDistributionByDateRange(
+              pricingDailyDist, 
+              dateRangeFilter.startDate, 
+              dateRangeFilter.endDate
+            );
+            
+            console.log(`[EXPOSURE] Date-filtered pricing daily distribution for leg ${leg.id || 'unknown'}, products: ${Object.keys(pricingDailyDist).join(', ')}`);
+          }
+          
+          // Process filtered pricing daily distribution
+          Object.entries(pricingDailyDist).forEach(([product, dailyValues]) => {
             if (typeof dailyValues !== 'object') return;
             
             Object.entries(dailyValues).forEach(([dateStr, exposure]) => {
-              const date = new Date(dateStr);
-              if (isNaN(date.getTime())) return;
+              const date = parseISODate(dateStr);
+              if (!date) return;
               
-              const monthOfDate = new Date(date).toLocaleString('en-US', { month: 'short' }) + '-' + 
-                              date.getFullYear().toString().slice(2);
+              const monthOfDate = date.toLocaleString('en-US', { month: 'short' }) + '-' + 
+                                  date.getFullYear().toString().slice(2);
                               
               if (monthOfDate === month) {
                 const canonicalProduct = mapProductToCanonical(product);
@@ -233,7 +304,11 @@ export const calculatePaperExposure = (
   const pricingTotal = Object.values(pricingFromPaperExposures).reduce((total, month) => 
     total + Object.values(month).reduce((sum, val) => sum + val, 0), 0);
   
-  console.log(`[EXPOSURE] Paper exposure calculation complete. Mode: ${useOnlyDailyDistribution ? 'daily-distribution' : 'direct-exposure'}`);
+  const filterInfo = dateRangeFilter 
+    ? `date-filtered: ${dateRangeFilter.startDate.toLocaleDateString()} - ${dateRangeFilter.endDate.toLocaleDateString()}` 
+    : 'unfiltered';
+  
+  console.log(`[EXPOSURE] Paper exposure calculation complete. Mode: ${useOnlyDailyDistribution ? `daily-distribution (${filterInfo})` : 'direct-exposure'}`);
   console.log(`[EXPOSURE] Paper total: ${paperTotal}, Pricing total: ${pricingTotal}`);
   
   return { paperExposures, pricingFromPaperExposures };

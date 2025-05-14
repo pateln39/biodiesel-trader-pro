@@ -37,16 +37,15 @@ export const useExposureCalculation = (
     const { physicalExposures, pricingExposures } = 
       calculatePhysicalExposure(tradeData.physicalTradeLegs, periods);
     
-    // Calculate paper exposures - pass the useOnlyDailyDistribution flag
-    // We only use daily distribution when date filtering is enabled
+    // Calculate paper exposures - without date filtering for initial calculation
     const { paperExposures, pricingFromPaperExposures } = 
       calculatePaperExposure(tradeData.paperTradeLegs, periods, false);
     
     // Create a deep copy of the exposures for date filtered results
     let filteredPhysicalExposures = { ...physicalExposures };
     let filteredPricingExposures = { ...pricingExposures };
-    let filteredPaperExposures = { ...paperExposures };
-    let filteredPricingFromPaperExposures = { ...pricingFromPaperExposures };
+    let filteredPaperExposures = {};
+    let filteredPricingFromPaperExposures = {};
     
     // If date range filtering is enabled, apply filtering
     if (dateRangeEnabled && dateRange?.from) {
@@ -212,14 +211,19 @@ export const useExposureCalculation = (
         });
       }
       
-      // Step 3: For paper trades, we now calculate filtered exposures using daily distributions
-      console.log("[EXPOSURE] Calculating paper exposures for date filtering using ONLY daily distribution data");
+      // Step 3: For paper trades, recalculate exposures using ONLY daily distributions and date filtering
+      console.log("[EXPOSURE] Calculating paper exposures for date filtering using ONLY daily distribution data with date range");
       
-      // Instead of filtering existing exposures, recalculate them using only daily distributions
+      // Use the enhanced calculatePaperExposure with date range filter
       const { paperExposures: recalculatedPaperExposures, pricingFromPaperExposures: recalculatedPricingExposures } = 
-        calculatePaperExposure(tradeData.paperTradeLegs, periods, true);
+        calculatePaperExposure(
+          tradeData.paperTradeLegs, 
+          periods, 
+          true, // useOnlyDailyDistribution
+          { startDate, endDate } // Pass date range for explicit filtering
+        );
       
-      // Initialize with empty objects
+      // Initialize with empty objects - these will be populated from recalculated exposures
       filteredPaperExposures = {};
       filteredPricingFromPaperExposures = {};
       periods.forEach(period => {
@@ -227,18 +231,16 @@ export const useExposureCalculation = (
         filteredPricingFromPaperExposures[period] = {};
       });
       
-      // For each month in our date range, copy the calculated exposures
-      monthsInDateRange.forEach(month => {
+      // Copy the recalculated (and already date-filtered) exposures
+      Object.entries(recalculatedPaperExposures).forEach(([month, products]) => {
         if (periods.includes(month)) {
-          // Copy paper exposures for this month
-          Object.entries(recalculatedPaperExposures[month] || {}).forEach(([product, value]) => {
-            filteredPaperExposures[month][product] = value;
-          });
-          
-          // Copy pricing exposures for this month
-          Object.entries(recalculatedPricingExposures[month] || {}).forEach(([product, value]) => {
-            filteredPricingFromPaperExposures[month][product] = value;
-          });
+          filteredPaperExposures[month] = { ...products };
+        }
+      });
+      
+      Object.entries(recalculatedPricingExposures).forEach(([month, products]) => {
+        if (periods.includes(month)) {
+          filteredPricingFromPaperExposures[month] = { ...products };
         }
       });
       
