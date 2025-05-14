@@ -11,7 +11,6 @@ import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
 import { CalendarIcon, InfoIcon, Calendar } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -115,8 +114,9 @@ const ExposureTable: React.FC<ExposureTableProps> = ({
                   <p className="text-sm mb-1 font-medium">Date filter behavior:</p>
                   <ul className="text-xs list-disc pl-4 space-y-1">
                     <li>Physical exposures show entire months that overlap with the date range</li>
-                    <li>Pricing & paper exposures use daily distributions when available</li>
+                    <li>All pricing & paper exposures (including EFP) use daily distributions when available</li>
                     <li>Monthly data is included when a month falls within the date range</li>
+                    <li>EFP exposures are distributed across business days like other instruments</li>
                   </ul>
                 </TooltipContent>
               </Tooltip>

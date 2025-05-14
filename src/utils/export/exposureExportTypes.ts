@@ -1,12 +1,14 @@
 
-import { ExposureData, MonthlyExposure } from '@/types/exposure';
+import { DateRange } from "react-day-picker";
+import { ExposureCategory, ExposureData } from "@/types/exposure";
 
-/**
- * Type definition for exposure export parameters
- */
 export interface ExposureExportParams {
-  exposureData: MonthlyExposure[];
-  visibleCategories: string[];
+  exposureData: Array<{
+    month: string;
+    products: Record<string, ExposureData>;
+    totals: ExposureData;
+  }>;
+  visibleCategories: ExposureCategory[];
   filteredProducts: string[];
   grandTotals: {
     totals: ExposureData;
@@ -19,4 +21,5 @@ export interface ExposureExportParams {
   };
   biodieselProducts: string[];
   pricingInstrumentProducts: string[];
+  dateRange?: DateRange;  // Added for date filter export
 }

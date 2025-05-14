@@ -26,12 +26,21 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
   shouldShowTotalRow,
   dateRangeEnabled
 }) => {
+  // Utility function to check if product is an EFP instrument
+  const isEfpInstrument = (product: string): boolean => {
+    // Use the canonical name 'EFP' to match with the mapped product
+    return product === 'EFP';
+  };
+  
   return (
     <TableBody>
       {exposureData.map(monthData => (
         <TableRow key={monthData.month} className="bg-brand-navy">
           <TableCell className="font-medium border-r-[1px] border-black text-xs sticky left-0 z-10 bg-brand-navy text-white">
             {monthData.month}
+            {dateRangeEnabled && (
+              <span className="ml-1 text-xs text-brand-lime">*</span>
+            )}
           </TableCell>
           
           {orderedVisibleCategories.map((category, catIndex) => {
@@ -51,6 +60,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                     className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.physical)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                   >
                     {formatValue(productData.physical)}
+                    {dateRangeEnabled && productData.physical !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
               });
@@ -62,12 +74,16 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   paper: 0,
                   netExposure: 0
                 };
+                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-pricing-${product}`} 
                     className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                   >
                     {formatValue(productData.pricing)}
+                    {dateRangeEnabled && productData.pricing !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
               });
@@ -85,6 +101,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                     className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.paper)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                   >
                     {formatValue(productData.paper)}
+                    {dateRangeEnabled && productData.paper !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
               });
@@ -97,12 +116,16 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   paper: 0,
                   netExposure: 0
                 };
+                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-net-${product}`} 
                     className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} bg-brand-navy`}
                   >
                     {formatValue(productData.netExposure)}
+                    {dateRangeEnabled && productData.netExposure !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
                 if (index === ucomeIndex && shouldShowBiodieselTotal) {
@@ -113,6 +136,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                       className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(biodieselTotal)} bg-brand-navy`}
                     >
                       {formatValue(biodieselTotal)}
+                      {dateRangeEnabled && biodieselTotal !== 0 && (
+                        <span className="ml-1 text-xs text-brand-lime">*</span>
+                      )}
                     </TableCell>
                   );
                 }
@@ -127,6 +153,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                     className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(pricingInstrumentTotal)} bg-brand-navy`}
                   >
                     {formatValue(pricingInstrumentTotal)}
+                    {dateRangeEnabled && pricingInstrumentTotal !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
               }
@@ -142,6 +171,9 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                     className={`text-right text-xs p-1 font-medium ${getValueColorClass(totalRow)} bg-brand-navy ${catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''}`}
                   >
                     {formatValue(totalRow)}
+                    {dateRangeEnabled && totalRow !== 0 && (
+                      <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
                   </TableCell>
                 );
               }

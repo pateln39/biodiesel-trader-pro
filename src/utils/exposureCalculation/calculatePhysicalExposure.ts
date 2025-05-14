@@ -1,3 +1,4 @@
+
 import { formatMonthCode } from '@/utils/dateUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
@@ -92,11 +93,27 @@ export const calculatePhysicalExposure = (
       }
     }
     
-    // Process pricing exposure - this remains unchanged
+    // Process pricing exposure - using daily distribution for all trades 
+    // SIMPLIFIED: Treat EFP trades the same as other trades with dailyDistribution
     const pricingFormula = validateAndParsePricingFormula(leg.pricing_formula);
 
-    // Handle monthly distribution if exists
-    if (pricingFormula.monthlyDistribution) {
+    // Primary approach: Use daily distribution if it exists for all trades 
+    if (pricingFormula.dailyDistribution) {
+      // Process daily distribution data - this will be filtered by date range in useExposureCalculation.ts
+      Object.entries(pricingFormula.dailyDistribution).forEach(([instrument, dailyValues]) => {
+        const canonicalInstrument = mapProductToCanonical(instrument);
+        
+        if (typeof dailyValues === 'object') {
+          // Daily distribution will be processed in useExposureCalculation.ts
+          // Just set up the structure here
+          if (!pricingExposures[pricingExposureMonth][canonicalInstrument]) {
+            pricingExposures[pricingExposureMonth][canonicalInstrument] = 0;
+          }
+        }
+      });
+    } 
+    // Secondary approach: Handle monthly distribution if available
+    else if (pricingFormula.monthlyDistribution) {
       Object.entries(pricingFormula.monthlyDistribution).forEach(([instrument, monthlyValues]) => {
         const canonicalInstrument = mapProductToCanonical(instrument);
         
@@ -110,7 +127,7 @@ export const calculatePhysicalExposure = (
         });
       });
     } 
-    // Otherwise use direct pricing exposures
+    // Tertiary approach: Use direct pricing exposures
     else if (pricingExposureMonth && periods.includes(pricingExposureMonth) && 
              pricingFormula.exposures && pricingFormula.exposures.pricing) {
       Object.entries(pricingFormula.exposures.pricing).forEach(([instrument, value]) => {
@@ -121,24 +138,6 @@ export const calculatePhysicalExposure = (
         }
         pricingExposures[pricingExposureMonth][canonicalInstrument] += Number(value) || 0;
       });
-    }
-    
-    // Special handling for EFP trades
-    if (leg.pricing_type === 'efp' && pricingExposureMonth && periods.includes(pricingExposureMonth)) {
-      if (!leg.efp_agreed_status) {
-        const instrumentKey = 'ICE GASOIL FUTURES (EFP)';
-        
-        if (!pricingExposures[pricingExposureMonth][instrumentKey]) {
-          pricingExposures[pricingExposureMonth][instrumentKey] = 0;
-        }
-        
-        const volume = leg.quantity * (leg.tolerance ? (1 + leg.tolerance / 100) : 1);
-        const direction = leg.buy_sell === 'buy' ? 1 : -1;
-        
-        // For EFP trades, the direction is opposite of the physical trade
-        const pricingDirection = direction * -1;
-        pricingExposures[pricingExposureMonth][instrumentKey] += volume * pricingDirection;
-      }
     }
   }
   

@@ -1,4 +1,11 @@
 
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
 // Re-export all functions and types for backward compatibility
 export * from './mtmTypes';
 export * from './dateUtils';
@@ -59,9 +66,8 @@ export const calculateDailyDistribution = (
     return {};
   }
   
-  // Calculate daily exposure
-  const buySellMultiplier = buySell === 'buy' ? 1 : -1;
-  const exposureValue = quantity * buySellMultiplier;
+  // Use the quantity directly - preserving its sign
+  const exposureValue = quantity;
   const dailyExposure = exposureValue / businessDays;
   
   // Create distribution object
@@ -94,4 +100,80 @@ export const getBusinessDaysCount = (startDate: Date, endDate: Date): number => 
   }
   
   return count;
+};
+
+// Fixed function to normalize trade exposures for paper trade legs
+// Now correctly preserves the sign of right-side quantities
+export const normalizeTradeExposures = (
+  leg: any
+): { paper: Record<string, number>, pricing: Record<string, number> } => {
+  const exposures = {
+    paper: {} as Record<string, number>,
+    pricing: {} as Record<string, number>
+  };
+  
+  const buySellMultiplier = leg.buySell === 'buy' ? 1 : -1;
+  
+  // Process the main product (left side)
+  const leftProduct = leg.product;
+  const leftQuantity = (leg.quantity || 0) * buySellMultiplier;
+  
+  exposures.paper[leftProduct] = leftQuantity;
+  exposures.pricing[leftProduct] = leftQuantity;
+  
+  // Process right side for DIFF or SPREAD relationships
+  if ((leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') && leg.rightSide) {
+    const rightProduct = leg.rightSide.product;
+    
+    // Important: Use the rightSide quantity directly - it already has the correct sign
+    // The UI component already sets it as negative of left side
+    const rightQuantity = leg.rightSide.quantity * buySellMultiplier;
+    
+    exposures.paper[rightProduct] = rightQuantity;
+    exposures.pricing[rightProduct] = rightQuantity;
+  }
+  
+  return exposures;
+};
+
+// Add a function to calculate and return complete exposures object
+export const buildCompleteExposuresObject = (
+  leg: any
+): Record<string, any> => {
+  // Get normalized paper and pricing exposures
+  const { paper, pricing } = normalizeTradeExposures(leg);
+  
+  // Create the exposures object
+  const exposuresObj = {
+    physical: {}, // Always empty for paper trades
+    paper,
+    pricing,
+    paperDailyDistribution: {},
+    pricingDailyDistribution: {}
+  };
+  
+  // Calculate daily distributions if period is available
+  if (leg.period) {
+    // For each product in paper exposures, calculate daily distribution
+    Object.entries(paper).forEach(([product, quantity]) => {
+      // We pass the quantity directly since it already has the correct sign
+      const dailyDist = calculateDailyDistribution(leg.period, product, quantity, 'buy');
+      
+      if (Object.keys(dailyDist).length > 0) {
+        // For paperDailyDistribution
+        exposuresObj.paperDailyDistribution = {
+          ...exposuresObj.paperDailyDistribution,
+          ...dailyDist
+        };
+        
+        // For pricingDailyDistribution
+        exposuresObj.pricingDailyDistribution = {
+          ...exposuresObj.pricingDailyDistribution,
+          ...dailyDist
+        };
+      }
+    });
+  }
+  
+  return exposuresObj;
 };

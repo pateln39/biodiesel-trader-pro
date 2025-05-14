@@ -539,9 +539,15 @@ export function parseFormula(tokens: FormulaToken[]): ParseNode {
       if (token.type === 'instrument') {
         return { type: 'instrument', value: String(token.value) };
       } else if (token.type === 'fixedValue' || token.type === 'number') {
-        return { type: 'value', value: Number(token.value) };
+        // Fix: Ensure value is a number before returning
+        const numValue = typeof token.value === 'number' ? token.value : 
+                        typeof token.value === 'string' ? parseFloat(token.value) : 0;
+        return { type: 'value', value: numValue };
       } else if (token.type === 'percentage') {
-        return { type: 'value', value: Number(token.value) / 100 };
+        // Fix: Ensure value is a number before returning
+        const numValue = typeof token.value === 'number' ? token.value : 
+                        typeof token.value === 'string' ? parseFloat(token.value) : 0;
+        return { type: 'value', value: numValue / 100 };
       }
     }
     

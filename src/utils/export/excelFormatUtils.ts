@@ -99,3 +99,75 @@ export const generateExcelFileName = (prefix: string): string => {
   
   return `${prefix}_${year}-${month}-${day}.xlsx`;
 };
+
+// Add missing style definitions that are used in exposureTableExport.ts
+export const columnHeaderBorderStyle = {
+  font: { bold: true },
+  fill: { patternType: 'solid', fgColor: { rgb: "DDDDDD" } },
+  border: {
+    top: { style: 'thin', color: { auto: 1 } },
+    bottom: { style: 'thin', color: { auto: 1 } },
+    left: { style: 'thin', color: { auto: 1 } },
+    right: { style: 'thin', color: { auto: 1 } }
+  },
+  alignment: { horizontal: 'center' }
+};
+
+export const dataBorderStyle = {
+  border: {
+    top: { style: 'thin', color: { auto: 1 } },
+    bottom: { style: 'thin', color: { auto: 1 } },
+    left: { style: 'thin', color: { auto: 1 } },
+    right: { style: 'thin', color: { auto: 1 } }
+  },
+  alignment: { horizontal: 'right' }
+};
+
+export const sumRowBorderStyle = {
+  font: { bold: true },
+  border: {
+    top: { style: 'thin', color: { auto: 1 } },
+    bottom: { style: 'thin', color: { auto: 1 } },
+    left: { style: 'thin', color: { auto: 1 } },
+    right: { style: 'thin', color: { auto: 1 } }
+  },
+  fill: { patternType: 'solid', fgColor: { rgb: "EEEEEE" } },
+  alignment: { horizontal: 'right' }
+};
+
+export const totalRowBorderStyle = {
+  font: { bold: true },
+  border: {
+    top: { style: 'thin', color: { auto: 1 } },
+    bottom: { style: 'thin', color: { auto: 1 } },
+    left: { style: 'thin', color: { auto: 1 } },
+    right: { style: 'thin', color: { auto: 1 } }
+  },
+  fill: { patternType: 'solid', fgColor: { rgb: "E0E0E0" } },
+  alignment: { horizontal: 'right' }
+};
+
+export const exportStyles = {
+  header: columnHeaderBorderStyle,
+  data: dataBorderStyle,
+  sumRow: sumRowBorderStyle,
+  totalRow: totalRowBorderStyle
+};
+
+/**
+ * Add conditional formatting based on value
+ * @param value - Number to evaluate for formatting
+ * @param baseStyle - Base style to apply conditional formatting on top of
+ * @returns Style object with conditional formatting applied
+ */
+export const addConditionalStyle = (value: number, baseStyle: any) => {
+  const style = { ...baseStyle };
+  
+  if (value > 0) {
+    style.font = { ...style.font, color: { rgb: "008800" } }; // Green for positive values
+  } else if (value < 0) {
+    style.font = { ...style.font, color: { rgb: "880000" } }; // Red for negative values
+  }
+  
+  return style;
+};
