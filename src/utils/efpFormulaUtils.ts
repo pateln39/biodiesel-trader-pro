@@ -59,14 +59,17 @@ const calculateEfpDailyDistribution = (
     
     while (currentDate <= lastDay) {
       if (!isWeekend(currentDate)) {
+        // Use ISO date format (YYYY-MM-DD) for consistency
         const dateKey = format(currentDate, 'yyyy-MM-dd');
         dailyDistribution[dateKey] = dailyExposure;
       }
       currentDate = addDays(currentDate, 1);
     }
     
-    // Log successful distribution creation
+    // Log successful distribution creation with sample of dates
+    const dateKeys = Object.keys(dailyDistribution);
     console.log(`[EFP] Created daily distribution for ${designatedMonth} with ${businessDaysCount} business days, total exposure: ${exposureValue}`);
+    console.log(`[EFP] Sample dates: ${dateKeys.slice(0, 3).join(', ')} (${dateKeys.length} total days)`);
     
     return dailyDistribution;
   } catch (error) {
@@ -105,9 +108,15 @@ export const createEfpFormula = (
     formula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
+    const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
     formula.dailyDistribution = {
-      'ICE GASOIL FUTURES (EFP)': calculateEfpDailyDistribution(exposureValue, designatedMonth)
+      'ICE GASOIL FUTURES (EFP)': dailyDist
     };
+    
+    // Log the distribution creation
+    console.log(`[EFP] Created formula with ${Object.keys(dailyDist).length} days of distribution for ${designatedMonth}`);
+  } else {
+    console.log(`[EFP] Created formula for agreed EFP trade (no exposure tracking needed)`);
   }
   
   return formula;
@@ -146,16 +155,16 @@ export const updateFormulaWithEfpExposure = (
     updatedFormula.exposures.pricing['ICE GASOIL FUTURES (EFP)'] = exposureValue;
     
     // Calculate and add daily distribution for the EFP's designated month
-    const efpDailyDistribution = calculateEfpDailyDistribution(exposureValue, designatedMonth);
+    const dailyDist = calculateEfpDailyDistribution(exposureValue, designatedMonth);
     
     // Ensure the dailyDistribution object exists
     updatedFormula.dailyDistribution = updatedFormula.dailyDistribution || {};
     
     // Add or replace the ICE GASOIL FUTURES (EFP) distribution
-    updatedFormula.dailyDistribution['ICE GASOIL FUTURES (EFP)'] = efpDailyDistribution;
+    updatedFormula.dailyDistribution['ICE GASOIL FUTURES (EFP)'] = dailyDist;
     
-    // Log the number of days in the distribution
-    console.log(`[EFP] Updated EFP formula for ${designatedMonth} with ${Object.keys(efpDailyDistribution).length} days of distribution`);
+    // Log the distribution update
+    console.log(`[EFP] Updated EFP formula for ${designatedMonth} with ${Object.keys(dailyDist).length} days of distribution`);
   } else {
     // For agreed EFPs, remove any existing daily distribution for this instrument
     if (updatedFormula.dailyDistribution?.['ICE GASOIL FUTURES (EFP)']) {

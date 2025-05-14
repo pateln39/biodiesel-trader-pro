@@ -73,14 +73,22 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   paper: 0,
                   netExposure: 0
                 };
+                
+                // Special handling for EFP instruments to make them more visible
+                const isEfp = isEfpInstrument(product);
+                const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
+                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-pricing-${product}`} 
-                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''} ${isEfpInstrument(product) ? 'bg-blue-950' : ''}`}
+                    className={`text-right text-xs p-1 text-white font-bold bg-brand-navy ${getValueColorClass(productData.pricing)} ${index === categoryProducts.length - 1 && catIndex < orderedVisibleCategories.length - 1 ? 'border-r-[1px] border-black' : ''} ${efpHighlight}`}
                   >
                     {formatValue(productData.pricing)}
                     {dateRangeEnabled && productData.pricing !== 0 && (
                       <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
+                    {isEfp && dateRangeEnabled && productData.pricing !== 0 && (
+                      <span className="ml-1 text-xs text-yellow-300">⚡</span>
                     )}
                   </TableCell>
                 );
@@ -114,14 +122,22 @@ const ExposureTableBody: React.FC<ExposureTableBodyProps> = ({
                   paper: 0,
                   netExposure: 0
                 };
+                
+                // Special highlighting for EFP instruments in the exposure column
+                const isEfp = isEfpInstrument(product);
+                const efpHighlight = isEfp ? 'bg-blue-950 font-medium' : '';
+                
                 cells.push(
                   <TableCell 
                     key={`${monthData.month}-net-${product}`} 
-                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} ${isEfpInstrument(product) ? 'bg-blue-950' : ''} bg-brand-navy`}
+                    className={`text-right text-xs p-1 font-medium border-r-[1px] border-black ${getValueColorClass(productData.netExposure)} ${efpHighlight} bg-brand-navy`}
                   >
                     {formatValue(productData.netExposure)}
                     {dateRangeEnabled && productData.netExposure !== 0 && (
                       <span className="ml-1 text-xs text-brand-lime">*</span>
+                    )}
+                    {isEfp && dateRangeEnabled && productData.netExposure !== 0 && (
+                      <span className="ml-1 text-xs text-yellow-300">⚡</span>
                     )}
                   </TableCell>
                 );
