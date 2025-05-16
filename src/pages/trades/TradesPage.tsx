@@ -41,16 +41,17 @@ const TradesPage = () => {
     loading: physicalLoading, 
     error: physicalError, 
     refetchTrades,
-    pagination
+    pagination: physicalPagination
   } = useTrades(paginationParams);
   
-  // Load paper trades
+  // Load paper trades with pagination from URL
   const { 
     paperTrades, 
     isLoading: paperLoading, 
     error: paperError, 
-    refetchPaperTrades
-  } = usePaperTrades();
+    refetchPaperTrades,
+    pagination: paperPagination
+  } = usePaperTrades(paginationParams);
   
   const physicalTrades = trades as PhysicalTrade[];
 
@@ -171,7 +172,7 @@ const TradesPage = () => {
             loading={physicalLoading}
             error={physicalError}
             refetchTrades={refetchTrades}
-            pagination={pagination}
+            pagination={physicalPagination}
             onPageChange={handlePageChange}
           />
         </CardContent>
@@ -202,6 +203,8 @@ const TradesPage = () => {
             isLoading={paperLoading}
             error={paperError}
             refetchPaperTrades={refetchPaperTrades}
+            pagination={paperPagination}
+            onPageChange={handlePageChange}
           />
         </CardContent>
       </Card>

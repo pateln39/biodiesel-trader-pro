@@ -8,6 +8,7 @@ import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtil
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { buildCompleteExposuresObject } from '@/utils/paperTrade';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
 // Import these from the paperTrade utility module
 import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
@@ -180,7 +181,7 @@ export const createPaperTrade = async (
   }
 };
 
-export const usePaperTrades = () => {
+export const usePaperTrades = (paginationParams?: PaginationParams) => {
   const queryClient = useQueryClient();
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
@@ -194,14 +195,37 @@ export const usePaperTrades = () => {
     fn();
   }, 500)).current;
   
-  const { data: paperTrades, isLoading, error, refetch } = useQuery({
-    queryKey: ['paper-trades'],
-    queryFn: fetchPaperTrades,
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['paper-trades', paginationParams],
+    queryFn: () => fetchPaperTrades(paginationParams),
     staleTime: 2000,
     refetchOnWindowFocus: false
   });
   
-  async function fetchPaperTrades(): Promise<PaperTrade[]> {
+  async function fetchPaperTrades(params?: PaginationParams): Promise<{ paperTrades: PaperTrade[], pagination: PaginationMeta }> {
+    console.log("[PAPER] Fetching paper trades with pagination:", params);
+    
+    // First, get the total count
+    const { count, error: countError } = await supabase
+      .from('paper_trades')
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      console.error('[PAPER] Error counting paper trades:', countError.message);
+      throw countError;
+    }
+    
+    // Calculate pagination metadata
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 15;
+    const totalItems = count || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Calculate range for pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    // Fetch only the current page of paper trades
     const { data: paperTradesData, error: paperTradesError } = await supabase
       .from('paper_trades')
       .select(`
@@ -212,7 +236,8 @@ export const usePaperTrades = () => {
         created_at,
         updated_at
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
       
     if (paperTradesError) {
       console.error('[PAPER] Error fetching paper trades:', paperTradesError.message);
@@ -220,11 +245,20 @@ export const usePaperTrades = () => {
     }
     
     if (!paperTradesData || paperTradesData.length === 0) {
-      return [];
+      return {
+        paperTrades: [],
+        pagination: {
+          totalItems,
+          totalPages: totalPages > 0 ? totalPages : 1,
+          currentPage: page,
+          pageSize
+        }
+      };
     }
     
-    console.log(`[PAPER] Found ${paperTradesData.length} paper trades`);
+    console.log(`[PAPER] Found ${paperTradesData.length} paper trades on page ${page}`);
     
+    // For each trade, fetch its legs
     const tradesWithLegs = await Promise.all(
       paperTradesData.map(async (paperTrade) => {
         const { data: legs, error: legsError } = await supabase
@@ -398,7 +432,15 @@ export const usePaperTrades = () => {
       })
     );
     
-    return tradesWithLegs;
+    return {
+      paperTrades: tradesWithLegs,
+      pagination: {
+        totalItems,
+        totalPages: totalPages > 0 ? totalPages : 1,
+        currentPage: page,
+        pageSize
+      }
+    };
   };
   
   const setupRealtimeSubscriptions = useCallback(() => {
@@ -542,7 +584,8 @@ export const usePaperTrades = () => {
   });
   
   return {
-    paperTrades: paperTrades || [],
+    paperTrades: data?.paperTrades || [],
+    pagination: data?.pagination,
     isLoading,
     error,
     createPaperTrade,
