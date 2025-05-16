@@ -29,7 +29,7 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
     const { count: totalLegsCount, error: countError } = await supabase
       .from('trade_legs')
       .select('*', { count: 'exact', head: false })
-      .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical'));
+      .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical').options({ head: true }));
       
     if (countError) {
       throw new Error(`Error counting trade legs: ${countError.message}`);
@@ -43,7 +43,13 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
     const { data: tradeLegs, error: tradeLegsError } = await supabase
       .from('trade_legs')
       .select('*, parent_trade_id')
-      .in('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical'))
+      .in('parent_trade_id', 
+        // Use a subquery to get parent trade IDs
+        supabase.from('parent_trades')
+          .select('id')
+          .eq('trade_type', 'physical')
+          .options({ head: false })
+      )
       .order('created_at', { ascending: false })
       .range(from, to);
 
