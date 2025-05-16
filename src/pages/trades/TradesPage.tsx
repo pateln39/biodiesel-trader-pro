@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -7,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PaginationParams } from '@/types/pagination';
 
 // Import our custom components
 import PhysicalTradeTable from './PhysicalTradeTable';
@@ -20,18 +20,28 @@ import { exportPhysicalTradesToExcel, exportPaperTradesToExcel } from '@/utils/e
 import { toast } from 'sonner';
 
 const TradesPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const pageParam = searchParams.get('page');
+  const pageSizeParam = searchParams.get('pageSize');
+  
+  // Default page and pageSize or from URL params
+  const [paginationParams, setPaginationParams] = useState<PaginationParams>({
+    page: pageParam ? parseInt(pageParam) : 1,
+    pageSize: pageSizeParam ? parseInt(pageSizeParam) : 15
+  });
+  
   const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
   
-  // Load physical trades
+  // Load physical trades with pagination
   const { 
     trades, 
     loading: physicalLoading, 
     error: physicalError, 
-    refetchTrades
-  } = useTrades();
+    refetchTrades,
+    pagination
+  } = useTrades(paginationParams);
   
   // Load paper trades
   const { 
@@ -61,6 +71,24 @@ const TradesPage = () => {
       setActiveTab('physical');
     }
   }, [tabParam]);
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    const newPaginationParams = {
+      ...paginationParams,
+      page
+    };
+    
+    setPaginationParams(newPaginationParams);
+    
+    // Update URL parameters without navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    setSearchParams(newParams);
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Export handlers
   const handleExportPhysicalTrades = async () => {
@@ -137,6 +165,8 @@ const TradesPage = () => {
             loading={physicalLoading}
             error={physicalError}
             refetchTrades={refetchTrades}
+            pagination={pagination}
+            onPageChange={handlePageChange}
           />
         </CardContent>
       </Card>

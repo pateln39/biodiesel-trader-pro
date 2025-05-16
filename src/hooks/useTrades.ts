@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,30 +19,66 @@ import {
   DbParentTrade,
   DbTradeLeg
 } from '@/types';
+import { PaginationParams, PaginatedResponse } from '@/types/pagination';
 import { validateAndParsePricingFormula } from '@/utils/formulaUtils';
 import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscriptionUtils';
 
-const fetchTrades = async (): Promise<PhysicalTrade[]> => {
+const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 }): Promise<PaginatedResponse<PhysicalTrade>> => {
   try {
+    // Calculate range for pagination
+    const from = (params.page - 1) * params.pageSize;
+    const to = from + params.pageSize - 1;
+    
+    // Get count of physical parent trades
+    const { count: totalCount, error: countError } = await supabase
+      .from('parent_trades')
+      .select('*', { count: 'exact', head: false })
+      .eq('trade_type', 'physical');
+      
+    if (countError) {
+      throw new Error(`Error counting parent trades: ${countError.message}`);
+    }
+
+    // Fetch paginated parent trades
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
       .eq('trade_type', 'physical')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (parentTradesError) {
       throw new Error(`Error fetching parent trades: ${parentTradesError.message}`);
     }
 
+    // If no parent trades, return empty result with pagination metadata
+    if (!parentTrades || parentTrades.length === 0) {
+      return {
+        data: [],
+        meta: {
+          totalItems: totalCount || 0,
+          totalPages: Math.ceil((totalCount || 0) / params.pageSize),
+          currentPage: params.page,
+          pageSize: params.pageSize
+        }
+      };
+    }
+
+    // Get all parent trade IDs for fetching legs
+    const parentTradeIds = parentTrades.map(pt => pt.id);
+
+    // Fetch all legs for the current page of parent trades
     const { data: tradeLegs, error: tradeLegsError } = await supabase
       .from('trade_legs')
       .select('*')
+      .in('parent_trade_id', parentTradeIds)
       .order('created_at', { ascending: false });
 
     if (tradeLegsError) {
       throw new Error(`Error fetching trade legs: ${tradeLegsError.message}`);
     }
 
+    // Map the data to our application model
     const mappedTrades: PhysicalTrade[] = parentTrades.map((parent: DbParentTrade) => {
       const legs = tradeLegs.filter((leg: any) => leg.parent_trade_id === parent.id);
       
@@ -144,24 +181,32 @@ const fetchTrades = async (): Promise<PhysicalTrade[]> => {
       } as PhysicalTrade;
     });
 
-    return mappedTrades.filter(trade => trade.tradeType === 'physical');
+    return {
+      data: mappedTrades.filter(trade => trade.tradeType === 'physical'),
+      meta: {
+        totalItems: totalCount || 0,
+        totalPages: Math.ceil((totalCount || 0) / params.pageSize),
+        currentPage: params.page,
+        pageSize: params.pageSize
+      }
+    };
   } catch (error: any) {
     console.error('[PHYSICAL] Error fetching trades:', error);
     throw new Error(error.message);
   }
 };
 
-export const useTrades = () => {
+export const useTrades = (paginationParams: PaginationParams = { page: 1, pageSize: 15 }) => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   
   const { 
-    data: trades = [], 
+    data, 
     isLoading: loading, 
     error,
     refetch
   } = useQuery({
-    queryKey: ['trades'],
-    queryFn: fetchTrades,
+    queryKey: ['trades', paginationParams.page, paginationParams.pageSize],
+    queryFn: () => fetchTrades(paginationParams),
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 2000,
@@ -183,7 +228,13 @@ export const useTrades = () => {
   }, [setupRealtimeSubscriptions]);
 
   return { 
-    trades, 
+    trades: data?.data || [], 
+    pagination: data?.meta || {
+      totalItems: 0,
+      totalPages: 1,
+      currentPage: paginationParams.page,
+      pageSize: paginationParams.pageSize
+    },
     loading, 
     error, 
     refetchTrades: refetch
