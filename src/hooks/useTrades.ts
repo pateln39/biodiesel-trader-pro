@@ -25,11 +25,24 @@ import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscripti
 
 const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 }): Promise<PaginatedResponse<PhysicalTrade>> => {
   try {
-    // Step 1: Count the total number of legs for pagination metadata
+    // Step 1: Get parent trade IDs for physical trades
+    const { data: parentTradeIds, error: parentTradeError } = await supabase
+      .from('parent_trades')
+      .select('id')
+      .eq('trade_type', 'physical');
+      
+    if (parentTradeError) {
+      throw new Error(`Error fetching parent trades: ${parentTradeError.message}`);
+    }
+    
+    // Extract just the IDs into an array
+    const physicalTradeIds = parentTradeIds.map(pt => pt.id);
+    
+    // Step 2: Count the total number of legs for pagination metadata
     const { count: totalLegsCount, error: countError } = await supabase
       .from('trade_legs')
       .select('*', { count: 'exact', head: false })
-      .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical').options({ head: true }));
+      .in('parent_trade_id', physicalTradeIds);
       
     if (countError) {
       throw new Error(`Error counting trade legs: ${countError.message}`);
@@ -39,17 +52,11 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
     const from = (params.page - 1) * params.pageSize;
     const to = from + params.pageSize - 1;
     
-    // Step 2: Fetch paginated legs
+    // Step 3: Fetch paginated legs
     const { data: tradeLegs, error: tradeLegsError } = await supabase
       .from('trade_legs')
       .select('*, parent_trade_id')
-      .in('parent_trade_id', 
-        // Use a subquery to get parent trade IDs
-        supabase.from('parent_trades')
-          .select('id')
-          .eq('trade_type', 'physical')
-          .options({ head: false })
-      )
+      .in('parent_trade_id', physicalTradeIds)
       .order('created_at', { ascending: false })
       .range(from, to);
 
@@ -70,10 +77,10 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
       };
     }
 
-    // Step 3: Get all parent trade IDs from the fetched legs
+    // Step 4: Get all parent trade IDs from the fetched legs
     const parentTradeIds = [...new Set(tradeLegs.map(leg => leg.parent_trade_id))];
 
-    // Step 4: Fetch all parent trades for the current page of legs
+    // Step 5: Fetch all parent trades for the current page of legs
     const { data: parentTrades, error: parentTradesError } = await supabase
       .from('parent_trades')
       .select('*')
@@ -84,7 +91,7 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
       throw new Error(`Error fetching parent trades: ${parentTradesError.message}`);
     }
 
-    // Step 5: Map the data to our application model
+    // Step 6: Map the data to our application model
     // Create a map of parent trades for faster lookup
     const parentTradeMap = new Map();
     parentTrades.forEach((parent: DbParentTrade) => {
