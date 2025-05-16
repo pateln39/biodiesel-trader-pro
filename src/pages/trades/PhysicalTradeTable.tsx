@@ -65,6 +65,7 @@ const PhysicalTradeTable = ({
     );
   }
   
+  // Create flattened rows for all trade legs
   const rows: JSX.Element[] = [];
   
   trades.forEach(trade => {

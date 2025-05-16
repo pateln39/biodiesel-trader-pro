@@ -25,66 +25,85 @@ import { setupPhysicalTradeSubscriptions } from '@/utils/physicalTradeSubscripti
 
 const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 }): Promise<PaginatedResponse<PhysicalTrade>> => {
   try {
+    // Step 1: Count the total number of legs for pagination metadata
+    const { count: totalLegsCount, error: countError } = await supabase
+      .from('trade_legs')
+      .select('*', { count: 'exact', head: false })
+      .eq('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical'));
+      
+    if (countError) {
+      throw new Error(`Error counting trade legs: ${countError.message}`);
+    }
+    
     // Calculate range for pagination
     const from = (params.page - 1) * params.pageSize;
     const to = from + params.pageSize - 1;
     
-    // Get count of physical parent trades
-    const { count: totalCount, error: countError } = await supabase
-      .from('parent_trades')
-      .select('*', { count: 'exact', head: false })
-      .eq('trade_type', 'physical');
-      
-    if (countError) {
-      throw new Error(`Error counting parent trades: ${countError.message}`);
-    }
-
-    // Fetch paginated parent trades
-    const { data: parentTrades, error: parentTradesError } = await supabase
-      .from('parent_trades')
-      .select('*')
-      .eq('trade_type', 'physical')
+    // Step 2: Fetch paginated legs
+    const { data: tradeLegs, error: tradeLegsError } = await supabase
+      .from('trade_legs')
+      .select('*, parent_trade_id')
+      .in('parent_trade_id', supabase.from('parent_trades').select('id').eq('trade_type', 'physical'))
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (parentTradesError) {
-      throw new Error(`Error fetching parent trades: ${parentTradesError.message}`);
+    if (tradeLegsError) {
+      throw new Error(`Error fetching trade legs: ${tradeLegsError.message}`);
     }
 
-    // If no parent trades, return empty result with pagination metadata
-    if (!parentTrades || parentTrades.length === 0) {
+    // If no trade legs, return empty result with pagination metadata
+    if (!tradeLegs || tradeLegs.length === 0) {
       return {
         data: [],
         meta: {
-          totalItems: totalCount || 0,
-          totalPages: Math.ceil((totalCount || 0) / params.pageSize),
+          totalItems: totalLegsCount || 0,
+          totalPages: Math.ceil((totalLegsCount || 0) / params.pageSize),
           currentPage: params.page,
           pageSize: params.pageSize
         }
       };
     }
 
-    // Get all parent trade IDs for fetching legs
-    const parentTradeIds = parentTrades.map(pt => pt.id);
+    // Step 3: Get all parent trade IDs from the fetched legs
+    const parentTradeIds = [...new Set(tradeLegs.map(leg => leg.parent_trade_id))];
 
-    // Fetch all legs for the current page of parent trades
-    const { data: tradeLegs, error: tradeLegsError } = await supabase
-      .from('trade_legs')
+    // Step 4: Fetch all parent trades for the current page of legs
+    const { data: parentTrades, error: parentTradesError } = await supabase
+      .from('parent_trades')
       .select('*')
-      .in('parent_trade_id', parentTradeIds)
-      .order('created_at', { ascending: false });
+      .in('id', parentTradeIds)
+      .eq('trade_type', 'physical');
 
-    if (tradeLegsError) {
-      throw new Error(`Error fetching trade legs: ${tradeLegsError.message}`);
+    if (parentTradesError) {
+      throw new Error(`Error fetching parent trades: ${parentTradesError.message}`);
     }
 
-    // Map the data to our application model
-    const mappedTrades: PhysicalTrade[] = parentTrades.map((parent: DbParentTrade) => {
-      const legs = tradeLegs.filter((leg: any) => leg.parent_trade_id === parent.id);
+    // Step 5: Map the data to our application model
+    // Create a map of parent trades for faster lookup
+    const parentTradeMap = new Map();
+    parentTrades.forEach((parent: DbParentTrade) => {
+      parentTradeMap.set(parent.id, parent);
+    });
+
+    // Group legs by parent trade
+    const tradesByParentId = new Map();
+    
+    tradeLegs.forEach((leg: any) => {
+      const parentTradeId = leg.parent_trade_id;
       
+      if (!tradesByParentId.has(parentTradeId)) {
+        tradesByParentId.set(parentTradeId, []);
+      }
+      
+      tradesByParentId.get(parentTradeId).push(leg);
+    });
+    
+    // Map to PhysicalTrade objects
+    const mappedTrades: PhysicalTrade[] = Array.from(tradesByParentId.entries()).map(([parentTradeId, legs]) => {
+      const parent = parentTradeMap.get(parentTradeId);
       const firstLeg = legs.length > 0 ? legs[0] : null;
       
-      if (parent.trade_type === 'physical' && firstLeg) {
+      if (parent && firstLeg) {
         const loadingPeriodStart = firstLeg.loading_period_start ? new Date(firstLeg.loading_period_start) : new Date();
         const pricingPeriodStart = firstLeg.pricing_period_start ? new Date(firstLeg.pricing_period_start) : new Date();
         
@@ -120,7 +139,7 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
           mtmFutureMonth: firstLeg.mtm_future_month,
           comments: firstLeg.comments,
           contractStatus: firstLeg.contract_status as ContractStatus,
-          legs: legs.map(leg => {
+          legs: legs.map((leg: any) => {
             const legLoadingStart = leg.loading_period_start ? new Date(leg.loading_period_start) : new Date();
             const legPricingStart = leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date();
             
@@ -160,32 +179,17 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
           })
         };
         return physicalTrade;
-      } 
+      }
       
       // This branch should never execute with our filter, but TypeScript needs it
-      return {
-        id: parent.id,
-        tradeReference: parent.trade_reference,
-        tradeType: 'physical' as TradeType,
-        createdAt: new Date(parent.created_at),
-        updatedAt: new Date(parent.updated_at),
-        counterparty: parent.counterparty,
-        buySell: 'buy' as BuySell,
-        product: 'UCOME' as Product,
-        quantity: 0,
-        loadingPeriodStart: new Date(),
-        loadingPeriodEnd: new Date(),
-        pricingPeriodStart: new Date(),
-        pricingPeriodEnd: new Date(),
-        legs: []
-      } as PhysicalTrade;
-    });
+      return null;
+    }).filter(Boolean) as PhysicalTrade[];
 
     return {
-      data: mappedTrades.filter(trade => trade.tradeType === 'physical'),
+      data: mappedTrades,
       meta: {
-        totalItems: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / params.pageSize),
+        totalItems: totalLegsCount || 0,
+        totalPages: Math.ceil((totalLegsCount || 0) / params.pageSize),
         currentPage: params.page,
         pageSize: params.pageSize
       }

@@ -51,7 +51,8 @@ const TradesPage = () => {
     refetchPaperTrades
   } = usePaperTrades();
   
-  const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
+  // We don't need to filter physical trades here as the hook now returns the correct data
+  const physicalTrades = trades as PhysicalTrade[];
 
   // Error handling across both trade types
   useEffect(() => {
