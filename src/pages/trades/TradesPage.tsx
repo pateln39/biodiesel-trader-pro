@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -54,6 +55,17 @@ const TradesPage = () => {
   // We don't need to filter physical trades here as the hook now returns the correct data
   const physicalTrades = trades as PhysicalTrade[];
 
+  // Sync URL params with state when URL changes
+  useEffect(() => {
+    const newPage = pageParam ? parseInt(pageParam) : 1;
+    const newPageSize = pageSizeParam ? parseInt(pageSizeParam) : 15;
+    
+    setPaginationParams({
+      page: newPage,
+      pageSize: newPageSize
+    });
+  }, [pageParam, pageSizeParam]);
+
   // Error handling across both trade types
   useEffect(() => {
     const combinedError = physicalError || paperError;
@@ -73,14 +85,23 @@ const TradesPage = () => {
     }
   }, [tabParam]);
   
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    // Update URL parameters without navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', value);
+    setSearchParams(newParams);
+  };
+  
   // Handle page change
   const handlePageChange = (page: number) => {
-    const newPaginationParams = {
-      ...paginationParams,
+    // Update state
+    setPaginationParams(prev => ({
+      ...prev,
       page
-    };
-    
-    setPaginationParams(newPaginationParams);
+    }));
     
     // Update URL parameters without navigation
     const newParams = new URLSearchParams(searchParams);
@@ -220,7 +241,7 @@ const TradesPage = () => {
         {pageError && showErrorAlert()}
 
         {/* Tabs for Physical and Paper Trades */}
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="physical">Physical Trades</TabsTrigger>
             <TabsTrigger value="paper">Paper Trades</TabsTrigger>
