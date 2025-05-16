@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -50,7 +51,7 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
     return `${location.pathname}?${searchParams.toString()}`;
   };
   
-  // Handle page change without preventing default
+  // Handle page change (only call the callback, let React Router handle the navigation)
   const handlePageChange = (page: number) => {
     if (onPageChange) {
       onPageChange(page);

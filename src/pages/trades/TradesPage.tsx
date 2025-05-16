@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -79,13 +80,20 @@ const TradesPage = () => {
     // Update URL parameters without navigation
     const newParams = new URLSearchParams(searchParams);
     newParams.set('tab', value);
+    // Reset to page 1 when changing tabs
+    newParams.set('page', '1');
     setSearchParams(newParams);
   };
   
-  // Handle page change - only updates URL, React Router will handle the navigation
+  // Handle page change - update URL parameters
   const handlePageChange = (page: number) => {
     // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Update URL parameters
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    setSearchParams(newParams);
   };
 
   // Export handlers
