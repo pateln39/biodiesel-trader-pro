@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -21,21 +22,20 @@ import { toast } from 'sonner';
 
 const TradesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') || 'physical';
+  const tabParam = searchParams.get('tab');
   const pageParam = searchParams.get('page');
   const pageSizeParam = searchParams.get('pageSize');
   
-  // Parse pagination params from URL
-  const paginationParams: PaginationParams = {
+  // Default page and pageSize or from URL params
+  const [paginationParams, setPaginationParams] = useState<PaginationParams>({
     page: pageParam ? parseInt(pageParam) : 1,
     pageSize: pageSizeParam ? parseInt(pageSizeParam) : 15
-  };
+  });
   
-  // Get the active tab from URL
-  const activeTab = tabParam === 'paper' ? 'paper' : 'physical';
-  const [pageError, setPageError] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
+  const [pageError, setPageError] = useState<string | null>(null);
   
-  // Load physical trades with pagination from URL
+  // Load physical trades with pagination
   const { 
     trades, 
     loading: physicalLoading, 
@@ -52,8 +52,19 @@ const TradesPage = () => {
     refetchPaperTrades
   } = usePaperTrades();
   
-  // Physical trades are already filtered in the hook
+  // We don't need to filter physical trades here as the hook now returns the correct data
   const physicalTrades = trades as PhysicalTrade[];
+
+  // Sync URL params with state when URL changes
+  useEffect(() => {
+    const newPage = pageParam ? parseInt(pageParam) : 1;
+    const newPageSize = pageSizeParam ? parseInt(pageSizeParam) : 15;
+    
+    setPaginationParams({
+      page: newPage,
+      pageSize: newPageSize
+    });
+  }, [pageParam, pageSizeParam]);
 
   // Error handling across both trade types
   useEffect(() => {
@@ -64,19 +75,40 @@ const TradesPage = () => {
       setPageError(null);
     }
   }, [physicalError, paperError]);
+
+  // Update active tab based on URL parameter
+  useEffect(() => {
+    if (tabParam === 'paper') {
+      setActiveTab('paper');
+    } else if (tabParam === 'physical') {
+      setActiveTab('physical');
+    }
+  }, [tabParam]);
   
   // Handle tab change
   const handleTabChange = (value: string) => {
-    // Update URL parameters without using state
+    setActiveTab(value);
+    
+    // Update URL parameters without navigation
     const newParams = new URLSearchParams(searchParams);
     newParams.set('tab', value);
     setSearchParams(newParams);
   };
   
-  // Handle page change - this is now just a helper for the table
-  // The actual navigation is handled by the PaginationNav component directly
+  // Handle page change
   const handlePageChange = (page: number) => {
-    // For non-URL operations only
+    // Update state
+    setPaginationParams(prev => ({
+      ...prev,
+      page
+    }));
+    
+    // Update URL parameters without navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    setSearchParams(newParams);
+    
+    // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

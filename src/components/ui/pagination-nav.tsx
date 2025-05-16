@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 
 interface PaginationNavProps {
   pagination: PaginationMeta;
-  onPageChange?: (page: number) => void;
+  onPageChange: (page: number) => void;
   className?: string;
 }
 
@@ -50,20 +50,16 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
     return `${location.pathname}?${searchParams.toString()}`;
   };
   
-  // Handle page change - optional callback
-  const handlePageClick = (page: number) => {
-    if (onPageChange) {
-      onPageChange(page);
-    }
-  };
-  
   return (
     <Pagination className={className}>
       <PaginationContent>
         <PaginationItem>
           <PaginationLink 
             to={createPageUrl(Math.max(1, currentPage - 1))}
-            onClick={() => handlePageClick(Math.max(1, currentPage - 1))}
+            onClick={(e) => {
+              e.preventDefault();
+              onPageChange(Math.max(1, currentPage - 1));
+            }}
             className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
             aria-disabled={currentPage <= 1}
             direction="previous"
@@ -79,7 +75,10 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
             <PaginationItem>
               <PaginationLink 
                 to={createPageUrl(1)}
-                onClick={() => handlePageClick(1)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onPageChange(1);
+                }}
                 isActive={1 === currentPage}
               >
                 1
@@ -98,7 +97,10 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
           <PaginationItem key={page}>
             <PaginationLink
               to={createPageUrl(page)}
-              onClick={() => handlePageClick(page)}
+              onClick={(e) => {
+                e.preventDefault();
+                onPageChange(page);
+              }}
               isActive={page === currentPage}
             >
               {page}
@@ -117,7 +119,10 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
             <PaginationItem>
               <PaginationLink 
                 to={createPageUrl(totalPages)}
-                onClick={() => handlePageClick(totalPages)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onPageChange(totalPages);
+                }}
                 isActive={totalPages === currentPage}
               >
                 {totalPages}
@@ -129,7 +134,10 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
         <PaginationItem>
           <PaginationLink 
             to={createPageUrl(Math.min(totalPages, currentPage + 1))}
-            onClick={() => handlePageClick(Math.min(totalPages, currentPage + 1))}
+            onClick={(e) => {
+              e.preventDefault();
+              onPageChange(Math.min(totalPages, currentPage + 1));
+            }}
             className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
             aria-disabled={currentPage >= totalPages}
             direction="next"
