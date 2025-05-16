@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -26,16 +25,16 @@ const TradesPage = () => {
   const pageParam = searchParams.get('page');
   const pageSizeParam = searchParams.get('pageSize');
   
-  // Default page and pageSize or from URL params
-  const [paginationParams, setPaginationParams] = useState<PaginationParams>({
+  // Use URL parameters as the source of truth for pagination
+  const paginationParams: PaginationParams = {
     page: pageParam ? parseInt(pageParam) : 1,
     pageSize: pageSizeParam ? parseInt(pageSizeParam) : 15
-  });
+  };
   
   const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
   
-  // Load physical trades with pagination
+  // Load physical trades with pagination from URL
   const { 
     trades, 
     loading: physicalLoading, 
@@ -52,29 +51,7 @@ const TradesPage = () => {
     refetchPaperTrades
   } = usePaperTrades();
   
-  // We don't need to filter physical trades here as the hook now returns the correct data
   const physicalTrades = trades as PhysicalTrade[];
-
-  // Sync URL params with state when URL changes
-  useEffect(() => {
-    const newPage = pageParam ? parseInt(pageParam) : 1;
-    const newPageSize = pageSizeParam ? parseInt(pageSizeParam) : 15;
-    
-    setPaginationParams({
-      page: newPage,
-      pageSize: newPageSize
-    });
-  }, [pageParam, pageSizeParam]);
-
-  // Error handling across both trade types
-  useEffect(() => {
-    const combinedError = physicalError || paperError;
-    if (combinedError) {
-      setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
-    } else {
-      setPageError(null);
-    }
-  }, [physicalError, paperError]);
 
   // Update active tab based on URL parameter
   useEffect(() => {
@@ -84,6 +61,16 @@ const TradesPage = () => {
       setActiveTab('physical');
     }
   }, [tabParam]);
+  
+  // Error handling across both trade types
+  useEffect(() => {
+    const combinedError = physicalError || paperError;
+    if (combinedError) {
+      setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
+    } else {
+      setPageError(null);
+    }
+  }, [physicalError, paperError]);
   
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -95,19 +82,8 @@ const TradesPage = () => {
     setSearchParams(newParams);
   };
   
-  // Handle page change
+  // Handle page change - only updates URL, React Router will handle the navigation
   const handlePageChange = (page: number) => {
-    // Update state
-    setPaginationParams(prev => ({
-      ...prev,
-      page
-    }));
-    
-    // Update URL parameters without navigation
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('page', page.toString());
-    setSearchParams(newParams);
-    
     // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
