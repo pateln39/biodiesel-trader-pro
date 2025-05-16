@@ -52,6 +52,9 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
     return <TableErrorState error={error} onRetry={refetchPaperTrades} />;
   }
 
+  // Count the total number of legs across all trades for info display
+  const totalLegs = paperTrades.reduce((acc, trade) => acc + trade.legs.length, 0);
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
@@ -147,7 +150,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
           <div className="text-sm text-muted-foreground">
             Showing page {pagination.currentPage} of {pagination.totalPages}
             {pagination.totalItems > 0 && (
-              <span> ({pagination.totalItems} total records)</span>
+              <span> ({pagination.totalItems} total legs)</span>
             )}
           </div>
           <PaginationNav 

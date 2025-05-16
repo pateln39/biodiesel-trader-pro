@@ -205,46 +205,66 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
   async function fetchPaperTrades(params?: PaginationParams): Promise<{ paperTrades: PaperTrade[], pagination: PaginationMeta }> {
     console.log("[PAPER] Fetching paper trades with pagination:", params);
     
-    // First, get the total count
-    const { count, error: countError } = await supabase
-      .from('paper_trades')
+    // First, get the total count of LEGS (not parent trades)
+    const { count: legCount, error: legCountError } = await supabase
+      .from('paper_trade_legs')
       .select('*', { count: 'exact', head: true });
       
-    if (countError) {
-      console.error('[PAPER] Error counting paper trades:', countError.message);
-      throw countError;
+    if (legCountError) {
+      console.error('[PAPER] Error counting paper trade legs:', legCountError.message);
+      throw legCountError;
     }
     
-    // Calculate pagination metadata
+    // Calculate pagination metadata based on leg count
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 15;
-    const totalItems = count || 0;
+    const totalItems = legCount || 0;
     const totalPages = Math.ceil(totalItems / pageSize);
     
     // Calculate range for pagination
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
     
-    // Fetch only the current page of paper trades
-    const { data: paperTradesData, error: paperTradesError } = await supabase
-      .from('paper_trades')
+    // Fetch LEGS with parent trade info (join query)
+    const { data: legData, error: legError } = await supabase
+      .from('paper_trade_legs')
       .select(`
         id,
-        trade_reference,
-        counterparty,
+        paper_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        quantity,
+        price,
+        period,
         broker,
+        instrument,
+        trading_period,
+        formula,
+        mtm_formula,
+        pricing_period_start,
+        pricing_period_end,
+        exposures,
         created_at,
-        updated_at
+        updated_at,
+        paper_trades(
+          id,
+          trade_reference,
+          counterparty,
+          broker,
+          created_at,
+          updated_at
+        )
       `)
       .order('created_at', { ascending: false })
       .range(from, to);
       
-    if (paperTradesError) {
-      console.error('[PAPER] Error fetching paper trades:', paperTradesError.message);
-      throw paperTradesError;
+    if (legError) {
+      console.error('[PAPER] Error fetching paper trade legs:', legError.message);
+      throw legError;
     }
     
-    if (!paperTradesData || paperTradesData.length === 0) {
+    if (!legData || legData.length === 0) {
       return {
         paperTrades: [],
         pagination: {
@@ -256,184 +276,178 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
       };
     }
     
-    console.log(`[PAPER] Found ${paperTradesData.length} paper trades on page ${page}`);
+    console.log(`[PAPER] Found ${legData.length} paper trade legs on page ${page}`);
     
-    // For each trade, fetch its legs
-    const tradesWithLegs = await Promise.all(
-      paperTradesData.map(async (paperTrade) => {
-        const { data: legs, error: legsError } = await supabase
-          .from('paper_trade_legs')
-          .select('*')
-          .eq('paper_trade_id', paperTrade.id)
-          .order('leg_reference', { ascending: true });
-          
-        if (legsError) {
-          console.error('[PAPER] Error fetching paper trade legs:', legsError.message);
-          return {
-            id: paperTrade.id,
-            tradeReference: paperTrade.trade_reference,
-            tradeType: 'paper' as const,
-            counterparty: paperTrade.counterparty,
-            broker: paperTrade.broker || '',
-            createdAt: new Date(paperTrade.created_at),
-            updatedAt: new Date(paperTrade.updated_at),
-            buySell: 'buy' as BuySell,
-            product: 'UCOME' as Product,
-            legs: []
-          } as PaperTrade;
-        }
-        
-        return {
-          id: paperTrade.id,
-          tradeReference: paperTrade.trade_reference,
+    // Group legs by parent trade
+    const tradeMap = new Map<string, PaperTrade>();
+    
+    // Process each leg and build the trade structure
+    legData.forEach(leg => {
+      const parentData = leg.paper_trades as any;
+      const tradeId = leg.paper_trade_id;
+      
+      // Initialize parent trade if not already in map
+      if (!tradeMap.has(tradeId)) {
+        tradeMap.set(tradeId, {
+          id: parentData.id,
+          tradeReference: parentData.trade_reference,
           tradeType: 'paper' as const,
-          counterparty: paperTrade.counterparty,
-          broker: paperTrade.broker || '',
-          createdAt: new Date(paperTrade.created_at),
-          updatedAt: new Date(paperTrade.updated_at),
+          counterparty: parentData.counterparty,
+          broker: parentData.broker || '',
+          createdAt: new Date(parentData.created_at),
+          updatedAt: new Date(parentData.updated_at),
           buySell: 'buy' as BuySell,
           product: 'UCOME' as Product,
-          legs: (legs || []).map((leg) => {
-            const instrument = leg.instrument || '';
-            let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+          legs: [] // Will be populated below
+        });
+      }
+      
+      // Get trade from map to add the leg
+      const trade = tradeMap.get(tradeId)!;
+      
+      // Process leg data
+      const instrument = leg.instrument || '';
+      let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+      
+      if (instrument.includes('DIFF')) {
+        relationshipType = 'DIFF';
+      } else if (instrument.includes('SPREAD')) {
+        relationshipType = 'SPREAD';
+      }
+      
+      let rightSide = undefined;
+      
+      if (leg.mtm_formula && 
+          typeof leg.mtm_formula === 'object' && 
+          'rightSide' in leg.mtm_formula) {
+        rightSide = leg.mtm_formula.rightSide;
+      }
+      
+      let exposuresObj: PaperTradeLeg['exposures'] = {
+        physical: {},
+        pricing: {},
+        paper: {}
+      };
+      
+      if (leg.exposures) {
+        if (typeof leg.exposures === 'object') {
+          const exposuresData = leg.exposures as Record<string, any>;
+          
+          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+            Object.entries(exposuresData.physical).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.physical[canonicalProduct] = value as number;
+            });
             
-            if (instrument.includes('DIFF')) {
-              relationshipType = 'DIFF';
-            } else if (instrument.includes('SPREAD')) {
-              relationshipType = 'SPREAD';
-            }
-            
-            let rightSide = undefined;
-            
-            if (leg.mtm_formula && 
-                typeof leg.mtm_formula === 'object' && 
-                'rightSide' in leg.mtm_formula) {
-              rightSide = leg.mtm_formula.rightSide;
-            }
-            
-            let exposuresObj: PaperTradeLeg['exposures'] = {
-              physical: {},
-              pricing: {},
-              paper: {}
-            };
-            
-            if (leg.exposures) {
-              if (typeof leg.exposures === 'object') {
-                const exposuresData = leg.exposures as Record<string, any>;
+            if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
+              const products = Object.keys(exposuresData.physical);
+              if (products.length === 2) {
+                const mainProduct = mapProductToCanonical(leg.product);
+                const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
                 
-                if (exposuresData.physical && typeof exposuresData.physical === 'object') {
-                  Object.entries(exposuresData.physical).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.physical[canonicalProduct] = value as number;
-                  });
-                  
-                  if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
-                    const products = Object.keys(exposuresData.physical);
-                    if (products.length === 2) {
-                      const mainProduct = mapProductToCanonical(leg.product);
-                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
-                      
-                      if (secondProduct) {
-                        rightSide = {
-                          product: secondProduct,
-                          quantity: exposuresData.physical[secondProduct],
-                          period: leg.period || '',
-                        };
-                      }
-                    }
-                  }
-                }
-                
-                if (exposuresData.paper && typeof exposuresData.paper === 'object') {
-                  Object.entries(exposuresData.paper).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.paper[canonicalProduct] = value as number;
-                  });
-                }
-                
-                if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
-                  Object.entries(exposuresData.pricing).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.pricing[canonicalProduct] = value as number;
-                  });
-                }
-              }
-            } 
-            if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
-              const mtmData = leg.mtm_formula as Record<string, any>;
-              
-              if (mtmData.exposures && typeof mtmData.exposures === 'object') {
-                const mtmExposures = mtmData.exposures as Record<string, any>;
-                
-                if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
-                  Object.entries(mtmExposures.physical).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.physical[canonicalProduct] = value as number;
-                    exposuresObj.paper[canonicalProduct] = value as number;
-                  });
-                  
-                  if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
-                    const products = Object.keys(mtmExposures.physical);
-                    if (products.length === 2) {
-                      const mainProduct = mapProductToCanonical(leg.product);
-                      const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
-                      
-                      if (secondProduct) {
-                        rightSide = {
-                          product: secondProduct,
-                          quantity: mtmExposures.physical[secondProduct],
-                          period: leg.period || '',
-                        };
-                      }
-                    }
-                  }
-                }
-                
-                if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
-                  Object.entries(mtmExposures.pricing).forEach(([key, value]) => {
-                    const canonicalProduct = mapProductToCanonical(key);
-                    exposuresObj.pricing[canonicalProduct] = value as number;
-                  });
+                if (secondProduct) {
+                  rightSide = {
+                    product: secondProduct,
+                    quantity: exposuresData.physical[secondProduct],
+                    period: leg.period || '',
+                  };
                 }
               }
             }
+          }
+          
+          if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+            Object.entries(exposuresData.paper).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.paper[canonicalProduct] = value as number;
+            });
+          }
+          
+          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+            Object.entries(exposuresData.pricing).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.pricing[canonicalProduct] = value as number;
+            });
+          }
+        }
+      } 
+      
+      if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+        const mtmData = leg.mtm_formula as Record<string, any>;
+        
+        if (mtmData.exposures && typeof mtmData.exposures === 'object') {
+          const mtmExposures = mtmData.exposures as Record<string, any>;
+          
+          if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+            Object.entries(mtmExposures.physical).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.physical[canonicalProduct] = value as number;
+              exposuresObj.paper[canonicalProduct] = value as number;
+            });
             
-            if (rightSide && !rightSide.period && leg.period) {
-              rightSide.period = leg.period;
+            if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
+              const products = Object.keys(mtmExposures.physical);
+              if (products.length === 2) {
+                const mainProduct = mapProductToCanonical(leg.product);
+                const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
+                
+                if (secondProduct) {
+                  rightSide = {
+                    product: secondProduct,
+                    quantity: mtmExposures.physical[secondProduct],
+                    period: leg.period || '',
+                  };
+                }
+              }
             }
-            
-            if (rightSide && rightSide.price === undefined) {
-              rightSide.price = 0;
-            }
-            
-            if (rightSide && rightSide.product) {
-              rightSide.product = mapProductToCanonical(rightSide.product);
-            }
-            
-            return {
-              id: leg.id,
-              paperTradeId: leg.paper_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell as BuySell,
-              product: mapProductToCanonical(leg.product) as Product,
-              quantity: leg.quantity,
-              period: leg.period || leg.trading_period || '', 
-              price: leg.price || 0,
-              broker: leg.broker,
-              instrument: leg.instrument,
-              relationshipType,
-              rightSide: rightSide,
-              formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
-              mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
-              exposures: exposuresObj
-            } as PaperTradeLeg;
-          })
-        } as PaperTrade;
-      })
-    );
+          }
+          
+          if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+            Object.entries(mtmExposures.pricing).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.pricing[canonicalProduct] = value as number;
+            });
+          }
+        }
+      }
+      
+      if (rightSide && !rightSide.period && leg.period) {
+        rightSide.period = leg.period;
+      }
+      
+      if (rightSide && rightSide.price === undefined) {
+        rightSide.price = 0;
+      }
+      
+      if (rightSide && rightSide.product) {
+        rightSide.product = mapProductToCanonical(rightSide.product);
+      }
+      
+      // Add the processed leg to the trade
+      trade.legs.push({
+        id: leg.id,
+        paperTradeId: leg.paper_trade_id,
+        legReference: leg.leg_reference,
+        buySell: leg.buy_sell as BuySell,
+        product: mapProductToCanonical(leg.product) as Product,
+        quantity: leg.quantity,
+        period: leg.period || leg.trading_period || '', 
+        price: leg.price || 0,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationshipType,
+        rightSide: rightSide,
+        formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
+        mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
+        exposures: exposuresObj
+      } as PaperTradeLeg);
+    });
+    
+    // Convert map values to array
+    const paperTrades = Array.from(tradeMap.values());
     
     return {
-      paperTrades: tradesWithLegs,
+      paperTrades,
       pagination: {
         totalItems,
         totalPages: totalPages > 0 ? totalPages : 1,
