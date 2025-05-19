@@ -1092,16 +1092,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean | null
           name: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
           name: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
           name?: string
         }
         Relationships: []
@@ -1481,6 +1484,14 @@ export type Database = {
       initialize_terminal_sort_order: {
         Args: { p_terminal_id: string }
         Returns: undefined
+      }
+      insert_counterparty: {
+        Args: { counterparty_name: string }
+        Returns: string
+      }
+      insert_product: {
+        Args: { product_name: string }
+        Returns: string
       }
       populate_movement_loading_periods: {
         Args: Record<PropertyKey, never>
