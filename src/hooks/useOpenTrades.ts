@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
@@ -101,7 +102,8 @@ const fetchOpenTrades = async (params?: PaginationParams): Promise<{ openTrades:
           totalItems,
           totalPages: totalPages > 0 ? totalPages : 1,
           currentPage: page,
-          pageSize
+          pageSize,
+          totalCount: totalItems
         }
       };
     }
