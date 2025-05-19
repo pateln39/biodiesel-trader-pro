@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -68,18 +69,12 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [selectedMovementForDemurrage, setSelectedMovementForDemurrage] = useState<Movement | null>(null);
   const [confirmUngroupDialogOpen, setConfirmUngroupDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
 
   // Generate group number map for consistent group numbering
   const groupNumberMap = React.useMemo(() => 
     generateGroupMap(filteredMovements), 
     [filteredMovements]
   );
-
-  // Handler for group hover effects
-  const handleGroupHover = (groupId: string | null) => {
-    setHoveredGroupId(groupId);
-  };
 
   // Get row group classes with enhanced patterns for accessibility
   const getRowGroupClasses = (item: Movement, index: number, items: Movement[]) => {
@@ -113,11 +108,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     
     if (isLastInGroup(item, index, items)) {
       classes += ` rounded-b-md ${borderWidth} border-b mb-1`;
-    }
-    
-    // Highlight if this group is being hovered
-    if (hoveredGroupId === item.group_id) {
-      classes += " shadow-md";
     }
     
     return classes;
@@ -339,8 +329,6 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       onUngroupClick={handleUngroupClick}
       isUngrouping={isUngrouping}
       groupNumberMap={groupNumberMap}
-      onGroupHover={handleGroupHover}
-      hoveredGroupId={hoveredGroupId}
     />
   );
 
