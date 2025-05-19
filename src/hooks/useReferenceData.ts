@@ -1,11 +1,8 @@
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export const useReferenceData = () => {
-  const queryClient = useQueryClient();
-
   const fetchCounterparties = async () => {
     const { data, error } = await supabase
       .from('counterparties')
@@ -47,18 +44,7 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
-  const fetchProducts = async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select('name')
-      .eq('is_active', true)
-      .order('name');
-    
-    if (error) throw error;
-    return data.map(item => item.name);
-  };
-
-  const { data: counterparties = [], refetch: refetchCounterparties } = useQuery({
+  const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
   });
@@ -78,58 +64,10 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
-  const { data: productOptions = [], refetch: refetchProducts } = useQuery({
-    queryKey: ['products'],
-    queryFn: fetchProducts
-  });
-
-  const addCounterparty = async (name: string) => {
-    try {
-      const { data, error } = await supabase.rpc('insert_counterparty', {
-        counterparty_name: name
-      });
-      
-      if (error) throw error;
-      
-      toast.success('Counterparty added successfully');
-      refetchCounterparties();
-      return data;
-    } catch (error: any) {
-      toast.error('Failed to add counterparty', {
-        description: error.message
-      });
-      throw error;
-    }
-  };
-
-  const addProduct = async (name: string) => {
-    try {
-      const { data, error } = await supabase.rpc('insert_product', {
-        product_name: name
-      });
-      
-      if (error) throw error;
-      
-      toast.success('Product added successfully');
-      refetchProducts();
-      return data;
-    } catch (error: any) {
-      toast.error('Failed to add product', {
-        description: error.message
-      });
-      throw error;
-    }
-  };
-
   return {
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
-    customsStatusOptions,
-    productOptions,
-    addCounterparty,
-    addProduct,
-    refetchCounterparties,
-    refetchProducts
+    customsStatusOptions
   };
 };

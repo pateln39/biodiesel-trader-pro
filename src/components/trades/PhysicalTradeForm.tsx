@@ -22,7 +22,6 @@ import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
 import { createEfpFormula, updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
-import AddNewItemDialog from '@/components/common/AddNewItemDialog';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -147,10 +146,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
-    customsStatusOptions,
-    productOptions,
-    addCounterparty,
-    addProduct
+    customsStatusOptions
   } = useReferenceData();
 
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
@@ -362,16 +358,6 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     e.target.select();
   };
 
-  const handleAddCounterparty = async (name: string) => {
-    await addCounterparty(name);
-    setCounterparty(name); // Auto-select the newly added counterparty
-  };
-
-  const handleAddProduct = async (name: string) => {
-    await addProduct(name);
-    // Note: We don't auto-select the product as it could be for any leg
-  };
-
   return <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -388,16 +374,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <Label htmlFor="counterparty">Counterparty</Label>
-            <AddNewItemDialog 
-              title="Add New Counterparty" 
-              description="Enter the name of the new counterparty"
-              itemLabel="Name"
-              onAddItem={handleAddCounterparty}
-              buttonLabel="+ Add Counterparty"
-            />
-          </div>
+          <Label htmlFor="counterparty">Counterparty</Label>
           <Select value={counterparty} onValueChange={setCounterparty}>
             <SelectTrigger id="counterparty">
               <SelectValue placeholder="Select counterparty" />
@@ -445,34 +422,18 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
-                    <AddNewItemDialog 
-                      title="Add New Product" 
-                      description="Enter the name of the new product"
-                      itemLabel="Name"
-                      onAddItem={handleAddProduct}
-                      buttonLabel="+ Add Product"
-                    />
-                  </div>
+                  <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
                   <Select value={leg.product} onValueChange={value => updateLeg(legIndex, 'product', value as Product)}>
                     <SelectTrigger id={`leg-${legIndex}-product`}>
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Include both hardcoded options and options from the database */}
                       <SelectItem value="FAME0">FAME0</SelectItem>
                       <SelectItem value="RME">RME</SelectItem>
                       <SelectItem value="UCOME">UCOME</SelectItem>
                       <SelectItem value="UCOME-5">UCOME-5</SelectItem>
                       <SelectItem value="RME DC">RME DC</SelectItem>
                       <SelectItem value="HVO">HVO</SelectItem>
-                      {productOptions
-                        .filter(product => !["FAME0", "RME", "UCOME", "UCOME-5", "RME DC", "HVO"].includes(product))
-                        .map(product => (
-                          <SelectItem key={product} value={product}>{product}</SelectItem>
-                        ))
-                      }
                     </SelectContent>
                   </Select>
                 </div>

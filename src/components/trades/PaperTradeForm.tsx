@@ -1,518 +1,337 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useReferenceData } from '@/hooks/useReferenceData';
-import { PricingFormula } from '@/types/pricing';
-import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus } from '@/types';
-import { DatePicker } from '@/components/ui/date-picker';
-import { generateTradeReference } from '@/utils/tradeUtils';
+import { Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { generateLegReference } from '@/utils/tradeUtils';
+import PaperTradeTable from './PaperTradeTable';
 import { createEmptyFormula } from '@/utils/formulaUtils';
-import FormulaBuilder from './FormulaBuilder';
-import { calculateMonthlyPricingDistribution } from '@/utils/formulaCalculation';
-import { Switch } from '@/components/ui/switch';
-import { getAvailableEfpMonths } from '@/utils/efpUtils';
-import { createEfpFormula } from '@/utils/efpFormulaUtils';
-import AddNewItemDialog from '@/components/common/AddNewItemDialog';
+import { validatePaperTradeForm } from '@/utils/paperTradeValidationUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { getNextMonths } from '@/utils/dateUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
+import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table';
 
 interface PaperTradeFormProps {
   tradeReference: string;
-  onSubmit: (tradeData: any) => void;
+  onSubmit: (trade: any) => void;
   onCancel: () => void;
   isEditMode?: boolean;
   initialData?: any;
+  comments?: string;
 }
 
-interface LegFormState {
-  buySell: BuySell;
-  product: Product;
-  sustainability: string;
-  incoTerm: IncoTerm;
-  unit: Unit;
-  paymentTerm: PaymentTerm;
-  creditStatus: CreditStatus;
-  customsStatus: CustomsStatus;
-  quantity: number;
-  tolerance: number;
-  loadingPeriodStart: Date;
-  loadingPeriodEnd: Date;
-  pricingPeriodStart: Date;
-  pricingPeriodEnd: Date;
-  formula: PricingFormula;
-  pricingType: 'standard' | 'efp';
-  efpPremium: number | null;
-  efpAgreedStatus: boolean;
-  efpFixedValue: number | null;
-  efpDesignatedMonth: string;
+interface BrokerOption {
+  id: string;
+  name: string;
 }
 
-const createDefaultLeg = (): LegFormState => ({
-  buySell: 'buy',
-  product: 'UCOME',
-  sustainability: '',
-  incoTerm: 'FOB',
-  unit: 'MT',
-  paymentTerm: '30 days',
-  creditStatus: 'pending',
-  customsStatus: 'T1',
-  quantity: 0,
-  tolerance: 5,
-  loadingPeriodStart: new Date(),
-  loadingPeriodEnd: new Date(),
-  pricingPeriodStart: new Date(),
-  pricingPeriodEnd: new Date(),
-  formula: createEmptyFormula(),
-  pricingType: 'standard',
-  efpPremium: null,
-  efpAgreedStatus: false,
-  efpFixedValue: null,
-  efpDesignatedMonth: getAvailableEfpMonths()[0],
-});
+const ALL_PRODUCTS = [
+  'Argus UCOME', 
+  'Argus FAME0', 
+  'Argus RME', 
+  'Platts LSGO', 
+  'Argus HVO', 
+  'ICE GASOIL FUTURES'
+];
 
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
-  onCancel, 
-  isEditMode = false, 
-  initialData 
+  onCancel,
+  isEditMode = false,
+  initialData,
+  comments
 }) => {
-  const {
-    counterparties,
-    productOptions,
-    sustainabilityOptions,
-    creditStatusOptions,
-    customsStatusOptions,
-    addCounterparty,
-    addProduct
-  } = useReferenceData();
-
-  const [counterparty, setCounterparty] = useState('');
-  const [buySell, setBuySell] = useState<BuySell>('buy');
-  const [product, setProduct] = useState<Product>('UCOME');
-  const [sustainability, setSustainability] = useState('');
-  const [incoTerm, setIncoTerm] = useState<IncoTerm>('FOB');
-  const [unit, setUnit] = useState<Unit>('MT');
-  const [paymentTerm, setPaymentTerm] = useState<PaymentTerm>('30 days');
-  const [creditStatus, setCreditStatus] = useState<CreditStatus>('pending');
-  const [customsStatus, setCustomsStatus] = useState<CustomsStatus>('T1');
-  const [quantity, setQuantity] = useState<number>(0);
-  const [tolerance, setTolerance] = useState<number>(5);
-  const [loadingPeriodStart, setLoadingPeriodStart] = useState<Date>(new Date());
-  const [loadingPeriodEnd, setLoadingPeriodEnd] = useState<Date>(new Date());
-  const [pricingPeriodStart, setPricingPeriodStart] = useState<Date>(new Date());
-  const [pricingPeriodEnd, setPricingPeriodEnd] = useState<Date>(new Date());
-  const [formula, setFormula] = useState<PricingFormula>(createEmptyFormula());
-  const [pricingType, setPricingType] = useState<'standard' | 'efp'>('standard');
-  const [efpPremium, setEfpPremium] = useState<number | null>(null);
-  const [efpAgreedStatus, setEfpAgreedStatus] = useState<boolean>(false);
-  const [efpFixedValue, setEfpFixedValue] = useState<number | null>(null);
-  const [efpDesignatedMonth, setEfpDesignatedMonth] = useState<string>(getAvailableEfpMonths()[0]);
-
+  const [selectedBroker, setSelectedBroker] = useState('');
+  const [brokers, setBrokers] = useState<BrokerOption[]>([]);
+  const [isAddingBroker, setIsAddingBroker] = useState(false);
+  const [newBrokerName, setNewBrokerName] = useState('');
+  
+  const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
+    if (initialData && initialData.legs && initialData.legs.length > 0) {
+      return initialData.legs.map((leg: any) => ({
+        ...leg,
+        buySell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        period: leg.period,
+        price: leg.price,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationshipType: leg.relationshipType,
+        rightSide: leg.rightSide,
+        formula: leg.formula,
+        mtmFormula: leg.mtmFormula,
+        exposures: leg.exposures
+      }));
+    }
+    return [];
+  });
+  
+  const availableMonths = useMemo(() => getNextMonths(13), []);
+  
+  const [exposureData, setExposureData] = useState<any[]>(() => {
+    return availableMonths.map(month => {
+      const entry: any = { month };
+      ALL_PRODUCTS.forEach(product => {
+        entry[product] = 0;
+      });
+      return entry;
+    });
+  });
+  
   useEffect(() => {
-    if (pricingType === 'efp') {
-      const updatedFormula = createEfpFormula(
-        quantity || 0,
-        buySell,
-        efpAgreedStatus,
-        efpDesignatedMonth
-      );
-      setFormula(updatedFormula);
-    } else {
-      // Recalculate monthly distribution for standard pricing
-      const monthlyDistribution = calculateMonthlyPricingDistribution(
-        formula.tokens,
-        quantity || 0,
-        buySell,
-        pricingPeriodStart,
-        pricingPeriodEnd
-      );
-      setFormula({
-        ...formula,
-        monthlyDistribution
+    if (initialData && initialData.broker) {
+      const fetchBrokerIdByName = async () => {
+        const { data, error } = await supabase
+          .from('brokers')
+          .select('id')
+          .eq('name', initialData.broker)
+          .single();
+          
+        if (data && !error) {
+          setSelectedBroker(data.id);
+        }
+      };
+      
+      fetchBrokerIdByName();
+    }
+  }, [initialData]);
+  
+  useEffect(() => {
+    const fetchBrokers = async () => {
+      const { data, error } = await supabase
+        .from('brokers')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+        
+      if (error) {
+        toast.error('Failed to load brokers', {
+          description: error.message
+        });
+        return;
+      }
+      
+      setBrokers(data || []);
+      if (data && data.length > 0 && !selectedBroker) {
+        setSelectedBroker(data[0].id);
+      }
+    };
+    
+    fetchBrokers();
+  }, []);
+  
+  useEffect(() => {
+    calculateExposures(tradeLegs);
+  }, [tradeLegs]);
+  
+  const handleAddBroker = async () => {
+    if (!newBrokerName.trim()) {
+      toast.error('Broker name cannot be empty');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('brokers')
+        .insert({ name: newBrokerName.trim() })
+        .select()
+        .single();
+        
+      if (error) {
+        throw new Error(`Error adding broker: ${error.message}`);
+      }
+      
+      setBrokers([...brokers, data]);
+      setSelectedBroker(data.id);
+      setNewBrokerName('');
+      setIsAddingBroker(false);
+      
+      toast.success('Broker added successfully');
+    } catch (error: any) {
+      toast.error('Failed to add broker', {
+        description: error.message
       });
     }
-  }, [pricingType, quantity, buySell, efpAgreedStatus, efpDesignatedMonth, formula.tokens, pricingPeriodStart, pricingPeriodEnd]);
-
-  const handleFormulaChange = (newFormula: PricingFormula) => {
-    setFormula(newFormula);
-    const monthlyDistribution = calculateMonthlyPricingDistribution(
-      newFormula.tokens,
-      quantity || 0,
-      buySell,
-      pricingPeriodStart,
-      pricingPeriodEnd
-    );
-    setFormula({
-      ...newFormula,
-      monthlyDistribution
-    });
   };
-
+  
+  const handleLegsChange = (newLegs: any[]) => {
+    setTradeLegs(newLegs);
+    calculateExposures(newLegs);
+  };
+  
+  const calculateExposures = (legs: any[]) => {
+    const exposures = availableMonths.map(month => {
+      const entry: any = { month };
+      ALL_PRODUCTS.forEach(product => {
+        entry[product] = 0;
+      });
+      return entry;
+    });
+    
+    if (legs.length > 0) {
+      legs.forEach(leg => {
+        if (!leg.period || !leg.product) return;
+        
+        const monthIndex = exposures.findIndex(e => e.month === leg.period);
+        if (monthIndex === -1) return;
+        
+        const canonicalProduct = mapProductToCanonical(leg.product);
+        
+        if (canonicalProduct && ALL_PRODUCTS.includes(canonicalProduct)) {
+          const quantity = leg.buySell === 'buy' ? leg.quantity : -leg.quantity;
+          exposures[monthIndex][canonicalProduct] += quantity || 0;
+        }
+        
+        if (leg.rightSide && leg.rightSide.product) {
+          const rightCanonicalProduct = mapProductToCanonical(leg.rightSide.product);
+          if (rightCanonicalProduct && ALL_PRODUCTS.includes(rightCanonicalProduct)) {
+            const rightQuantity = leg.rightSide.quantity || 0;
+            exposures[monthIndex][rightCanonicalProduct] += rightQuantity;
+          }
+        }
+      });
+    }
+    
+    setExposureData(exposures);
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
+    const broker = brokers.find(b => b.id === selectedBroker);
+    const brokerName = broker?.name || '';
+    
+    if (!validatePaperTradeForm(brokerName, tradeLegs)) {
+      return;
+    }
+    
     const tradeData = {
       tradeReference,
-      counterparty,
-      buySell,
-      product,
-      sustainability,
-      incoTerm,
-      unit,
-      paymentTerm,
-      creditStatus,
-      customsStatus,
-      quantity,
-      tolerance,
-      loadingPeriodStart,
-      loadingPeriodEnd,
-      pricingPeriodStart,
-      pricingPeriodEnd,
-      formula,
-      pricingType,
-      efpPremium,
-      efpAgreedStatus,
-      efpFixedValue,
-      efpDesignatedMonth
+      tradeType: 'paper',
+      broker: brokerName,
+      legs: tradeLegs.map((leg, index) => {
+        const legReference = initialData?.legs?.[index]?.legReference || 
+                            generateLegReference(tradeReference, index);
+                            
+        return {
+          ...leg,
+          legReference,
+          broker: brokerName,
+          mtmFormula: leg.mtmFormula || createEmptyFormula(),
+          formula: leg.formula || createEmptyFormula(),
+        };
+      })
     };
-
+    
     onSubmit(tradeData);
   };
-
-  const handleAddCounterparty = async (name: string) => {
-    await addCounterparty(name);
-    setCounterparty(name); // Auto-select the newly added counterparty
-  };
-
-  const handleAddProduct = async (name: string) => {
-    await addProduct(name);
-    setProduct(name as Product); // Auto-select the newly added product
-  };
-
-  // Type-safe handler functions for Select components
-  const handleBuySellChange = (value: string) => {
-    setBuySell(value as BuySell);
-  };
-
-  const handleProductChange = (value: string) => {
-    setProduct(value as Product);
-  };
-
-  const handleIncoTermChange = (value: string) => {
-    setIncoTerm(value as IncoTerm);
-  };
-
-  const handleUnitChange = (value: string) => {
-    setUnit(value as Unit);
-  };
-
-  const handlePaymentTermChange = (value: string) => {
-    setPaymentTerm(value as PaymentTerm);
-  };
-
-  const handleCreditStatusChange = (value: string) => {
-    setCreditStatus(value as CreditStatus);
-  };
-
-  const handleCustomsStatusChange = (value: string) => {
-    setCustomsStatus(value as CustomsStatus);
-  };
-
-  const handlePricingTypeChange = (value: string) => {
-    setPricingType(value as 'standard' | 'efp');
-  };
-
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Trade Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="counterparty">Counterparty</Label>
-                <AddNewItemDialog 
-                  title="Add New Counterparty" 
-                  description="Enter the name of the new counterparty"
-                  itemLabel="Name"
-                  onAddItem={handleAddCounterparty}
-                  buttonLabel="+ Add Counterparty"
-                />
-              </div>
-              <Select value={counterparty} onValueChange={setCounterparty}>
-                <SelectTrigger id="counterparty">
-                  <SelectValue placeholder="Select counterparty" />
-                </SelectTrigger>
-                <SelectContent>
-                  {counterparties.map(name => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="buy-sell">Buy/Sell</Label>
-              <Select value={buySell} onValueChange={handleBuySellChange}>
-                <SelectTrigger id="buy-sell">
-                  <SelectValue placeholder="Select" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="buy">Buy</SelectItem>
-                  <SelectItem value="sell">Sell</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="product">Product</Label>
-                <AddNewItemDialog 
-                  title="Add New Product" 
-                  description="Enter the name of the new product"
-                  itemLabel="Name"
-                  onAddItem={handleAddProduct}
-                  buttonLabel="+ Add Product"
-                />
-              </div>
-              <Select value={product} onValueChange={handleProductChange}>
-                <SelectTrigger id="product">
-                  <SelectValue placeholder="Select product" />
-                </SelectTrigger>
-                <SelectContent>
-                  {productOptions.map(option => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sustainability">Sustainability</Label>
-              <Select value={sustainability} onValueChange={setSustainability}>
-                <SelectTrigger id="sustainability">
-                  <SelectValue placeholder="Select sustainability" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sustainabilityOptions.map(option => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="inco-term">Incoterm</Label>
-              <Select value={incoTerm} onValueChange={handleIncoTermChange}>
-                <SelectTrigger id="inco-term">
-                  <SelectValue placeholder="Select incoterm" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="FOB">FOB</SelectItem>
-                  <SelectItem value="CIF">CIF</SelectItem>
-                  <SelectItem value="DES">DES</SelectItem>
-                  <SelectItem value="DAP">DAP</SelectItem>
-                  <SelectItem value="FCA">FCA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="unit">Unit</Label>
-              <Select value={unit} onValueChange={handleUnitChange}>
-                <SelectTrigger id="unit">
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MT">Metric Tons (MT)</SelectItem>
-                  <SelectItem value="KG">Kilograms (KG)</SelectItem>
-                  <SelectItem value="L">Liters (L)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="payment-term">Payment Term</Label>
-              <Select value={paymentTerm} onValueChange={handlePaymentTermChange}>
-                <SelectTrigger id="payment-term">
-                  <SelectValue placeholder="Select payment term" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="advance">Advance</SelectItem>
-                  <SelectItem value="30 days">30 Days</SelectItem>
-                  <SelectItem value="60 days">60 Days</SelectItem>
-                  <SelectItem value="90 days">90 Days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="credit-status">Credit Status</Label>
-              <Select value={creditStatus} onValueChange={handleCreditStatusChange}>
-                <SelectTrigger id="credit-status">
-                  <SelectValue placeholder="Select credit status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {creditStatusOptions.map(status => (
-                    <SelectItem key={status} value={status.toLowerCase()}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="customs-status">Customs Status</Label>
-              <Select value={customsStatus} onValueChange={handleCustomsStatusChange}>
-                <SelectTrigger id="customs-status">
-                  <SelectValue placeholder="Select customs status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customsStatusOptions.map(status => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input
-                type="number"
-                id="quantity"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value ? Number(e.target.value) : 0)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tolerance">Tolerance (%)</Label>
-              <Input
-                type="number"
-                id="tolerance"
-                value={tolerance}
-                onChange={(e) => setTolerance(e.target.value ? Number(e.target.value) : 0)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Loading Period Start</Label>
-              <DatePicker date={loadingPeriodStart} setDate={setLoadingPeriodStart} />
-            </div>
-            <div className="space-y-2">
-              <Label>Loading Period End</Label>
-              <DatePicker date={loadingPeriodEnd} setDate={setLoadingPeriodEnd} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Pricing Period Start</Label>
-              <DatePicker date={pricingPeriodStart} setDate={setPricingPeriodStart} />
-            </div>
-            <div className="space-y-2">
-              <Label>Pricing Period End</Label>
-              <DatePicker date={pricingPeriodEnd} setDate={setPricingPeriodEnd} />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <Label className="mb-2 block">Pricing Type</Label>
-            <Select value={pricingType} onValueChange={handlePricingTypeChange}>
-              <SelectTrigger id="pricing-type">
-                <SelectValue placeholder="Select pricing type" />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="broker">Broker</Label>
+          <div className="flex space-x-2">
+            <Select 
+              value={selectedBroker} 
+              onValueChange={setSelectedBroker}
+              disabled={isAddingBroker}
+            >
+              <SelectTrigger id="broker" className="flex-grow">
+                <SelectValue placeholder="Select broker" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Standard Formula</SelectItem>
-                <SelectItem value="efp">ICE Gasoil EFP</SelectItem>
+                {brokers.map((broker) => (
+                  <SelectItem key={broker.id} value={broker.id}>
+                    {broker.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsAddingBroker(!isAddingBroker)}
+            >
+              {isAddingBroker ? 'Cancel' : '+ Add Broker'}
+            </Button>
           </div>
-
-          {pricingType === 'efp' ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="efpPremium">EFP Premium</Label>
-                  <Input
-                    id="efpPremium"
-                    type="number"
-                    value={efpPremium || ""}
-                    onChange={e => setEfpPremium(e.target.value ? Number(e.target.value) : null)}
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2 pt-6">
-                  <Switch id="efpAgreedStatus" checked={efpAgreedStatus} onCheckedChange={setEfpAgreedStatus} />
-                  <Label htmlFor="efpAgreedStatus">EFP Agreed/Fixed</Label>
-                </div>
-
-                {efpAgreedStatus ? (
-                  <div>
-                    <Label htmlFor="efpFixedValue">Fixed Value</Label>
-                    <Input
-                      id="efpFixedValue"
-                      type="number"
-                      value={efpFixedValue || ""}
-                      onChange={e => setEfpFixedValue(e.target.value ? Number(e.target.value) : null)}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <Label htmlFor="efpDesignatedMonth">Designated Month</Label>
-                    <Select value={efpDesignatedMonth} onValueChange={setEfpDesignatedMonth}>
-                      <SelectTrigger id="efpDesignatedMonth">
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAvailableEfpMonths().map(month => (
-                          <SelectItem key={month} value={month}>{month}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Pricing Formula</Label>
-              <FormulaBuilder
-                value={formula}
-                onChange={handleFormulaChange}
-                tradeQuantity={quantity || 0}
-                buySell={buySell}
-                selectedProduct={product}
-                formulaType="price"
-                otherFormula={createEmptyFormula()}
+        </div>
+        
+        {isAddingBroker && (
+          <div className="space-y-2">
+            <Label htmlFor="new-broker">New Broker</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="new-broker"
+                value={newBrokerName}
+                onChange={(e) => setNewBrokerName(e.target.value)}
+                placeholder="Enter broker name"
+                className="flex-grow"
               />
+              <Button 
+                type="button"
+                onClick={handleAddBroker}
+              >
+                Add
+              </Button>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+      
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Trade Table</h3>
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+          <PaperTradeTable
+            legs={tradeLegs}
+            onLegsChange={handleLegsChange}
+          />
+        </div>
+      </div>
+      
+      <Separator />
+      
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Exposure Table</h3>
+        <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 overflow-x-auto">
+          <Table className="min-w-full divide-y divide-gray-200">
+            <TableHeader className="bg-transparent">
+              <TableRow>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Month</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">UCOME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">FAME0</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">RME</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">LSGO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">HVO</TableHead>
+                <TableHead className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">GASOIL</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-transparent divide-y divide-gray-200">
+              {exposureData.map((row, index) => (
+                <TableRow key={index}>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{row.month}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus UCOME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus FAME0'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus RME'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Platts LSGO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['Argus HVO'] || 0}</TableCell>
+                  <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-white font-bold">{row['ICE GASOIL FUTURES'] || 0}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       <Separator />
 
@@ -520,7 +339,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Create Trade</Button>
+        <Button type="submit">
+          {isEditMode ? 'Update Trade' : 'Create Trade'}
+        </Button>
       </div>
     </form>
   );
