@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,8 @@ interface PaperTradeFormProps {
   tradeReference: string;
   onSubmit: (tradeData: any) => void;
   onCancel: () => void;
+  isEditMode?: boolean;
+  initialData?: any;
 }
 
 interface LegFormState {
@@ -70,14 +73,21 @@ const createDefaultLeg = (): LegFormState => ({
   efpDesignatedMonth: getAvailableEfpMonths()[0],
 });
 
-const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmit, onCancel }) => {
+const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
+  tradeReference, 
+  onSubmit, 
+  onCancel, 
+  isEditMode = false, 
+  initialData 
+}) => {
   const {
     counterparties,
+    productOptions,
     sustainabilityOptions,
     creditStatusOptions,
     customsStatusOptions,
-    productOptions,
-    addCounterparty
+    addCounterparty,
+    addProduct
   } = useReferenceData();
 
   const [counterparty, setCounterparty] = useState('');
@@ -178,6 +188,44 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
     setCounterparty(name); // Auto-select the newly added counterparty
   };
 
+  const handleAddProduct = async (name: string) => {
+    await addProduct(name);
+    setProduct(name as Product); // Auto-select the newly added product
+  };
+
+  // Type-safe handler functions for Select components
+  const handleBuySellChange = (value: string) => {
+    setBuySell(value as BuySell);
+  };
+
+  const handleProductChange = (value: string) => {
+    setProduct(value as Product);
+  };
+
+  const handleIncoTermChange = (value: string) => {
+    setIncoTerm(value as IncoTerm);
+  };
+
+  const handleUnitChange = (value: string) => {
+    setUnit(value as Unit);
+  };
+
+  const handlePaymentTermChange = (value: string) => {
+    setPaymentTerm(value as PaymentTerm);
+  };
+
+  const handleCreditStatusChange = (value: string) => {
+    setCreditStatus(value as CreditStatus);
+  };
+
+  const handleCustomsStatusChange = (value: string) => {
+    setCustomsStatus(value as CustomsStatus);
+  };
+
+  const handlePricingTypeChange = (value: string) => {
+    setPricingType(value as 'standard' | 'efp');
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
@@ -213,7 +261,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
             <div className="space-y-2">
               <Label htmlFor="buy-sell">Buy/Sell</Label>
-              <Select value={buySell} onValueChange={setBuySell}>
+              <Select value={buySell} onValueChange={handleBuySellChange}>
                 <SelectTrigger id="buy-sell">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
@@ -227,18 +275,26 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="product">Product</Label>
-              <Select value={product} onValueChange={setProduct}>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="product">Product</Label>
+                <AddNewItemDialog 
+                  title="Add New Product" 
+                  description="Enter the name of the new product"
+                  itemLabel="Name"
+                  onAddItem={handleAddProduct}
+                  buttonLabel="+ Add Product"
+                />
+              </div>
+              <Select value={product} onValueChange={handleProductChange}>
                 <SelectTrigger id="product">
                   <SelectValue placeholder="Select product" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FAME0">FAME0</SelectItem>
-                  <SelectItem value="RME">RME</SelectItem>
-                  <SelectItem value="UCOME">UCOME</SelectItem>
-                  <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                  <SelectItem value="RME DC">RME DC</SelectItem>
-                  <SelectItem value="HVO">HVO</SelectItem>
+                  {productOptions.map(option => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -261,7 +317,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
             <div className="space-y-2">
               <Label htmlFor="inco-term">Incoterm</Label>
-              <Select value={incoTerm} onValueChange={setIncoTerm}>
+              <Select value={incoTerm} onValueChange={handleIncoTermChange}>
                 <SelectTrigger id="inco-term">
                   <SelectValue placeholder="Select incoterm" />
                 </SelectTrigger>
@@ -279,7 +335,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="unit">Unit</Label>
-              <Select value={unit} onValueChange={setUnit}>
+              <Select value={unit} onValueChange={handleUnitChange}>
                 <SelectTrigger id="unit">
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
@@ -293,7 +349,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
             <div className="space-y-2">
               <Label htmlFor="payment-term">Payment Term</Label>
-              <Select value={paymentTerm} onValueChange={setPaymentTerm}>
+              <Select value={paymentTerm} onValueChange={handlePaymentTermChange}>
                 <SelectTrigger id="payment-term">
                   <SelectValue placeholder="Select payment term" />
                 </SelectTrigger>
@@ -308,7 +364,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
             <div className="space-y-2">
               <Label htmlFor="credit-status">Credit Status</Label>
-              <Select value={creditStatus} onValueChange={setCreditStatus}>
+              <Select value={creditStatus} onValueChange={handleCreditStatusChange}>
                 <SelectTrigger id="credit-status">
                   <SelectValue placeholder="Select credit status" />
                 </SelectTrigger>
@@ -326,7 +382,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customs-status">Customs Status</Label>
-              <Select value={customsStatus} onValueChange={setCustomsStatus}>
+              <Select value={customsStatus} onValueChange={handleCustomsStatusChange}>
                 <SelectTrigger id="customs-status">
                   <SelectValue placeholder="Select customs status" />
                 </SelectTrigger>
@@ -385,7 +441,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ tradeReference, onSubmi
 
           <div className="mb-4">
             <Label className="mb-2 block">Pricing Type</Label>
-            <Select value={pricingType} onValueChange={setPricingType}>
+            <Select value={pricingType} onValueChange={handlePricingTypeChange}>
               <SelectTrigger id="pricing-type">
                 <SelectValue placeholder="Select pricing type" />
               </SelectTrigger>
