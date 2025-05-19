@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -151,14 +150,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     customsStatusOptions,
     productOptions,
     addProduct,
-    addCounterparty
+    addCounterparty,
+    addSustainability
   } = useReferenceData();
 
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isAddCounterpartyDialogOpen, setIsAddCounterpartyDialogOpen] = useState(false);
+  const [isAddSustainabilityDialogOpen, setIsAddSustainabilityDialogOpen] = useState(false);
   const [selectedProductLegIndex, setSelectedProductLegIndex] = useState<number | null>(null);
+  const [selectedSustainabilityLegIndex, setSelectedSustainabilityLegIndex] = useState<number | null>(null);
 
   const [legs, setLegs] = useState<LegFormState[]>(initialData?.legs?.map(leg => ({
     buySell: leg.buySell,
@@ -383,6 +385,18 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     setCounterparty(counterpartyName);
   };
 
+  const handleAddSustainability = async (sustainabilityName: string) => {
+    await addSustainability(sustainabilityName);
+    
+    // If we were adding sustainability for a specific leg, select it
+    if (selectedSustainabilityLegIndex !== null) {
+      const newLegs = [...legs];
+      newLegs[selectedSustainabilityLegIndex].sustainability = sustainabilityName;
+      setLegs(newLegs);
+      setSelectedSustainabilityLegIndex(null);
+    }
+  };
+
   const openAddProductDialog = (legIndex?: number) => {
     if (legIndex !== undefined) {
       setSelectedProductLegIndex(legIndex);
@@ -394,6 +408,15 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
   const openAddCounterpartyDialog = () => {
     setIsAddCounterpartyDialogOpen(true);
+  };
+
+  const openAddSustainabilityDialog = (legIndex?: number) => {
+    if (legIndex !== undefined) {
+      setSelectedSustainabilityLegIndex(legIndex);
+    } else {
+      setSelectedSustainabilityLegIndex(null);
+    }
+    setIsAddSustainabilityDialogOpen(true);
   };
 
   return (
@@ -530,7 +553,16 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-sustainability`}>Sustainability</Label>
-                  <Select value={leg.sustainability} onValueChange={value => updateLeg(legIndex, 'sustainability', value)}>
+                  <Select 
+                    value={leg.sustainability} 
+                    onValueChange={value => {
+                      if (value === "__add_new__") {
+                        openAddSustainabilityDialog(legIndex);
+                      } else {
+                        updateLeg(legIndex, 'sustainability', value);
+                      }
+                    }}
+                  >
                     <SelectTrigger id={`leg-${legIndex}-sustainability`}>
                       <SelectValue placeholder="Select sustainability" />
                     </SelectTrigger>
@@ -540,6 +572,12 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                           {option}
                         </SelectItem>
                       ))}
+                      <SelectItem value="__add_new__" className="text-primary font-medium">
+                        <div className="flex items-center">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add New Sustainability
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -769,6 +807,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         title="Add New Counterparty"
         itemLabel="Counterparty Name"
         placeholder="Enter counterparty name"
+      />
+      
+      <AddNewItemDialog
+        isOpen={isAddSustainabilityDialogOpen}
+        onClose={() => {
+          setIsAddSustainabilityDialogOpen(false);
+        }}
+        onAdd={handleAddSustainability}
+        title="Add New Sustainability"
+        itemLabel="Sustainability Name"
+        placeholder="Enter sustainability name"
       />
     </form>
   );

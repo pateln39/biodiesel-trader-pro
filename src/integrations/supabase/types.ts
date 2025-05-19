@@ -1493,6 +1493,10 @@ export type Database = {
         Args: { product_name: string }
         Returns: string
       }
+      insert_sustainability: {
+        Args: { sustainability_name: string }
+        Returns: string
+      }
       populate_movement_loading_periods: {
         Args: Record<PropertyKey, never>
         Returns: undefined

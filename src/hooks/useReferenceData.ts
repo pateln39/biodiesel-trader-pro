@@ -99,6 +99,26 @@ export const useReferenceData = () => {
     }
   };
 
+  // New function to add a new sustainability
+  const addSustainability = async (sustainabilityName: string) => {
+    try {
+      const { data, error } = await supabase.rpc('insert_sustainability', { sustainability_name: sustainabilityName });
+      
+      if (error) throw error;
+      
+      // Invalidate sustainability query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['sustainability'] });
+      
+      toast.success('Sustainability added successfully');
+      return data;
+    } catch (error: any) {
+      toast.error('Failed to add sustainability', {
+        description: error.message
+      });
+      throw error;
+    }
+  };
+
   // Queries
   const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
@@ -141,6 +161,14 @@ export const useReferenceData = () => {
     }
   });
 
+  // New mutation for sustainability
+  const addSustainabilityMutation = useMutation({
+    mutationFn: addSustainability,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sustainability'] });
+    }
+  });
+
   return {
     counterparties,
     sustainabilityOptions,
@@ -149,7 +177,9 @@ export const useReferenceData = () => {
     productOptions,
     addProduct: addProductMutation.mutate,
     addCounterparty: addCounterpartyMutation.mutate,
+    addSustainability: addSustainabilityMutation.mutate,
     isAddingProduct: addProductMutation.isPending,
-    isAddingCounterparty: addCounterpartyMutation.isPending
+    isAddingCounterparty: addCounterpartyMutation.isPending,
+    isAddingSustainability: addSustainabilityMutation.isPending
   };
 };
