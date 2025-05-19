@@ -7,16 +7,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import { exportOpenTradesToExcel } from '@/utils/excelExportUtils';
+import { PaginationParams } from '@/types/pagination';
 
 const OpenTradesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
   const [openTradesFilterStatus, setOpenTradesFilterStatus] = React.useState<'all' | 'in-process' | 'completed'>('all');
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  
+  // Get page from URL or default to 1
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = 15; // Fixed page size
+  
+  const paginationParams: PaginationParams = {
+    page,
+    pageSize
+  };
   
   const { 
     counterparties,
@@ -48,6 +60,15 @@ const OpenTradesPage = () => {
 
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    // Update URL parameters
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', newPage.toString());
+      return newParams;
+    });
   };
 
   const handleExportOpenTrades = async () => {
@@ -109,8 +130,10 @@ const OpenTradesPage = () => {
           <CardContent>
             <OpenTradesTable 
               onRefresh={handleRefreshTable} 
-              key={`open-trades-${refreshTrigger}`} 
+              key={`open-trades-${refreshTrigger}-${page}`} 
               filterStatus={openTradesFilterStatus}
+              paginationParams={paginationParams}
+              onPageChange={handlePageChange}
             />
           </CardContent>
         </Card>
