@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +30,8 @@ import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 import { getGroupColorClasses } from '@/utils/colorUtils';
 import MovementTableHeader from './movements/MovementTableHeader';
 import MovementRow from './movements/MovementRow';
+import PaginationNav from '@/components/ui/pagination-nav';
+import { PaginationMeta } from '@/types/pagination';
 
 interface MovementsTableProps {
   filteredMovements: Movement[];
@@ -39,6 +40,8 @@ interface MovementsTableProps {
   onReorder: (reorderedItems: Movement[]) => Promise<void>;
   onUngroupMovement: (groupId: string) => void;
   isUngrouping: boolean;
+  pagination?: PaginationMeta;
+  onPageChange?: (page: number) => void;
 }
 
 const MovementsTable: React.FC<MovementsTableProps> = ({ 
@@ -47,7 +50,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   onToggleSelect,
   onReorder,
   onUngroupMovement,
-  isUngrouping
+  isUngrouping,
+  pagination,
+  onPageChange
 }) => {
   const queryClient = useQueryClient();
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
@@ -333,6 +338,16 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
           />
         </div>
       </ScrollArea>
+      
+      {pagination && (
+        <div className="mt-6">
+          <PaginationNav 
+            pagination={pagination} 
+            onPageChange={onPageChange}
+            className="justify-center"
+          />
+        </div>
+      )}
       
       {selectedMovement && (
         <MovementEditDialog 

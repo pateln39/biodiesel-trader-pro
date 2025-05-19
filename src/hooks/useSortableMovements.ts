@@ -3,27 +3,54 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
 import { FilterOptions } from '@/components/operations/MovementsFilter';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
-const fetchMovements = async (): Promise<Movement[]> => {
+const fetchMovements = async (paginationParams?: PaginationParams): Promise<{ movements: Movement[], pagination: PaginationMeta }> => {
   try {
-    console.log('[MOVEMENTS] Fetching movements with sort_order ordering');
+    console.log('[MOVEMENTS] Fetching movements with pagination', paginationParams);
+    
+    // First, get the total count of records
+    const { count: totalCount, error: countError } = await supabase
+      .from('movements')
+      .select('*', { count: 'exact', head: true })
+      .filter('product', 'neq', 'Transfer')
+      .filter('product', 'neq', 'RECONCILIATION');
+    
+    if (countError) {
+      console.error('[MOVEMENTS] Error counting movements:', countError.message);
+      throw countError;
+    }
+    
+    // Calculate pagination metadata
+    const page = paginationParams?.page || 1;
+    const pageSize = paginationParams?.pageSize || 15;
+    const totalItems = totalCount || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Calculate range for pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    console.log(`[MOVEMENTS] Fetching page ${page}, items ${from}-${to} of ${totalItems} total items`);
+    
     const { data: movements, error } = await supabase
       .from('movements')
       .select('*')
       .filter('product', 'neq', 'Transfer')
       .filter('product', 'neq', 'RECONCILIATION')
       .order('sort_order', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error('[MOVEMENTS] Error fetching movements:', error);
       throw new Error(`Error fetching movements: ${error.message}`);
     }
 
-    console.log(`[MOVEMENTS] Successfully fetched ${movements?.length || 0} movements`);
+    console.log(`[MOVEMENTS] Successfully fetched ${movements?.length || 0} movements for page ${page}`);
     
     // Transform the data to match the Movement type
-    return (movements || []).map((m: any) => ({
+    const transformedMovements = (movements || []).map((m: any) => ({
       id: m.id,
       referenceNumber: m.reference_number,
       tradeLegId: m.trade_leg_id,
@@ -62,6 +89,16 @@ const fetchMovements = async (): Promise<Movement[]> => {
       sort_order: m.sort_order,
       group_id: m.group_id,
     }));
+
+    return { 
+      movements: transformedMovements, 
+      pagination: {
+        totalItems,
+        totalPages: totalPages > 0 ? totalPages : 1,
+        currentPage: page,
+        pageSize
+      } 
+    };
   } catch (error: any) {
     console.error('[MOVEMENTS] Error fetching movements:', error);
     throw new Error(error.message);
@@ -107,7 +144,10 @@ const extractAvailableFilterOptions = (movements: Movement[]) => {
   return options;
 };
 
-export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => {
+export const useSortableMovements = (
+  filterOptions?: Partial<FilterOptions>,
+  paginationParams?: PaginationParams
+) => {
   const queryClient = useQueryClient();
   const [localMovements, setLocalMovements] = useState<Movement[]>([]);
   const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([]);
@@ -142,11 +182,14 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     }
   });
   
-  const { data: movements = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['movements'],
-    queryFn: fetchMovements,
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['movements', paginationParams],
+    queryFn: () => fetchMovements(paginationParams),
     refetchOnWindowFocus: false,
   });
+
+  const movements = data?.movements || [];
+  const pagination = data?.pagination;
 
   useEffect(() => {
     if (movements?.length) {
@@ -344,15 +387,21 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     async (reorderedItems: Movement[]) => {
       console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
       
+      // Update local state immediately for a responsive UI
       setLocalMovements(reorderedItems);
 
-      // Update sort_order for all reordered items
+      // Calculate base sort_order for the current page
+      const pageOffset = paginationParams && paginationParams.page > 1 
+        ? (paginationParams.page - 1) * (paginationParams.pageSize || 15) 
+        : 0;
+
+      // Update sort_order for all reordered items with page offset
       const updatedItems = reorderedItems.map((item, index) => ({
         id: item.id,
-        sort_order: index + 1,
+        sort_order: pageOffset + index + 1,
       }));
 
-      console.log('[MOVEMENTS] Prepared sort_order updates:', 
+      console.log('[MOVEMENTS] Prepared sort_order updates with page offset', pageOffset, ':', 
         updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
 
       try {
@@ -371,7 +420,7 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
         refetch();
       }
     },
-    [updateSortOrderMutation, refetch]
+    [updateSortOrderMutation, refetch, paginationParams]
   );
 
   const updateFilters = useCallback((newFilters: FilterOptions) => {
@@ -426,5 +475,6 @@ export const useSortableMovements = (filterOptions?: Partial<FilterOptions>) => 
     ungroupMovement,
     isGrouping: groupMovementsMutation.isPending,
     isUngrouping: ungroupMovementsMutation.isPending,
+    pagination
   };
 };
