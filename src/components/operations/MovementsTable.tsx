@@ -27,7 +27,7 @@ import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
-import { getGroupColorClasses } from '@/utils/colorUtils';
+import { getGroupColorClasses, generateGroupMap } from '@/utils/colorUtils';
 import MovementTableHeader from './movements/MovementTableHeader';
 import MovementRow from './movements/MovementRow';
 import PaginationNav from '@/components/ui/pagination-nav';
@@ -68,8 +68,20 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const [selectedMovementForDemurrage, setSelectedMovementForDemurrage] = useState<Movement | null>(null);
   const [confirmUngroupDialogOpen, setConfirmUngroupDialogOpen] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null);
 
-  // Get row group classes
+  // Generate group number map for consistent group numbering
+  const groupNumberMap = React.useMemo(() => 
+    generateGroupMap(filteredMovements), 
+    [filteredMovements]
+  );
+
+  // Handler for group hover effects
+  const handleGroupHover = (groupId: string | null) => {
+    setHoveredGroupId(groupId);
+  };
+
+  // Get row group classes with enhanced patterns for accessibility
   const getRowGroupClasses = (item: Movement, index: number, items: Movement[]) => {
     if (!item.group_id) return "";
     
@@ -90,14 +102,22 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     const colorClasses = getGroupColorClasses(item.group_id);
     let classes = colorClasses;
     
+    // Add stronger border styling
+    const borderWidth = "border-[2px]";
+    
     if (isFirstInGroup(item, index, items)) {
-      classes += " rounded-t-md border-t border-l border-r";
+      classes += ` rounded-t-md ${borderWidth} border-t border-l border-r`;
     } else {
-      classes += " border-l border-r";
+      classes += ` ${borderWidth} border-l border-r`;
     }
     
     if (isLastInGroup(item, index, items)) {
-      classes += " rounded-b-md border-b mb-1";
+      classes += ` rounded-b-md ${borderWidth} border-b mb-1`;
+    }
+    
+    // Highlight if this group is being hovered
+    if (hoveredGroupId === item.group_id) {
+      classes += " shadow-md";
     }
     
     return classes;
@@ -318,6 +338,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       onDeleteMovement={handleDeleteMovement}
       onUngroupClick={handleUngroupClick}
       isUngrouping={isUngrouping}
+      groupNumberMap={groupNumberMap}
+      onGroupHover={handleGroupHover}
+      hoveredGroupId={hoveredGroupId}
     />
   );
 

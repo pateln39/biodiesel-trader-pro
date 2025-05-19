@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { format } from 'date-fns';
 import { Group, Ungroup, MessageSquare, FileText, Warehouse, Eye, Edit, Trash2, Calculator } from 'lucide-react';
@@ -28,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
-import { getGroupColorClasses } from '@/utils/colorUtils';
+import { getGroupColorClasses, getGroupNumber, GROUP_BORDER_PATTERNS, getGroupColorIndex } from '@/utils/colorUtils';
 
 // Constants for cell width to maintain consistency
 const CELL_WIDTHS = {
@@ -64,6 +63,9 @@ interface MovementRowProps {
   onDeleteMovement: (id: string) => void;
   onUngroupClick: (groupId: string) => void;
   isUngrouping: boolean;
+  groupNumberMap?: Record<string, number>;
+  onGroupHover?: (groupId: string | null) => void;
+  hoveredGroupId?: string | null;
 }
 
 const MovementRow: React.FC<MovementRowProps> = ({
@@ -81,6 +83,9 @@ const MovementRow: React.FC<MovementRowProps> = ({
   onDeleteMovement,
   onUngroupClick,
   isUngrouping,
+  groupNumberMap = {},
+  onGroupHover,
+  hoveredGroupId,
 }) => {
   // Function to identify if an item is part of a group
   const isGroupedMovement = (item: Movement) => {
@@ -140,10 +145,43 @@ const MovementRow: React.FC<MovementRowProps> = ({
   const isInGroup = isGroupedMovement(movement);
   const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, movements);
   const iconColorClass = movement.group_id ? getIconColorClass(movement.group_id) : '';
+  
+  // Get border style for this group
+  const getBorderStyle = (groupId: string | null | undefined): string => {
+    if (!groupId) return 'border-solid';
+    
+    const patternIndex = getGroupColorIndex(groupId);
+    return GROUP_BORDER_PATTERNS[patternIndex];
+  };
+  
+  // Determine if this row is in the currently hovered group
+  const isRowHighlighted = hoveredGroupId && movement.group_id === hoveredGroupId;
+  
+  // Get group number for this movement
+  const groupNumber = isInGroup ? 
+    (groupNumberMap[movement.group_id as string] || getGroupNumber(movement.group_id)) : 
+    null;
+
+  // Handle mouse events for group hover effect
+  const handleMouseEnter = () => {
+    if (isInGroup && onGroupHover && movement.group_id) {
+      onGroupHover(movement.group_id);
+    }
+  };
+  
+  const handleMouseLeave = () => {
+    if (onGroupHover) {
+      onGroupHover(null);
+    }
+  };
 
   return (
     <>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="flex items-center">
           <div className="p-2 cursor-pointer" onClick={(e) => {
             e.stopPropagation();
@@ -153,40 +191,52 @@ const MovementRow: React.FC<MovementRowProps> = ({
               checked={isSelected}
             />
           </div>
-          <div className="flex items-center">
-            {isInGroup && isFirstGroupItem && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-6 w-6 mr-1 ${getGroupColorClasses(movement.group_id as string).split(' ')[0]} hover:${getGroupColorClasses(movement.group_id as string).split(' ')[0].replace('/20', '/30')}`}
-                      onClick={() => onUngroupClick(movement.group_id as string)}
-                      disabled={isUngrouping}
-                      data-ignore-row-click="true"
-                    >
-                      <Ungroup className={`h-3 w-3 ${iconColorClass}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ungroup these movements</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {isInGroup && !isFirstGroupItem && (
-              <Group className={`h-3 w-3 ${iconColorClass} mr-1`} />
+          <div className="flex items-center space-x-1">
+            {isInGroup && (
+              <>
+                {isFirstGroupItem ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className={`h-6 w-6 mr-1 p-0 rounded-full border-2 ${getBorderStyle(movement.group_id)} font-semibold`}
+                          onClick={() => onUngroupClick(movement.group_id as string)}
+                          disabled={isUngrouping}
+                          data-ignore-row-click="true"
+                        >
+                          {groupNumber}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Group {groupNumber} - Click to ungroup these movements</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <div className={`h-6 w-6 mr-1 rounded-full border-2 ${getBorderStyle(movement.group_id)} flex items-center justify-center font-semibold`}>
+                    {groupNumber}
+                  </div>
+                )}
+              </>
             )}
             <TruncatedCell 
               text={movement.referenceNumber} 
               width={CELL_WIDTHS.reference - 40} // Account for checkbox and icon
               className="text-xs"
             />
+            {isInGroup && isFirstGroupItem && (
+              <Badge variant="outline" className="ml-1">Group {groupNumber}</Badge>
+            )}
           </div>
         </div>
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.buySell && (
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
             movement.buySell === 'buy' 
@@ -197,41 +247,69 @@ const MovementRow: React.FC<MovementRowProps> = ({
           </div>
         )}
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.incoTerm} 
           width={CELL_WIDTHS.incoterm} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.sustainability || '-'} 
           width={CELL_WIDTHS.sustainability} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <ProductToken 
           product={movement.product}
           value={movement.product}
           showTooltip={true}
         />
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.loading_period_start ? format(new Date(movement.loading_period_start), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.loading_period_end ? format(new Date(movement.loading_period_end), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.counterpartyName} 
           width={CELL_WIDTHS.counterparty} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -253,7 +331,11 @@ const MovementRow: React.FC<MovementRowProps> = ({
           </Tooltip>
         </TooltipProvider>
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.creditStatus && (
           <Badge variant={
             movement.creditStatus === 'approved' ? "default" :
@@ -264,63 +346,115 @@ const MovementRow: React.FC<MovementRowProps> = ({
           </Badge>
         )}
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.scheduledQuantity?.toLocaleString()} MT
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.nominationEta ? format(new Date(movement.nominationEta), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.nominationValid ? format(new Date(movement.nominationValid), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="bg-gray-700 h-10">
+      <TableCell 
+        className={`bg-gray-700 h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.bargeName || '-'} 
           width={CELL_WIDTHS.bargeName} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.loadport || '-'} 
           width={CELL_WIDTHS.location} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.loadportInspector || '-'} 
           width={CELL_WIDTHS.inspector} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.disport || '-'} 
           width={CELL_WIDTHS.location} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <TruncatedCell 
           text={movement.disportInspector || '-'} 
           width={CELL_WIDTHS.inspector} 
           className="text-xs"
         />
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.blDate ? format(new Date(movement.blDate), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.actualQuantity?.toLocaleString()} MT
       </TableCell>
-      <TableCell className="h-10 whitespace-nowrap">
+      <TableCell 
+        className={`h-10 whitespace-nowrap ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {movement.codDate ? format(new Date(movement.codDate), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="h-10">
+      <TableCell 
+        className={`h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <Select
           defaultValue={movement.status}
           onValueChange={(value) => {
@@ -342,7 +476,11 @@ const MovementRow: React.FC<MovementRowProps> = ({
           </SelectContent>
         </Select>
       </TableCell>
-      <TableCell className="text-center h-10">
+      <TableCell 
+        className={`text-center h-10 ${isRowHighlighted ? 'bg-slate-200 dark:bg-slate-700' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="flex justify-center space-x-1" data-ignore-row-click="true">
           {movement.parentTradeId && (
             <TooltipProvider>
