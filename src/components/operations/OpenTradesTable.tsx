@@ -26,23 +26,30 @@ import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
+import PaginationNav from '@/components/ui/pagination-nav';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
   filterStatus?: 'all' | 'in-process' | 'completed';
+  paginationParams?: PaginationParams;
+  onPageChange?: (page: number) => void;
 }
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
   onRefresh,
-  filterStatus = 'all'
+  filterStatus = 'all',
+  paginationParams,
+  onPageChange
 }) => {
   const { 
     filteredTrades,
     loading, 
     error, 
     refetchOpenTrades,
-    handleReorder
-  } = useSortableOpenTrades(filterStatus);
+    handleReorder,
+    pagination
+  } = useSortableOpenTrades(filterStatus, paginationParams);
   
   const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -389,6 +396,22 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
           />
         </div>
       </ScrollArea>
+
+      {/* Pagination Controls */}
+      {pagination && onPageChange && (
+        <div className="flex items-center justify-between py-4">
+          <div className="text-sm text-muted-foreground">
+            Showing page {pagination.currentPage} of {pagination.totalPages}
+            {pagination.totalItems > 0 && (
+              <span> ({pagination.totalItems} total trades)</span>
+            )}
+          </div>
+          <PaginationNav 
+            pagination={pagination}
+            onPageChange={onPageChange}
+          />
+        </div>
+      )}
 
       <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">

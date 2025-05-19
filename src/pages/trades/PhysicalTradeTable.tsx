@@ -17,6 +17,8 @@ import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { toast } from 'sonner';
+import PaginationNav from '@/components/ui/pagination-nav';
+import { PaginationMeta } from '@/types/pagination';
 
 interface PhysicalTradeTableProps {
   trades: PhysicalTrade[];
@@ -24,9 +26,19 @@ interface PhysicalTradeTableProps {
   error: Error | null;
   refetchTrades: () => void;
   onExport?: () => void;
+  pagination?: PaginationMeta;
+  onPageChange?: (page: number) => void;
 }
 
-const PhysicalTradeTable = ({ trades, loading, error, refetchTrades, onExport }: PhysicalTradeTableProps) => {
+const PhysicalTradeTable = ({ 
+  trades, 
+  loading, 
+  error, 
+  refetchTrades, 
+  onExport,
+  pagination,
+  onPageChange 
+}: PhysicalTradeTableProps) => {
   if (loading) {
     return <TableLoadingState />;
   }
@@ -53,6 +65,7 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades, onExport }:
     );
   }
   
+  // Create flattened rows for all trade legs
   const rows: JSX.Element[] = [];
   
   trades.forEach(trade => {
@@ -75,35 +88,53 @@ const PhysicalTradeTable = ({ trades, loading, error, refetchTrades, onExport }:
   });
 
   return (
-    <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
-      <ScrollArea className="w-full" orientation="horizontal">
-        <div className="min-w-[1800px]">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-white/10">
-                <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
-                <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Customs Status</TableHead>
-                <TableHead className="h-10 whitespace-nowrap">Contract Status</TableHead>
-                <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows}
-            </TableBody>
-          </Table>
+    <div className="space-y-4">
+      <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
+        <ScrollArea className="w-full" orientation="horizontal">
+          <div className="min-w-[1800px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-white/10">
+                  <TableHead className="h-10 whitespace-nowrap">Reference</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Buy/Sell</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Incoterm</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Comments</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Customs Status</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">Contract Status</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
+      </div>
+      
+      {/* Pagination Controls */}
+      {pagination && onPageChange && (
+        <div className="flex items-center justify-between py-4">
+          <div className="text-sm text-muted-foreground">
+            Showing page {pagination.currentPage} of {pagination.totalPages}
+            {pagination.totalItems > 0 && (
+              <span> ({pagination.totalItems} total records)</span>
+            )}
+          </div>
+          <PaginationNav 
+            pagination={pagination}
+            onPageChange={onPageChange}
+          />
         </div>
-      </ScrollArea>
+      )}
     </div>
   );
 };

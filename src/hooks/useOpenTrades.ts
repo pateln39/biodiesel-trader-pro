@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
 import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types/physical';
 import { PricingFormula } from '@/types/pricing';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
 export interface OpenTrade {
   id: string;
@@ -47,8 +48,29 @@ export interface OpenTrade {
   sort_order?: number;
 }
 
-const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
+const fetchOpenTrades = async (params?: PaginationParams): Promise<{ openTrades: OpenTrade[], pagination: PaginationMeta }> => {
   try {
+    // First, get the total count of records
+    const { count: totalCount, error: countError } = await supabase
+      .from('open_trades')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'open');
+    
+    if (countError) {
+      console.error('[OPEN TRADES] Error counting open trades:', countError.message);
+      throw countError;
+    }
+    
+    // Calculate pagination metadata
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 15;
+    const totalItems = totalCount || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Calculate range for pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
     const { data, error } = await supabase
       .from('open_trades')
       .select(`
@@ -64,7 +86,8 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       `)
       .eq('status', 'open')
       .order('sort_order', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
     
     if (error) {
       console.error('[OPEN TRADES] Error in Supabase query:', error);
@@ -73,7 +96,15 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
     
     if (!data) {
       console.warn('[OPEN TRADES] No data returned from Supabase');
-      return [];
+      return {
+        openTrades: [],
+        pagination: {
+          totalItems,
+          totalPages: totalPages > 0 ? totalPages : 1,
+          currentPage: page,
+          pageSize
+        }
+      };
     }
     
     const legIds = data
@@ -98,7 +129,7 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       }
     }
     
-    return data.map(item => ({
+    const openTrades = data.map(item => ({
       id: item.id,
       trade_leg_id: item.trade_leg_id,
       parent_trade_id: item.parent_trade_id,
@@ -134,7 +165,6 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       nominated_value: item.nominated_value || 0,
       balance: item.balance !== null && item.balance !== undefined ? item.balance : item.quantity,
       efp_premium: item.efp_premium,
-      // Fix the type error by properly handling both boolean and string values
       efp_agreed_status: typeof item.efp_agreed_status === 'string' 
         ? item.efp_agreed_status === 'true' 
         : !!item.efp_agreed_status,
@@ -142,28 +172,39 @@ const fetchOpenTrades = async (): Promise<OpenTrade[]> => {
       efp_designated_month: item.efp_designated_month,
       sort_order: item.sort_order
     }));
+
+    return { 
+      openTrades, 
+      pagination: {
+        totalItems,
+        totalPages: totalPages > 0 ? totalPages : 1,
+        currentPage: page,
+        pageSize
+      } 
+    };
   } catch (error: any) {
     console.error('[OPEN TRADES] Error fetching open trades:', error);
     throw new Error(error.message);
   }
 };
 
-export const useOpenTrades = () => {
+export const useOpenTrades = (paginationParams?: PaginationParams) => {
   const { 
-    data: openTrades = [], 
+    data, 
     isLoading: loading, 
     error,
     refetch: refetchOpenTrades
   } = useQuery({
-    queryKey: ['openTrades'],
-    queryFn: fetchOpenTrades,
+    queryKey: ['openTrades', paginationParams],
+    queryFn: () => fetchOpenTrades(paginationParams),
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     staleTime: 2000,
   });
 
   return { 
-    openTrades, 
+    openTrades: data?.openTrades || [], 
+    pagination: data?.pagination,
     loading, 
     error, 
     refetchOpenTrades
