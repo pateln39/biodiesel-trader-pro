@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -391,6 +392,10 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     setIsAddProductDialogOpen(true);
   };
 
+  const openAddCounterpartyDialog = () => {
+    setIsAddCounterpartyDialogOpen(true);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -409,7 +414,16 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="counterparty">Counterparty</Label>
-          <Select value={counterparty} onValueChange={setCounterparty}>
+          <Select 
+            value={counterparty} 
+            onValueChange={(value) => {
+              if (value === "__add_new__") {
+                openAddCounterpartyDialog();
+              } else {
+                setCounterparty(value);
+              }
+            }}
+          >
             <SelectTrigger id="counterparty">
               <SelectValue placeholder="Select counterparty" />
             </SelectTrigger>
@@ -430,19 +444,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         </div>
       </div>
 
-      {counterparty === "__add_new__" && (
-        <div className="mt-1">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsAddCounterpartyDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add New Counterparty
-          </Button>
-        </div>
-      )}
+      {/* Remove the conditional button for adding counterparty */}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -760,9 +762,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         isOpen={isAddCounterpartyDialogOpen}
         onClose={() => {
           setIsAddCounterpartyDialogOpen(false);
-          if (counterparty === "__add_new__") {
-            setCounterparty("");
-          }
+          // Don't reset counterparty here anymore since the dropdown 
+          // value doesn't get set to __add_new__ in the first place
         }}
         onAdd={handleAddCounterparty}
         title="Add New Counterparty"
