@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +44,7 @@ interface MovementsTableProps {
   onPageChange?: (page: number) => void;
 }
 
+// Update the pagination type to match the actual structure
 const MovementsTable: React.FC<MovementsTableProps> = ({ 
   filteredMovements,
   selectedMovementIds,
@@ -353,7 +353,13 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       {pagination && (
         <div className="mt-6">
           <PaginationNav 
-            pagination={pagination} 
+            pagination={{
+              totalItems: pagination.totalItems,
+              totalPages: pagination.totalPages,
+              currentPage: pagination.currentPage,
+              pageSize: pagination.pageSize,
+              totalCount: pagination.totalItems // Add totalCount to match expected format
+            }}
             onPageChange={onPageChange}
             className="justify-center"
           />
