@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,11 +12,22 @@ import { exportMovementsToExcel } from '@/utils/excelExportUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import MovementsHeader from '@/components/operations/movements/MovementsHeader';
 import MovementsActions from '@/components/operations/movements/MovementsActions';
+import { PaginationParams } from '@/types/pagination';
 
 const MovementsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  
+  // Get page from URL or default to 1
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const pageSize = 15; // Fixed page size
+  
+  const paginationParams: PaginationParams = {
+    page,
+    pageSize
+  };
   
   const { 
     filteredMovements,
@@ -31,8 +43,9 @@ const MovementsPage = () => {
     groupSelectedMovements,
     ungroupMovement,
     isGrouping,
-    isUngrouping
-  } = useSortableMovements();
+    isUngrouping,
+    pagination
+  } = useSortableMovements(undefined, paginationParams);
 
   React.useEffect(() => {
     const initializeSortOrder = async () => {
@@ -87,6 +100,21 @@ const MovementsPage = () => {
 
   const handleFilterChange = (newFilters: FilterOptions) => {
     updateFilters(newFilters);
+    // Reset to page 1 when filters change
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '1');
+      return newParams;
+    });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    // Update URL parameters
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', newPage.toString());
+      return newParams;
+    });
   };
 
   const getActiveFilterCount = () => {
@@ -119,13 +147,15 @@ const MovementsPage = () => {
           </CardHeader>
           <CardContent>
             <MovementsTable 
-              key={`movements-${refreshTrigger}`}
+              key={`movements-${refreshTrigger}-${page}`}
               filteredMovements={filteredMovements}
               selectedMovementIds={selectedMovementIds}
               onToggleSelect={toggleMovementSelection}
               onReorder={handleReorder}
               onUngroupMovement={ungroupMovement}
               isUngrouping={isUngrouping}
+              pagination={pagination}
+              onPageChange={handlePageChange}
             />
           </CardContent>
         </Card>

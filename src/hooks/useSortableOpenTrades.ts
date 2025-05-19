@@ -3,9 +3,13 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OpenTrade, useOpenTrades } from '@/hooks/useOpenTrades';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
-export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'completed' = 'all') => {
-  const { openTrades, loading, error, refetchOpenTrades } = useOpenTrades();
+export const useSortableOpenTrades = (
+  filterStatus: 'all' | 'in-process' | 'completed' = 'all',
+  paginationParams?: PaginationParams
+) => {
+  const { openTrades, loading, error, refetchOpenTrades, pagination } = useOpenTrades(paginationParams);
   const [localTrades, setLocalTrades] = useState<OpenTrade[]>([]);
   const queryClient = useQueryClient();
 
@@ -13,16 +17,8 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
   useEffect(() => {
     if (openTrades?.length) {
       console.log('[OPEN_TRADES] Updating local trades state with', openTrades.length, 'items');
-      // Sort by sort_order if it exists, otherwise by created_at
-      const sortedTrades = [...openTrades].sort((a, b) => {
-        if (a.sort_order !== undefined && b.sort_order !== undefined) {
-          return a.sort_order - b.sort_order;
-        }
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      });
-      console.log('[OPEN_TRADES] First few sort_order values:', 
-        sortedTrades.slice(0, 5).map(t => t.sort_order).join(', '));
-      setLocalTrades(sortedTrades);
+      // Trades already come sorted by sort_order from the API
+      setLocalTrades(openTrades);
     }
   }, [openTrades]);
 
@@ -90,13 +86,18 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
     async (reorderedItems: OpenTrade[]) => {
       console.log('[OPEN_TRADES] Starting reordering process for', reorderedItems.length, 'items');
       
+      // Calculate base sort_order for the current page
+      const pageOffset = paginationParams && paginationParams.page > 1 
+        ? (paginationParams.page - 1) * (paginationParams.pageSize || 15) 
+        : 0;
+
       // Update local state immediately for a responsive UI
       setLocalTrades(reorderedItems);
 
       // Get the moved item and its new index
       const updatedItems = reorderedItems.map((item, index) => ({
         id: item.id,
-        sort_order: index + 1,
+        sort_order: pageOffset + index + 1,
       }));
 
       console.log('[OPEN_TRADES] Prepared sort_order updates:', 
@@ -121,7 +122,7 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
         refetchOpenTrades();
       }
     },
-    [updateSortOrderMutation, refetchOpenTrades]
+    [updateSortOrderMutation, refetchOpenTrades, paginationParams]
   );
 
   return {
@@ -131,5 +132,6 @@ export const useSortableOpenTrades = (filterStatus: 'all' | 'in-process' | 'comp
     error,
     refetchOpenTrades,
     handleReorder,
+    pagination
   };
 };

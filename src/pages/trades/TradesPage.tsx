@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PaginationParams } from '@/types/pagination';
 
 // Import our custom components
 import PhysicalTradeTable from './PhysicalTradeTable';
@@ -20,38 +21,39 @@ import { exportPhysicalTradesToExcel, exportPaperTradesToExcel } from '@/utils/e
 import { toast } from 'sonner';
 
 const TradesPage = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const pageParam = searchParams.get('page');
+  const pageSizeParam = searchParams.get('pageSize');
+  
+  // Use URL parameters as the source of truth for pagination
+  const paginationParams: PaginationParams = {
+    page: pageParam ? parseInt(pageParam) : 1,
+    pageSize: pageSizeParam ? parseInt(pageSizeParam) : 15
+  };
+  
   const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
   
-  // Load physical trades
+  // Load physical trades with pagination from URL
   const { 
     trades, 
     loading: physicalLoading, 
     error: physicalError, 
-    refetchTrades
-  } = useTrades();
+    refetchTrades,
+    pagination: physicalPagination
+  } = useTrades(paginationParams);
   
-  // Load paper trades
+  // Load paper trades with pagination from URL
   const { 
     paperTrades, 
     isLoading: paperLoading, 
     error: paperError, 
-    refetchPaperTrades
-  } = usePaperTrades();
+    refetchPaperTrades,
+    pagination: paperPagination
+  } = usePaperTrades(paginationParams);
   
-  const physicalTrades = trades.filter(trade => trade.tradeType === 'physical') as PhysicalTrade[];
-
-  // Error handling across both trade types
-  useEffect(() => {
-    const combinedError = physicalError || paperError;
-    if (combinedError) {
-      setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
-    } else {
-      setPageError(null);
-    }
-  }, [physicalError, paperError]);
+  const physicalTrades = trades as PhysicalTrade[];
 
   // Update active tab based on URL parameter
   useEffect(() => {
@@ -61,6 +63,39 @@ const TradesPage = () => {
       setActiveTab('physical');
     }
   }, [tabParam]);
+  
+  // Error handling across both trade types
+  useEffect(() => {
+    const combinedError = physicalError || paperError;
+    if (combinedError) {
+      setPageError(combinedError instanceof Error ? combinedError.message : 'Unknown error occurred');
+    } else {
+      setPageError(null);
+    }
+  }, [physicalError, paperError]);
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    // Update URL parameters without navigation
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', value);
+    // Reset to page 1 when changing tabs
+    newParams.set('page', '1');
+    setSearchParams(newParams);
+  };
+  
+  // Handle page change - update URL parameters
+  const handlePageChange = (page: number) => {
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Update URL parameters
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    setSearchParams(newParams);
+  };
 
   // Export handlers
   const handleExportPhysicalTrades = async () => {
@@ -137,6 +172,8 @@ const TradesPage = () => {
             loading={physicalLoading}
             error={physicalError}
             refetchTrades={refetchTrades}
+            pagination={physicalPagination}
+            onPageChange={handlePageChange}
           />
         </CardContent>
       </Card>
@@ -166,6 +203,8 @@ const TradesPage = () => {
             isLoading={paperLoading}
             error={paperError}
             refetchPaperTrades={refetchPaperTrades}
+            pagination={paperPagination}
+            onPageChange={handlePageChange}
           />
         </CardContent>
       </Card>
@@ -189,7 +228,7 @@ const TradesPage = () => {
         {pageError && showErrorAlert()}
 
         {/* Tabs for Physical and Paper Trades */}
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4">
             <TabsTrigger value="physical">Physical Trades</TabsTrigger>
             <TabsTrigger value="paper">Paper Trades</TabsTrigger>
