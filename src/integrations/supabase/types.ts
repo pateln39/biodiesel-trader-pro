@@ -1092,16 +1092,19 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean | null
           name: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
           name: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean | null
           name?: string
         }
         Relationships: []
@@ -1454,6 +1457,18 @@ export type Database = {
         Args: { terminal_id_param: string }
         Returns: number
       }
+      get_paginated_terminal_assignments: {
+        Args: {
+          p_terminal_id: string
+          p_page_number: number
+          p_page_size: number
+        }
+        Returns: {
+          assignments: Json
+          pagination_meta: Json
+          page_state: Json
+        }[]
+      }
       initialize_all_terminal_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1470,12 +1485,29 @@ export type Database = {
         Args: { p_terminal_id: string }
         Returns: undefined
       }
+      insert_counterparty: {
+        Args: { counterparty_name: string }
+        Returns: string
+      }
+      insert_product: {
+        Args: { product_name: string }
+        Returns: string
+      }
       populate_movement_loading_periods: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
+        Returns: undefined
+      }
+      update_terminal_pagination_state: {
+        Args: {
+          p_terminal_id: string
+          p_page_number: number
+          p_page_size: number
+          p_new_state: Json
+        }
         Returns: undefined
       }
       update_terminal_sort_order: {
