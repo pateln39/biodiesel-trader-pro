@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,7 +71,8 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
           totalItems: totalLegsCount || 0,
           totalPages: Math.ceil((totalLegsCount || 0) / params.pageSize),
           currentPage: params.page,
-          pageSize: params.pageSize
+          pageSize: params.pageSize,
+          totalCount: totalLegsCount || 0
         }
       };
     }
@@ -204,7 +204,8 @@ const fetchTrades = async (params: PaginationParams = { page: 1, pageSize: 15 })
         totalItems: totalLegsCount || 0,
         totalPages: Math.ceil((totalLegsCount || 0) / params.pageSize),
         currentPage: params.page,
-        pageSize: params.pageSize
+        pageSize: params.pageSize,
+        totalCount: totalLegsCount || 0
       }
     };
   } catch (error: any) {
@@ -250,7 +251,8 @@ export const useTrades = (paginationParams: PaginationParams = { page: 1, pageSi
       totalItems: 0,
       totalPages: 1,
       currentPage: paginationParams.page,
-      pageSize: paginationParams.pageSize
+      pageSize: paginationParams.pageSize,
+      totalCount: 0
     },
     loading, 
     error, 

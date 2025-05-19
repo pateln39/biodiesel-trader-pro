@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -210,6 +209,9 @@ const TradesPage = () => {
       </Card>
     );
   };
+
+  // Ensure paperPagination and physicalPagination have totalCount
+  // This is handled inside the respective hooks now
 
   return (
     <Layout>

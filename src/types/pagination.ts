@@ -9,7 +9,7 @@ export interface PaginationMeta {
   totalPages: number;
   currentPage: number;
   pageSize: number;
-  totalCount: number; // Added for compatibility with existing components
+  totalCount: number; // This is needed for compatibility with existing components
 }
 
 export interface PaginatedResponse<T> {
