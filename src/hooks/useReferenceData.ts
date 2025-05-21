@@ -2,6 +2,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { saveCustomProductColor, getCustomProductColors } from '@/utils/productColorUtils';
+import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
+// Initialize the PRODUCT_COLORS with custom colors from localStorage
+const initializeProductColors = () => {
+  try {
+    const customColors = getCustomProductColors();
+    Object.entries(customColors).forEach(([productName, colorClass]) => {
+      if (productName && colorClass && typeof PRODUCT_COLORS === 'object') {
+        // @ts-ignore - PRODUCT_COLORS is an object, even if TypeScript doesn't see it that way
+        PRODUCT_COLORS[productName] = colorClass;
+      }
+    });
+  } catch (error) {
+    console.error('Error initializing product colors:', error);
+  }
+};
+
+// Run initialization
+initializeProductColors();
 
 export const useReferenceData = () => {
   const queryClient = useQueryClient();
@@ -59,12 +78,27 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
   
-  // Function to add a new product
-  const addProduct = async (productName: string) => {
+  // Function to add a new product with optional color
+  const addProduct = async (productName: string, colorName?: string) => {
     try {
       const { data, error } = await supabase.rpc('insert_product', { product_name: productName });
       
       if (error) throw error;
+      
+      // If color is provided, save it to localStorage and update PRODUCT_COLORS
+      if (colorName) {
+        saveCustomProductColor(productName, colorName);
+        // Update the in-memory PRODUCT_COLORS object directly
+        // This ensures immediate visual feedback without requiring a page reload
+        if (typeof PRODUCT_COLORS === 'object') {
+          const customColors = getCustomProductColors();
+          const colorClass = customColors[productName];
+          if (colorClass) {
+            // @ts-ignore - PRODUCT_COLORS is an object, even if TypeScript doesn't see it that way
+            PRODUCT_COLORS[productName] = colorClass;
+          }
+        }
+      }
       
       // Invalidate products query to refresh the list
       queryClient.invalidateQueries({ queryKey: ['products'] });

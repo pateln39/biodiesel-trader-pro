@@ -368,8 +368,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     e.target.select();
   };
 
-  const handleAddProduct = async (productName: string) => {
-    await addProduct(productName);
+  const handleAddProduct = async (productName: string, colorName?: string) => {
+    await addProduct(productName, colorName);
     
     // If we were adding a product for a specific leg, select it
     if (selectedProductLegIndex !== null) {
@@ -794,14 +794,14 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
         title="Add New Product"
         itemLabel="Product Name"
         placeholder="Enter product name"
+        showColorPicker={true}
+        existingItems={productOptions}
       />
       
       <AddNewItemDialog
         isOpen={isAddCounterpartyDialogOpen}
         onClose={() => {
           setIsAddCounterpartyDialogOpen(false);
-          // Don't reset counterparty here anymore since the dropdown 
-          // value doesn't get set to __add_new__ in the first place
         }}
         onAdd={handleAddCounterparty}
         title="Add New Counterparty"
