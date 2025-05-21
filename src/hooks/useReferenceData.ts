@@ -57,6 +57,26 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
+  // New function to fetch product colors from the database
+  const fetchProductColors = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('name, color_class')
+      .eq('is_active', true);
+    
+    if (error) throw error;
+    
+    // Convert to a mapping object
+    const colorMapping: Record<string, string> = {};
+    data.forEach(product => {
+      if (product.color_class) {
+        colorMapping[product.name] = product.color_class;
+      }
+    });
+    
+    return colorMapping;
+  };
+
   const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
@@ -82,6 +102,12 @@ export const useReferenceData = () => {
     queryKey: ['products'],
     queryFn: fetchProducts
   });
+  
+  // Query to fetch product colors
+  const { data: productColors = {} } = useQuery({
+    queryKey: ['productColors'],
+    queryFn: fetchProductColors
+  });
 
   // Invalidation methods
   const invalidateCounterparties = () => {
@@ -94,6 +120,7 @@ export const useReferenceData = () => {
 
   const invalidateProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['productColors'] });
   };
 
   return {
@@ -102,6 +129,7 @@ export const useReferenceData = () => {
     creditStatusOptions,
     customsStatusOptions,
     productOptions,
+    productColors,
     invalidateCounterparties,
     invalidateSustainability,
     invalidateProducts
