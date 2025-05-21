@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, Package, Clock, AlertTriangle, BarChart3, DollarSign } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -10,6 +9,8 @@ import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
 import { useTradesPerMonth } from '@/hooks/useTradesPerMonth';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { useReferenceData } from '@/hooks/useReferenceData';
+import ProductLegend from '@/components/operations/storage/ProductLegend';
 
 const tradesPerMonthData = [
   { month: 'Aug', count: 60, volume: 10 },
@@ -50,6 +51,7 @@ const pnlData = [
 const Index = () => {
   const { physicalPositionData, loading: positionsLoading, error: positionsError, refetchTrades: refetchPositions } = usePhysicalPositions();
   const { tradesPerMonthData, loading: tradesLoading, error: tradesError, refetchTrades: refetchTradesPerMonth } = useTradesPerMonth();
+  const { productOptions, isLoadingProducts } = useReferenceData();
 
   return (
     <Layout>
@@ -106,7 +108,7 @@ const Index = () => {
               <CardTitle className="text-lg font-medium">Physical Position by Month and Grade</CardTitle>
             </CardHeader>
             <CardContent>
-              {positionsLoading ? (
+              {positionsLoading || isLoadingProducts ? (
                 <TableLoadingState />
               ) : positionsError ? (
                 <TableErrorState error={positionsError} onRetry={refetchPositions} />
@@ -116,24 +118,20 @@ const Index = () => {
                     <thead>
                       <tr className="border-b border-brand-blue/30 bg-brand-blue/20">
                         <th className="text-left p-2 text-brand-lime font-semibold">Month</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">UCOME</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">FAME0</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">RME</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">HVO</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">UCOME-5</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">RME DC</th>
+                        {productOptions.map(product => (
+                          <th key={product} className="text-right p-2 text-brand-lime font-semibold">{product}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {physicalPositionData.map((row) => (
                         <tr key={row.month} className="border-b border-brand-blue/30 hover:bg-brand-blue/10 transition-colors">
                           <td className="text-left p-2 font-medium">{row.month}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.UCOME !== 0 ? row.UCOME : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.FAME0 !== 0 ? row.FAME0 : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.RME !== 0 ? row.RME : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.HVO !== 0 ? row.HVO : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row['UCOME-5'] !== 0 ? row['UCOME-5'] : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row['RME DC'] !== 0 ? row['RME DC'] : '-'}</td>
+                          {productOptions.map(product => (
+                            <td key={`${row.month}-${product}`} className="text-right p-2 font-bold text-white">
+                              {row[product] !== 0 ? row[product] : '-'}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>

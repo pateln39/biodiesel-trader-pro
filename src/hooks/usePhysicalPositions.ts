@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { useTrades } from './useTrades';
 import { PhysicalTrade } from '@/types';
 import { formatMonthCode } from '@/utils/dateUtils';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
 export interface PhysicalPositionData {
   month: string;
@@ -11,8 +12,14 @@ export interface PhysicalPositionData {
 
 export const usePhysicalPositions = () => {
   const { trades, loading, error, refetchTrades } = useTrades();
+  const { productOptions, isLoadingProducts } = useReferenceData();
   
   const physicalPositionData = useMemo(() => {
+    // If products are still loading, return empty array
+    if (isLoadingProducts) {
+      return [];
+    }
+    
     // Get only physical trades
     const physicalTrades = trades.filter(
       (trade): trade is PhysicalTrade => trade.tradeType === 'physical'
@@ -34,15 +41,15 @@ export const usePhysicalPositions = () => {
     
     // Initialize the monthly position data with months and zero values for each product
     const initialPositionData: PhysicalPositionData[] = months.map(month => {
-      return {
-        month,
-        'UCOME': 0,
-        'RME': 0,
-        'FAME0': 0,
-        'HVO': 0,
-        'UCOME-5': 0,
-        'RME DC': 0,
-      };
+      // Start with the month property
+      const monthData: PhysicalPositionData = { month };
+      
+      // Add zero values for each product
+      productOptions.forEach(product => {
+        monthData[product] = 0;
+      });
+      
+      return monthData;
     });
     
     // Process each trade and accumulate quantities by month and product
@@ -59,6 +66,7 @@ export const usePhysicalPositions = () => {
         if (!monthEntry) return;
         
         // Check if the product exists in our structure
+        // Skip if the product doesn't exist in our available products list
         if (!(leg.product in monthEntry)) return;
         
         // Calculate the impact on position based on buy/sell direction
@@ -71,11 +79,11 @@ export const usePhysicalPositions = () => {
     });
     
     return initialPositionData;
-  }, [trades]);
+  }, [trades, productOptions, isLoadingProducts]);
   
   return {
     physicalPositionData,
-    loading,
+    loading: loading || isLoadingProducts,
     error,
     refetchTrades
   };
