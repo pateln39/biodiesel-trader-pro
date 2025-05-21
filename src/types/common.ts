@@ -1,3 +1,4 @@
+
 // Common type definitions used across the application
 export type OperatorType = '+' | '-' | '*' | '/';
 export type Instrument = 
@@ -15,7 +16,8 @@ export type TradeType = 'physical' | 'paper';
 
 // Common types for trades
 export type BuySell = 'buy' | 'sell';
-export type Product = "FAME0" | "RME" | "UCOME" | "UCOME-5" | "RME DC" | "LSGO" | "HVO";
+// Updated Product type to be more flexible - now a string type instead of a union
+export type Product = string;
 export type IncoTerm = "FOB" | "CIF" | "DES" | "DAP" | "FCA";
 export type Unit = "MT" | "KG" | "L";
 export type CreditStatus = "approved" | "pending" | "rejected";
