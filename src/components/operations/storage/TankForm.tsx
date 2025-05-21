@@ -21,11 +21,20 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Terminal } from '@/hooks/useTerminals';
 import { Tank } from '@/hooks/useTanks';
+import { useReferenceData } from '@/hooks/useReferenceData';
+import { Loader2 } from 'lucide-react';
 
 const tankFormSchema = z.object({
   tankNumber: z.string().min(1, "Tank number is required"),
@@ -53,6 +62,8 @@ const TankForm: React.FC<TankFormProps> = ({
   tank,
   isNewTerminal = false,
 }) => {
+  const { productOptions, isLoadingProducts } = useReferenceData();
+
   const form = useForm<z.infer<typeof tankFormSchema>>({
     resolver: zodResolver(tankFormSchema),
     defaultValues: {
@@ -179,7 +190,27 @@ const TankForm: React.FC<TankFormProps> = ({
                 <FormItem>
                   <FormLabel>Current Product</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Enter product name" />
+                    {isLoadingProducts ? (
+                      <div className="flex items-center justify-center h-10 bg-muted/20 rounded-md">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {productOptions.map((product) => (
+                            <SelectItem key={product} value={product}>
+                              {product}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </FormControl>
                   <FormMessage />
                 </FormItem>
