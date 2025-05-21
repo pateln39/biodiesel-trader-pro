@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { BuySell, Product, PhysicalTradeType, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PhysicalTrade, PhysicalTradeLeg, PricingType } from '@/types';
@@ -23,6 +22,9 @@ import { getAvailableEfpMonths } from '@/utils/efpUtils';
 import { createEmptyExposureResult } from '@/utils/formulaCalculation';
 import { isDateRangeInFuture, getMonthsInDateRange, getDefaultMtmFutureMonth } from '@/utils/mtmUtils';
 import { createEfpFormula, updateFormulaWithEfpExposure } from '@/utils/efpFormulaUtils';
+import AddCounterpartyDialog from './AddCounterpartyDialog';
+import AddSustainabilityDialog from './AddSustainabilityDialog';
+import AddProductDialog from './AddProductDialog';
 
 interface PhysicalTradeFormProps {
   tradeReference: string;
@@ -151,8 +153,12 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     productOptions
   } = useReferenceData();
 
+  const [showAddCounterpartyDialog, setShowAddCounterpartyDialog] = useState(false);
+  const [showAddSustainabilityDialog, setShowAddSustainabilityDialog] = useState(false);
+  const [showAddProductDialog, setShowAddProductDialog] = useState(false);
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || '');
+  const [activeLegIndex, setActiveLegIndex] = useState<number>(0);
 
   const [legs, setLegs] = useState<LegFormState[]>(initialData?.legs?.map(leg => ({
     buySell: leg.buySell,
@@ -360,6 +366,22 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     e.target.select();
   };
 
+  const handleAddCounterparty = (name: string) => {
+    setCounterparty(name);
+  };
+
+  const handleAddSustainability = (name: string) => {
+    const newLegs = [...legs];
+    newLegs[activeLegIndex].sustainability = name;
+    setLegs(newLegs);
+  };
+
+  const handleAddProduct = (name: string) => {
+    const newLegs = [...legs];
+    newLegs[activeLegIndex].product = name;
+    setLegs(newLegs);
+  };
+
   return <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -377,14 +399,29 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="counterparty">Counterparty</Label>
-          <Select value={counterparty} onValueChange={setCounterparty}>
+          <Select 
+            value={counterparty} 
+            onValueChange={(value) => {
+              if (value === "add-new") {
+                setShowAddCounterpartyDialog(true);
+              } else {
+                setCounterparty(value);
+              }
+            }}
+          >
             <SelectTrigger id="counterparty">
               <SelectValue placeholder="Select counterparty" />
             </SelectTrigger>
             <SelectContent>
-              {counterparties.map(name => <SelectItem key={name} value={name}>
+              {counterparties.map(name => (
+                <SelectItem key={name} value={name}>
                   {name}
-                </SelectItem>)}
+                </SelectItem>
+              ))}
+              <SelectSeparator />
+              <SelectItem value="add-new" className="text-blue-500 font-medium">
+                + Add counterparty
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -425,7 +462,17 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
 
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-product`}>Product</Label>
-                  <Select value={leg.product} onValueChange={value => updateLeg(legIndex, 'product', value as Product)}>
+                  <Select 
+                    value={leg.product} 
+                    onValueChange={(value) => {
+                      if (value === "add-new") {
+                        setActiveLegIndex(legIndex);
+                        setShowAddProductDialog(true);
+                      } else {
+                        updateLeg(legIndex, 'product', value as Product);
+                      }
+                    }}
+                  >
                     <SelectTrigger id={`leg-${legIndex}-product`}>
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
@@ -435,20 +482,40 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                           {product}
                         </SelectItem>
                       ))}
+                      <SelectSeparator />
+                      <SelectItem value="add-new" className="text-blue-500 font-medium">
+                        + Add product
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor={`leg-${legIndex}-sustainability`}>Sustainability</Label>
-                  <Select value={leg.sustainability} onValueChange={value => updateLeg(legIndex, 'sustainability', value)}>
+                  <Select 
+                    value={leg.sustainability} 
+                    onValueChange={(value) => {
+                      if (value === "add-new") {
+                        setActiveLegIndex(legIndex);
+                        setShowAddSustainabilityDialog(true);
+                      } else {
+                        updateLeg(legIndex, 'sustainability', value);
+                      }
+                    }}
+                  >
                     <SelectTrigger id={`leg-${legIndex}-sustainability`}>
                       <SelectValue placeholder="Select sustainability" />
                     </SelectTrigger>
                     <SelectContent>
-                      {sustainabilityOptions.map(option => <SelectItem key={option} value={option}>
+                      {sustainabilityOptions.map(option => (
+                        <SelectItem key={option} value={option}>
                           {option}
-                        </SelectItem>)}
+                        </SelectItem>
+                      ))}
+                      <SelectSeparator />
+                      <SelectItem value="add-new" className="text-blue-500 font-medium">
+                        + Add sustainability
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -651,6 +718,25 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
           {isEditMode ? 'Update Trade' : 'Create Trade'}
         </Button>
       </div>
+
+      {/* Add Dialog Components */}
+      <AddCounterpartyDialog 
+        open={showAddCounterpartyDialog} 
+        onOpenChange={setShowAddCounterpartyDialog}
+        onCounterpartyAdded={handleAddCounterparty}
+      />
+      
+      <AddSustainabilityDialog 
+        open={showAddSustainabilityDialog} 
+        onOpenChange={setShowAddSustainabilityDialog}
+        onSustainabilityAdded={handleAddSustainability}
+      />
+      
+      <AddProductDialog
+        open={showAddProductDialog}
+        onOpenChange={setShowAddProductDialog}
+        onProductAdded={handleAddProduct}
+      />
     </form>;
 };
 

@@ -1,8 +1,10 @@
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useReferenceData = () => {
+  const queryClient = useQueryClient();
+
   const fetchCounterparties = async () => {
     const { data, error } = await supabase
       .from('counterparties')
@@ -34,7 +36,6 @@ export const useReferenceData = () => {
   };
 
   const fetchCustomsStatus = async () => {
-    // Query the customs_status table which was renamed from product_credit_status
     const { data, error } = await supabase
       .from('customs_status')
       .select('name')
@@ -44,7 +45,7 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
-  // New function to fetch products from the database
+  // Function to fetch products from the database
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
@@ -76,17 +77,33 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
-  // New query to fetch product options
+  // Query to fetch product options
   const { data: productOptions = [] } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts
   });
+
+  // Invalidation methods
+  const invalidateCounterparties = () => {
+    queryClient.invalidateQueries({ queryKey: ['counterparties'] });
+  };
+
+  const invalidateSustainability = () => {
+    queryClient.invalidateQueries({ queryKey: ['sustainability'] });
+  };
+
+  const invalidateProducts = () => {
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+  };
 
   return {
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
     customsStatusOptions,
-    productOptions
+    productOptions,
+    invalidateCounterparties,
+    invalidateSustainability,
+    invalidateProducts
   };
 };
