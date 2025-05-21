@@ -1,16 +1,19 @@
 
 import React from 'react';
-import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import ProductToken from './ProductToken';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
 const ProductLegend: React.FC = () => {
+  const { productData } = useReferenceData();
+  
   return (
     <div className="flex flex-wrap gap-2 mb-2">
-      {Object.keys(PRODUCT_COLORS).map(product => (
+      {productData.map(product => (
         <ProductToken 
-          key={product} 
-          product={product} 
-          value={product} 
+          key={product.name} 
+          product={product.name} 
+          value={product.name} 
+          colorClass={product.color_class}
           showTooltip={false}
         />
       ))}
