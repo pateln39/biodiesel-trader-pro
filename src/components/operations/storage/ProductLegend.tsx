@@ -17,7 +17,7 @@ const ProductLegend: React.FC = () => {
     );
   }
   
-  if (productOptions.length === 0) {
+  if (!productOptions.length) {
     return <p className="text-sm text-muted-foreground mb-2">No products available</p>;
   }
 
