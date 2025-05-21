@@ -29,6 +29,17 @@ export default {
 		'bg-gray-500',
 		'bg-brand-navy',
 		'bg-purple-700',
+		// Violet color classes for product tokens
+		'bg-violet-400',
+		'bg-violet-500',
+		'bg-violet-600',
+		'bg-violet-700',
+		'bg-violet-800',
+		'text-violet-400',
+		'text-violet-500',
+		'text-violet-600',
+		'text-violet-700',
+		'text-violet-800',
 		// New color classes for group colors
 		'bg-purple-500/20',
 		'bg-amber-500/20',

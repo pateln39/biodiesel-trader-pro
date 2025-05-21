@@ -57,30 +57,56 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
-  const { data: counterparties = [] } = useQuery({
+  // New function to fetch product colors from the database
+  const fetchProductColors = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('name, color_class')
+      .eq('is_active', true);
+    
+    if (error) throw error;
+    
+    // Convert to a mapping object
+    const colorMapping: Record<string, string> = {};
+    data.forEach(product => {
+      if (product.color_class) {
+        colorMapping[product.name] = product.color_class;
+      }
+    });
+    
+    return colorMapping;
+  };
+
+  const { data: counterparties = [], isLoading: isLoadingCounterparties } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
   });
 
-  const { data: sustainabilityOptions = [] } = useQuery({
+  const { data: sustainabilityOptions = [], isLoading: isLoadingSustainability } = useQuery({
     queryKey: ['sustainability'],
     queryFn: fetchSustainability
   });
 
-  const { data: creditStatusOptions = [] } = useQuery({
+  const { data: creditStatusOptions = [], isLoading: isLoadingCreditStatus } = useQuery({
     queryKey: ['creditStatus'],
     queryFn: fetchCreditStatus
   });
 
-  const { data: customsStatusOptions = [] } = useQuery({
+  const { data: customsStatusOptions = [], isLoading: isLoadingCustomsStatus } = useQuery({
     queryKey: ['customsStatus'],
     queryFn: fetchCustomsStatus
   });
 
   // Query to fetch product options
-  const { data: productOptions = [] } = useQuery({
+  const { data: productOptions = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts
+  });
+  
+  // Query to fetch product colors
+  const { data: productColors = {}, isLoading: isLoadingProductColors } = useQuery({
+    queryKey: ['productColors'],
+    queryFn: fetchProductColors
   });
 
   // Invalidation methods
@@ -94,14 +120,22 @@ export const useReferenceData = () => {
 
   const invalidateProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['productColors'] });
   };
 
   return {
     counterparties,
+    isLoadingCounterparties,
     sustainabilityOptions,
+    isLoadingSustainability,
     creditStatusOptions,
+    isLoadingCreditStatus,
     customsStatusOptions,
+    isLoadingCustomsStatus,
     productOptions,
+    isLoadingProducts,
+    productColors,
+    isLoadingProductColors,
     invalidateCounterparties,
     invalidateSustainability,
     invalidateProducts

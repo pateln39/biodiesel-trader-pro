@@ -3,6 +3,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
 interface ProductTokenProps {
   product: string;
@@ -17,8 +18,14 @@ const ProductToken: React.FC<ProductTokenProps> = ({
   className,
   showTooltip = true
 }) => {
-  // Get background color based on product, default to gray if product not in mapping
-  const colorClass = PRODUCT_COLORS[product] || 'bg-gray-500 text-white';
+  // Get product colors from the database
+  const { productColors } = useReferenceData();
+  
+  // Get background color based on product:
+  // 1. Try from the database
+  // 2. Fall back to hardcoded PRODUCT_COLORS
+  // 3. Default to gray if not found in either
+  const colorClass = productColors[product] || PRODUCT_COLORS[product] || 'bg-gray-500 text-white';
   
   const tokenContent = (
     <div 

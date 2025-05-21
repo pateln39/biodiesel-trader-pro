@@ -86,6 +86,7 @@ const AddProductDialog: React.FC<AddProductDialogProps> = ({
     },
     onSuccess: (name) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['productColors'] });
       toast.success('Product added', {
         description: `Product "${name}" has been added successfully`,
       });
