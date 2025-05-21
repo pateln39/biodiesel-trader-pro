@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -146,7 +147,8 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
-    customsStatusOptions
+    customsStatusOptions,
+    productOptions
   } = useReferenceData();
 
   const [physicalType, setPhysicalType] = useState<PhysicalTradeType>(initialData?.physicalType || 'spot');
@@ -428,12 +430,11 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
                       <SelectValue placeholder="Select product" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="FAME0">FAME0</SelectItem>
-                      <SelectItem value="RME">RME</SelectItem>
-                      <SelectItem value="UCOME">UCOME</SelectItem>
-                      <SelectItem value="UCOME-5">UCOME-5</SelectItem>
-                      <SelectItem value="RME DC">RME DC</SelectItem>
-                      <SelectItem value="HVO">HVO</SelectItem>
+                      {productOptions.map((product) => (
+                        <SelectItem key={product} value={product}>
+                          {product}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

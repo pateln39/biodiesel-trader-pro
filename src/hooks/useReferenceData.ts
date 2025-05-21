@@ -44,6 +44,18 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
+  // New function to fetch products from the database
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('name')
+      .eq('is_active', true)
+      .order('name');
+    
+    if (error) throw error;
+    return data.map(item => item.name);
+  };
+
   const { data: counterparties = [] } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
@@ -64,10 +76,17 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
+  // New query to fetch product options
+  const { data: productOptions = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProducts
+  });
+
   return {
     counterparties,
     sustainabilityOptions,
     creditStatusOptions,
-    customsStatusOptions
+    customsStatusOptions,
+    productOptions
   };
 };
