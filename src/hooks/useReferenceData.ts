@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { saveCustomProductColor, getCustomProductColors } from '@/utils/productColorUtils';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
+
 // Initialize the PRODUCT_COLORS with custom colors from localStorage
 const initializeProductColors = () => {
   try {
@@ -78,8 +79,14 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
   
+  // Create a type for the product insert parameters
+  type ProductInsertParams = {
+    productName: string;
+    colorName?: string;
+  };
+
   // Function to add a new product with optional color
-  const addProduct = async (productName: string, colorName?: string) => {
+  const addProductFn = async ({ productName, colorName }: ProductInsertParams) => {
     try {
       const { data, error } = await supabase.rpc('insert_product', { product_name: productName });
       
@@ -104,7 +111,7 @@ export const useReferenceData = () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       
       toast.success('Product added successfully');
-      return data;
+      return productName;
     } catch (error: any) {
       toast.error('Failed to add product', {
         description: error.message
@@ -182,7 +189,7 @@ export const useReferenceData = () => {
   
   // Mutations
   const addProductMutation = useMutation({
-    mutationFn: addProduct,
+    mutationFn: addProductFn,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     }
@@ -209,7 +216,8 @@ export const useReferenceData = () => {
     creditStatusOptions,
     customsStatusOptions,
     productOptions,
-    addProduct: addProductMutation.mutate,
+    addProduct: (productName: string, colorName?: string) => 
+      addProductMutation.mutate({ productName, colorName }),
     addCounterparty: addCounterpartyMutation.mutate,
     addSustainability: addSustainabilityMutation.mutate,
     isAddingProduct: addProductMutation.isPending,

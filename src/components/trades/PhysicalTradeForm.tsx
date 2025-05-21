@@ -369,7 +369,7 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   };
 
   const handleAddProduct = async (productName: string, colorName?: string) => {
-    await addProduct(productName, colorName);
+    addProduct(productName, colorName);
     
     // If we were adding a product for a specific leg, select it
     if (selectedProductLegIndex !== null) {
@@ -381,12 +381,12 @@ const PhysicalTradeForm: React.FC<PhysicalTradeFormProps> = ({
   };
   
   const handleAddCounterparty = async (counterpartyName: string) => {
-    await addCounterparty(counterpartyName);
+    addCounterparty(counterpartyName);
     setCounterparty(counterpartyName);
   };
 
   const handleAddSustainability = async (sustainabilityName: string) => {
-    await addSustainability(sustainabilityName);
+    addSustainability(sustainabilityName);
     
     // If we were adding sustainability for a specific leg, select it
     if (selectedSustainabilityLegIndex !== null) {
