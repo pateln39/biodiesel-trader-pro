@@ -1,8 +1,8 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDateForStorage } from '@/utils/dateUtils';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
 export interface TankMovement {
   id?: string;
@@ -17,19 +17,9 @@ export interface TankMovement {
   sort_order?: number;
 }
 
-export const PRODUCT_COLORS = {
-  'UCOME': 'bg-blue-500 text-white',
-  'RME': 'bg-green-500 text-white',
-  'FAME0': 'bg-purple-500 text-white',
-  'HVO': 'bg-orange-500 text-white',
-  'RME DC': 'bg-red-500 text-white',
-  'UCOME-5': 'bg-yellow-500 text-white',
-  'TRANSFERS': 'bg-gray-500 text-white',
-  'RECONCILIATION': 'bg-purple-500 text-white',
-};
-
 export const useInventoryState = (terminalId?: string) => {
   const queryClient = useQueryClient();
+  const { productColors, productOptions } = useReferenceData();
 
   const { data: movements = [], isLoading: loadingMovements } = useQuery({
     queryKey: ['movements', terminalId],
@@ -918,7 +908,7 @@ export const useInventoryState = (terminalId?: string) => {
     tankMovements,
     productOptions,
     heatingOptions,
-    PRODUCT_COLORS,
+    PRODUCT_COLORS: productColors, // Replace the hardcoded PRODUCT_COLORS with dynamic productColors from useReferenceData
     updateMovementQuantity: (movementId: string, quantity: number) => 
       updateMovementQuantityMutation.mutate({ movementId, quantity }),
     updateAssignmentComments: (assignmentId: string, comments: string) => 
