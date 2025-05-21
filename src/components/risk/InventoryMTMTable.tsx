@@ -4,7 +4,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import { useInventoryMTM } from '@/hooks/useInventoryMTM';
 
-// Updated to include both FAME0 +5 and FAME+5 for consistency
+// Updated to include only the space variants for FAME0 +5 and UCOME +5
 const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5', 'FAME0 +5', 'UCOME +5', 'SME'];
 
 const InventoryMTMTable = () => {
