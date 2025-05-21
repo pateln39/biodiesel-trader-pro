@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import { useInventoryMTM } from '@/hooks/useInventoryMTM';
 
-const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
+const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5', 'FAME+5', 'UCOME+5', 'SME'];
 
 const InventoryMTMTable = () => {
   const { 
