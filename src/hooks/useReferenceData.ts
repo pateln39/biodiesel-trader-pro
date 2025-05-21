@@ -57,7 +57,7 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
-  // New function to fetch product colors from the database
+  // Function to fetch product colors from the database
   const fetchProductColors = async () => {
     const { data, error } = await supabase
       .from('products')
