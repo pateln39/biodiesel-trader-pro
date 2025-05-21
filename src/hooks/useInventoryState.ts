@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -24,7 +25,9 @@ export const PRODUCT_COLORS = {
   'RME DC': 'bg-red-500 text-white',
   'UCOME-5': 'bg-yellow-500 text-white',
   'FAME+5': 'bg-violet-600 text-white',
+  'FAME0 +5': 'bg-violet-600 text-white', // Added the space variant for FAME0 +5
   'UCOME+5': 'bg-teal-500 text-white',
+  'UCOME +5': 'bg-teal-500 text-white', // Added the space variant for consistency
   'SME': 'bg-emerald-500 text-white',
   'TRANSFERS': 'bg-gray-500 text-white',
   'RECONCILIATION': 'bg-purple-500 text-white',
@@ -711,7 +714,9 @@ export const useInventoryState = (terminalId?: string) => {
     { label: 'RME DC', value: 'RME DC' },
     { label: 'UCOME-5', value: 'UCOME-5' },
     { label: 'FAME+5', value: 'FAME+5' },
+    { label: 'FAME0 +5', value: 'FAME0 +5' }, // Added the correct product name with space
     { label: 'UCOME+5', value: 'UCOME+5' },
+    { label: 'UCOME +5', value: 'UCOME +5' }, // Added the space variant for consistency
     { label: 'SME', value: 'SME' }
   ];
 
