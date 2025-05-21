@@ -77,34 +77,34 @@ export const useReferenceData = () => {
     return colorMapping;
   };
 
-  const { data: counterparties = [] } = useQuery({
+  const { data: counterparties = [], isLoading: isLoadingCounterparties } = useQuery({
     queryKey: ['counterparties'],
     queryFn: fetchCounterparties
   });
 
-  const { data: sustainabilityOptions = [] } = useQuery({
+  const { data: sustainabilityOptions = [], isLoading: isLoadingSustainability } = useQuery({
     queryKey: ['sustainability'],
     queryFn: fetchSustainability
   });
 
-  const { data: creditStatusOptions = [] } = useQuery({
+  const { data: creditStatusOptions = [], isLoading: isLoadingCreditStatus } = useQuery({
     queryKey: ['creditStatus'],
     queryFn: fetchCreditStatus
   });
 
-  const { data: customsStatusOptions = [] } = useQuery({
+  const { data: customsStatusOptions = [], isLoading: isLoadingCustomsStatus } = useQuery({
     queryKey: ['customsStatus'],
     queryFn: fetchCustomsStatus
   });
 
   // Query to fetch product options
-  const { data: productOptions = [] } = useQuery({
+  const { data: productOptions = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts
   });
   
   // Query to fetch product colors
-  const { data: productColors = {} } = useQuery({
+  const { data: productColors = {}, isLoading: isLoadingProductColors } = useQuery({
     queryKey: ['productColors'],
     queryFn: fetchProductColors
   });
@@ -125,11 +125,17 @@ export const useReferenceData = () => {
 
   return {
     counterparties,
+    isLoadingCounterparties,
     sustainabilityOptions,
+    isLoadingSustainability,
     creditStatusOptions,
+    isLoadingCreditStatus,
     customsStatusOptions,
+    isLoadingCustomsStatus,
     productOptions,
+    isLoadingProducts,
     productColors,
+    isLoadingProductColors,
     invalidateCounterparties,
     invalidateSustainability,
     invalidateProducts
