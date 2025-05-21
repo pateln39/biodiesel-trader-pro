@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PhysicalTrade } from '@/types';
 import { BuySell, Product, IncoTerm, Unit, PaymentTerm, CreditStatus, CustomsStatus, PricingType, ContractStatus } from '@/types/physical';
-import { PricingFormula } from '@/types/pricing';
 import { PaginationParams, PaginationMeta } from '@/types/pagination';
+import { PricingFormula } from '@/types/pricing';
 
 export interface OpenTrade {
   id: string;
@@ -102,7 +102,8 @@ const fetchOpenTrades = async (params?: PaginationParams): Promise<{ openTrades:
           totalItems,
           totalPages: totalPages > 0 ? totalPages : 1,
           currentPage: page,
-          pageSize
+          pageSize,
+          totalCount: totalItems
         }
       };
     }
@@ -179,7 +180,8 @@ const fetchOpenTrades = async (params?: PaginationParams): Promise<{ openTrades:
         totalItems,
         totalPages: totalPages > 0 ? totalPages : 1,
         currentPage: page,
-        pageSize
+        pageSize,
+        totalCount: totalItems // Ensure this is included for compatibility
       } 
     };
   } catch (error: any) {

@@ -28,10 +28,12 @@ import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import PaginationNav from '@/components/ui/pagination-nav';
 import { PaginationParams, PaginationMeta } from '@/types/pagination';
+import { OpenTradesFilters } from './OpenTradesFilter';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
   filterStatus?: 'all' | 'in-process' | 'completed';
+  filters?: OpenTradesFilters;
   paginationParams?: PaginationParams;
   onPageChange?: (page: number) => void;
 }
@@ -39,6 +41,7 @@ interface OpenTradesTableProps {
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
   onRefresh,
   filterStatus = 'all',
+  filters,
   paginationParams,
   onPageChange
 }) => {
@@ -49,7 +52,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     refetchOpenTrades,
     handleReorder,
     pagination
-  } = useSortableOpenTrades(filterStatus, paginationParams);
+  } = useSortableOpenTrades(filterStatus, filters, paginationParams);
   
   const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -172,7 +175,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   if (filteredTrades.length === 0) {
     return (
       <div className="text-center py-10">
-        <p className="text-muted-foreground mb-4">No trades match the selected filter</p>
+        <p className="text-muted-foreground mb-4">No trades match the selected filters</p>
         <Button variant="outline" onClick={handleRefresh}>
           Refresh
         </Button>

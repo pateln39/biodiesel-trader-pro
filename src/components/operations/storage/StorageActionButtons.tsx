@@ -1,32 +1,53 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Package, Waves, Plus } from 'lucide-react';
+import {
+  Waves,
+  Package,
+  PlusSquare,
+} from 'lucide-react';
 
-interface StorageActionButtonsProps {
-  onStockReconciliationClick: () => void;
+export interface StorageActionButtonsProps {
   onPumpOverClick: () => void;
+  onStockReconciliationClick: () => void;
   onAddTankClick: () => void;
 }
 
-const StorageActionButtons: React.FC<StorageActionButtonsProps> = ({
-  onStockReconciliationClick,
+const StorageActionButtons = ({
   onPumpOverClick,
+  onStockReconciliationClick,
   onAddTankClick
-}) => {
+}: StorageActionButtonsProps) => {
   return (
     <div className="flex items-center space-x-2">
-      <Button variant="outline" size="sm" onClick={onStockReconciliationClick}>
-        <Package className="h-4 w-4 mr-1" />
-        Stock Reconciliation
+      <Button
+        size="sm"
+        variant="outline"
+        className="flex items-center"
+        onClick={onPumpOverClick}
+      >
+        <Waves className="mr-1 h-4 w-4" />
+        <span>Pump Over</span>
       </Button>
-      <Button variant="outline" size="sm" onClick={onPumpOverClick}>
-        <Waves className="h-4 w-4 mr-1" />
-        Internal Pump Over
+      
+      <Button
+        size="sm"
+        variant="outline"
+        className="flex items-center"
+        onClick={onStockReconciliationClick}
+      >
+        <Package className="mr-1 h-4 w-4" />
+        <span>Stock Reconciliation</span>
       </Button>
-      <Button variant="outline" size="sm" onClick={onAddTankClick}>
-        <Plus className="h-4 w-4 mr-1" />
-        Add Tank
+      
+      <Button
+        size="sm"
+        variant="outline"
+        className="flex items-center"
+        onClick={onAddTankClick}
+      >
+        <PlusSquare className="mr-1 h-4 w-4" />
+        <span>Add Tank</span>
       </Button>
     </div>
   );

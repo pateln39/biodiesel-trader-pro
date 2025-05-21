@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import MovementsTable from '@/components/operations/MovementsTable';
-import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
+import OpenTradesFilter, { OpenTradesFilters } from '@/components/operations/OpenTradesFilter';
 import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
@@ -20,10 +20,15 @@ import { useSortableMovements } from '@/hooks/useSortableMovements';
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  const [openTradesFilterStatus, setOpenTradesFilterStatus] = useState<'all' | 'in-process' | 'completed'>('all');
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Initialize filters state for OpenTradesFilter
+  const [openTradesFilters, setOpenTradesFilters] = useState<OpenTradesFilters>({
+    status: 'all',
+    buySell: 'all'
+  });
   
   // Use the useSortableMovements hook to get filtered movements and filter-related functions
   const {
@@ -133,6 +138,11 @@ const OperationsPage = () => {
     updateFilters(newFilters);
   };
 
+  // Handler for OpenTradesFilter changes
+  const handleOpenTradesFilterChange = (newFilters: OpenTradesFilters) => {
+    setOpenTradesFilters(newFilters);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -178,7 +188,8 @@ const OperationsPage = () => {
                 <OpenTradesTable 
                   onRefresh={handleRefreshTables} 
                   key={`open-trades-${refreshTrigger}`} 
-                  filterStatus={openTradesFilterStatus}
+                  filterStatus={openTradesFilters.status}
+                  filters={openTradesFilters}
                 />
               </CardContent>
             </Card>
@@ -186,8 +197,8 @@ const OperationsPage = () => {
             <OpenTradesFilter 
               open={isOpenTradesFilterOpen} 
               onOpenChange={setIsOpenTradesFilterOpen}
-              selectedStatus={openTradesFilterStatus}
-              onStatusChange={setOpenTradesFilterStatus}
+              filters={openTradesFilters}
+              onFiltersChange={handleOpenTradesFilterChange}
             />
           </TabsContent>
 

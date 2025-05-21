@@ -3,16 +3,28 @@
  * Utility functions for color operations
  */
 
-// Updated color palette with more distinct colors across different hues
+// Updated color palette with more distinct visual patterns, not just colors
 export const GROUP_COLORS = [
-  'bg-purple-500/20 ring-purple-400/30 border-purple-400/30', // Default purple
-  'bg-amber-500/20 ring-amber-400/30 border-amber-400/30',    // Warm amber
-  'bg-emerald-500/20 ring-emerald-400/30 border-emerald-400/30', // Green
-  'bg-sky-500/20 ring-sky-400/30 border-sky-400/30',          // Blue
-  'bg-rose-500/20 ring-rose-400/30 border-rose-400/30',       // Red/Pink
-  'bg-lime-500/20 ring-lime-400/30 border-lime-400/30',       // Lime green
-  'bg-orange-500/20 ring-orange-400/30 border-orange-400/30', // Orange
-  'bg-cyan-500/20 ring-cyan-400/30 border-cyan-400/30',       // Cyan
+  'bg-purple-500/20 ring-purple-400/30 border-purple-400/30 border-solid', // Default purple
+  'bg-amber-500/20 ring-amber-400/30 border-amber-400/30 border-dashed',    // Warm amber
+  'bg-emerald-500/20 ring-emerald-400/30 border-emerald-400/30 border-dotted', // Green
+  'bg-sky-500/20 ring-sky-400/30 border-sky-400/30 border-double',          // Blue
+  'bg-rose-500/20 ring-rose-400/30 border-rose-400/30 border-solid',       // Red/Pink
+  'bg-lime-500/20 ring-lime-400/30 border-lime-400/30 border-dashed',       // Lime green
+  'bg-orange-500/20 ring-orange-400/30 border-orange-400/30 border-dotted', // Orange
+  'bg-cyan-500/20 ring-cyan-400/30 border-cyan-400/30 border-double',       // Cyan
+];
+
+// Border patterns for additional visual distinction
+export const GROUP_BORDER_PATTERNS = [
+  'border-solid',
+  'border-dashed',
+  'border-dotted',
+  'border-double',
+  'border-solid',
+  'border-dashed',
+  'border-dotted',
+  'border-double'
 ];
 
 /**
@@ -47,3 +59,35 @@ export const getGroupColorClasses = (groupId: string | null | undefined): string
   const colorIndex = getGroupColorIndex(groupId);
   return GROUP_COLORS[colorIndex];
 };
+
+/**
+ * Get a number from 1-8 assigned to this group (for labeling purposes)
+ * @param groupId Group UUID 
+ * @returns Number from 1-8
+ */
+export const getGroupNumber = (groupId: string | null | undefined): number => {
+  if (!groupId) return 1;
+  
+  const colorIndex = getGroupColorIndex(groupId);
+  return colorIndex + 1; // Make 1-based instead of 0-based
+};
+
+/**
+ * Generate a map of group IDs to help track which movement belongs to which group
+ * @param movements Array of movements that may contain group IDs
+ * @returns Object mapping group IDs to their assigned number (1-8)
+ */
+export const generateGroupMap = (movements: any[]): Record<string, number> => {
+  const groupMap: Record<string, number> = {};
+  let nextGroupNumber = 1;
+  
+  movements.forEach(movement => {
+    if (movement.group_id && !groupMap[movement.group_id]) {
+      groupMap[movement.group_id] = nextGroupNumber;
+      nextGroupNumber = (nextGroupNumber % 8) + 1; // Cycle through 1-8
+    }
+  });
+  
+  return groupMap;
+};
+

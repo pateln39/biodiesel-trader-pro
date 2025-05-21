@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import ProductToken from '@/components/operations/storage/ProductToken';
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
-import { getGroupColorClasses } from '@/utils/colorUtils';
+import { getGroupColorClasses, getGroupNumber, GROUP_BORDER_PATTERNS, getGroupColorIndex } from '@/utils/colorUtils';
 
 // Constants for cell width to maintain consistency
 const CELL_WIDTHS = {
@@ -64,6 +64,7 @@ interface MovementRowProps {
   onDeleteMovement: (id: string) => void;
   onUngroupClick: (groupId: string) => void;
   isUngrouping: boolean;
+  groupNumberMap?: Record<string, number>;
 }
 
 const MovementRow: React.FC<MovementRowProps> = ({
@@ -81,6 +82,7 @@ const MovementRow: React.FC<MovementRowProps> = ({
   onDeleteMovement,
   onUngroupClick,
   isUngrouping,
+  groupNumberMap = {},
 }) => {
   // Function to identify if an item is part of a group
   const isGroupedMovement = (item: Movement) => {
@@ -140,6 +142,19 @@ const MovementRow: React.FC<MovementRowProps> = ({
   const isInGroup = isGroupedMovement(movement);
   const isFirstGroupItem = isInGroup && isFirstInGroup(movement, index, movements);
   const iconColorClass = movement.group_id ? getIconColorClass(movement.group_id) : '';
+  
+  // Get border style for this group
+  const getBorderStyle = (groupId: string | null | undefined): string => {
+    if (!groupId) return 'border-solid';
+    
+    const patternIndex = getGroupColorIndex(groupId);
+    return GROUP_BORDER_PATTERNS[patternIndex];
+  };
+  
+  // Get group number for this movement
+  const groupNumber = isInGroup ? 
+    (groupNumberMap[movement.group_id as string] || getGroupNumber(movement.group_id)) : 
+    null;
 
   return (
     <>
@@ -153,36 +168,44 @@ const MovementRow: React.FC<MovementRowProps> = ({
               checked={isSelected}
             />
           </div>
-          <div className="flex items-center">
-            {isInGroup && isFirstGroupItem && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-6 w-6 mr-1 ${getGroupColorClasses(movement.group_id as string).split(' ')[0]} hover:${getGroupColorClasses(movement.group_id as string).split(' ')[0].replace('/20', '/30')}`}
-                      onClick={() => onUngroupClick(movement.group_id as string)}
-                      disabled={isUngrouping}
-                      data-ignore-row-click="true"
-                    >
-                      <Ungroup className={`h-3 w-3 ${iconColorClass}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ungroup these movements</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {isInGroup && !isFirstGroupItem && (
-              <Group className={`h-3 w-3 ${iconColorClass} mr-1`} />
+          <div className="flex items-center space-x-1">
+            {isInGroup && (
+              <>
+                {isFirstGroupItem ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className={`h-6 w-6 mr-1 p-0 rounded-full border-2 ${getBorderStyle(movement.group_id)} font-semibold`}
+                          onClick={() => onUngroupClick(movement.group_id as string)}
+                          disabled={isUngrouping}
+                          data-ignore-row-click="true"
+                        >
+                          {groupNumber}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Group {groupNumber} - Click to ungroup these movements</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <div className={`h-6 w-6 mr-1 rounded-full border-2 ${getBorderStyle(movement.group_id)} flex items-center justify-center font-semibold`}>
+                    {groupNumber}
+                  </div>
+                )}
+              </>
             )}
             <TruncatedCell 
               text={movement.referenceNumber} 
               width={CELL_WIDTHS.reference - 40} // Account for checkbox and icon
               className="text-xs"
             />
+            {isInGroup && isFirstGroupItem && (
+              <Badge variant="outline" className="ml-1">Group {groupNumber}</Badge>
+            )}
           </div>
         </div>
       </TableCell>
@@ -276,7 +299,7 @@ const MovementRow: React.FC<MovementRowProps> = ({
       <TableCell className="h-10 whitespace-nowrap">
         {movement.cashFlow ? format(new Date(movement.cashFlow), 'dd MMM yyyy') : '-'}
       </TableCell>
-      <TableCell className="bg-gray-700 h-10">
+      <TableCell className="h-10">
         <TruncatedCell 
           text={movement.bargeName || '-'} 
           width={CELL_WIDTHS.bargeName} 

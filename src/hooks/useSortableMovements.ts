@@ -96,7 +96,8 @@ const fetchMovements = async (paginationParams?: PaginationParams): Promise<{ mo
         totalItems,
         totalPages: totalPages > 0 ? totalPages : 1,
         currentPage: page,
-        pageSize
+        pageSize,
+        totalCount: totalItems // Add this line
       } 
     };
   } catch (error: any) {
