@@ -19,7 +19,7 @@ export interface TankMovement {
 
 export const useInventoryState = (terminalId?: string) => {
   const queryClient = useQueryClient();
-  const { productColors, productOptions } = useReferenceData();
+  const { productColors, productOptions: dbProductOptions } = useReferenceData();
 
   const { data: movements = [], isLoading: loadingMovements } = useQuery({
     queryKey: ['movements', terminalId],
@@ -691,19 +691,16 @@ export const useInventoryState = (terminalId?: string) => {
     }
   });
 
-  const productOptions = [
-    { label: 'UCOME', value: 'UCOME' },
-    { label: 'RME', value: 'RME' },
-    { label: 'FAME0', value: 'FAME0' },
-    { label: 'HVO', value: 'HVO' },
-    { label: 'RME DC', value: 'RME DC' },
-    { label: 'UCOME-5', value: 'UCOME-5' }
-  ];
-
   const heatingOptions = [
     { label: 'Yes', value: 'true' },
     { label: 'No', value: 'false' }
   ];
+
+  // Map string array to object array with label and value properties
+  const formattedProductOptions = dbProductOptions.map(product => ({
+    label: product,
+    value: product
+  }));
 
   const createPumpOverMutation = useMutation({
     mutationFn: async ({ quantity, comment }: { quantity: number; comment?: string }) => {
@@ -906,7 +903,7 @@ export const useInventoryState = (terminalId?: string) => {
   return {
     movements,
     tankMovements,
-    productOptions,
+    productOptions: formattedProductOptions,
     heatingOptions,
     PRODUCT_COLORS: productColors, // Replace the hardcoded PRODUCT_COLORS with dynamic productColors from useReferenceData
     updateMovementQuantity: (movementId: string, quantity: number) => 

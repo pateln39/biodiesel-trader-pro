@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import { Thermometer, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useInventoryState, PRODUCT_COLORS } from '@/hooks/useInventoryState';
+import { useInventoryState } from '@/hooks/useInventoryState';
 import EditableField from '@/components/operations/storage/EditableField';
 import EditableNumberField from '@/components/operations/storage/EditableNumberField';
 import EditableDropdownField from '@/components/operations/storage/EditableDropdownField';
