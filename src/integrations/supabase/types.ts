@@ -1090,21 +1090,18 @@ export type Database = {
       }
       products: {
         Row: {
-          color_class: string | null
           created_at: string
           id: string
           is_active: boolean | null
           name: string
         }
         Insert: {
-          color_class?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
           name: string
         }
         Update: {
-          color_class?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
@@ -1493,9 +1490,7 @@ export type Database = {
         Returns: string
       }
       insert_product: {
-        Args:
-          | { product_name: string }
-          | { product_name: string; color_class_value?: string }
+        Args: { product_name: string }
         Returns: string
       }
       insert_sustainability: {
@@ -1504,10 +1499,6 @@ export type Database = {
       }
       populate_movement_loading_periods: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_product_color: {
-        Args: { product_name: string; color_class_value: string }
         Returns: undefined
       }
       update_sort_order: {

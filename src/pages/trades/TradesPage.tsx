@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Filter, AlertCircle, FileDown, Palette } from 'lucide-react';
+import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -219,11 +219,6 @@ const TradesPage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Trades</h1>
           <div className="flex items-center gap-2">
-            <Link to="/reference/product-colors">
-              <Button variant="outline">
-                <Palette className="mr-2 h-4 w-4" /> Manage Product Colors
-              </Button>
-            </Link>
             <Link to="/trades/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> New Trade

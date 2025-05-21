@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,17 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import ProductColorsManagement from '@/components/trades/ProductColorsManagement';
 import { generateTradeReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
-import { TradeType } from '@/types';
+import { TradeType, PricingFormula } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
 import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 import { buildCompleteExposuresObject } from '@/utils/paperTrade';
-import { Palette } from 'lucide-react';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -25,7 +24,6 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
-  const [showProductColors, setShowProductColors] = useState(false);
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
@@ -213,14 +211,6 @@ const TradeEntryPage = () => {
               Create a new trade by filling out the form below
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowProductColors(true)}
-          >
-            <Palette className="h-4 w-4 mr-2" />
-            Manage Product Colors
-          </Button>
         </div>
 
         <Separator />
@@ -263,11 +253,6 @@ const TradeEntryPage = () => {
           </CardContent>
         </Card>
       </div>
-      
-      <ProductColorsManagement 
-        open={showProductColors} 
-        onClose={() => setShowProductColors(false)} 
-      />
     </Layout>
   );
 };
