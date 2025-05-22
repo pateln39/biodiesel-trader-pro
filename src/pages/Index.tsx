@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TrendingUp, Package, Clock, AlertTriangle, BarChart3, DollarSign } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -6,20 +5,11 @@ import DashboardCard from '@/components/DashboardCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart, ComposedChart } from 'recharts';
-import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
-import { useTradesPerMonth } from '@/hooks/useTradesPerMonth';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
-
-const tradesPerMonthData = [
-  { month: 'Aug', count: 60, volume: 10 },
-  { month: 'Sep', count: 65, volume: 15 },
-  { month: 'Oct', count: 75, volume: 18 },
-  { month: 'Nov', count: 90, volume: 25 },
-  { month: 'Dec', count: 70, volume: 20 },
-  { month: 'Jan', count: 80, volume: 22 },
-  { month: 'Feb', count: 95, volume: 28 },
-];
+import { useReferenceData } from '@/hooks/useReferenceData';
+import ProductLegend from '@/components/operations/storage/ProductLegend';
+import { useDashboardAggregates } from '@/hooks/useDashboardAggregates';
 
 const demurrageData = [
   { month: 'Jul', totalUSD: 150000, usdPerMT: 0.18 },
@@ -48,8 +38,15 @@ const pnlData = [
 ];
 
 const Index = () => {
-  const { physicalPositionData, loading: positionsLoading, error: positionsError, refetchTrades: refetchPositions } = usePhysicalPositions();
-  const { tradesPerMonthData, loading: tradesLoading, error: tradesError, refetchTrades: refetchTradesPerMonth } = useTradesPerMonth();
+  const { 
+    physicalPositionData, 
+    tradesPerMonthData, 
+    loading, 
+    error, 
+    refetchData 
+  } = useDashboardAggregates();
+  
+  const { productOptions, productColors, isLoadingProducts } = useReferenceData();
 
   return (
     <Layout>
@@ -106,34 +103,30 @@ const Index = () => {
               <CardTitle className="text-lg font-medium">Physical Position by Month and Grade</CardTitle>
             </CardHeader>
             <CardContent>
-              {positionsLoading ? (
+              {loading || isLoadingProducts ? (
                 <TableLoadingState />
-              ) : positionsError ? (
-                <TableErrorState error={positionsError} onRetry={refetchPositions} />
+              ) : error ? (
+                <TableErrorState error={error} onRetry={refetchData} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-brand-blue/30 bg-brand-blue/20">
                         <th className="text-left p-2 text-brand-lime font-semibold">Month</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">UCOME</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">FAME0</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">RME</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">HVO</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">UCOME-5</th>
-                        <th className="text-right p-2 text-brand-lime font-semibold">RME DC</th>
+                        {productOptions.map(product => (
+                          <th key={product} className="text-right p-2 text-brand-lime font-semibold">{product}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {physicalPositionData.map((row) => (
                         <tr key={row.month} className="border-b border-brand-blue/30 hover:bg-brand-blue/10 transition-colors">
                           <td className="text-left p-2 font-medium">{row.month}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.UCOME !== 0 ? row.UCOME : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.FAME0 !== 0 ? row.FAME0 : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.RME !== 0 ? row.RME : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row.HVO !== 0 ? row.HVO : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row['UCOME-5'] !== 0 ? row['UCOME-5'] : '-'}</td>
-                          <td className="text-right p-2 font-bold text-white">{row['RME DC'] !== 0 ? row['RME DC'] : '-'}</td>
+                          {productOptions.map(product => (
+                            <td key={`${row.month}-${product}`} className="text-right p-2 font-bold text-white">
+                              {row[product] !== 0 ? row[product] : '-'}
+                            </td>
+                          ))}
                         </tr>
                       ))}
                     </tbody>
@@ -148,10 +141,10 @@ const Index = () => {
               <CardTitle className="text-lg font-medium">Trades per Month</CardTitle>
             </CardHeader>
             <CardContent>
-              {tradesLoading ? (
+              {loading ? (
                 <TableLoadingState />
-              ) : tradesError ? (
-                <TableErrorState error={tradesError} onRetry={refetchTradesPerMonth} />
+              ) : error ? (
+                <TableErrorState error={error} onRetry={refetchData} />
               ) : (
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
