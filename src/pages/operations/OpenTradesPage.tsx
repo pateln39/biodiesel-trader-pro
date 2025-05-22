@@ -13,11 +13,11 @@ import OpenTradesTable from '@/components/operations/OpenTradesTable';
 import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import { exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { PaginationParams } from '@/types/pagination';
+import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 
 const OpenTradesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
-  const [openTradesFilterStatus, setOpenTradesFilterStatus] = React.useState<'all' | 'in-process' | 'completed'>('all');
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
   
@@ -29,6 +29,23 @@ const OpenTradesPage = () => {
     page,
     pageSize
   };
+
+  // Extract filters from URL parameters
+  const initialFilters: OpenTradeFilters = {
+    trade_reference: searchParams.get('trade_reference') || undefined,
+    buy_sell: (searchParams.get('buy_sell') as 'buy' | 'sell') || undefined,
+    product: searchParams.get('product') || undefined,
+    counterparty: searchParams.get('counterparty') || undefined,
+    inco_term: searchParams.get('inco_term') || undefined,
+    sustainability: searchParams.get('sustainability') || undefined,
+    credit_status: searchParams.get('credit_status') || undefined,
+    customs_status: searchParams.get('customs_status') || undefined,
+    contract_status: searchParams.get('contract_status') || undefined,
+    pricing_type: searchParams.get('pricing_type') || undefined,
+    status: (searchParams.get('status') as 'all' | 'in-process' | 'completed') || 'all'
+  };
+
+  const [filters, setFilters] = React.useState<OpenTradeFilters>(initialFilters);
   
   const { 
     counterparties,
@@ -58,6 +75,24 @@ const OpenTradesPage = () => {
     initializeSortOrder();
   }, []);
 
+  // Update URL when filters change
+  React.useEffect(() => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      
+      // Update or remove filter parameters
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          newParams.set(key, value);
+        } else {
+          newParams.delete(key);
+        }
+      });
+      
+      return newParams;
+    });
+  }, [filters, setSearchParams]);
+
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
   };
@@ -67,6 +102,16 @@ const OpenTradesPage = () => {
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', newPage.toString());
+      return newParams;
+    });
+  };
+
+  const handleFiltersChange = (newFilters: OpenTradeFilters) => {
+    // When filters change, reset to page 1
+    setFilters(newFilters);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '1');
       return newParams;
     });
   };
@@ -121,8 +166,14 @@ const OpenTradesPage = () => {
                   variant="outline" 
                   size="sm"
                   onClick={() => setIsOpenTradesFilterOpen(true)}
+                  className="relative"
                 >
                   <Filter className="mr-2 h-4 w-4" /> Filter
+                  {filters.activeFilterCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                      {filters.activeFilterCount}
+                    </span>
+                  )}
                 </Button>
               </div>
             </CardDescription>
@@ -131,7 +182,7 @@ const OpenTradesPage = () => {
             <OpenTradesTable 
               onRefresh={handleRefreshTable} 
               key={`open-trades-${refreshTrigger}-${page}`} 
-              filterStatus={openTradesFilterStatus}
+              filters={filters}
               paginationParams={paginationParams}
               onPageChange={handlePageChange}
             />
@@ -141,8 +192,9 @@ const OpenTradesPage = () => {
         <OpenTradesFilter 
           open={isOpenTradesFilterOpen} 
           onOpenChange={setIsOpenTradesFilterOpen}
-          selectedStatus={openTradesFilterStatus}
-          onStatusChange={setOpenTradesFilterStatus}
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          activeFilterCount={filters.activeFilterCount}
         />
       </div>
     </Layout>

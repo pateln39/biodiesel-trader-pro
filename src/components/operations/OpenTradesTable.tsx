@@ -22,35 +22,36 @@ import ScheduleMovementForm from '@/components/operations/ScheduleMovementForm';
 import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import TradeMovementsDialog from './TradeMovementsDialog';
-import { useSortableOpenTrades } from '@/hooks/useSortableOpenTrades';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { toast } from 'sonner';
 import ProductToken from '@/components/operations/storage/ProductToken';
 import PaginationNav from '@/components/ui/pagination-nav';
-import { PaginationParams, PaginationMeta } from '@/types/pagination';
+import { PaginationParams } from '@/types/pagination';
+import { OpenTradeFilters, useFilteredOpenTrades } from '@/hooks/useFilteredOpenTrades';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
-  filterStatus?: 'all' | 'in-process' | 'completed';
+  filters?: OpenTradeFilters;
   paginationParams?: PaginationParams;
   onPageChange?: (page: number) => void;
 }
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
   onRefresh,
-  filterStatus = 'all',
+  filters = {},
   paginationParams,
   onPageChange
 }) => {
   const { 
-    filteredTrades,
+    openTrades,
+    pagination, 
     loading, 
     error, 
     refetchOpenTrades,
-    handleReorder,
-    pagination
-  } = useSortableOpenTrades(filterStatus, paginationParams);
+    activeFilterCount
+  } = useFilteredOpenTrades(filters, paginationParams);
   
+  const [localTrades, setLocalTrades] = React.useState<OpenTrade[]>([]);
   const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [isCommentsDialogOpen, setIsCommentsDialogOpen] = React.useState(false);
@@ -60,18 +61,64 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
   const queryClient = useQueryClient();
   const { toast: toastHook } = useToast();
   
-  const onReorder = async (reorderedItems: OpenTrade[]) => {
+  // Update local state when open trades change from the API
+  React.useEffect(() => {
+    if (openTrades?.length) {
+      console.log('[OPEN_TRADES] Updating local trades state with', openTrades.length, 'items');
+      // Trades already come sorted by sort_order from the API
+      setLocalTrades(openTrades);
+    }
+  }, [openTrades]);
+  
+  const handleReorder = async (reorderedItems: OpenTrade[]) => {
     try {
       console.log('[OPEN_TRADES] Starting reorder operation');
       toast.info("Reordering trades", {
         description: "Saving new order to database..."
       });
       
-      await handleReorder(reorderedItems);
-      
-      toast.success("Order updated", {
-        description: "Trade order has been saved successfully"
-      });
+      // Calculate base sort_order for the current page
+      const pageOffset = paginationParams && paginationParams.page > 1 
+        ? (paginationParams.page - 1) * (paginationParams.pageSize || 15) 
+        : 0;
+
+      // Update local state immediately for a responsive UI
+      setLocalTrades(reorderedItems);
+
+      // Get the moved item and its new index
+      const updatedItems = reorderedItems.map((item, index) => ({
+        id: item.id,
+        sort_order: pageOffset + index + 1,
+      }));
+
+      console.log('[OPEN_TRADES] Prepared sort_order updates:', 
+        updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
+
+      // Update each item's sort order in the database
+      try {
+        // Use Promise.all to execute all updates in parallel
+        await Promise.all(
+          updatedItems.map(item => 
+            supabase.rpc('update_sort_order', {
+              p_table_name: 'open_trades',
+              p_id: item.id,
+              p_new_sort_order: item.sort_order,
+            })
+          )
+        );
+        console.log('[OPEN_TRADES] All sort_order updates completed successfully');
+        toast.success("Order updated", {
+          description: "Trade order has been saved successfully"
+        });
+        queryClient.invalidateQueries({ queryKey: ['filteredOpenTrades'] });
+      } catch (error) {
+        console.error('[OPEN_TRADES] Error updating sort order:', error);
+        toast.error("Reordering failed", {
+          description: "There was an error saving the trade order"
+        });
+        // Revert to the original order
+        refetchOpenTrades();
+      }
     } catch (error) {
       console.error('[OPEN_TRADES] Reordering error:', error);
       toast.error("Reordering failed", {
@@ -118,7 +165,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['openTrades'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredOpenTrades'] });
       setIsCommentsDialogOpen(false);
       setSelectedTradeForComments(null);
       toastHook({
@@ -169,10 +216,14 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     );
   }
 
-  if (filteredTrades.length === 0) {
+  if (localTrades.length === 0) {
     return (
       <div className="text-center py-10">
-        <p className="text-muted-foreground mb-4">No trades match the selected filter</p>
+        <p className="text-muted-foreground mb-4">
+          {activeFilterCount > 0 
+            ? "No trades match the selected filters" 
+            : "No open trades found"}
+        </p>
         <Button variant="outline" onClick={handleRefresh}>
           Refresh
         </Button>
@@ -387,8 +438,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       <ScrollArea className="w-full" orientation="horizontal">
         <div className="w-full min-w-[1800px]">
           <SortableTable
-            items={filteredTrades}
-            onReorder={onReorder}
+            items={localTrades}
+            onReorder={handleReorder}
             renderHeader={renderHeader}
             renderRow={renderRow}
             isItemDisabled={isTradeDisabled}
