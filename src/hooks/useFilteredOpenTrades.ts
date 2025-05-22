@@ -54,7 +54,7 @@ export const useFilteredOpenTrades = (
       // Convert the filters object to a JSON object that can be passed to the RPC function
       const filtersParam = filters as Record<string, any>;
 
-      const { data, error } = await supabase.rpc('filter_open_trades', {
+      const { data: responseData, error } = await supabase.rpc('filter_open_trades', {
         p_filters: filtersParam,
         p_page: paginationParams.page,
         p_page_size: paginationParams.pageSize,
@@ -67,8 +67,17 @@ export const useFilteredOpenTrades = (
         throw error;
       }
 
-      // Cast the data to the correct type
-      return data as FilteredOpenTradesResponse;
+      // Safely convert the JSON response to our expected type
+      // First, cast to unknown, then to our interface type
+      const typedResponse = responseData as unknown as FilteredOpenTradesResponse;
+      
+      // Validate the response structure to avoid runtime errors
+      if (!typedResponse || !typedResponse.trades || !typedResponse.pagination) {
+        console.error('[FILTERED OPEN TRADES] Invalid response format:', responseData);
+        return { trades: [], pagination: { totalItems: 0, totalPages: 1, currentPage: 1, pageSize: paginationParams.pageSize } };
+      }
+      
+      return typedResponse;
     },
   });
 
