@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Check, X, Filter as FilterIcon } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,18 +13,17 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
 
 interface OpenTradesFilterProps {
   open: boolean;
@@ -34,73 +33,13 @@ interface OpenTradesFilterProps {
   activeFilterCount: number;
 }
 
-// Create a reusable multi-select component
-const MultiSelectFilter = ({ 
-  label, 
-  options, 
-  selectedValues, 
-  onChange 
-}: { 
+interface FilterCategory {
+  id: keyof OpenTradeFilters;
   label: string;
   options: string[];
-  selectedValues: string[];
+  selectedOptions: string[];
   onChange: (values: string[]) => void;
-}) => {
-  const toggleOption = (option: string) => {
-    const newValues = selectedValues.includes(option)
-      ? selectedValues.filter(val => val !== option)
-      : [...selectedValues, option];
-    
-    onChange(newValues.length ? newValues : []); // If empty, pass empty array
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <Label>{label}</Label>
-        {selectedValues.length > 0 && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => onChange([])} 
-            className="h-6 px-2 text-xs"
-          >
-            Clear
-          </Button>
-        )}
-      </div>
-      <ScrollArea className="h-40 border rounded-md p-2 bg-white">
-        <div className="space-y-2">
-          {options.map(option => (
-            <div key={option} className="flex items-center space-x-2 py-1">
-              <Checkbox 
-                id={`${label}-${option}`} 
-                checked={selectedValues.includes(option)}
-                onCheckedChange={() => toggleOption(option)}
-              />
-              <Label 
-                htmlFor={`${label}-${option}`} 
-                className="cursor-pointer text-sm flex-1"
-              >
-                {option}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-      {selectedValues.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1">
-          {selectedValues.map(val => (
-            <Badge key={val} variant="secondary" className="text-xs">
-              {val}
-              <X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => toggleOption(val)} />
-            </Badge>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+}
 
 const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   open,
@@ -116,7 +55,8 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     creditStatusOptions,
     customsStatusOptions,
     productOptions,
-    incoTermOptions
+    incoTermOptions,
+    contractStatusOptions
   } = useReferenceData();
 
   // Reset temporary filters when dialog opens
@@ -149,6 +89,10 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
       if (filters.customs_status && !Array.isArray(filters.customs_status)) {
         convertedFilters.customs_status = [filters.customs_status];
       }
+
+      if (filters.contract_status && !Array.isArray(filters.contract_status)) {
+        convertedFilters.contract_status = [filters.contract_status];
+      }
       
       setTempFilters(convertedFilters);
     }
@@ -162,11 +106,52 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     }));
   };
 
-  // Handle multi-select changes
-  const handleMultiSelectChange = (field: keyof OpenTradeFilters, values: string[]) => {
+  const handleToggleOption = (category: keyof OpenTradeFilters, option: string) => {
+    setTempFilters(prev => {
+      const prevOptions = Array.isArray(prev[category]) ? [...prev[category] as string[]] : [];
+      const newOptions = prevOptions.includes(option)
+        ? prevOptions.filter(o => o !== option)
+        : [...prevOptions, option];
+      
+      return {
+        ...prev,
+        [category]: newOptions.length > 0 ? newOptions : undefined
+      };
+    });
+  };
+
+  const handleSelectAll = (category: keyof OpenTradeFilters, selected: boolean) => {
+    let options: string[] = [];
+    
+    switch (category) {
+      case 'product':
+        options = productOptions;
+        break;
+      case 'counterparty':
+        options = counterparties;
+        break;
+      case 'inco_term':
+        options = incoTermOptions;
+        break;
+      case 'sustainability':
+        options = sustainabilityOptions;
+        break;
+      case 'credit_status':
+        options = creditStatusOptions;
+        break;
+      case 'customs_status':
+        options = customsStatusOptions;
+        break;
+      case 'contract_status':
+        options = contractStatusOptions;
+        break;
+      default:
+        options = [];
+    }
+    
     setTempFilters(prev => ({
       ...prev,
-      [field]: values.length > 0 ? values : undefined
+      [category]: selected ? [...options] : undefined
     }));
   };
 
@@ -182,113 +167,206 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     onOpenChange(false);
   };
 
+  // Create filter categories
+  const filterCategories: FilterCategory[] = [
+    {
+      id: 'product',
+      label: 'Product',
+      options: productOptions,
+      selectedOptions: Array.isArray(tempFilters.product) ? tempFilters.product : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, product: values.length ? values : undefined }))
+    },
+    {
+      id: 'counterparty',
+      label: 'Counterparty',
+      options: counterparties,
+      selectedOptions: Array.isArray(tempFilters.counterparty) ? tempFilters.counterparty : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values.length ? values : undefined }))
+    },
+    {
+      id: 'inco_term',
+      label: 'Incoterm',
+      options: incoTermOptions,
+      selectedOptions: Array.isArray(tempFilters.inco_term) ? tempFilters.inco_term : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, inco_term: values.length ? values : undefined }))
+    },
+    {
+      id: 'sustainability',
+      label: 'Sustainability',
+      options: sustainabilityOptions,
+      selectedOptions: Array.isArray(tempFilters.sustainability) ? tempFilters.sustainability : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values.length ? values : undefined }))
+    },
+    {
+      id: 'credit_status',
+      label: 'Credit Status',
+      options: creditStatusOptions,
+      selectedOptions: Array.isArray(tempFilters.credit_status) ? tempFilters.credit_status : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, credit_status: values.length ? values : undefined }))
+    },
+    {
+      id: 'customs_status',
+      label: 'Customs Status',
+      options: customsStatusOptions,
+      selectedOptions: Array.isArray(tempFilters.customs_status) ? tempFilters.customs_status : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, customs_status: values.length ? values : undefined }))
+    },
+    {
+      id: 'contract_status',
+      label: 'Contract Status',
+      options: contractStatusOptions,
+      selectedOptions: Array.isArray(tempFilters.contract_status) ? tempFilters.contract_status : [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, contract_status: values.length ? values : undefined }))
+    }
+  ];
+
+  const FilterCategorySection = ({ category }: { category: FilterCategory }) => {
+    const allSelected = category.options.length > 0 && 
+      category.selectedOptions.length === category.options.length;
+    
+    const indeterminate = 
+      category.selectedOptions.length > 0 && 
+      category.selectedOptions.length < category.options.length;
+
+    return (
+      <div className="space-y-2">
+        {category.options.length > 0 && (
+          <div className="flex items-center space-x-2 pb-2">
+            <Checkbox 
+              id={`select-all-${category.id}`} 
+              checked={allSelected}
+              className={indeterminate ? "opacity-80" : ""}
+              onCheckedChange={(checked) => handleSelectAll(category.id, !!checked)}
+            />
+            <Label 
+              htmlFor={`select-all-${category.id}`}
+              className="cursor-pointer font-medium text-sm"
+            >
+              Select All
+            </Label>
+          </div>
+        )}
+        
+        <div className="space-y-1 pl-1">
+          {category.options.length > 0 ? (
+            category.options.map((option) => (
+              <div key={`${category.id}-${option}`} className="flex items-center space-x-2 py-1">
+                <Checkbox 
+                  id={`${category.id}-${option}`} 
+                  checked={category.selectedOptions.includes(option)}
+                  onCheckedChange={() => handleToggleOption(category.id, option)}
+                />
+                <Label 
+                  htmlFor={`${category.id}-${option}`}
+                  className="cursor-pointer"
+                >
+                  {option}
+                </Label>
+              </div>
+            ))
+          ) : (
+            <div className="text-sm text-muted-foreground italic">No options available</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[450px] max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Filter Open Trades</DialogTitle>
+          <DialogTitle className="flex items-center justify-between">
+            <span>Filter Open Trades</span>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFilterCount} active {activeFilterCount === 1 ? 'filter' : 'filters'}
+              </Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-          {/* Trade Reference Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="trade_reference">Trade Reference</Label>
-            <Input
-              id="trade_reference"
-              value={tempFilters.trade_reference || ''}
-              onChange={(e) => handleChange('trade_reference', e.target.value)}
-              placeholder="Filter by reference..."
-            />
-          </div>
-
-          {/* Buy/Sell Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="buy_sell">Buy/Sell</Label>
-            <Select 
-              value={tempFilters.buy_sell || "all"} 
-              onValueChange={(value) => handleChange('buy_sell', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="buy">Buy</SelectItem>
-                <SelectItem value="sell">Sell</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Multi-select Product Filter */}
-          <MultiSelectFilter
-            label="Products"
-            options={productOptions}
-            selectedValues={Array.isArray(tempFilters.product) ? tempFilters.product : []}
-            onChange={(values) => handleMultiSelectChange('product', values)}
-          />
-
-          {/* Multi-select Counterparty Filter */}
-          <MultiSelectFilter
-            label="Counterparties"
-            options={counterparties}
-            selectedValues={Array.isArray(tempFilters.counterparty) ? tempFilters.counterparty : []}
-            onChange={(values) => handleMultiSelectChange('counterparty', values)}
-          />
-
-          {/* Multi-select Incoterm Filter */}
-          <MultiSelectFilter
-            label="Incoterms"
-            options={incoTermOptions}
-            selectedValues={Array.isArray(tempFilters.inco_term) ? tempFilters.inco_term : []}
-            onChange={(values) => handleMultiSelectChange('inco_term', values)}
-          />
-
-          {/* Multi-select Sustainability Filter */}
-          <MultiSelectFilter
-            label="Sustainability"
-            options={sustainabilityOptions}
-            selectedValues={Array.isArray(tempFilters.sustainability) ? tempFilters.sustainability : []}
-            onChange={(values) => handleMultiSelectChange('sustainability', values)}
-          />
-
-          {/* Multi-select Credit Status Filter */}
-          <MultiSelectFilter
-            label="Credit Status"
-            options={creditStatusOptions}
-            selectedValues={Array.isArray(tempFilters.credit_status) ? tempFilters.credit_status : []}
-            onChange={(values) => handleMultiSelectChange('credit_status', values)}
-          />
-
-          {/* Multi-select Customs Status Filter */}
-          <MultiSelectFilter
-            label="Customs Status"
-            options={customsStatusOptions}
-            selectedValues={Array.isArray(tempFilters.customs_status) ? tempFilters.customs_status : []}
-            onChange={(values) => handleMultiSelectChange('customs_status', values)}
-          />
-
-          {/* Status Filter (in-process, completed) */}
-          <div className="space-y-2 col-span-1 md:col-span-2">
-            <Label>Completion Status</Label>
-            <RadioGroup 
-              value={tempFilters.status || 'all'} 
-              onValueChange={(value) => handleChange('status', value as 'all' | 'in-process' | 'completed')}
-              className="flex flex-row space-x-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="all" id="all" />
-                <Label htmlFor="all" className="cursor-pointer">All</Label>
+        
+        <ScrollArea className="pr-4 max-h-[60vh]">
+          <div className="py-4">
+            {/* Text Filters */}
+            <div className="space-y-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="trade_reference">Trade Reference</Label>
+                <Input
+                  id="trade_reference"
+                  value={tempFilters.trade_reference || ''}
+                  onChange={(e) => handleChange('trade_reference', e.target.value)}
+                  placeholder="Filter by reference..."
+                />
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="in-process" id="in-process" />
-                <Label htmlFor="in-process" className="cursor-pointer">In Process</Label>
+
+              <div className="space-y-2">
+                <Label>Buy/Sell</Label>
+                <RadioGroup 
+                  value={tempFilters.buy_sell || 'all'} 
+                  onValueChange={(value) => handleChange('buy_sell', value)}
+                  className="flex flex-row space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="buy_sell_all" />
+                    <Label htmlFor="buy_sell_all" className="cursor-pointer">All</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="buy" id="buy" />
+                    <Label htmlFor="buy" className="cursor-pointer">Buy</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="sell" id="sell" />
+                    <Label htmlFor="sell" className="cursor-pointer">Sell</Label>
+                  </div>
+                </RadioGroup>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="completed" id="completed" />
-                <Label htmlFor="completed" className="cursor-pointer">Completed</Label>
+
+              <div className="space-y-2">
+                <Label>Completion Status</Label>
+                <RadioGroup 
+                  value={tempFilters.status || 'all'} 
+                  onValueChange={(value) => handleChange('status', value as 'all' | 'in-process' | 'completed')}
+                  className="flex flex-row space-x-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="all" id="all" />
+                    <Label htmlFor="all" className="cursor-pointer">All</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="in-process" id="in-process" />
+                    <Label htmlFor="in-process" className="cursor-pointer">In Process</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="completed" id="completed" />
+                    <Label htmlFor="completed" className="cursor-pointer">Completed</Label>
+                  </div>
+                </RadioGroup>
               </div>
-            </RadioGroup>
+            </div>
+
+            {/* Multi-select Filters */}
+            <Accordion type="multiple" className="w-full">
+              {filterCategories.map((category) => (
+                <AccordionItem key={category.id} value={category.id}>
+                  <AccordionTrigger className="py-2 hover:no-underline">
+                    <div className="flex items-center">
+                      <span>{category.label}</span>
+                      {category.selectedOptions.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {category.selectedOptions.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <FilterCategorySection category={category} />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </div>
-        </div>
+        </ScrollArea>
         
         <DialogFooter>
           <div className="flex justify-between w-full">
@@ -298,7 +376,7 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
               className="flex items-center gap-1"
             >
               <X className="h-4 w-4" />
-              Reset All
+              Reset
             </Button>
             <div className="flex gap-2">
               <DialogClose asChild>
@@ -309,7 +387,7 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
                 className="flex items-center gap-1"
               >
                 <Check className="h-4 w-4" />
-                Apply Filters
+                Apply
               </Button>
             </div>
           </div>
