@@ -5,22 +5,11 @@ import DashboardCard from '@/components/DashboardCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line, LineChart, ComposedChart } from 'recharts';
-import { usePhysicalPositions } from '@/hooks/usePhysicalPositions';
-import { useTradesPerMonth } from '@/hooks/useTradesPerMonth';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import ProductLegend from '@/components/operations/storage/ProductLegend';
-
-const tradesPerMonthData = [
-  { month: 'Aug', count: 60, volume: 10 },
-  { month: 'Sep', count: 65, volume: 15 },
-  { month: 'Oct', count: 75, volume: 18 },
-  { month: 'Nov', count: 90, volume: 25 },
-  { month: 'Dec', count: 70, volume: 20 },
-  { month: 'Jan', count: 80, volume: 22 },
-  { month: 'Feb', count: 95, volume: 28 },
-];
+import { useDashboardAggregates } from '@/hooks/useDashboardAggregates';
 
 const demurrageData = [
   { month: 'Jul', totalUSD: 150000, usdPerMT: 0.18 },
@@ -49,9 +38,15 @@ const pnlData = [
 ];
 
 const Index = () => {
-  const { physicalPositionData, loading: positionsLoading, error: positionsError, refetchTrades: refetchPositions } = usePhysicalPositions();
-  const { tradesPerMonthData, loading: tradesLoading, error: tradesError, refetchTrades: refetchTradesPerMonth } = useTradesPerMonth();
-  const { productOptions, isLoadingProducts } = useReferenceData();
+  const { 
+    physicalPositionData, 
+    tradesPerMonthData, 
+    loading, 
+    error, 
+    refetchData 
+  } = useDashboardAggregates();
+  
+  const { productOptions, productColors, isLoadingProducts } = useReferenceData();
 
   return (
     <Layout>
@@ -108,10 +103,10 @@ const Index = () => {
               <CardTitle className="text-lg font-medium">Physical Position by Month and Grade</CardTitle>
             </CardHeader>
             <CardContent>
-              {positionsLoading || isLoadingProducts ? (
+              {loading || isLoadingProducts ? (
                 <TableLoadingState />
-              ) : positionsError ? (
-                <TableErrorState error={positionsError} onRetry={refetchPositions} />
+              ) : error ? (
+                <TableErrorState error={error} onRetry={refetchData} />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -146,10 +141,10 @@ const Index = () => {
               <CardTitle className="text-lg font-medium">Trades per Month</CardTitle>
             </CardHeader>
             <CardContent>
-              {tradesLoading ? (
+              {loading ? (
                 <TableLoadingState />
-              ) : tradesError ? (
-                <TableErrorState error={tradesError} onRetry={refetchTradesPerMonth} />
+              ) : error ? (
+                <TableErrorState error={error} onRetry={refetchData} />
               ) : (
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
