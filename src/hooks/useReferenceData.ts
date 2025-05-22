@@ -56,6 +56,17 @@ export const useReferenceData = () => {
     if (error) throw error;
     return data.map(item => item.name);
   };
+  
+  // Function to fetch inco terms from the database
+  const fetchIncoTerms = async () => {
+    const { data, error } = await supabase
+      .from('inco_terms')
+      .select('name')
+      .order('name');
+    
+    if (error) throw error;
+    return data.map(item => item.name);
+  };
 
   // Function to fetch product colors from the database
   const fetchProductColors = async () => {
@@ -103,6 +114,12 @@ export const useReferenceData = () => {
     queryFn: fetchProducts
   });
   
+  // Query to fetch inco terms options
+  const { data: incoTermOptions = [], isLoading: isLoadingIncoTerms } = useQuery({
+    queryKey: ['incoTerms'],
+    queryFn: fetchIncoTerms
+  });
+  
   // Query to fetch product colors
   const { data: productColors = {}, isLoading: isLoadingProductColors } = useQuery({
     queryKey: ['productColors'],
@@ -134,6 +151,8 @@ export const useReferenceData = () => {
     isLoadingCustomsStatus,
     productOptions,
     isLoadingProducts,
+    incoTermOptions,
+    isLoadingIncoTerms,
     productColors,
     isLoadingProductColors,
     invalidateCounterparties,

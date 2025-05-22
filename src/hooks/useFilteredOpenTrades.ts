@@ -19,6 +19,11 @@ export interface OpenTradeFilters {
   status?: 'all' | 'in-process' | 'completed';
 }
 
+interface FilteredOpenTradesResponse {
+  trades: OpenTrade[];
+  pagination: PaginationMeta;
+}
+
 export const useFilteredOpenTrades = (
   filters: OpenTradeFilters = {},
   paginationParams: PaginationParams = { page: 1, pageSize: 15 },
@@ -47,7 +52,7 @@ export const useFilteredOpenTrades = (
     queryKey: ['filteredOpenTrades', filters, paginationParams, sortColumn, sortDirection],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('filter_open_trades', {
-        p_filters: filters,
+        p_filters: filters as Record<string, unknown>,
         p_page: paginationParams.page,
         p_page_size: paginationParams.pageSize,
         p_sort_column: sortColumn,
@@ -59,10 +64,7 @@ export const useFilteredOpenTrades = (
         throw error;
       }
 
-      return data as {
-        trades: OpenTrade[];
-        pagination: PaginationMeta;
-      };
+      return data as FilteredOpenTradesResponse;
     },
   });
 

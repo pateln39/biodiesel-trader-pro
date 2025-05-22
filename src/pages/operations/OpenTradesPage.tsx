@@ -20,6 +20,7 @@ const OpenTradesPage = () => {
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  const [activeFilterCount, setActiveFilterCount] = React.useState<number>(0);
   
   // Get page from URL or default to 1
   const page = parseInt(searchParams.get('page') || '1', 10);
@@ -46,6 +47,17 @@ const OpenTradesPage = () => {
   };
 
   const [filters, setFilters] = React.useState<OpenTradeFilters>(initialFilters);
+  
+  // Count active filters
+  React.useEffect(() => {
+    let count = 0;
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && (key !== 'status' || value !== 'all')) {
+        count++;
+      }
+    });
+    setActiveFilterCount(count);
+  }, [filters]);
   
   const { 
     counterparties,
@@ -169,9 +181,9 @@ const OpenTradesPage = () => {
                   className="relative"
                 >
                   <Filter className="mr-2 h-4 w-4" /> Filter
-                  {filters.activeFilterCount > 0 && (
+                  {activeFilterCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                      {filters.activeFilterCount}
+                      {activeFilterCount}
                     </span>
                   )}
                 </Button>
@@ -194,7 +206,7 @@ const OpenTradesPage = () => {
           onOpenChange={setIsOpenTradesFilterOpen}
           filters={filters}
           onFiltersChange={handleFiltersChange}
-          activeFilterCount={filters.activeFilterCount}
+          activeFilterCount={activeFilterCount}
         />
       </div>
     </Layout>
