@@ -34,12 +34,12 @@ export const useDashboardAggregates = (): UseDashboardAggregatesResult => {
     try {
       // Fetch physical positions
       const { data: physicalPositions, error: physicalError } = await supabase
-        .rpc('get_physical_positions_pivoted');
+        .rpc('get_physical_positions_pivoted' as any);
       
       if (physicalError) throw new Error(`Failed to fetch physical positions: ${physicalError.message}`);
       
       // Transform the result into the expected format
-      const formattedPositions: PhysicalPositionData[] = physicalPositions.map(row => {
+      const formattedPositions: PhysicalPositionData[] = (physicalPositions as any[]).map(row => {
         const positionData: PhysicalPositionData = { month: row.month };
         
         // Add each product position from the JSON to the flat object
@@ -54,7 +54,7 @@ export const useDashboardAggregates = (): UseDashboardAggregatesResult => {
       
       // Fetch trades per month
       const { data: tradesPerMonth, error: tradesError } = await supabase
-        .rpc('get_trades_per_month');
+        .rpc('get_trades_per_month' as any);
       
       if (tradesError) throw new Error(`Failed to fetch trades per month: ${tradesError.message}`);
       
