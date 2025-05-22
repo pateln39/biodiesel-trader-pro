@@ -1,19 +1,24 @@
+
 import React from 'react';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { PRODUCT_COLORS } from '@/hooks/useInventoryState';
 import { useInventoryMTM } from '@/hooks/useInventoryMTM';
-
-const TANK_HEADERS = ['UCOME', 'RME', 'FAME0', 'HVO', 'RME DC', 'UCOME-5'];
+import ProductToken from '@/components/operations/storage/ProductToken';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const InventoryMTMTable = () => {
   const { 
     isLoading, 
     months,
+    productHeaders,
     calculateCellValue, 
     calculateRowTotal, 
     calculateColumnTotal, 
     calculateGrandTotal 
   } = useInventoryMTM();
+
+  if (isLoading) {
+    return <Skeleton className="w-full h-[400px]" />;
+  }
 
   return (
     <div className="rounded-md border-[3px] border-brand-lime/80 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 shadow-lg">
@@ -21,7 +26,7 @@ const InventoryMTMTable = () => {
         <TableHeader>
           <TableRow>
             <TableHead 
-              colSpan={TANK_HEADERS.length + 1} 
+              colSpan={productHeaders.length + 1} 
               className="h-16 px-4 text-center align-middle font-medium bg-gradient-to-r from-brand-navy/90 to-brand-navy/70"
             >
               Tanks
@@ -31,12 +36,12 @@ const InventoryMTMTable = () => {
             <TableHead className="h-16 px-4 text-left align-middle border-r border-white/10">
               Month
             </TableHead>
-            {TANK_HEADERS.map((header) => (
+            {productHeaders.map((product) => (
               <TableHead 
-                key={header}
-                className={`h-16 px-4 text-center align-middle font-medium text-white ${PRODUCT_COLORS[header]} border-r border-white/10`}
+                key={product}
+                className="h-16 px-4 text-center align-middle font-medium text-white border-r border-white/10"
               >
-                {header}
+                <ProductToken product={product} value={product} showTooltip={false} />
               </TableHead>
             ))}
             <TableHead className="h-16 px-4 text-center align-middle font-medium bg-gray-500/50 text-white">
@@ -50,11 +55,11 @@ const InventoryMTMTable = () => {
               <TableCell className="px-4 align-middle border-r border-white/10">
                 {month}
               </TableCell>
-              {TANK_HEADERS.map((header) => {
-                const { value, color } = calculateCellValue(month, header);
+              {productHeaders.map((product) => {
+                const { value, color } = calculateCellValue(month, product);
                 return (
                   <TableCell 
-                    key={`${month}-${header}`} 
+                    key={`${month}-${product}`} 
                     className="px-4 text-center align-middle border-r border-white/10"
                   >
                     <span className={color}>
@@ -72,7 +77,7 @@ const InventoryMTMTable = () => {
           ))}
           <TableRow>
             <TableCell 
-              colSpan={TANK_HEADERS.length + 2} 
+              colSpan={productHeaders.length + 2} 
               className="border-t border-white/10"
             />
           </TableRow>
@@ -80,11 +85,11 @@ const InventoryMTMTable = () => {
             <TableCell className="px-4 align-middle font-medium border-r border-white/10">
               Total
             </TableCell>
-            {TANK_HEADERS.map((header) => {
-              const { value, color } = calculateColumnTotal(header);
+            {productHeaders.map((product) => {
+              const { value, color } = calculateColumnTotal(product);
               return (
                 <TableCell 
-                  key={`total-${header}`} 
+                  key={`total-${product}`} 
                   className="px-4 text-center align-middle font-medium border-r border-white/10"
                 >
                   <span className={color}>

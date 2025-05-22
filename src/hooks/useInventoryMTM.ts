@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { useReferenceData } from '@/hooks/useReferenceData';
 
 interface TankMovement {
   movement_date: string;
@@ -57,6 +58,19 @@ const getAllMonths = (tankMovements: TankMovement[], currentDate: Date) => {
   });
 };
 
+const getUniqueProducts = (tankMovements: TankMovement[]) => {
+  // Extract all unique product types from tank movements
+  const uniqueProducts = new Set<string>();
+  
+  tankMovements.forEach(movement => {
+    if (movement.product_at_time) {
+      uniqueProducts.add(movement.product_at_time);
+    }
+  });
+  
+  return Array.from(uniqueProducts).sort();
+};
+
 const aggregateByMonthAndProduct = (data: TankMovement[]) => {
   const aggregated = new Map<string, Map<string, number>>();
 
@@ -83,6 +97,8 @@ const formatNumber = (value: number): string => {
 };
 
 export const useInventoryMTM = () => {
+  const { productColors } = useReferenceData();
+  
   const { data: tankMovements, isLoading } = useQuery({
     queryKey: ['tank_movements'],
     queryFn: fetchTankMovements,
@@ -90,6 +106,7 @@ export const useInventoryMTM = () => {
 
   const currentDate = new Date('2025-04-20');
   const months = tankMovements ? getAllMonths(tankMovements, currentDate) : [];
+  const productHeaders = tankMovements ? getUniqueProducts(tankMovements) : [];
   const aggregatedData = tankMovements ? aggregateByMonthAndProduct(tankMovements) : new Map<string, Map<string, number>>();
 
   const calculateCellValue = (month: string, product: string): { value: string; color: string } => {
@@ -139,6 +156,7 @@ export const useInventoryMTM = () => {
   return {
     isLoading,
     months,
+    productHeaders,
     calculateCellValue,
     calculateRowTotal,
     calculateColumnTotal,
