@@ -58,7 +58,7 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   const handleChange = (field: keyof OpenTradeFilters, value: string) => {
     setTempFilters(prev => ({
       ...prev,
-      [field]: value
+      [field]: value === "all" ? undefined : value
     }));
   };
 
@@ -96,14 +96,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="buy_sell">Buy/Sell</Label>
             <Select 
-              value={tempFilters.buy_sell || ''} 
-              onValueChange={(value) => handleChange('buy_sell', value || undefined)}
+              value={tempFilters.buy_sell || "all"} 
+              onValueChange={(value) => handleChange('buy_sell', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="buy">Buy</SelectItem>
                 <SelectItem value="sell">Sell</SelectItem>
               </SelectContent>
@@ -114,14 +114,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="product">Product</Label>
             <Select 
-              value={tempFilters.product || ''} 
-              onValueChange={(value) => handleChange('product', value || undefined)}
+              value={tempFilters.product || "all"} 
+              onValueChange={(value) => handleChange('product', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All products" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All products</SelectItem>
+                <SelectItem value="all">All products</SelectItem>
                 {productOptions.map(product => (
                   <SelectItem key={product} value={product}>{product}</SelectItem>
                 ))}
@@ -133,14 +133,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="counterparty">Counterparty</Label>
             <Select 
-              value={tempFilters.counterparty || ''} 
-              onValueChange={(value) => handleChange('counterparty', value || undefined)}
+              value={tempFilters.counterparty || "all"} 
+              onValueChange={(value) => handleChange('counterparty', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All counterparties" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All counterparties</SelectItem>
+                <SelectItem value="all">All counterparties</SelectItem>
                 {counterparties.map(cp => (
                   <SelectItem key={cp} value={cp}>{cp}</SelectItem>
                 ))}
@@ -152,14 +152,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="inco_term">Incoterm</Label>
             <Select 
-              value={tempFilters.inco_term || ''} 
-              onValueChange={(value) => handleChange('inco_term', value || undefined)}
+              value={tempFilters.inco_term || "all"} 
+              onValueChange={(value) => handleChange('inco_term', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All incoterms" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All incoterms</SelectItem>
+                <SelectItem value="all">All incoterms</SelectItem>
                 {incoTermOptions.map(term => (
                   <SelectItem key={term} value={term}>{term}</SelectItem>
                 ))}
@@ -171,14 +171,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="sustainability">Sustainability</Label>
             <Select 
-              value={tempFilters.sustainability || ''} 
-              onValueChange={(value) => handleChange('sustainability', value || undefined)}
+              value={tempFilters.sustainability || "all"} 
+              onValueChange={(value) => handleChange('sustainability', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 {sustainabilityOptions.map(option => (
                   <SelectItem key={option} value={option}>{option}</SelectItem>
                 ))}
@@ -190,14 +190,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="credit_status">Credit Status</Label>
             <Select 
-              value={tempFilters.credit_status || ''} 
-              onValueChange={(value) => handleChange('credit_status', value || undefined)}
+              value={tempFilters.credit_status || "all"} 
+              onValueChange={(value) => handleChange('credit_status', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 {creditStatusOptions.map(status => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
                 ))}
@@ -209,14 +209,14 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
           <div className="space-y-2">
             <Label htmlFor="customs_status">Customs Status</Label>
             <Select 
-              value={tempFilters.customs_status || ''} 
-              onValueChange={(value) => handleChange('customs_status', value || undefined)}
+              value={tempFilters.customs_status || "all"} 
+              onValueChange={(value) => handleChange('customs_status', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 {customsStatusOptions.map(status => (
                   <SelectItem key={status} value={status}>{status}</SelectItem>
                 ))}

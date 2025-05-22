@@ -59,9 +59,12 @@ const ContractStatusSelect: React.FC<ContractStatusSelectProps> = ({
     }
   };
 
+  // Using null as a fallback value instead of undefined
+  const currentStatus = status || "not_set";
+
   return (
     <Select 
-      value={status} 
+      value={currentStatus} 
       onValueChange={(value: string) => handleStatusChange(value as ContractStatus)}
       disabled={isLoading}
     >
@@ -85,6 +88,12 @@ const ContractStatusSelect: React.FC<ContractStatusSelectProps> = ({
           <div className="flex items-center">
             {status === 'action needed' && <Check className="mr-2 h-3 w-3" />}
             Action Needed
+          </div>
+        </SelectItem>
+        <SelectItem value="not_set" className="text-xs">
+          <div className="flex items-center">
+            {status === undefined && <Check className="mr-2 h-3 w-3" />}
+            Not Set
           </div>
         </SelectItem>
       </SelectContent>
