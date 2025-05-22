@@ -13,6 +13,12 @@ export interface TradesPerMonthData {
   volume: number;
 }
 
+// Define TypeScript interfaces for the function return types
+interface PhysicalPositionsPivoted {
+  month: string;
+  products: Record<string, number>;
+}
+
 export interface UseDashboardAggregatesResult {
   physicalPositionData: PhysicalPositionData[];
   tradesPerMonthData: TradesPerMonthData[];
@@ -32,14 +38,18 @@ export const useDashboardAggregates = (): UseDashboardAggregatesResult => {
     setError(null);
     
     try {
-      // Fetch physical positions
+      // Fetch physical positions with proper typing
       const { data: physicalPositions, error: physicalError } = await supabase
-        .rpc('get_physical_positions_pivoted' as any);
+        .rpc('get_physical_positions_pivoted') as { 
+          data: PhysicalPositionsPivoted[] | null, 
+          error: Error | null 
+        };
       
       if (physicalError) throw new Error(`Failed to fetch physical positions: ${physicalError.message}`);
+      if (!physicalPositions) throw new Error('No physical position data returned');
       
       // Transform the result into the expected format
-      const formattedPositions: PhysicalPositionData[] = (physicalPositions as any[]).map(row => {
+      const formattedPositions: PhysicalPositionData[] = physicalPositions.map(row => {
         const positionData: PhysicalPositionData = { month: row.month };
         
         // Add each product position from the JSON to the flat object
@@ -52,9 +62,12 @@ export const useDashboardAggregates = (): UseDashboardAggregatesResult => {
         return positionData;
       });
       
-      // Fetch trades per month
+      // Fetch trades per month with proper typing
       const { data: tradesPerMonth, error: tradesError } = await supabase
-        .rpc('get_trades_per_month' as any);
+        .rpc('get_trades_per_month') as {
+          data: TradesPerMonthData[] | null,
+          error: Error | null
+        };
       
       if (tradesError) throw new Error(`Failed to fetch trades per month: ${tradesError.message}`);
       

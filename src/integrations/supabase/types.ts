@@ -1472,6 +1472,21 @@ export type Database = {
           page_state: Json
         }[]
       }
+      get_physical_positions_pivoted: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          month: string
+          products: Json
+        }[]
+      }
+      get_trades_per_month: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          month: string
+          count: number
+          volume: number
+        }[]
+      }
       initialize_all_terminal_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
