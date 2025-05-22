@@ -1456,6 +1456,18 @@ export type Database = {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
       }
+      get_filtered_open_trades: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_filters?: Json
+          p_sort_columns?: Json
+        }
+        Returns: {
+          trades: Json
+          pagination_meta: Json
+        }[]
+      }
       get_next_tank_display_order: {
         Args: { terminal_id_param: string }
         Returns: number
