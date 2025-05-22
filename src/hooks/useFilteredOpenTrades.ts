@@ -51,8 +51,11 @@ export const useFilteredOpenTrades = (
   } = useQuery({
     queryKey: ['filteredOpenTrades', filters, paginationParams, sortColumn, sortDirection],
     queryFn: async () => {
+      // Convert the filters object to a JSON object that can be passed to the RPC function
+      const filtersParam = filters as Record<string, any>;
+
       const { data, error } = await supabase.rpc('filter_open_trades', {
-        p_filters: filters as Record<string, unknown>,
+        p_filters: filtersParam,
         p_page: paginationParams.page,
         p_page_size: paginationParams.pageSize,
         p_sort_column: sortColumn,
@@ -64,6 +67,7 @@ export const useFilteredOpenTrades = (
         throw error;
       }
 
+      // Cast the data to the correct type
       return data as FilteredOpenTradesResponse;
     },
   });
