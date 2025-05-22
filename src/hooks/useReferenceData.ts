@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -42,6 +43,12 @@ export const useReferenceData = () => {
     
     if (error) throw error;
     return data.map(item => item.name);
+  };
+
+  // Function to fetch contract status options
+  const fetchContractStatus = async () => {
+    // This could be from a table or just hardcoded values if they're static
+    return ['Draft', 'Issued', 'Signed', 'Amended', 'Completed'];
   };
 
   // Function to fetch products from the database
@@ -107,6 +114,12 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
+  // Added query for contract status options
+  const { data: contractStatusOptions = [], isLoading: isLoadingContractStatus } = useQuery({
+    queryKey: ['contractStatus'],
+    queryFn: fetchContractStatus
+  });
+
   // Query to fetch product options
   const { data: productOptions = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ['products'],
@@ -148,6 +161,8 @@ export const useReferenceData = () => {
     isLoadingCreditStatus,
     customsStatusOptions,
     isLoadingCustomsStatus,
+    contractStatusOptions,
+    isLoadingContractStatus,
     productOptions,
     isLoadingProducts,
     incoTermOptions,
