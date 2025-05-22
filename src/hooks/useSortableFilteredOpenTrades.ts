@@ -16,7 +16,8 @@ export const useSortableFilteredOpenTrades = (
     loading, 
     error, 
     refetchOpenTrades,
-    activeFilterCount
+    activeFilterCount,
+    noResultsFound
   } = useFilteredOpenTrades(filters, paginationParams);
   
   const [localTrades, setLocalTrades] = useState<OpenTrade[]>([]);
@@ -119,6 +120,7 @@ export const useSortableFilteredOpenTrades = (
     refetchOpenTrades,
     handleReorder,
     pagination,
-    activeFilterCount
+    activeFilterCount,
+    noResultsFound
   };
 };

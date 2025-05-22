@@ -20,8 +20,11 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useReferenceData } from '@/hooks/useReferenceData';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface OpenTradesFilterProps {
   open: boolean;
@@ -30,6 +33,74 @@ interface OpenTradesFilterProps {
   onFiltersChange: (filters: OpenTradeFilters) => void;
   activeFilterCount: number;
 }
+
+// Create a reusable multi-select component
+const MultiSelectFilter = ({ 
+  label, 
+  options, 
+  selectedValues, 
+  onChange 
+}: { 
+  label: string;
+  options: string[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+}) => {
+  const toggleOption = (option: string) => {
+    const newValues = selectedValues.includes(option)
+      ? selectedValues.filter(val => val !== option)
+      : [...selectedValues, option];
+    
+    onChange(newValues.length ? newValues : []); // If empty, pass empty array
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <Label>{label}</Label>
+        {selectedValues.length > 0 && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => onChange([])} 
+            className="h-6 px-2 text-xs"
+          >
+            Clear
+          </Button>
+        )}
+      </div>
+      <ScrollArea className="h-40 border rounded-md p-2 bg-white">
+        <div className="space-y-2">
+          {options.map(option => (
+            <div key={option} className="flex items-center space-x-2 py-1">
+              <Checkbox 
+                id={`${label}-${option}`} 
+                checked={selectedValues.includes(option)}
+                onCheckedChange={() => toggleOption(option)}
+              />
+              <Label 
+                htmlFor={`${label}-${option}`} 
+                className="cursor-pointer text-sm flex-1"
+              >
+                {option}
+              </Label>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      {selectedValues.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {selectedValues.map(val => (
+            <Badge key={val} variant="secondary" className="text-xs">
+              {val}
+              <X className="ml-1 h-3 w-3 cursor-pointer" onClick={() => toggleOption(val)} />
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   open,
@@ -51,14 +122,51 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   // Reset temporary filters when dialog opens
   useEffect(() => {
     if (open) {
-      setTempFilters(filters);
+      // Convert single value filters to arrays for multi-select
+      const convertedFilters: OpenTradeFilters = { ...filters };
+      
+      // Convert string values to arrays where needed
+      if (filters.product && !Array.isArray(filters.product)) {
+        convertedFilters.product = [filters.product];
+      }
+      
+      if (filters.counterparty && !Array.isArray(filters.counterparty)) {
+        convertedFilters.counterparty = [filters.counterparty];
+      }
+      
+      if (filters.inco_term && !Array.isArray(filters.inco_term)) {
+        convertedFilters.inco_term = [filters.inco_term];
+      }
+      
+      if (filters.sustainability && !Array.isArray(filters.sustainability)) {
+        convertedFilters.sustainability = [filters.sustainability];
+      }
+      
+      if (filters.credit_status && !Array.isArray(filters.credit_status)) {
+        convertedFilters.credit_status = [filters.credit_status];
+      }
+      
+      if (filters.customs_status && !Array.isArray(filters.customs_status)) {
+        convertedFilters.customs_status = [filters.customs_status];
+      }
+      
+      setTempFilters(convertedFilters);
     }
   }, [open, filters]);
 
+  // Handle single value changes
   const handleChange = (field: keyof OpenTradeFilters, value: string) => {
     setTempFilters(prev => ({
       ...prev,
       [field]: value === "all" ? undefined : value
+    }));
+  };
+
+  // Handle multi-select changes
+  const handleMultiSelectChange = (field: keyof OpenTradeFilters, values: string[]) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [field]: values.length > 0 ? values : undefined
     }));
   };
 
@@ -76,7 +184,7 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Filter Open Trades</DialogTitle>
         </DialogHeader>
@@ -110,119 +218,53 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
             </Select>
           </div>
 
-          {/* Product Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="product">Product</Label>
-            <Select 
-              value={tempFilters.product || "all"} 
-              onValueChange={(value) => handleChange('product', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All products" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All products</SelectItem>
-                {productOptions.map(product => (
-                  <SelectItem key={product} value={product}>{product}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Product Filter */}
+          <MultiSelectFilter
+            label="Products"
+            options={productOptions}
+            selectedValues={Array.isArray(tempFilters.product) ? tempFilters.product : []}
+            onChange={(values) => handleMultiSelectChange('product', values)}
+          />
 
-          {/* Counterparty Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="counterparty">Counterparty</Label>
-            <Select 
-              value={tempFilters.counterparty || "all"} 
-              onValueChange={(value) => handleChange('counterparty', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All counterparties" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All counterparties</SelectItem>
-                {counterparties.map(cp => (
-                  <SelectItem key={cp} value={cp}>{cp}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Counterparty Filter */}
+          <MultiSelectFilter
+            label="Counterparties"
+            options={counterparties}
+            selectedValues={Array.isArray(tempFilters.counterparty) ? tempFilters.counterparty : []}
+            onChange={(values) => handleMultiSelectChange('counterparty', values)}
+          />
 
-          {/* Incoterm Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="inco_term">Incoterm</Label>
-            <Select 
-              value={tempFilters.inco_term || "all"} 
-              onValueChange={(value) => handleChange('inco_term', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All incoterms" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All incoterms</SelectItem>
-                {incoTermOptions.map(term => (
-                  <SelectItem key={term} value={term}>{term}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Incoterm Filter */}
+          <MultiSelectFilter
+            label="Incoterms"
+            options={incoTermOptions}
+            selectedValues={Array.isArray(tempFilters.inco_term) ? tempFilters.inco_term : []}
+            onChange={(values) => handleMultiSelectChange('inco_term', values)}
+          />
 
-          {/* Sustainability Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="sustainability">Sustainability</Label>
-            <Select 
-              value={tempFilters.sustainability || "all"} 
-              onValueChange={(value) => handleChange('sustainability', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {sustainabilityOptions.map(option => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Sustainability Filter */}
+          <MultiSelectFilter
+            label="Sustainability"
+            options={sustainabilityOptions}
+            selectedValues={Array.isArray(tempFilters.sustainability) ? tempFilters.sustainability : []}
+            onChange={(values) => handleMultiSelectChange('sustainability', values)}
+          />
 
-          {/* Credit Status Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="credit_status">Credit Status</Label>
-            <Select 
-              value={tempFilters.credit_status || "all"} 
-              onValueChange={(value) => handleChange('credit_status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {creditStatusOptions.map(status => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Credit Status Filter */}
+          <MultiSelectFilter
+            label="Credit Status"
+            options={creditStatusOptions}
+            selectedValues={Array.isArray(tempFilters.credit_status) ? tempFilters.credit_status : []}
+            onChange={(values) => handleMultiSelectChange('credit_status', values)}
+          />
 
-          {/* Customs Status Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="customs_status">Customs Status</Label>
-            <Select 
-              value={tempFilters.customs_status || "all"} 
-              onValueChange={(value) => handleChange('customs_status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {customsStatusOptions.map(status => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Multi-select Customs Status Filter */}
+          <MultiSelectFilter
+            label="Customs Status"
+            options={customsStatusOptions}
+            selectedValues={Array.isArray(tempFilters.customs_status) ? tempFilters.customs_status : []}
+            onChange={(values) => handleMultiSelectChange('customs_status', values)}
+          />
 
           {/* Status Filter (in-process, completed) */}
           <div className="space-y-2 col-span-1 md:col-span-2">

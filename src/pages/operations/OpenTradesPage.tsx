@@ -32,16 +32,21 @@ const OpenTradesPage = () => {
   };
 
   // Extract filters from URL parameters
+  const extractArrayParam = (param: string | null): string[] | undefined => {
+    if (!param) return undefined;
+    return param.split(',').map(item => item.trim()).filter(Boolean);
+  };
+
   const initialFilters: OpenTradeFilters = {
     trade_reference: searchParams.get('trade_reference') || undefined,
     buy_sell: (searchParams.get('buy_sell') as 'buy' | 'sell') || undefined,
-    product: searchParams.get('product') || undefined,
-    counterparty: searchParams.get('counterparty') || undefined,
-    inco_term: searchParams.get('inco_term') || undefined,
-    sustainability: searchParams.get('sustainability') || undefined,
-    credit_status: searchParams.get('credit_status') || undefined,
-    customs_status: searchParams.get('customs_status') || undefined,
-    contract_status: searchParams.get('contract_status') || undefined,
+    product: extractArrayParam(searchParams.get('product')),
+    counterparty: extractArrayParam(searchParams.get('counterparty')),
+    inco_term: extractArrayParam(searchParams.get('inco_term')),
+    sustainability: extractArrayParam(searchParams.get('sustainability')),
+    credit_status: extractArrayParam(searchParams.get('credit_status')),
+    customs_status: extractArrayParam(searchParams.get('customs_status')),
+    contract_status: extractArrayParam(searchParams.get('contract_status')),
     pricing_type: searchParams.get('pricing_type') || undefined,
     status: (searchParams.get('status') as 'all' | 'in-process' | 'completed') || 'all'
   };
@@ -52,8 +57,20 @@ const OpenTradesPage = () => {
   React.useEffect(() => {
     let count = 0;
     Object.entries(filters).forEach(([key, value]) => {
-      if (value && (key !== 'status' || value !== 'all')) {
-        count++;
+      if (value) {
+        if (key === 'status' && value === 'all') {
+          // Don't count 'all' status as a filter
+          return;
+        }
+        
+        if (Array.isArray(value)) {
+          // For array values, count each non-empty array as one filter
+          if (value.length > 0) {
+            count++;
+          }
+        } else {
+          count++;
+        }
       }
     });
     setActiveFilterCount(count);
@@ -94,8 +111,16 @@ const OpenTradesPage = () => {
       
       // Update or remove filter parameters
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          newParams.set(key, value);
+        if (value !== undefined) {
+          if (Array.isArray(value) && value.length > 0) {
+            // Join array values with comma for URL parameter
+            newParams.set(key, value.join(','));
+          } else if (!Array.isArray(value) && value !== '') {
+            newParams.set(key, value);
+          } else {
+            // Remove parameter if it's an empty array or empty string
+            newParams.delete(key);
+          }
         } else {
           newParams.delete(key);
         }
@@ -110,12 +135,24 @@ const OpenTradesPage = () => {
   };
 
   const handlePageChange = (newPage: number) => {
+    // If page change is triggered with page 1, it might be a filter clear request
+    if (newPage === 1 && page === 1 && activeFilterCount > 0) {
+      // Clear all filters except status
+      const defaultFilters: OpenTradeFilters = { status: 'all' };
+      setFilters(defaultFilters);
+    }
     // Update URL parameters
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', newPage.toString());
       return newParams;
     });
+  };
+
+  const handleClearFilters = () => {
+    const defaultFilters: OpenTradeFilters = { status: 'all' };
+    setFilters(defaultFilters);
+    setSearchParams(new URLSearchParams({ page: '1', status: 'all' }));
   };
 
   const handleFiltersChange = (newFilters: OpenTradeFilters) => {
@@ -155,9 +192,16 @@ const OpenTradesPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Open Trades</h1>
-          <Button onClick={handleRefreshTable}>
-            Refresh Data
-          </Button>
+          <div className="flex space-x-2">
+            {activeFilterCount > 0 && (
+              <Button variant="secondary" onClick={handleClearFilters}>
+                Clear Filters ({activeFilterCount})
+              </Button>
+            )}
+            <Button onClick={handleRefreshTable}>
+              Refresh Data
+            </Button>
+          </div>
         </div>
         
         <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">

@@ -1,4 +1,3 @@
-
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,7 +47,8 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     loading, 
     error, 
     refetchOpenTrades,
-    activeFilterCount
+    activeFilterCount,
+    noResultsFound
   } = useFilteredOpenTrades(filters, paginationParams);
   
   const [localTrades, setLocalTrades] = React.useState<OpenTrade[]>([]);
@@ -216,14 +216,28 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     );
   }
 
-  if (localTrades.length === 0) {
+  if (noResultsFound || (localTrades.length === 0 && activeFilterCount > 0)) {
     return (
       <div className="text-center py-10">
         <p className="text-muted-foreground mb-4">
-          {activeFilterCount > 0 
-            ? "No trades match the selected filters" 
-            : "No open trades found"}
+          No trades match the selected filters
         </p>
+        <div className="flex justify-center space-x-4">
+          <Button variant="outline" onClick={handleRefresh}>
+            Refresh
+          </Button>
+          <Button variant="secondary" onClick={() => onPageChange && onPageChange(1)}>
+            Clear Filters
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (localTrades.length === 0) {
+    return (
+      <div className="text-center py-10">
+        <p className="text-muted-foreground mb-4">No open trades found</p>
         <Button variant="outline" onClick={handleRefresh}>
           Refresh
         </Button>
