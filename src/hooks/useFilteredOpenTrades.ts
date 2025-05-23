@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +16,10 @@ export interface OpenTradeFilters {
   contract_status?: string | string[];
   pricing_type?: string;
   status?: 'all' | 'in-process' | 'completed';
+  loading_period_start_from?: string;
+  loading_period_start_to?: string;
+  loading_period_end_from?: string;
+  loading_period_end_to?: string;
 }
 
 interface FilteredOpenTradesResponse {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -47,7 +48,11 @@ const OpenTradesPage = () => {
     customs_status: extractArrayParam(searchParams.get('customs_status')),
     contract_status: extractArrayParam(searchParams.get('contract_status')),
     pricing_type: searchParams.get('pricing_type') || undefined,
-    status: (searchParams.get('status') as 'all' | 'in-process' | 'completed') || 'all'
+    status: (searchParams.get('status') as 'all' | 'in-process' | 'completed') || 'all',
+    loading_period_start_from: searchParams.get('loading_period_start_from') || undefined,
+    loading_period_start_to: searchParams.get('loading_period_start_to') || undefined,
+    loading_period_end_from: searchParams.get('loading_period_end_from') || undefined,
+    loading_period_end_to: searchParams.get('loading_period_end_to') || undefined
   };
 
   const [filters, setFilters] = React.useState<OpenTradeFilters>(initialFilters);
