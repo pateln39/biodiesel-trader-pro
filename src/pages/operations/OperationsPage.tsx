@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -16,14 +15,16 @@ import MovementsFilter, { FilterOptions } from '@/components/operations/Movement
 import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
+import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
-  const [openTradesFilterStatus, setOpenTradesFilterStatus] = useState<'all' | 'in-process' | 'completed'>('all');
   const [isOpenTradesFilterOpen, setIsOpenTradesFilterOpen] = useState(false);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [openTradeFilters, setOpenTradeFilters] = useState<OpenTradeFilters>({ status: 'all' });
+  const [activeFilterCount, setActiveFilterCount] = useState<number>(0);
   
   // Use the useSortableMovements hook to get filtered movements and filter-related functions
   const {
@@ -40,6 +41,17 @@ const OperationsPage = () => {
     creditStatusOptions,
     customsStatusOptions
   } = useReferenceData();
+
+  // Count active filters
+  useEffect(() => {
+    let count = 0;
+    Object.entries(openTradeFilters).forEach(([key, value]) => {
+      if (value && (key !== 'status' || value !== 'all')) {
+        count++;
+      }
+    });
+    setActiveFilterCount(count);
+  }, [openTradeFilters]);
 
   // Initialize sort_order for all tables when component mounts
   useEffect(() => {
@@ -133,6 +145,10 @@ const OperationsPage = () => {
     updateFilters(newFilters);
   };
 
+  const handleOpenTradeFilterChange = (newFilters: OpenTradeFilters) => {
+    setOpenTradeFilters(newFilters);
+  }
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -168,8 +184,14 @@ const OperationsPage = () => {
                       variant="outline" 
                       size="sm"
                       onClick={() => setIsOpenTradesFilterOpen(true)}
+                      className="relative"
                     >
                       <Filter className="mr-2 h-4 w-4" /> Filter
+                      {activeFilterCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
+                          {activeFilterCount}
+                        </span>
+                      )}
                     </Button>
                   </div>
                 </CardDescription>
@@ -178,7 +200,7 @@ const OperationsPage = () => {
                 <OpenTradesTable 
                   onRefresh={handleRefreshTables} 
                   key={`open-trades-${refreshTrigger}`} 
-                  filterStatus={openTradesFilterStatus}
+                  filters={openTradeFilters}
                 />
               </CardContent>
             </Card>
@@ -186,8 +208,9 @@ const OperationsPage = () => {
             <OpenTradesFilter 
               open={isOpenTradesFilterOpen} 
               onOpenChange={setIsOpenTradesFilterOpen}
-              selectedStatus={openTradesFilterStatus}
-              onStatusChange={setOpenTradesFilterStatus}
+              filters={openTradeFilters}
+              onFiltersChange={handleOpenTradeFilterChange}
+              activeFilterCount={activeFilterCount}
             />
           </TabsContent>
 

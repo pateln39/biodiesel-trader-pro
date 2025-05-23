@@ -45,12 +45,29 @@ export const useReferenceData = () => {
     return data.map(item => item.name);
   };
 
+  // Function to fetch contract status options
+  const fetchContractStatus = async () => {
+    // This could be from a table or just hardcoded values if they're static
+    return ['Draft', 'Issued', 'Signed', 'Amended', 'Completed'];
+  };
+
   // Function to fetch products from the database
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from('products')
       .select('name')
       .eq('is_active', true)
+      .order('name');
+    
+    if (error) throw error;
+    return data.map(item => item.name);
+  };
+  
+  // Function to fetch inco terms from the database
+  const fetchIncoTerms = async () => {
+    const { data, error } = await supabase
+      .from('inco_terms')
+      .select('name')
       .order('name');
     
     if (error) throw error;
@@ -97,10 +114,22 @@ export const useReferenceData = () => {
     queryFn: fetchCustomsStatus
   });
 
+  // Added query for contract status options
+  const { data: contractStatusOptions = [], isLoading: isLoadingContractStatus } = useQuery({
+    queryKey: ['contractStatus'],
+    queryFn: fetchContractStatus
+  });
+
   // Query to fetch product options
   const { data: productOptions = [], isLoading: isLoadingProducts } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts
+  });
+  
+  // Query to fetch inco terms options
+  const { data: incoTermOptions = [], isLoading: isLoadingIncoTerms } = useQuery({
+    queryKey: ['incoTerms'],
+    queryFn: fetchIncoTerms
   });
   
   // Query to fetch product colors
@@ -132,8 +161,12 @@ export const useReferenceData = () => {
     isLoadingCreditStatus,
     customsStatusOptions,
     isLoadingCustomsStatus,
+    contractStatusOptions,
+    isLoadingContractStatus,
     productOptions,
     isLoadingProducts,
+    incoTermOptions,
+    isLoadingIncoTerms,
     productColors,
     isLoadingProductColors,
     invalidateCounterparties,
