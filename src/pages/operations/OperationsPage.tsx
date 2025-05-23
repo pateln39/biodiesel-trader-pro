@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -16,6 +17,7 @@ import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelEx
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
+import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -25,6 +27,9 @@ const OperationsPage = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [openTradeFilters, setOpenTradeFilters] = useState<OpenTradeFilters>({ status: 'all' });
   const [activeFilterCount, setActiveFilterCount] = useState<number>(0);
+  
+  // Add sort configuration using the hook
+  const { sortColumns, handleSort: toggleSortColumn } = useMovementDateSort();
   
   // Use the useSortableMovements hook to get filtered movements and filter-related functions
   const {
@@ -248,6 +253,8 @@ const OperationsPage = () => {
                   onToggleSelect={() => {}} // Empty function as default
                   onUngroupMovement={() => {}} // Empty function as default
                   isUngrouping={false} // Default to false
+                  sortColumns={sortColumns} // Add the missing sortColumns prop
+                  onToggleSortColumn={toggleSortColumn} // Add the missing onToggleSortColumn prop
                 />
               </CardContent>
             </Card>
