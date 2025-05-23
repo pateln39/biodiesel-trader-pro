@@ -1444,6 +1444,16 @@ export type Database = {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
       }
+      filter_open_trades: {
+        Args: {
+          p_filters: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_column?: string
+          p_sort_direction?: string
+        }
+        Returns: Json
+      }
       fix_all_duplicate_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1490,6 +1500,10 @@ export type Database = {
       initialize_all_terminal_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      initialize_open_trades_filters: {
+        Args: { p_search_params: Json }
+        Returns: Json
       }
       initialize_sort_order: {
         Args: { p_table_name: string }
