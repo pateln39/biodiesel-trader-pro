@@ -1444,6 +1444,15 @@ export type Database = {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
       }
+      filter_movements: {
+        Args: {
+          p_filters: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_columns?: Json
+        }
+        Returns: Json
+      }
       filter_open_trades: {
         Args: {
           p_filters: Json

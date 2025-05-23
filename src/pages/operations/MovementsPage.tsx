@@ -9,44 +9,105 @@ import { toast } from 'sonner';
 import MovementsTable from '@/components/operations/MovementsTable';
 import MovementsFilter, { FilterOptions } from '@/components/operations/MovementsFilter';
 import { exportMovementsToExcel } from '@/utils/excelExportUtils';
-import { useSortableMovements } from '@/hooks/useSortableMovements';
 import MovementsHeader from '@/components/operations/movements/MovementsHeader';
 import MovementsActions from '@/components/operations/movements/MovementsActions';
 import { PaginationParams } from '@/types/pagination';
+import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import { useFilteredMovements } from '@/hooks/useFilteredMovements';
+import { Movement } from '@/types';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const MovementsPage = () => {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = React.useState<number>(0);
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
+  const [selectedMovementIds, setSelectedMovementIds] = React.useState<string[]>([]);
+  const [isGrouping, setIsGrouping] = React.useState(false);
+  const [isUngrouping, setIsUngrouping] = React.useState(false);
   
   // Get page from URL or default to 1
   const page = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = 15; // Fixed page size
+  
+  // Initialize sorting from URL parameters
+  const initialSortParam = searchParams.get('sort') || '';
+  const initialSortConfigs = initialSortParam
+    ? initialSortParam.split(',').map(sortItem => {
+        const [column, direction] = sortItem.split(':');
+        return {
+          column: column as any,
+          direction: (direction || 'asc') as 'asc' | 'desc'
+        };
+      })
+    : [];
+  
+  const { sortColumns, handleSort: toggleSortColumn, getSortParam } = useMovementDateSort(initialSortConfigs);
   
   const paginationParams: PaginationParams = {
     page,
     pageSize
   };
   
+  // Extract filters from URL parameters
+  const extractArrayParam = (param: string | null): string[] => {
+    if (!param) return [];
+    return param.split(',').map(item => item.trim()).filter(Boolean);
+  };
+  
+  const initialFilters: FilterOptions = {
+    status: extractArrayParam(searchParams.get('status')),
+    product: extractArrayParam(searchParams.get('product')),
+    buySell: extractArrayParam(searchParams.get('buySell')),
+    incoTerm: extractArrayParam(searchParams.get('incoTerm')),
+    sustainability: extractArrayParam(searchParams.get('sustainability')),
+    counterparty: extractArrayParam(searchParams.get('counterparty')),
+    creditStatus: extractArrayParam(searchParams.get('creditStatus')),
+    customsStatus: extractArrayParam(searchParams.get('customsStatus')),
+    loadport: extractArrayParam(searchParams.get('loadport')),
+    loadportInspector: extractArrayParam(searchParams.get('loadportInspector')),
+    disport: extractArrayParam(searchParams.get('disport')),
+    disportInspector: extractArrayParam(searchParams.get('disportInspector')),
+  };
+  
+  const [filters, setFilters] = React.useState<FilterOptions>(initialFilters);
+  
+  // Use the new server-side filtering hook
   const { 
-    filteredMovements,
-    availableFilterOptions,
-    filters,
-    updateFilters,
-    refetch,
-    handleReorder,
-    selectedMovementIds,
-    toggleMovementSelection,
-    selectAllMovements,
-    clearSelection,
-    groupSelectedMovements,
-    ungroupMovement,
-    isGrouping,
-    isUngrouping,
-    pagination
-  } = useSortableMovements(undefined, paginationParams);
+    movements: filteredMovements,
+    pagination,
+    loading,
+    refetchMovements,
+    activeFilterCount
+  } = useFilteredMovements(filters, paginationParams, sortColumns);
 
+  // Update URL when filters or sort parameters change
+  React.useEffect(() => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      
+      // Update or remove filter parameters
+      Object.entries(filters).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          newParams.set(key, value.join(','));
+        } else {
+          newParams.delete(key);
+        }
+      });
+      
+      // Add sort parameters
+      const sortParam = getSortParam();
+      if (sortParam) {
+        newParams.set('sort', sortParam);
+      } else {
+        newParams.delete('sort');
+      }
+      
+      return newParams;
+    });
+  }, [filters, getSortParam, setSearchParams]);
+  
   React.useEffect(() => {
     const initializeSortOrder = async () => {
       try {
@@ -71,9 +132,111 @@ const MovementsPage = () => {
     initializeSortOrder();
   }, []);
 
+  // Group selected movements mutation
+  const groupMovementsMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length < 2) {
+        throw new Error('At least 2 movements are required to create a group');
+      }
+
+      // Generate a new group ID
+      const groupId = crypto.randomUUID();
+      
+      console.log(`[MOVEMENTS] Creating movement group ${groupId} with ${ids.length} items`);
+      
+      // Update all selected movements with the new group ID
+      const { error } = await supabase
+        .from('movements')
+        .update({ group_id: groupId })
+        .in('id', ids);
+        
+      if (error) {
+        console.error('[MOVEMENTS] Error creating movement group:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully created movement group ${groupId}`);
+      return groupId;
+    },
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Group creation successful - invalidating queries');
+      setSelectedMovementIds([]);
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
+      setIsGrouping(false);
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in groupMovementsMutation:', error);
+      setIsGrouping(false);
+    }
+  });
+  
+  // Ungroup movements mutation
+  const ungroupMovementsMutation = useMutation({
+    mutationFn: async (groupId: string) => {
+      console.log(`[MOVEMENTS] Removing movements from group ${groupId}`);
+      
+      // Update all movements in the group to have null group_id
+      const { error } = await supabase
+        .from('movements')
+        .update({ group_id: null })
+        .eq('group_id', groupId);
+        
+      if (error) {
+        console.error('[MOVEMENTS] Error removing movements from group:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully removed movements from group ${groupId}`);
+      return groupId;
+    },
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Group removal successful - invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
+      setIsUngrouping(false);
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in ungroupMovementsMutation:', error);
+      setIsUngrouping(false);
+    }
+  });
+
+  // Reorder movements mutation
+  const updateSortOrderMutation = useMutation({
+    mutationFn: async ({
+      id,
+      newSortOrder,
+    }: {
+      id: string;
+      newSortOrder: number;
+    }) => {
+      console.log(`[MOVEMENTS] Updating sort_order for item ${id} to ${newSortOrder}`);
+      
+      const { data, error } = await supabase.rpc('update_sort_order', {
+        p_table_name: 'movements',
+        p_id: id,
+        p_new_sort_order: newSortOrder,
+      });
+
+      if (error) {
+        console.error('[MOVEMENTS] Error updating sort_order:', error);
+        throw error;
+      }
+      
+      console.log(`[MOVEMENTS] Successfully updated sort_order for item ${id}`);
+      return data;
+    },
+    onSuccess: () => {
+      console.log('[MOVEMENTS] Sort order update successful - invalidating queries');
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
+    },
+    onError: (error) => {
+      console.error('[MOVEMENTS] Error in updateSortOrderMutation:', error);
+    }
+  });
+
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
-    refetch();
+    refetchMovements();
   };
 
   const handleExportMovements = async () => {
@@ -99,7 +262,7 @@ const MovementsPage = () => {
   };
 
   const handleFilterChange = (newFilters: FilterOptions) => {
-    updateFilters(newFilters);
+    setFilters(newFilters);
     // Reset to page 1 when filters change
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
@@ -117,10 +280,101 @@ const MovementsPage = () => {
     });
   };
 
-  const getActiveFilterCount = () => {
-    return Object.values(filters).reduce((count, filterValues) => 
-      count + filterValues.length, 0);
+  const handleReorder = async (reorderedItems: Movement[]) => {
+    console.log('[MOVEMENTS] Starting reordering process for', reorderedItems.length, 'items');
+
+    // Calculate base sort_order for the current page
+    const pageOffset = page > 1 ? (page - 1) * pageSize : 0;
+
+    // Update sort_order for all reordered items with page offset
+    const updatedItems = reorderedItems.map((item, index) => ({
+      id: item.id,
+      sort_order: pageOffset + index + 1,
+    }));
+
+    console.log('[MOVEMENTS] Prepared sort_order updates with page offset', pageOffset, ':', 
+      updatedItems.slice(0, 3).map(i => `${i.id.slice(-4)}: ${i.sort_order}`).join(', '), '...');
+
+    try {
+      await Promise.all(
+        updatedItems.map(item => 
+          updateSortOrderMutation.mutate({
+            id: item.id,
+            newSortOrder: item.sort_order,
+          })
+        )
+      );
+      console.log('[MOVEMENTS] All sort_order updates completed successfully');
+    } catch (error) {
+      console.error('[MOVEMENTS] Error updating sort order:', error);
+      refetchMovements();
+    }
   };
+
+  const toggleMovementSelection = (id: string) => {
+    setSelectedMovementIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(itemId => itemId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+  
+  const selectAllMovements = () => {
+    setSelectedMovementIds(filteredMovements.map(m => m.id));
+  };
+  
+  const clearSelection = () => {
+    setSelectedMovementIds([]);
+  };
+  
+  const groupSelectedMovements = () => {
+    if (selectedMovementIds.length >= 2) {
+      setIsGrouping(true);
+      groupMovementsMutation.mutate(selectedMovementIds);
+    }
+  };
+  
+  const ungroupMovement = (groupId: string) => {
+    if (groupId) {
+      setIsUngrouping(true);
+      ungroupMovementsMutation.mutate(groupId);
+    }
+  };
+
+  // Get available filter options from the movements
+  const availableFilterOptions = React.useMemo(() => {
+    if (!filteredMovements.length) return {
+      status: [],
+      product: [],
+      buySell: [],
+      incoTerm: [],
+      sustainability: [],
+      counterparty: [],
+      creditStatus: [],
+      customsStatus: [],
+      loadport: [],
+      loadportInspector: [],
+      disport: [],
+      disportInspector: [],
+    };
+    
+    return {
+      status: [...new Set(filteredMovements.map(m => m.status))].filter(Boolean).sort(),
+      product: [...new Set(filteredMovements.map(m => m.product))].filter(Boolean).sort(),
+      buySell: [...new Set(filteredMovements.map(m => m.buySell))].filter(Boolean).sort(),
+      incoTerm: [...new Set(filteredMovements.map(m => m.incoTerm))].filter(Boolean).sort(),
+      sustainability: [...new Set(filteredMovements.map(m => m.sustainability))].filter(Boolean).sort(),
+      counterparty: [...new Set(filteredMovements.map(m => m.counterpartyName))].filter(Boolean).sort(),
+      creditStatus: [...new Set(filteredMovements.map(m => m.creditStatus))].filter(Boolean).sort(),
+      customsStatus: [...new Set(filteredMovements.map(m => m.customsStatus))].filter(Boolean).sort(),
+      loadport: [...new Set(filteredMovements.map(m => m.loadport))].filter(Boolean).sort(),
+      loadportInspector: [...new Set(filteredMovements.map(m => m.loadportInspector))].filter(Boolean).sort(),
+      disport: [...new Set(filteredMovements.map(m => m.disport))].filter(Boolean).sort(),
+      disportInspector: [...new Set(filteredMovements.map(m => m.disportInspector))].filter(Boolean).sort(),
+    };
+  }, [filteredMovements]);
 
   return (
     <Layout>
@@ -141,13 +395,13 @@ const MovementsPage = () => {
                 onClearSelection={clearSelection}
                 onGroupSelected={groupSelectedMovements}
                 isGrouping={isGrouping}
-                activeFilterCount={getActiveFilterCount()}
+                activeFilterCount={activeFilterCount}
               />
             </CardDescription>
           </CardHeader>
           <CardContent>
             <MovementsTable 
-              key={`movements-${refreshTrigger}-${page}`}
+              key={`movements-${refreshTrigger}-${page}-${getSortParam()}`}
               filteredMovements={filteredMovements}
               selectedMovementIds={selectedMovementIds}
               onToggleSelect={toggleMovementSelection}
@@ -156,6 +410,8 @@ const MovementsPage = () => {
               isUngrouping={isUngrouping}
               pagination={pagination}
               onPageChange={handlePageChange}
+              sortColumns={sortColumns}
+              onToggleSortColumn={toggleSortColumn}
             />
           </CardContent>
         </Card>

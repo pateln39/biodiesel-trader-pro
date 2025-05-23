@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
@@ -25,7 +26,7 @@ import TradeDetailsDialog from './TradeDetailsDialog';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
-import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import { SortConfig } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 import { getGroupColorClasses } from '@/utils/colorUtils';
 import MovementTableHeader from './movements/MovementTableHeader';
@@ -42,6 +43,8 @@ interface MovementsTableProps {
   isUngrouping: boolean;
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
+  sortColumns: SortConfig[];
+  onToggleSortColumn: (column: any) => void;
 }
 
 const MovementsTable: React.FC<MovementsTableProps> = ({ 
@@ -52,7 +55,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   onUngroupMovement,
   isUngrouping,
   pagination,
-  onPageChange
+  onPageChange,
+  sortColumns,
+  onToggleSortColumn
 }) => {
   const queryClient = useQueryClient();
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
@@ -154,7 +159,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const handleEditComplete = () => {
     setEditDialogOpen(false);
     setSelectedMovement(null);
-    queryClient.invalidateQueries({ queryKey: ['movements'] });
+    queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
   };
 
   // Fix for the type mismatch - create a wrapper function that adapts the interface
@@ -206,7 +211,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       toast.success("Status updated", {
         description: "Movement status has been updated successfully."
@@ -232,7 +237,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       setIsCommentsDialogOpen(false);
       setSelectedMovementForComments(null);
       toast.success("Comments updated", {
@@ -258,7 +263,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
       toast.success("Movement deleted", {
@@ -273,53 +278,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   });
 
-  const {
-    sortColumns,
-    handleSort: toggleSortColumn,  // Rename to match expected function name
-    getSortParam,
-    hasSorting
-  } = useMovementDateSort();
-
-  // Add this new function for client-side sorting
-  const sortedMovements = useMemo(() => {
-    if (sortColumns.length === 0) return filteredMovements;
-    
-    // Create a new array to avoid mutating the original
-    return [...filteredMovements].sort((a, b) => {
-      // Go through each sort column in order
-      for (const { column, direction } of sortColumns) {
-        // Get values for comparison, handle null/undefined
-        const valueA = a[column as keyof Movement] ?? '';
-        const valueB = b[column as keyof Movement] ?? '';
-        
-        // Skip if both values are empty
-        if (!valueA && !valueB) continue;
-        
-        // Handle date comparison
-        if (valueA instanceof Date && valueB instanceof Date) {
-          const comparison = valueA.getTime() - valueB.getTime();
-          if (comparison !== 0) {
-            return direction === 'asc' ? comparison : -comparison;
-          }
-        } 
-        // Handle string comparison
-        else if (typeof valueA === 'string' && typeof valueB === 'string') {
-          const comparison = valueA.localeCompare(valueB);
-          if (comparison !== 0) {
-            return direction === 'asc' ? comparison : -comparison;
-          }
-        }
-        // Handle number comparison
-        else {
-          const comparison = (valueA < valueB) ? -1 : ((valueA > valueB) ? 1 : 0);
-          if (comparison !== 0) {
-            return direction === 'asc' ? comparison : -comparison;
-          }
-        }
-      }
-      return 0; // Equal based on all sort criteria
-    });
-  }, [filteredMovements, sortColumns]);
+  // Determine if sorting is active to disable drag and drop
+  const hasSorting = sortColumns.length > 0;
 
   if (filteredMovements.length === 0) {
     return (
@@ -337,7 +297,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       allSelected={selectedMovementIds.length === filteredMovements.length}
       filteredMovementsLength={filteredMovements.length}
       sortColumns={sortColumns}
-      onToggleSortColumn={toggleSortColumn}
+      onToggleSortColumn={onToggleSortColumn}
     />
   );
 
@@ -345,7 +305,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     <MovementRow
       movement={movement}
       index={index}
-      movements={sortedMovements}
+      movements={filteredMovements}
       isSelected={selectedMovementIds.includes(movement.id)}
       onToggleSelect={onToggleSelect}
       onStatusChange={handleStatusChange}
@@ -365,7 +325,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <ScrollArea className="w-full" orientation="horizontal">
         <div className="w-full min-w-[1800px]">
           <SortableTable
-            items={sortedMovements}
+            items={filteredMovements}
             onReorder={onReorder}
             renderHeader={renderHeader}
             renderRow={renderRow}
