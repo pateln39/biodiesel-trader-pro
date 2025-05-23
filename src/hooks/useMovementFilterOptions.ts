@@ -35,7 +35,7 @@ export const useMovementFilterOptions = () => {
             .filter('product', 'neq', 'RECONCILIATION')
             .not(column, 'is', null)
             .order(column)
-            .distinct();
+            .distinct(column);
           
           if (error) {
             console.error(`[MOVEMENTS] Error fetching distinct ${column} values:`, error);
