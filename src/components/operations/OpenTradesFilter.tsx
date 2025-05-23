@@ -23,6 +23,9 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, parseISO } from 'date-fns';
+import { formatDateForStorage } from '@/utils/dateParsingUtils';
 
 interface OpenTradesFilterProps {
   open: boolean;
@@ -57,6 +60,20 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     incoTermOptions,
     contractStatusOptions
   } = useReferenceData();
+  
+  // Date states for the pickers
+  const [loadingStartFrom, setLoadingStartFrom] = useState<Date | null>(
+    tempFilters.loading_period_start_from ? new Date(tempFilters.loading_period_start_from) : null
+  );
+  const [loadingStartTo, setLoadingStartTo] = useState<Date | null>(
+    tempFilters.loading_period_start_to ? new Date(tempFilters.loading_period_start_to) : null
+  );
+  const [loadingEndFrom, setLoadingEndFrom] = useState<Date | null>(
+    tempFilters.loading_period_end_from ? new Date(tempFilters.loading_period_end_from) : null
+  );
+  const [loadingEndTo, setLoadingEndTo] = useState<Date | null>(
+    tempFilters.loading_period_end_to ? new Date(tempFilters.loading_period_end_to) : null
+  );
 
   // Reset temporary filters when dialog opens
   useEffect(() => {
@@ -94,8 +111,25 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
       }
       
       setTempFilters(convertedFilters);
+      
+      // Set date states
+      setLoadingStartFrom(filters.loading_period_start_from ? new Date(filters.loading_period_start_from) : null);
+      setLoadingStartTo(filters.loading_period_start_to ? new Date(filters.loading_period_start_to) : null);
+      setLoadingEndFrom(filters.loading_period_end_from ? new Date(filters.loading_period_end_from) : null);
+      setLoadingEndTo(filters.loading_period_end_to ? new Date(filters.loading_period_end_to) : null);
     }
   }, [open, filters]);
+
+  // Update date filters whenever date picker values change
+  useEffect(() => {
+    setTempFilters(prev => ({
+      ...prev,
+      loading_period_start_from: loadingStartFrom ? formatDateForStorage(loadingStartFrom) : undefined,
+      loading_period_start_to: loadingStartTo ? formatDateForStorage(loadingStartTo) : undefined,
+      loading_period_end_from: loadingEndFrom ? formatDateForStorage(loadingEndFrom) : undefined,
+      loading_period_end_to: loadingEndTo ? formatDateForStorage(loadingEndTo) : undefined
+    }));
+  }, [loadingStartFrom, loadingStartTo, loadingEndFrom, loadingEndTo]);
 
   // Handle single value changes
   const handleChange = (field: keyof OpenTradeFilters, value: string) => {
@@ -162,6 +196,10 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   const handleReset = () => {
     const defaultFilters: OpenTradeFilters = { status: 'all' };
     setTempFilters(defaultFilters);
+    setLoadingStartFrom(null);
+    setLoadingStartTo(null);
+    setLoadingEndFrom(null);
+    setLoadingEndTo(null);
     onFiltersChange(defaultFilters);
     onOpenChange(false);
   };
@@ -343,6 +381,108 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
                 </RadioGroup>
               </div>
             </div>
+
+            {/* Date Range Filters */}
+            <Accordion type="multiple" className="w-full mb-4">
+              <AccordionItem value="date-ranges">
+                <AccordionTrigger className="py-2 hover:no-underline">
+                  <div className="flex items-center">
+                    <span>Date Ranges</span>
+                    {(loadingStartFrom || loadingStartTo || loadingEndFrom || loadingEndTo) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {[
+                          loadingStartFrom ? 1 : 0, 
+                          loadingStartTo ? 1 : 0, 
+                          loadingEndFrom ? 1 : 0, 
+                          loadingEndTo ? 1 : 0
+                        ].reduce((a, b) => a + b, 0)}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    {/* Loading Period Start Range */}
+                    <div className="space-y-2">
+                      <Label className="font-medium">Loading Period Start</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From</Label>
+                          <DatePicker 
+                            date={loadingStartFrom ? loadingStartFrom : new Date()} 
+                            setDate={(date) => setLoadingStartFrom(date)} 
+                            disabled={false}
+                            placeholder="Select start date"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To</Label>
+                          <DatePicker 
+                            date={loadingStartTo ? loadingStartTo : new Date()} 
+                            setDate={(date) => setLoadingStartTo(date)} 
+                            disabled={false}
+                            placeholder="Select end date"
+                          />
+                        </div>
+                      </div>
+                      {loadingStartFrom && loadingStartTo && (
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => {
+                              setLoadingStartFrom(null);
+                              setLoadingStartTo(null);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Loading Period End Range */}
+                    <div className="space-y-2">
+                      <Label className="font-medium">Loading Period End</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From</Label>
+                          <DatePicker 
+                            date={loadingEndFrom ? loadingEndFrom : new Date()} 
+                            setDate={(date) => setLoadingEndFrom(date)} 
+                            disabled={false}
+                            placeholder="Select start date"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To</Label>
+                          <DatePicker 
+                            date={loadingEndTo ? loadingEndTo : new Date()} 
+                            setDate={(date) => setLoadingEndTo(date)} 
+                            disabled={false}
+                            placeholder="Select end date"
+                          />
+                        </div>
+                      </div>
+                      {loadingEndFrom && loadingEndTo && (
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => {
+                              setLoadingEndFrom(null);
+                              setLoadingEndTo(null);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Multi-select Filters */}
             <Accordion type="multiple" className="w-full">

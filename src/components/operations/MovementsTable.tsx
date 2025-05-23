@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Movement } from '@/types';
@@ -275,12 +275,51 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
 
   const {
     sortColumns,
-    toggleSortColumn,
-    sortMovements,
+    handleSort: toggleSortColumn,  // Rename to match expected function name
+    getSortParam,
     hasSorting
   } = useMovementDateSort();
 
-  const sortedMovements = sortMovements(filteredMovements);
+  // Add this new function for client-side sorting
+  const sortedMovements = useMemo(() => {
+    if (sortColumns.length === 0) return filteredMovements;
+    
+    // Create a new array to avoid mutating the original
+    return [...filteredMovements].sort((a, b) => {
+      // Go through each sort column in order
+      for (const { column, direction } of sortColumns) {
+        // Get values for comparison, handle null/undefined
+        const valueA = a[column as keyof Movement] ?? '';
+        const valueB = b[column as keyof Movement] ?? '';
+        
+        // Skip if both values are empty
+        if (!valueA && !valueB) continue;
+        
+        // Handle date comparison
+        if (valueA instanceof Date && valueB instanceof Date) {
+          const comparison = valueA.getTime() - valueB.getTime();
+          if (comparison !== 0) {
+            return direction === 'asc' ? comparison : -comparison;
+          }
+        } 
+        // Handle string comparison
+        else if (typeof valueA === 'string' && typeof valueB === 'string') {
+          const comparison = valueA.localeCompare(valueB);
+          if (comparison !== 0) {
+            return direction === 'asc' ? comparison : -comparison;
+          }
+        }
+        // Handle number comparison
+        else {
+          const comparison = (valueA < valueB) ? -1 : ((valueA > valueB) ? 1 : 0);
+          if (comparison !== 0) {
+            return direction === 'asc' ? comparison : -comparison;
+          }
+        }
+      }
+      return 0; // Equal based on all sort criteria
+    });
+  }, [filteredMovements, sortColumns]);
 
   if (filteredMovements.length === 0) {
     return (
