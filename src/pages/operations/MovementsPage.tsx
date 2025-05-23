@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -14,6 +13,7 @@ import MovementsActions from '@/components/operations/movements/MovementsActions
 import { PaginationParams } from '@/types/pagination';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
 import { useFilteredMovements } from '@/hooks/useFilteredMovements';
+import { useMovementFilterOptions } from '@/hooks/useMovementFilterOptions';
 import { Movement } from '@/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -73,7 +73,14 @@ const MovementsPage = () => {
   
   const [filters, setFilters] = React.useState<FilterOptions>(initialFilters);
   
-  // Use the new server-side filtering hook
+  // Use the new hook to get all filter options, independent of pagination
+  const { 
+    data: filterOptions,
+    isLoading: isLoadingFilterOptions,
+    error: filterOptionsError
+  } = useMovementFilterOptions();
+  
+  // Use the server-side filtering hook
   const { 
     movements: filteredMovements,
     pagination,
@@ -237,6 +244,8 @@ const MovementsPage = () => {
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
     refetchMovements();
+    // Also refresh filter options when table is refreshed
+    queryClient.invalidateQueries({ queryKey: ['movementFilterOptions'] });
   };
 
   const handleExportMovements = async () => {
@@ -420,7 +429,20 @@ const MovementsPage = () => {
           open={isMovementsFilterOpen} 
           onOpenChange={setIsMovementsFilterOpen}
           filterOptions={filters}
-          availableOptions={availableFilterOptions}
+          availableOptions={filterOptions || {
+            status: [],
+            product: [],
+            buySell: [],
+            incoTerm: [],
+            sustainability: [],
+            counterparty: [],
+            creditStatus: [],
+            customsStatus: [],
+            loadport: [],
+            loadportInspector: [],
+            disport: [],
+            disportInspector: [],
+          }}
           onFilterChange={handleFilterChange}
         />
       </div>
