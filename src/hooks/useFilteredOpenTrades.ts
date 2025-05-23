@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { OpenTrade } from '@/hooks/useOpenTrades';
 import { PaginationParams, PaginationMeta } from '@/types/pagination';
+import { SortConfig } from '@/hooks/useMovementDateSort';
 
 export interface OpenTradeFilters {
   trade_reference?: string;
@@ -30,11 +32,14 @@ interface FilteredOpenTradesResponse {
 export const useFilteredOpenTrades = (
   filters: OpenTradeFilters = {},
   paginationParams: PaginationParams = { page: 1, pageSize: 15 },
-  sortColumn: string = 'sort_order',
-  sortDirection: 'asc' | 'desc' = 'asc'
+  sortConfig: SortConfig[] = []
 ) => {
   const [activeFilterCount, setActiveFilterCount] = useState<number>(0);
   const [noResultsFound, setNoResultsFound] = useState<boolean>(false);
+  
+  // Default sort to sort_order asc if no custom sort is provided
+  const sortColumn = sortConfig.length > 0 ? sortConfig[0].column : 'sort_order';
+  const sortDirection = sortConfig.length > 0 ? sortConfig[0].direction : 'asc';
 
   // Count active filters (excluding 'status' if it's 'all')
   useEffect(() => {
@@ -65,7 +70,7 @@ export const useFilteredOpenTrades = (
     error, 
     refetch 
   } = useQuery({
-    queryKey: ['filteredOpenTrades', filters, paginationParams, sortColumn, sortDirection],
+    queryKey: ['filteredOpenTrades', filters, paginationParams, sortConfig],
     queryFn: async () => {
       // Convert the filters object to a JSON object that can be passed to the RPC function
       // Handle arrays properly for the multi-select filters
@@ -78,12 +83,16 @@ export const useFilteredOpenTrades = (
         }
       });
 
+      // Format sort columns array for the RPC function
+      const sortParams = sortConfig.length > 0 
+        ? sortConfig.map(sc => ({ column: sc.column, direction: sc.direction }))
+        : [{ column: 'sort_order', direction: 'asc' as const }];
+
       const { data: responseData, error } = await supabase.rpc('filter_open_trades', {
         p_filters: filtersParam,
         p_page: paginationParams.page,
         p_page_size: paginationParams.pageSize,
-        p_sort_column: sortColumn,
-        p_sort_direction: sortDirection
+        p_sort_columns: sortParams
       });
 
       if (error) {

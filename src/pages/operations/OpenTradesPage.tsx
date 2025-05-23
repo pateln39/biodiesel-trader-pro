@@ -14,6 +14,7 @@ import OpenTradesFilter from '@/components/operations/OpenTradesFilter';
 import { exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { PaginationParams } from '@/types/pagination';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
+import { useMovementDateSort, SortConfig, DateSortColumn } from '@/hooks/useMovementDateSort';
 
 const OpenTradesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,6 +26,20 @@ const OpenTradesPage = () => {
   // Get page from URL or default to 1
   const page = parseInt(searchParams.get('page') || '1', 10);
   const pageSize = 15; // Fixed page size
+  
+  // Initialize sorting from URL parameters
+  const initialSortParam = searchParams.get('sort') || '';
+  const initialSortConfigs: SortConfig[] = initialSortParam
+    ? initialSortParam.split(',').map(sortItem => {
+        const [column, direction] = sortItem.split(':');
+        return {
+          column: column as DateSortColumn,
+          direction: (direction || 'asc') as 'asc' | 'desc'
+        };
+      })
+    : [];
+
+  const { sortColumns, handleSort, getSortParam } = useMovementDateSort(initialSortConfigs);
   
   const paginationParams: PaginationParams = {
     page,
@@ -129,10 +144,18 @@ const OpenTradesPage = () => {
           newParams.delete(key);
         }
       });
+
+      // Add sort parameters
+      const sortParam = getSortParam();
+      if (sortParam) {
+        newParams.set('sort', sortParam);
+      } else {
+        newParams.delete('sort');
+      }
       
       return newParams;
     });
-  }, [filters, setSearchParams]);
+  }, [filters, getSortParam, setSearchParams]);
 
   const handleRefreshTable = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -167,6 +190,10 @@ const OpenTradesPage = () => {
       newParams.set('page', '1');
       return newParams;
     });
+  };
+
+  const handleSortChange = (column: DateSortColumn) => {
+    handleSort(column);
   };
 
   const handleExportOpenTrades = async () => {
@@ -241,10 +268,12 @@ const OpenTradesPage = () => {
           <CardContent>
             <OpenTradesTable 
               onRefresh={handleRefreshTable} 
-              key={`open-trades-${refreshTrigger}-${page}`} 
+              key={`open-trades-${refreshTrigger}-${page}-${getSortParam()}`} 
               filters={filters}
               paginationParams={paginationParams}
               onPageChange={handlePageChange}
+              sortColumns={sortColumns}
+              onSort={handleSortChange}
             />
           </CardContent>
         </Card>
