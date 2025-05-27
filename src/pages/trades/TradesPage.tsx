@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -161,8 +160,8 @@ const TradesPage = () => {
     setSearchParams(newParams);
   };
 
-  // Handle filter changes for physical trades
-  const handleFilterChange = (filters: TradeFilterOptions) => {
+  // Handle filter changes for physical trades - Updated to accept Partial<TradeFilterOptions>
+  const handleFilterChange = (filters: Partial<TradeFilterOptions>) => {
     setTradeFilters(filters);
     
     // Update URL parameters

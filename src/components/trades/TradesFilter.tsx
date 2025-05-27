@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Check, X } from 'lucide-react';
 import {
@@ -35,7 +34,7 @@ interface FilterCategory {
 interface TradesFilterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  filterOptions: TradeFilterOptions;
+  filterOptions: Partial<TradeFilterOptions>; // Updated to accept Partial
   availableOptions: {
     buySell: string[];
     product: string[];
@@ -46,7 +45,7 @@ interface TradesFilterProps {
     contractStatus: string[];
     pricingType: string[];
   };
-  onFilterChange: (filters: TradeFilterOptions) => void;
+  onFilterChange: (filters: Partial<TradeFilterOptions>) => void; // Updated to return Partial
 }
 
 const TradesFilter: React.FC<TradesFilterProps> = ({
@@ -56,7 +55,7 @@ const TradesFilter: React.FC<TradesFilterProps> = ({
   availableOptions,
   onFilterChange
 }) => {
-  const [tempFilters, setTempFilters] = React.useState<TradeFilterOptions>({ ...filterOptions });
+  const [tempFilters, setTempFilters] = React.useState<Partial<TradeFilterOptions>>({ ...filterOptions });
 
   React.useEffect(() => {
     if (open) {
@@ -118,7 +117,7 @@ const TradesFilter: React.FC<TradesFilterProps> = ({
   };
 
   const handleReset = () => {
-    const emptyFilters: TradeFilterOptions = {
+    const emptyFilters: Partial<TradeFilterOptions> = {
       tradeReference: undefined,
       buySell: [],
       product: [],
@@ -142,62 +141,62 @@ const TradesFilter: React.FC<TradesFilterProps> = ({
     onOpenChange(false);
   };
 
-  // Create filter categories for checkbox arrays
+  // Create filter categories for checkbox arrays - Updated to handle potentially undefined arrays
   const filterCategories: FilterCategory[] = [
     {
       id: 'buySell',
       label: 'Buy/Sell',
       options: availableOptions.buySell,
-      selectedOptions: tempFilters.buySell,
+      selectedOptions: tempFilters.buySell || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, buySell: values }))
     },
     {
       id: 'product',
       label: 'Product',
       options: availableOptions.product,
-      selectedOptions: tempFilters.product,
+      selectedOptions: tempFilters.product || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, product: values }))
     },
     {
       id: 'sustainability',
       label: 'Sustainability',
       options: availableOptions.sustainability,
-      selectedOptions: tempFilters.sustainability,
+      selectedOptions: tempFilters.sustainability || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values }))
     },
     {
       id: 'incoTerm',
       label: 'Incoterm',
       options: availableOptions.incoTerm,
-      selectedOptions: tempFilters.incoTerm,
+      selectedOptions: tempFilters.incoTerm || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, incoTerm: values }))
     },
     {
       id: 'creditStatus',
       label: 'Credit Status',
       options: availableOptions.creditStatus,
-      selectedOptions: tempFilters.creditStatus,
+      selectedOptions: tempFilters.creditStatus || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, creditStatus: values }))
     },
     {
       id: 'customsStatus',
       label: 'Customs Status',
       options: availableOptions.customsStatus,
-      selectedOptions: tempFilters.customsStatus,
+      selectedOptions: tempFilters.customsStatus || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, customsStatus: values }))
     },
     {
       id: 'contractStatus',
       label: 'Contract Status',
       options: availableOptions.contractStatus,
-      selectedOptions: tempFilters.contractStatus,
+      selectedOptions: tempFilters.contractStatus || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, contractStatus: values }))
     },
     {
       id: 'pricingType',
       label: 'Pricing Type',
       options: availableOptions.pricingType,
-      selectedOptions: tempFilters.pricingType,
+      selectedOptions: tempFilters.pricingType || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, pricingType: values }))
     }
   ];
