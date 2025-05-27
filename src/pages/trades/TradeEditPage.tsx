@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,25 +62,37 @@ const TradeEditPage = () => {
   useEffect(() => {
     const fetchTradeData = async () => {
       if (!id) {
+        console.error('[TRADE EDIT] No trade ID provided');
         navigate('/trades');
         return;
       }
 
       try {
-        // Fetch parent trade data
+        console.log(`[TRADE EDIT] Fetching trade data for ID: ${id}`);
+        
+        // Fetch parent trade data with better error handling
         const { data: parentTrade, error: parentError } = await supabase
           .from('parent_trades')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (parentError) {
+          console.error('[TRADE EDIT] Error fetching parent trade:', parentError);
           throw new Error(`Error fetching parent trade: ${parentError.message}`);
         }
 
+        if (!parentTrade) {
+          console.error('[TRADE EDIT] No parent trade found for ID:', id);
+          throw new Error('Trade not found. The trade may have been deleted or the ID is incorrect.');
+        }
+
+        console.log('[TRADE EDIT] Parent trade found:', parentTrade);
+
         // Only handle physical trades
         if (parentTrade.trade_type !== 'physical') {
-          throw new Error("Only physical trades are supported");
+          console.error('[TRADE EDIT] Trade is not physical type:', parentTrade.trade_type);
+          throw new Error("Only physical trades are supported for editing");
         }
 
         // Fetch trade legs
@@ -90,107 +103,120 @@ const TradeEditPage = () => {
           .order('created_at', { ascending: true });
 
         if (legsError) {
+          console.error('[TRADE EDIT] Error fetching trade legs:', legsError);
           throw new Error(`Error fetching trade legs: ${legsError.message}`);
         }
 
-        // Map trade data to the format expected by PhysicalTradeForm
-        if (parentTrade.trade_type === 'physical' && tradeLegs.length > 0) {
-          const processedLegs = tradeLegs.map(leg => {
-            let formula = validateAndParsePricingFormula(leg.pricing_formula);
-            let mtmFormula = null;
-            
-            // Extract mtmTokens from pricing_formula if available
-            // Carefully check for nested properties to avoid type errors
-            const mtmTokens = safeGetNestedProperty(leg.pricing_formula, ['mtmTokens']);
-            
-            if (mtmTokens) {
-              // Get physical exposures safely
-              const physicalExposures = safeGetNestedProperty(leg.pricing_formula, ['exposures', 'physical']) || {};
-              
-              mtmFormula = {
-                tokens: mtmTokens,
-                exposures: {
-                  physical: physicalExposures,
-                  pricing: {}
-                }
-              };
-            } 
-            // Fallback to the separate mtm_formula column if needed (for backward compatibility)
-            else if (leg.mtm_formula) {
-              mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
-            }
-            
-            // Remove mtmTokens from formula to avoid duplication
-            if (hasProperty(formula, 'mtmTokens')) {
-              const { mtmTokens, ...formulaWithoutMtmTokens } = formula as any;
-              formula = formulaWithoutMtmTokens;
-            }
-
-            return {
-              id: leg.id,
-              parentTradeId: leg.parent_trade_id,
-              legReference: leg.leg_reference,
-              buySell: leg.buy_sell as BuySell,
-              product: leg.product as Product,
-              sustainability: leg.sustainability || '',
-              incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
-              quantity: leg.quantity,
-              tolerance: leg.tolerance || 0,
-              loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
-              loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
-              pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
-              pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
-              unit: (leg.unit || 'MT') as Unit,
-              paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
-              creditStatus: (leg.credit_status || 'pending') as CreditStatus,
-              customsStatus: leg.customs_status as CustomsStatus,
-              formula: formula,
-              mtmFormula: mtmFormula,
-              pricingType: (leg.pricing_type as PricingType) || 'standard',
-              mtmFutureMonth: leg.mtm_future_month,
-              efpPremium: leg.efp_premium,
-              efpAgreedStatus: leg.efp_agreed_status,
-              efpFixedValue: leg.efp_fixed_value,
-              efpDesignatedMonth: leg.efp_designated_month
-            };
-          });
-
-          const physicalTrade: PhysicalTrade = {
-            id: parentTrade.id,
-            tradeReference: parentTrade.trade_reference,
-            tradeType: 'physical', 
-            createdAt: new Date(parentTrade.created_at),
-            updatedAt: new Date(parentTrade.updated_at),
-            physicalType: (parentTrade.physical_type || 'spot') as 'spot' | 'term',
-            counterparty: parentTrade.counterparty,
-            buySell: tradeLegs[0].buy_sell as BuySell,
-            product: tradeLegs[0].product as Product,
-            sustainability: tradeLegs[0].sustainability || '',
-            incoTerm: (tradeLegs[0].inco_term || 'FOB') as IncoTerm,
-            quantity: tradeLegs[0].quantity,
-            tolerance: tradeLegs[0].tolerance || 0,
-            loadingPeriodStart: tradeLegs[0].loading_period_start ? new Date(tradeLegs[0].loading_period_start) : new Date(),
-            loadingPeriodEnd: tradeLegs[0].loading_period_end ? new Date(tradeLegs[0].loading_period_end) : new Date(),
-            pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
-            pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
-            unit: (tradeLegs[0].unit || 'MT') as Unit,
-            paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
-            creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
-            customsStatus: tradeLegs[0].customs_status as CustomsStatus,
-            formula: processedLegs[0].formula,
-            mtmFormula: processedLegs[0].mtmFormula,
-            pricingType: (tradeLegs[0].pricing_type as PricingType) || 'standard',
-            mtmFutureMonth: tradeLegs[0].mtm_future_month,
-            legs: processedLegs
-          };
-          
-          setTradeData(physicalTrade);
-        } else {
-          throw new Error("Invalid trade data");
+        if (!tradeLegs || tradeLegs.length === 0) {
+          console.error('[TRADE EDIT] No trade legs found for parent trade ID:', id);
+          throw new Error('No trade legs found for this trade. The trade data may be corrupted.');
         }
 
+        console.log(`[TRADE EDIT] Found ${tradeLegs.length} trade legs for parent trade`);
+
+        // Validate data integrity
+        const invalidLegs = tradeLegs.filter(leg => leg.parent_trade_id !== id);
+        if (invalidLegs.length > 0) {
+          console.error('[TRADE EDIT] Data integrity error: Some legs have incorrect parent_trade_id:', invalidLegs);
+          throw new Error('Data integrity error: Trade legs do not match parent trade');
+        }
+
+        // Map trade data to the format expected by PhysicalTradeForm
+        const processedLegs = tradeLegs.map(leg => {
+          let formula = validateAndParsePricingFormula(leg.pricing_formula);
+          let mtmFormula = null;
+          
+          // Extract mtmTokens from pricing_formula if available
+          const mtmTokens = safeGetNestedProperty(leg.pricing_formula, ['mtmTokens']);
+          
+          if (mtmTokens) {
+            // Get physical exposures safely
+            const physicalExposures = safeGetNestedProperty(leg.pricing_formula, ['exposures', 'physical']) || {};
+            
+            mtmFormula = {
+              tokens: mtmTokens,
+              exposures: {
+                physical: physicalExposures,
+                pricing: {}
+              }
+            };
+          } 
+          // Fallback to the separate mtm_formula column if needed (for backward compatibility)
+          else if (leg.mtm_formula) {
+            mtmFormula = validateAndParsePricingFormula(leg.mtm_formula);
+          }
+          
+          // Remove mtmTokens from formula to avoid duplication
+          if (hasProperty(formula, 'mtmTokens')) {
+            const { mtmTokens, ...formulaWithoutMtmTokens } = formula as any;
+            formula = formulaWithoutMtmTokens;
+          }
+
+          return {
+            id: leg.id,
+            parentTradeId: leg.parent_trade_id,
+            legReference: leg.leg_reference,
+            buySell: leg.buy_sell as BuySell,
+            product: leg.product as Product,
+            sustainability: leg.sustainability || '',
+            incoTerm: (leg.inco_term || 'FOB') as IncoTerm,
+            quantity: leg.quantity,
+            tolerance: leg.tolerance || 0,
+            loadingPeriodStart: leg.loading_period_start ? new Date(leg.loading_period_start) : new Date(),
+            loadingPeriodEnd: leg.loading_period_end ? new Date(leg.loading_period_end) : new Date(),
+            pricingPeriodStart: leg.pricing_period_start ? new Date(leg.pricing_period_start) : new Date(),
+            pricingPeriodEnd: leg.pricing_period_end ? new Date(leg.pricing_period_end) : new Date(),
+            unit: (leg.unit || 'MT') as Unit,
+            paymentTerm: (leg.payment_term || '30 days') as PaymentTerm,
+            creditStatus: (leg.credit_status || 'pending') as CreditStatus,
+            customsStatus: leg.customs_status as CustomsStatus,
+            formula: formula,
+            mtmFormula: mtmFormula,
+            pricingType: (leg.pricing_type as PricingType) || 'standard',
+            mtmFutureMonth: leg.mtm_future_month,
+            efpPremium: leg.efp_premium,
+            efpAgreedStatus: leg.efp_agreed_status,
+            efpFixedValue: leg.efp_fixed_value,
+            efpDesignatedMonth: leg.efp_designated_month
+          };
+        });
+
+        // Create the trade object using the parent trade data
+        const physicalTrade: PhysicalTrade = {
+          id: parentTrade.id, // Use parent trade ID, not leg ID
+          tradeReference: parentTrade.trade_reference,
+          tradeType: 'physical', 
+          createdAt: new Date(parentTrade.created_at),
+          updatedAt: new Date(parentTrade.updated_at),
+          physicalType: (parentTrade.physical_type || 'spot') as 'spot' | 'term',
+          counterparty: parentTrade.counterparty,
+          // Use first leg data for main trade properties
+          buySell: tradeLegs[0].buy_sell as BuySell,
+          product: tradeLegs[0].product as Product,
+          sustainability: tradeLegs[0].sustainability || '',
+          incoTerm: (tradeLegs[0].inco_term || 'FOB') as IncoTerm,
+          quantity: tradeLegs[0].quantity,
+          tolerance: tradeLegs[0].tolerance || 0,
+          loadingPeriodStart: tradeLegs[0].loading_period_start ? new Date(tradeLegs[0].loading_period_start) : new Date(),
+          loadingPeriodEnd: tradeLegs[0].loading_period_end ? new Date(tradeLegs[0].loading_period_end) : new Date(),
+          pricingPeriodStart: tradeLegs[0].pricing_period_start ? new Date(tradeLegs[0].pricing_period_start) : new Date(),
+          pricingPeriodEnd: tradeLegs[0].pricing_period_end ? new Date(tradeLegs[0].pricing_period_end) : new Date(),
+          unit: (tradeLegs[0].unit || 'MT') as Unit,
+          paymentTerm: (tradeLegs[0].payment_term || '30 days') as PaymentTerm,
+          creditStatus: (tradeLegs[0].credit_status || 'pending') as CreditStatus,
+          customsStatus: tradeLegs[0].customs_status as CustomsStatus,
+          formula: processedLegs[0].formula,
+          mtmFormula: processedLegs[0].mtmFormula,
+          pricingType: (tradeLegs[0].pricing_type as PricingType) || 'standard',
+          mtmFutureMonth: tradeLegs[0].mtm_future_month,
+          legs: processedLegs
+        };
+        
+        console.log(`[TRADE EDIT] Successfully constructed trade object with ${processedLegs.length} legs`);
+        setTradeData(physicalTrade);
+
       } catch (error: any) {
-        console.error('Error fetching trade:', error);
+        console.error('[TRADE EDIT] Error fetching trade:', error);
         toast.error("Failed to load trade", {
           description: error.message || "Could not load trade details"
         });
@@ -390,7 +416,7 @@ const TradeEditPage = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Edit Trade</h1>
           <p className="text-muted-foreground">
-            Edit trade {tradeData?.tradeReference}
+            Edit trade {tradeData?.tradeReference} ({tradeData?.legs?.length || 1} leg{(tradeData?.legs?.length || 1) > 1 ? 's' : ''})
           </p>
         </div>
 
