@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -27,12 +27,23 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { format, parseISO } from 'date-fns';
 import { formatDateForStorage } from '@/utils/dateParsingUtils';
 
+interface OpenTradeFilterOptions {
+  product: string[];
+  counterparty: string[];
+  incoTerm: string[];
+  sustainability: string[];
+  creditStatus: string[];
+  customsStatus: string[];
+  contractStatus: string[];
+}
+
 interface OpenTradesFilterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   filters: OpenTradeFilters;
   onFiltersChange: (filters: OpenTradeFilters) => void;
   activeFilterCount: number;
+  availableOptions: OpenTradeFilterOptions;
 }
 
 interface FilterCategory {
@@ -48,18 +59,10 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   onOpenChange,
   filters,
   onFiltersChange,
-  activeFilterCount
+  activeFilterCount,
+  availableOptions
 }) => {
   const [tempFilters, setTempFilters] = useState<OpenTradeFilters>(filters);
-  const { 
-    counterparties,
-    sustainabilityOptions,
-    creditStatusOptions,
-    customsStatusOptions,
-    productOptions,
-    incoTermOptions,
-    contractStatusOptions
-  } = useReferenceData();
   
   // Date states for the pickers
   const [loadingStartFrom, setLoadingStartFrom] = useState<Date | null>(
@@ -158,25 +161,25 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     
     switch (category) {
       case 'product':
-        options = productOptions;
+        options = availableOptions.product;
         break;
       case 'counterparty':
-        options = counterparties;
+        options = availableOptions.counterparty;
         break;
       case 'inco_term':
-        options = incoTermOptions;
+        options = availableOptions.incoTerm;
         break;
       case 'sustainability':
-        options = sustainabilityOptions;
+        options = availableOptions.sustainability;
         break;
       case 'credit_status':
-        options = creditStatusOptions;
+        options = availableOptions.creditStatus;
         break;
       case 'customs_status':
-        options = customsStatusOptions;
+        options = availableOptions.customsStatus;
         break;
       case 'contract_status':
-        options = contractStatusOptions;
+        options = availableOptions.contractStatus;
         break;
       default:
         options = [];
@@ -204,54 +207,54 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     onOpenChange(false);
   };
 
-  // Create filter categories
+  // Create filter categories using available options
   const filterCategories: FilterCategory[] = [
     {
       id: 'product',
       label: 'Product',
-      options: productOptions,
+      options: availableOptions.product,
       selectedOptions: Array.isArray(tempFilters.product) ? tempFilters.product : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, product: values.length ? values : undefined }))
     },
     {
       id: 'counterparty',
       label: 'Counterparty',
-      options: counterparties,
+      options: availableOptions.counterparty,
       selectedOptions: Array.isArray(tempFilters.counterparty) ? tempFilters.counterparty : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values.length ? values : undefined }))
     },
     {
       id: 'inco_term',
       label: 'Incoterm',
-      options: incoTermOptions,
+      options: availableOptions.incoTerm,
       selectedOptions: Array.isArray(tempFilters.inco_term) ? tempFilters.inco_term : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, inco_term: values.length ? values : undefined }))
     },
     {
       id: 'sustainability',
       label: 'Sustainability',
-      options: sustainabilityOptions,
+      options: availableOptions.sustainability,
       selectedOptions: Array.isArray(tempFilters.sustainability) ? tempFilters.sustainability : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values.length ? values : undefined }))
     },
     {
       id: 'credit_status',
       label: 'Credit Status',
-      options: creditStatusOptions,
+      options: availableOptions.creditStatus,
       selectedOptions: Array.isArray(tempFilters.credit_status) ? tempFilters.credit_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, credit_status: values.length ? values : undefined }))
     },
     {
       id: 'customs_status',
       label: 'Customs Status',
-      options: customsStatusOptions,
+      options: availableOptions.customsStatus,
       selectedOptions: Array.isArray(tempFilters.customs_status) ? tempFilters.customs_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, customs_status: values.length ? values : undefined }))
     },
     {
       id: 'contract_status',
       label: 'Contract Status',
-      options: contractStatusOptions,
+      options: availableOptions.contractStatus,
       selectedOptions: Array.isArray(tempFilters.contract_status) ? tempFilters.contract_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, contract_status: values.length ? values : undefined }))
     }

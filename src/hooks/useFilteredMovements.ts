@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,18 +16,6 @@ const toSnakeCase = (str: string): string => {
   return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 };
 
-// Helper function to convert from camelCase object keys to snake_case
-const convertFiltersToSnakeCase = (filters: Partial<FilterOptions>): Record<string, any> => {
-  const result: Record<string, any> = {};
-  
-  Object.entries(filters).forEach(([key, value]) => {
-    const snakeKey = toSnakeCase(key);
-    result[snakeKey] = value;
-  });
-  
-  return result;
-};
-
 export const useFilteredMovements = (
   filters: Partial<FilterOptions> = {},
   paginationParams: PaginationParams = { page: 1, pageSize: 15 },
@@ -40,11 +27,32 @@ export const useFilteredMovements = (
   // Count active filters
   useEffect(() => {
     let count = 0;
-    Object.entries(filters).forEach(([_, filterValues]) => {
+    
+    // Text filters
+    if (filters.tradeReference) count++;
+    
+    // Array filters
+    Object.entries(filters).forEach(([key, filterValues]) => {
       if (Array.isArray(filterValues) && filterValues.length > 0) {
         count++;
       }
     });
+    
+    // Date range filters (count each range as one filter)
+    const dateRanges = [
+      { from: filters.loadingPeriodStartFrom, to: filters.loadingPeriodStartTo },
+      { from: filters.loadingPeriodEndFrom, to: filters.loadingPeriodEndTo },
+      { from: filters.nominationEtaFrom, to: filters.nominationEtaTo },
+      { from: filters.nominationValidFrom, to: filters.nominationValidTo },
+      { from: filters.cashFlowFrom, to: filters.cashFlowTo },
+      { from: filters.blDateFrom, to: filters.blDateTo },
+      { from: filters.codDateFrom, to: filters.codDateTo },
+    ];
+    
+    dateRanges.forEach(range => {
+      if (range.from || range.to) count++;
+    });
+    
     setActiveFilterCount(count);
   }, [filters]);
 
@@ -52,17 +60,22 @@ export const useFilteredMovements = (
   const prepareFiltersForApi = () => {
     const apiFilters: Record<string, any> = {};
     
-    // Convert array filters
+    // Text filters
+    if (filters.tradeReference) {
+      apiFilters.tradeReference = filters.tradeReference;
+    }
+    
+    // Array filters
     if (filters.status && filters.status.length > 0) {
       apiFilters.status = filters.status;
     }
     
-    if (filters.product && filters.product.length > 0) {
-      apiFilters.product = filters.product;
-    }
-    
     if (filters.buySell && filters.buySell.length > 0) {
       apiFilters.buySell = filters.buySell;
+    }
+    
+    if (filters.product && filters.product.length > 0) {
+      apiFilters.product = filters.product;
     }
     
     if (filters.incoTerm && filters.incoTerm.length > 0) {
@@ -99,6 +112,50 @@ export const useFilteredMovements = (
     
     if (filters.disportInspector && filters.disportInspector.length > 0) {
       apiFilters.disportInspector = filters.disportInspector;
+    }
+
+    // Date range filters
+    if (filters.loadingPeriodStartFrom) {
+      apiFilters.loadingPeriodStartFrom = filters.loadingPeriodStartFrom.toISOString().split('T')[0];
+    }
+    if (filters.loadingPeriodStartTo) {
+      apiFilters.loadingPeriodStartTo = filters.loadingPeriodStartTo.toISOString().split('T')[0];
+    }
+    if (filters.loadingPeriodEndFrom) {
+      apiFilters.loadingPeriodEndFrom = filters.loadingPeriodEndFrom.toISOString().split('T')[0];
+    }
+    if (filters.loadingPeriodEndTo) {
+      apiFilters.loadingPeriodEndTo = filters.loadingPeriodEndTo.toISOString().split('T')[0];
+    }
+    if (filters.nominationEtaFrom) {
+      apiFilters.nominationEtaFrom = filters.nominationEtaFrom.toISOString();
+    }
+    if (filters.nominationEtaTo) {
+      apiFilters.nominationEtaTo = filters.nominationEtaTo.toISOString();
+    }
+    if (filters.nominationValidFrom) {
+      apiFilters.nominationValidFrom = filters.nominationValidFrom.toISOString();
+    }
+    if (filters.nominationValidTo) {
+      apiFilters.nominationValidTo = filters.nominationValidTo.toISOString();
+    }
+    if (filters.cashFlowFrom) {
+      apiFilters.cashFlowFrom = filters.cashFlowFrom.toISOString().split('T')[0];
+    }
+    if (filters.cashFlowTo) {
+      apiFilters.cashFlowTo = filters.cashFlowTo.toISOString().split('T')[0];
+    }
+    if (filters.blDateFrom) {
+      apiFilters.blDateFrom = filters.blDateFrom.toISOString().split('T')[0];
+    }
+    if (filters.blDateTo) {
+      apiFilters.blDateTo = filters.blDateTo.toISOString().split('T')[0];
+    }
+    if (filters.codDateFrom) {
+      apiFilters.codDateFrom = filters.codDateFrom.toISOString().split('T')[0];
+    }
+    if (filters.codDateTo) {
+      apiFilters.codDateTo = filters.codDateTo.toISOString().split('T')[0];
     }
 
     return apiFilters;

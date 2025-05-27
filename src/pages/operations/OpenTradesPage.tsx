@@ -4,7 +4,6 @@ import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
@@ -15,6 +14,7 @@ import { exportOpenTradesToExcel } from '@/utils/excelExportUtils';
 import { PaginationParams } from '@/types/pagination';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 import { useMovementDateSort, SortConfig, DateSortColumn } from '@/hooks/useMovementDateSort';
+import { useOpenTradeFilterOptions } from '@/hooks/useOpenTradeFilterOptions';
 
 const OpenTradesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -40,6 +40,13 @@ const OpenTradesPage = () => {
     : [];
 
   const { sortColumns, handleSort, getSortParam } = useMovementDateSort(initialSortConfigs);
+  
+  // Use the new hook to get filter options from actual data
+  const { 
+    data: filterOptions,
+    isLoading: isLoadingFilterOptions,
+    error: filterOptionsError
+  } = useOpenTradeFilterOptions();
   
   const paginationParams: PaginationParams = {
     page,
@@ -94,13 +101,6 @@ const OpenTradesPage = () => {
     });
     setActiveFilterCount(count);
   }, [filters]);
-  
-  const { 
-    counterparties,
-    sustainabilityOptions,
-    creditStatusOptions,
-    customsStatusOptions
-  } = useReferenceData();
 
   // Initialize sort_order when component mounts
   React.useEffect(() => {
@@ -284,6 +284,15 @@ const OpenTradesPage = () => {
           filters={filters}
           onFiltersChange={handleFiltersChange}
           activeFilterCount={activeFilterCount}
+          availableOptions={filterOptions || {
+            product: [],
+            counterparty: [],
+            incoTerm: [],
+            sustainability: [],
+            creditStatus: [],
+            customsStatus: [],
+            contractStatus: [],
+          }}
         />
       </div>
     </Layout>

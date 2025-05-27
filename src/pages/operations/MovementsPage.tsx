@@ -56,7 +56,12 @@ const MovementsPage = () => {
     return param.split(',').map(item => item.trim()).filter(Boolean);
   };
   
+  const extractStringParam = (param: string | null): string => {
+    return param || '';
+  };
+  
   const initialFilters: FilterOptions = {
+    tradeReference: extractStringParam(searchParams.get('tradeReference')),
     status: extractArrayParam(searchParams.get('status')),
     product: extractArrayParam(searchParams.get('product')),
     buySell: extractArrayParam(searchParams.get('buySell')),
