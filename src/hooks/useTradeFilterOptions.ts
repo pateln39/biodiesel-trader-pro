@@ -11,6 +11,7 @@ interface TradeFilterOptions {
   customsStatus: string[];
   contractStatus: string[];
   pricingType: string[];
+  counterparty: string[];
 }
 
 export const useTradeFilterOptions = () => {
@@ -22,13 +23,15 @@ export const useTradeFilterOptions = () => {
     creditStatus: [],
     customsStatus: [],
     contractStatus: [],
-    pricingType: []
+    pricingType: [],
+    counterparty: []
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchFilterOptions = async () => {
       try {
+        // Join with parent_trades to get counterparty data
         const { data, error } = await supabase
           .from('trade_legs')
           .select(`
@@ -39,7 +42,8 @@ export const useTradeFilterOptions = () => {
             credit_status,
             customs_status,
             contract_status,
-            pricing_type
+            pricing_type,
+            parent_trades!inner(counterparty)
           `);
 
         if (error) {
@@ -56,7 +60,8 @@ export const useTradeFilterOptions = () => {
           creditStatus: [...new Set(data.map(item => item.credit_status).filter(Boolean))],
           customsStatus: [...new Set(data.map(item => item.customs_status).filter(Boolean))],
           contractStatus: [...new Set(data.map(item => item.contract_status).filter(Boolean))],
-          pricingType: [...new Set(data.map(item => item.pricing_type).filter(Boolean))]
+          pricingType: [...new Set(data.map(item => item.pricing_type).filter(Boolean))],
+          counterparty: [...new Set(data.map(item => (item.parent_trades as any)?.counterparty).filter(Boolean))]
         };
 
         setOptions(uniqueOptions);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -46,7 +47,8 @@ const TradesPage = () => {
     creditStatus: [],
     customsStatus: [],
     contractStatus: [],
-    pricingType: []
+    pricingType: [],
+    counterparty: []
   });
 
   // Initialize filters from URL parameters
@@ -59,11 +61,12 @@ const TradesPage = () => {
       creditStatus: [],
       customsStatus: [],
       contractStatus: [],
-      pricingType: []
+      pricingType: [],
+      counterparty: []
     };
 
     // Parse array filters from URL
-    const arrayFilters = ['buySell', 'product', 'sustainability', 'incoTerm', 'creditStatus', 'customsStatus', 'contractStatus', 'pricingType'];
+    const arrayFilters = ['buySell', 'product', 'sustainability', 'incoTerm', 'creditStatus', 'customsStatus', 'contractStatus', 'pricingType', 'counterparty'];
     arrayFilters.forEach(filter => {
       const value = searchParams.get(filter);
       if (value) {
@@ -170,7 +173,7 @@ const TradesPage = () => {
     // Remove existing filter parameters
     const filterKeys = [
       'tradeReference', 'buySell', 'product', 'sustainability', 'incoTerm', 
-      'creditStatus', 'customsStatus', 'contractStatus', 'pricingType',
+      'creditStatus', 'customsStatus', 'contractStatus', 'pricingType', 'counterparty',
       'loadingPeriodStartFrom', 'loadingPeriodStartTo',
       'loadingPeriodEndFrom', 'loadingPeriodEndTo',
       'pricingPeriodStartFrom', 'pricingPeriodStartTo',

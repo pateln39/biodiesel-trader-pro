@@ -14,6 +14,7 @@ export interface TradeFilterOptions {
   customsStatus: string[];
   contractStatus: string[];
   pricingType: string[];
+  counterparty: string[];
   loadingPeriodStartFrom?: Date;
   loadingPeriodStartTo?: Date;
   loadingPeriodEndFrom?: Date;
@@ -106,6 +107,10 @@ export const useFilteredTrades = (
     
     if (filters.pricingType && filters.pricingType.length > 0) {
       apiFilters.pricingType = filters.pricingType;
+    }
+
+    if (filters.counterparty && filters.counterparty.length > 0) {
+      apiFilters.counterparty = filters.counterparty;
     }
 
     // Date range filters

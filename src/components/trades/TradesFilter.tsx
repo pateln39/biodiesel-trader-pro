@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, X } from 'lucide-react';
 import {
@@ -44,6 +45,7 @@ interface TradesFilterProps {
     customsStatus: string[];
     contractStatus: string[];
     pricingType: string[];
+    counterparty: string[];
   };
   onFilterChange: (filters: Partial<TradeFilterOptions>) => void; // Updated to return Partial
 }
@@ -127,6 +129,7 @@ const TradesFilter: React.FC<TradesFilterProps> = ({
       customsStatus: [],
       contractStatus: [],
       pricingType: [],
+      counterparty: [],
       loadingPeriodStartFrom: undefined,
       loadingPeriodStartTo: undefined,
       loadingPeriodEndFrom: undefined,
@@ -156,6 +159,13 @@ const TradesFilter: React.FC<TradesFilterProps> = ({
       options: availableOptions.product,
       selectedOptions: tempFilters.product || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, product: values }))
+    },
+    {
+      id: 'counterparty',
+      label: 'Counterparty',
+      options: availableOptions.counterparty,
+      selectedOptions: tempFilters.counterparty || [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values }))
     },
     {
       id: 'sustainability',
