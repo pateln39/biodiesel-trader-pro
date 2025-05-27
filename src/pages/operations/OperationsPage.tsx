@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Filter, Download } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -18,6 +17,7 @@ import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/c
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import { useOpenTradeFilterOptions } from '@/hooks/useOpenTradeFilterOptions';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -39,6 +39,13 @@ const OperationsPage = () => {
     updateFilters,
     handleReorder
   } = useSortableMovements();
+  
+  // Use the new hook to get filter options from actual open trades data
+  const { 
+    data: openTradeFilterOptions,
+    isLoading: isLoadingOpenTradeFilterOptions,
+    error: openTradeFilterOptionsError
+  } = useOpenTradeFilterOptions();
   
   const { 
     counterparties,
@@ -216,6 +223,15 @@ const OperationsPage = () => {
               filters={openTradeFilters}
               onFiltersChange={handleOpenTradeFilterChange}
               activeFilterCount={activeFilterCount}
+              availableOptions={openTradeFilterOptions || {
+                product: [],
+                counterparty: [],
+                incoTerm: [],
+                sustainability: [],
+                creditStatus: [],
+                customsStatus: [],
+                contractStatus: [],
+              }}
             />
           </TabsContent>
 
