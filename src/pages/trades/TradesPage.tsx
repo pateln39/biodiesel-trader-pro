@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -18,6 +17,7 @@ import TradesFilter from '@/components/trades/TradesFilter';
 import { useFilteredTrades, TradeFilterOptions } from '@/hooks/useFilteredTrades';
 import { useTradeFilterOptions } from '@/hooks/useTradeFilterOptions';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { useMovementDateSort, SortConfig } from '@/hooks/useMovementDateSort';
 import { PhysicalTrade } from '@/types';
 import { exportPhysicalTradesToExcel, exportPaperTradesToExcel } from '@/utils/excelExportUtils';
 import { toast } from 'sonner';
@@ -27,6 +27,7 @@ const TradesPage = () => {
   const tabParam = searchParams.get('tab');
   const pageParam = searchParams.get('page');
   const pageSizeParam = searchParams.get('pageSize');
+  const sortParam = searchParams.get('sort');
   
   // Use URL parameters as the source of truth for pagination
   const paginationParams: PaginationParams = {
@@ -50,6 +51,26 @@ const TradesPage = () => {
     pricingType: [],
     counterparty: []
   });
+
+  // Initialize sorting from URL parameters
+  const initSortColumns = (): SortConfig[] => {
+    if (!sortParam) return [];
+    
+    try {
+      return sortParam.split(',').map(sortStr => {
+        const [column, direction] = sortStr.split(':');
+        return {
+          column: column as any,
+          direction: (direction as 'asc' | 'desc') || 'asc'
+        };
+      });
+    } catch {
+      return [];
+    }
+  };
+
+  // Initialize sorting state
+  const { sortColumns, handleSort, clearSort } = useMovementDateSort(initSortColumns());
 
   // Initialize filters from URL parameters
   useEffect(() => {
@@ -97,7 +118,21 @@ const TradesPage = () => {
     setTradeFilters(filtersFromUrl);
   }, [searchParams]);
 
-  // Load physical trades with filtering
+  // Update URL when sorting changes
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    if (sortColumns.length > 0) {
+      const sortString = sortColumns.map(sc => `${sc.column}:${sc.direction}`).join(',');
+      newParams.set('sort', sortString);
+    } else {
+      newParams.delete('sort');
+    }
+    
+    setSearchParams(newParams);
+  }, [sortColumns, setSearchParams]);
+
+  // Load physical trades with filtering and sorting
   const { 
     trades, 
     loading: physicalLoading, 
@@ -105,7 +140,7 @@ const TradesPage = () => {
     refetchTrades,
     pagination: physicalPagination,
     activeFilterCount
-  } = useFilteredTrades(tradeFilters, paginationParams);
+  } = useFilteredTrades(tradeFilters, paginationParams, sortColumns);
   
   // Load paper trades with pagination from URL
   const { 
@@ -287,6 +322,8 @@ const TradesPage = () => {
             refetchTrades={refetchTrades}
             pagination={physicalPagination}
             onPageChange={handlePageChange}
+            sortColumns={sortColumns}
+            onSort={handleSort}
           />
         </CardContent>
       </Card>

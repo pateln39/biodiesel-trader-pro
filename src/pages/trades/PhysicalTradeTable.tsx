@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import TradeTableRow from '@/components/trades/physical/TradeTableRow';
 import TableLoadingState from '@/components/trades/TableLoadingState';
 import TableErrorState from '@/components/trades/TableErrorState';
+import { DateSortHeader } from '@/components/operations/DateSortHeader';
+import { SortConfig, DateSortColumn } from '@/hooks/useMovementDateSort';
 import { toast } from 'sonner';
 import PaginationNav from '@/components/ui/pagination-nav';
 import { PaginationMeta } from '@/types/pagination';
@@ -28,6 +30,8 @@ interface PhysicalTradeTableProps {
   onExport?: () => void;
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
+  sortColumns: SortConfig[];
+  onSort: (column: DateSortColumn) => void;
 }
 
 const PhysicalTradeTable = ({ 
@@ -37,7 +41,9 @@ const PhysicalTradeTable = ({
   refetchTrades, 
   onExport,
   pagination,
-  onPageChange 
+  onPageChange,
+  sortColumns,
+  onSort
 }: PhysicalTradeTableProps) => {
   if (loading) {
     return <TableLoadingState />;
@@ -101,8 +107,22 @@ const PhysicalTradeTable = ({
                   <TableHead className="h-10 whitespace-nowrap text-right">Quantity</TableHead>
                   <TableHead className="h-10 whitespace-nowrap">Sustainability</TableHead>
                   <TableHead className="h-10 whitespace-nowrap">Product</TableHead>
-                  <TableHead className="h-10 whitespace-nowrap">Loading Start</TableHead>
-                  <TableHead className="h-10 whitespace-nowrap">Loading End</TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">
+                    <DateSortHeader
+                      column="loading_period_start"
+                      label="Loading Start"
+                      sortColumns={sortColumns}
+                      onSort={onSort}
+                    />
+                  </TableHead>
+                  <TableHead className="h-10 whitespace-nowrap">
+                    <DateSortHeader
+                      column="loading_period_end"
+                      label="Loading End"
+                      sortColumns={sortColumns}
+                      onSort={onSort}
+                    />
+                  </TableHead>
                   <TableHead className="h-10 whitespace-nowrap">Counterparty</TableHead>
                   <TableHead className="h-10 whitespace-nowrap">Pricing Type</TableHead>
                   <TableHead className="h-10 whitespace-nowrap">Formula</TableHead>
