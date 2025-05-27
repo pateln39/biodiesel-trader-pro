@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
@@ -12,7 +13,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Accordion,
   AccordionContent,
@@ -26,9 +26,9 @@ import { DatePicker } from '@/components/ui/date-picker';
 // Define interface for filter options
 export interface FilterOptions {
   tradeReference?: string;
-  status?: string; // Changed to single value for radio group
+  status: string[]; // Changed back to array
   product: string[];
-  buySell?: string; // Changed to single value for radio group
+  buySell: string[]; // Changed back to array
   incoTerm: string[];
   sustainability: string[];
   counterparty: string[];
@@ -125,13 +125,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     }
   };
 
-  const handleRadioChange = (category: keyof FilterOptions, value: string) => {
-    setTempFilters(prev => ({
-      ...prev,
-      [category]: value === 'all' ? undefined : value
-    }));
-  };
-
   const handleTextChange = (category: keyof FilterOptions, value: string) => {
     setTempFilters(prev => ({
       ...prev,
@@ -162,9 +155,9 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
   const handleReset = () => {
     const emptyFilters: FilterOptions = {
       tradeReference: undefined,
-      status: undefined,
+      status: [],
       product: [],
-      buySell: undefined,
+      buySell: [],
       incoTerm: [],
       sustainability: [],
       counterparty: [],
@@ -196,6 +189,20 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
 
   // Create filter categories for checkbox arrays
   const filterCategories: FilterCategory[] = [
+    {
+      id: 'status',
+      label: 'Status',
+      options: availableOptions.status,
+      selectedOptions: tempFilters.status,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, status: values }))
+    },
+    {
+      id: 'buySell',
+      label: 'Buy/Sell',
+      options: availableOptions.buySell,
+      selectedOptions: tempFilters.buySell,
+      onChange: (values) => setTempFilters(prev => ({ ...prev, buySell: values }))
+    },
     {
       id: 'product',
       label: 'Product',
@@ -274,10 +281,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     
     // Text filters
     if (tempFilters.tradeReference) count++;
-    
-    // Radio button filters
-    if (tempFilters.status) count++;
-    if (tempFilters.buySell) count++;
     
     // Array filters
     Object.values(tempFilters).forEach(filters => {
@@ -438,64 +441,6 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Status Radio Group */}
-              <AccordionItem value="status">
-                <AccordionTrigger className="py-2 hover:no-underline">
-                  <div className="flex items-center">
-                    <span>Status</span>
-                    {tempFilters.status && (
-                      <Badge variant="secondary" className="ml-2">1</Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <RadioGroup
-                    value={tempFilters.status || 'all'}
-                    onValueChange={(value) => handleRadioChange('status', value)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="all" id="status-all" />
-                      <Label htmlFor="status-all">All</Label>
-                    </div>
-                    {availableOptions.status.map((status) => (
-                      <div key={status} className="flex items-center space-x-2">
-                        <RadioGroupItem value={status} id={`status-${status}`} />
-                        <Label htmlFor={`status-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Buy/Sell Radio Group */}
-              <AccordionItem value="buySell">
-                <AccordionTrigger className="py-2 hover:no-underline">
-                  <div className="flex items-center">
-                    <span>Buy/Sell</span>
-                    {tempFilters.buySell && (
-                      <Badge variant="secondary" className="ml-2">1</Badge>
-                    )}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <RadioGroup
-                    value={tempFilters.buySell || 'all'}
-                    onValueChange={(value) => handleRadioChange('buySell', value)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="all" id="buySell-all" />
-                      <Label htmlFor="buySell-all">All</Label>
-                    </div>
-                    {availableOptions.buySell.map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option} id={`buySell-${option}`} />
-                        <Label htmlFor={`buySell-${option}`}>{option.charAt(0).toUpperCase() + option.slice(1)}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </AccordionContent>
-              </AccordionItem>
-
               {/* Date Ranges */}
               <AccordionItem value="dateRanges">
                 <AccordionTrigger className="py-2 hover:no-underline">
@@ -560,7 +505,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                 </AccordionContent>
               </AccordionItem>
 
-              {/* Existing filter categories */}
+              {/* Filter categories with checkboxes */}
               {filterCategories.map((category) => (
                 <AccordionItem key={category.id} value={category.id}>
                   <AccordionTrigger className="py-2 hover:no-underline">

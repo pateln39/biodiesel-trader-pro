@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,10 +30,6 @@ export const useFilteredMovements = (
     
     // Text filters
     if (filters.tradeReference) count++;
-    
-    // Radio button filters
-    if (filters.status) count++;
-    if (filters.buySell) count++;
     
     // Array filters
     Object.entries(filters).forEach(([key, filterValues]) => {
@@ -70,16 +65,15 @@ export const useFilteredMovements = (
       apiFilters.tradeReference = filters.tradeReference;
     }
     
-    // Radio button filters  
-    if (filters.status) {
-      apiFilters.status = [filters.status];
-    }
-    
-    if (filters.buySell) {
-      apiFilters.buySell = [filters.buySell];
-    }
-    
     // Array filters
+    if (filters.status && filters.status.length > 0) {
+      apiFilters.status = filters.status;
+    }
+    
+    if (filters.buySell && filters.buySell.length > 0) {
+      apiFilters.buySell = filters.buySell;
+    }
+    
     if (filters.product && filters.product.length > 0) {
       apiFilters.product = filters.product;
     }
