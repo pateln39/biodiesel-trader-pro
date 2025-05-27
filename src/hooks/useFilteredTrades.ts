@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -241,20 +242,48 @@ export const useFilteredTrades = (
           });
         });
 
-        // Convert to PhysicalTrade objects using the correct data from joined tables
+        // Convert to PhysicalTrade objects - FIXED: Use parent trade ID correctly
         const transformedTrades = Array.from(tradeLegsMap.entries()).map(([parentTradeId, legs]) => {
           const firstLeg = legs[0];
-          return {
-            id: parentTradeId,
-            tradeReference: firstLeg.parentTradeReference, // Use the full trade reference from parent_trades
+          
+          // Create trade object without spreading firstLeg to avoid ID collision
+          const tradeData: PhysicalTrade = {
+            id: parentTradeId, // CRITICAL: Use parent trade ID, not leg ID
+            tradeReference: firstLeg.parentTradeReference,
             tradeType: 'physical' as const,
             physicalType: 'spot' as const, // Default for now
-            counterparty: firstLeg.counterparty, // Use the actual counterparty from parent_trades
+            counterparty: firstLeg.counterparty,
             createdAt: new Date(),
             updatedAt: new Date(),
-            ...firstLeg,
+            // Map properties from first leg without the ID conflict
+            buySell: firstLeg.buySell,
+            product: firstLeg.product,
+            sustainability: firstLeg.sustainability,
+            incoTerm: firstLeg.incoTerm,
+            quantity: firstLeg.quantity,
+            tolerance: firstLeg.tolerance,
+            loadingPeriodStart: firstLeg.loadingPeriodStart,
+            loadingPeriodEnd: firstLeg.loadingPeriodEnd,
+            pricingPeriodStart: firstLeg.pricingPeriodStart,
+            pricingPeriodEnd: firstLeg.pricingPeriodEnd,
+            unit: firstLeg.unit,
+            paymentTerm: firstLeg.paymentTerm,
+            creditStatus: firstLeg.creditStatus,
+            customsStatus: firstLeg.customsStatus,
+            formula: firstLeg.formula,
+            mtmFormula: firstLeg.mtmFormula,
+            pricingType: firstLeg.pricingType,
+            efpPremium: firstLeg.efpPremium,
+            efpAgreedStatus: firstLeg.efpAgreedStatus,
+            efpFixedValue: firstLeg.efpFixedValue,
+            efpDesignatedMonth: firstLeg.efpDesignatedMonth,
+            mtmFutureMonth: firstLeg.mtmFutureMonth,
             legs
-          } as PhysicalTrade;
+          };
+          
+          console.log(`[FILTERED TRADES] Created trade object: ID=${tradeData.id}, Reference=${tradeData.tradeReference}, Legs=${legs.length}`);
+          
+          return tradeData;
         });
         
         return { 
