@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 
-// Extend DateSortColumn to include all the movement date columns
+// Extend DateSortColumn to include all the movement date columns and loading period columns
 export type DateSortColumn = 
   | 'loading_period_start' 
   | 'loading_period_end'

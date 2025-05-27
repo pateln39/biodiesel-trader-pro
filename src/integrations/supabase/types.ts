@@ -1463,6 +1463,15 @@ export type Database = {
         }
         Returns: Json
       }
+      filter_trade_legs: {
+        Args: {
+          p_filters: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_columns?: Json
+        }
+        Returns: Json
+      }
       fix_all_duplicate_sort_orders: {
         Args: Record<PropertyKey, never>
         Returns: undefined
