@@ -12,9 +12,11 @@ import { PaginationParams } from '@/types/pagination';
 // Import our custom components
 import PhysicalTradeTable from './PhysicalTradeTable';
 import PaperTradeList from './PaperTradeList';
+import TradesFilter from '@/components/trades/TradesFilter';
 
 // Import isolated hooks
-import { useTrades } from '@/hooks/useTrades';
+import { useFilteredTrades, TradeFilterOptions } from '@/hooks/useFilteredTrades';
+import { useTradeFilterOptions } from '@/hooks/useTradeFilterOptions';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { PhysicalTrade } from '@/types';
 import { exportPhysicalTradesToExcel, exportPaperTradesToExcel } from '@/utils/excelExportUtils';
@@ -35,14 +37,73 @@ const TradesPage = () => {
   const [activeTab, setActiveTab] = useState<string>(tabParam === 'paper' ? 'paper' : 'physical');
   const [pageError, setPageError] = useState<string | null>(null);
   
-  // Load physical trades with pagination from URL
+  // Physical trades filtering state
+  const [showTradesFilter, setShowTradesFilter] = useState(false);
+  const [tradeFilters, setTradeFilters] = useState<Partial<TradeFilterOptions>>({
+    buySell: [],
+    product: [],
+    sustainability: [],
+    incoTerm: [],
+    creditStatus: [],
+    customsStatus: [],
+    contractStatus: [],
+    pricingType: []
+  });
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const filtersFromUrl: Partial<TradeFilterOptions> = {
+      buySell: [],
+      product: [],
+      sustainability: [],
+      incoTerm: [],
+      creditStatus: [],
+      customsStatus: [],
+      contractStatus: [],
+      pricingType: []
+    };
+
+    // Parse array filters from URL
+    const arrayFilters = ['buySell', 'product', 'sustainability', 'incoTerm', 'creditStatus', 'customsStatus', 'contractStatus', 'pricingType'];
+    arrayFilters.forEach(filter => {
+      const value = searchParams.get(filter);
+      if (value) {
+        (filtersFromUrl as any)[filter] = value.split(',');
+      }
+    });
+
+    // Parse text filters
+    const tradeReference = searchParams.get('tradeReference');
+    if (tradeReference) {
+      filtersFromUrl.tradeReference = tradeReference;
+    }
+
+    // Parse date filters
+    const dateFilters = [
+      'loadingPeriodStartFrom', 'loadingPeriodStartTo',
+      'loadingPeriodEndFrom', 'loadingPeriodEndTo',
+      'pricingPeriodStartFrom', 'pricingPeriodStartTo',
+      'pricingPeriodEndFrom', 'pricingPeriodEndTo'
+    ];
+    dateFilters.forEach(filter => {
+      const value = searchParams.get(filter);
+      if (value) {
+        (filtersFromUrl as any)[filter] = new Date(value);
+      }
+    });
+
+    setTradeFilters(filtersFromUrl);
+  }, [searchParams]);
+
+  // Load physical trades with filtering
   const { 
     trades, 
     loading: physicalLoading, 
     error: physicalError, 
     refetchTrades,
-    pagination: physicalPagination
-  } = useTrades(paginationParams);
+    pagination: physicalPagination,
+    activeFilterCount
+  } = useFilteredTrades(tradeFilters, paginationParams);
   
   // Load paper trades with pagination from URL
   const { 
@@ -52,6 +113,9 @@ const TradesPage = () => {
     refetchPaperTrades,
     pagination: paperPagination
   } = usePaperTrades(paginationParams);
+
+  // Load filter options for physical trades
+  const { options: filterOptions } = useTradeFilterOptions();
   
   const physicalTrades = trades as PhysicalTrade[];
 
@@ -94,6 +158,42 @@ const TradesPage = () => {
     // Update URL parameters
     const newParams = new URLSearchParams(searchParams);
     newParams.set('page', page.toString());
+    setSearchParams(newParams);
+  };
+
+  // Handle filter changes for physical trades
+  const handleFilterChange = (filters: TradeFilterOptions) => {
+    setTradeFilters(filters);
+    
+    // Update URL parameters
+    const newParams = new URLSearchParams(searchParams);
+    
+    // Remove existing filter parameters
+    const filterKeys = [
+      'tradeReference', 'buySell', 'product', 'sustainability', 'incoTerm', 
+      'creditStatus', 'customsStatus', 'contractStatus', 'pricingType',
+      'loadingPeriodStartFrom', 'loadingPeriodStartTo',
+      'loadingPeriodEndFrom', 'loadingPeriodEndTo',
+      'pricingPeriodStartFrom', 'pricingPeriodStartTo',
+      'pricingPeriodEndFrom', 'pricingPeriodEndTo'
+    ];
+    filterKeys.forEach(key => newParams.delete(key));
+    
+    // Add new filter parameters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value) && value.length > 0) {
+          newParams.set(key, value.join(','));
+        } else if (value instanceof Date) {
+          newParams.set(key, value.toISOString().split('T')[0]);
+        } else if (typeof value === 'string' && value.trim() !== '') {
+          newParams.set(key, value);
+        }
+      }
+    });
+    
+    // Reset to page 1 when filters change
+    newParams.set('page', '1');
     setSearchParams(newParams);
   };
 
@@ -157,8 +257,19 @@ const TradesPage = () => {
           <CardDescription className="flex justify-between items-center">
             <span>View and manage physical trade positions</span>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
-                <Filter className="mr-2 h-4 w-4" /> Filter
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowTradesFilter(true)}
+                className="flex items-center gap-1"
+              >
+                <Filter className="mr-2 h-4 w-4" /> 
+                Filter
+                {activeFilterCount > 0 && (
+                  <span className="ml-1 bg-blue-500 text-white rounded-full px-2 py-0.5 text-xs">
+                    {activeFilterCount}
+                  </span>
+                )}
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportPhysicalTrades}>
                 <FileDown className="mr-2 h-4 w-4" /> Export
@@ -242,6 +353,15 @@ const TradesPage = () => {
             {renderPaperTradesTab()}
           </TabsContent>
         </Tabs>
+
+        {/* Filter Dialog for Physical Trades */}
+        <TradesFilter
+          open={showTradesFilter}
+          onOpenChange={setShowTradesFilter}
+          filterOptions={tradeFilters}
+          availableOptions={filterOptions}
+          onFilterChange={handleFilterChange}
+        />
       </div>
     </Layout>
   );
