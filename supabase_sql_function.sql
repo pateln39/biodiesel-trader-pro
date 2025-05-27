@@ -1,18 +1,12 @@
 
--- Update the filter_open_trades function to handle multi-column sorting
-CREATE OR REPLACE FUNCTION public.filter_open_trades(
-  p_filters jsonb,
-  p_page integer DEFAULT 1,
-  p_page_size integer DEFAULT 15,
-  p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb
-) 
-RETURNS json
-LANGUAGE plpgsql
+CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
+ RETURNS json
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
   v_total_count INTEGER;
   v_total_pages INTEGER;
-  v_filtered_trades JSON;
+  v_filtered_movements JSON;
   v_pagination_meta JSON;
   v_where_clause TEXT := '';
   v_query TEXT;
@@ -21,163 +15,222 @@ DECLARE
 BEGIN
   -- Start building the WHERE clause based on filters
   IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' THEN
-    -- Trade reference filter
-    IF p_filters ? 'trade_reference' AND p_filters->>'trade_reference' IS NOT NULL AND p_filters->>'trade_reference' != '' THEN
+    -- Trade Reference filter (text search)
+    IF p_filters ? 'tradeReference' AND p_filters->>'tradeReference' IS NOT NULL AND p_filters->>'tradeReference' != '' THEN
       v_where_clause := v_where_clause || 
         CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('trade_reference ILIKE ''%%'' || %L || ''%%''', p_filters->>'trade_reference');
+        format('trade_reference ILIKE ''%%'' || %L || ''%%''', p_filters->>'tradeReference');
     END IF;
     
-    -- Buy/sell filter
-    IF p_filters ? 'buy_sell' AND p_filters->>'buy_sell' IS NOT NULL AND p_filters->>'buy_sell' != '' THEN
-      v_where_clause := v_where_clause || 
-        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('buy_sell = %L', p_filters->>'buy_sell');
+    -- Status filter (array)
+    IF p_filters ? 'status' THEN
+      IF jsonb_typeof(p_filters->'status') = 'array' AND jsonb_array_length(p_filters->'status') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'status') || ')))';
+      ELSIF p_filters->>'status' IS NOT NULL AND p_filters->>'status' != '' THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          format('status = %L', p_filters->>'status');
+      END IF;
     END IF;
     
-    -- Product filter (handle as array for multi-select)
+    -- Buy/Sell filter (array)
+    IF p_filters ? 'buySell' THEN
+      IF jsonb_typeof(p_filters->'buySell') = 'array' AND jsonb_array_length(p_filters->'buySell') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(buy_sell IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'buySell') || ')))';
+      END IF;
+    END IF;
+    
+    -- Product filter (array)
     IF p_filters ? 'product' THEN
       IF jsonb_typeof(p_filters->'product') = 'array' AND jsonb_array_length(p_filters->'product') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
           '(product IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'product') || ')))';
-      ELSIF p_filters->>'product' IS NOT NULL AND p_filters->>'product' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('product ILIKE ''%%'' || %L || ''%%''', p_filters->>'product');
       END IF;
     END IF;
     
-    -- Counterparty filter (handle as array for multi-select)
-    IF p_filters ? 'counterparty' THEN
-      IF jsonb_typeof(p_filters->'counterparty') = 'array' AND jsonb_array_length(p_filters->'counterparty') > 0 THEN
+    -- Incoterm filter (array)
+    IF p_filters ? 'incoTerm' THEN
+      IF jsonb_typeof(p_filters->'incoTerm') = 'array' AND jsonb_array_length(p_filters->'incoTerm') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(counterparty IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'counterparty') || ')))';
-      ELSIF p_filters->>'counterparty' IS NOT NULL AND p_filters->>'counterparty' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('counterparty ILIKE ''%%'' || %L || ''%%''', p_filters->>'counterparty');
+          '(inco_term IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'incoTerm') || ')))';
       END IF;
     END IF;
     
-    -- Incoterm filter (handle as array for multi-select)
-    IF p_filters ? 'inco_term' THEN
-      IF jsonb_typeof(p_filters->'inco_term') = 'array' AND jsonb_array_length(p_filters->'inco_term') > 0 THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(inco_term IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'inco_term') || ')))';
-      ELSIF p_filters->>'inco_term' IS NOT NULL AND p_filters->>'inco_term' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('inco_term = %L', p_filters->>'inco_term');
-      END IF;
-    END IF;
-    
-    -- Sustainability filter (handle as array for multi-select)
+    -- Sustainability filter (array)
     IF p_filters ? 'sustainability' THEN
       IF jsonb_typeof(p_filters->'sustainability') = 'array' AND jsonb_array_length(p_filters->'sustainability') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
           '(sustainability IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'sustainability') || ')))';
-      ELSIF p_filters->>'sustainability' IS NOT NULL AND p_filters->>'sustainability' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('sustainability = %L', p_filters->>'sustainability');
       END IF;
     END IF;
     
-    -- Credit status filter (handle as array for multi-select)
-    IF p_filters ? 'credit_status' THEN
-      IF jsonb_typeof(p_filters->'credit_status') = 'array' AND jsonb_array_length(p_filters->'credit_status') > 0 THEN
+    -- Counterparty filter (array)
+    IF p_filters ? 'counterparty' THEN
+      IF jsonb_typeof(p_filters->'counterparty') = 'array' AND jsonb_array_length(p_filters->'counterparty') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(credit_status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'credit_status') || ')))';
-      ELSIF p_filters->>'credit_status' IS NOT NULL AND p_filters->>'credit_status' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('credit_status = %L', p_filters->>'credit_status');
+          '(counterparty IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'counterparty') || ')))';
       END IF;
     END IF;
     
-    -- Customs status filter (handle as array for multi-select)
-    IF p_filters ? 'customs_status' THEN
-      IF jsonb_typeof(p_filters->'customs_status') = 'array' AND jsonb_array_length(p_filters->'customs_status') > 0 THEN
+    -- Credit status filter (array)
+    IF p_filters ? 'creditStatus' THEN
+      IF jsonb_typeof(p_filters->'creditStatus') = 'array' AND jsonb_array_length(p_filters->'creditStatus') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(customs_status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'customs_status') || ')))';
-      ELSIF p_filters->>'customs_status' IS NOT NULL AND p_filters->>'customs_status' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('customs_status = %L', p_filters->>'customs_status');
+          '(credit_status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'creditStatus') || ')))';
       END IF;
     END IF;
     
-    -- Contract status filter (handle as array for multi-select)
-    IF p_filters ? 'contract_status' THEN
-      IF jsonb_typeof(p_filters->'contract_status') = 'array' AND jsonb_array_length(p_filters->'contract_status') > 0 THEN
+    -- Customs status filter (array)
+    IF p_filters ? 'customsStatus' THEN
+      IF jsonb_typeof(p_filters->'customsStatus') = 'array' AND jsonb_array_length(p_filters->'customsStatus') > 0 THEN
         v_where_clause := v_where_clause || 
           CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(contract_status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'contract_status') || ')))';
-      ELSIF p_filters->>'contract_status' IS NOT NULL AND p_filters->>'contract_status' != '' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          format('contract_status = %L', p_filters->>'contract_status');
+          '(customs_status IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'customsStatus') || ')))';
       END IF;
     END IF;
     
-    -- Pricing type filter
-    IF p_filters ? 'pricing_type' AND p_filters->>'pricing_type' IS NOT NULL AND p_filters->>'pricing_type' != '' THEN
-      v_where_clause := v_where_clause || 
-        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('pricing_type = %L', p_filters->>'pricing_type');
+    -- Loadport filter (array)
+    IF p_filters ? 'loadport' THEN
+      IF jsonb_typeof(p_filters->'loadport') = 'array' AND jsonb_array_length(p_filters->'loadport') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(loadport IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'loadport') || ')))';
+      END IF;
+    END IF;
+    
+    -- Loadport Inspector filter (array)
+    IF p_filters ? 'loadportInspector' THEN
+      IF jsonb_typeof(p_filters->'loadportInspector') = 'array' AND jsonb_array_length(p_filters->'loadportInspector') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(loadport_inspector IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'loadportInspector') || ')))';
+      END IF;
+    END IF;
+    
+    -- Disport filter (array)
+    IF p_filters ? 'disport' THEN
+      IF jsonb_typeof(p_filters->'disport') = 'array' AND jsonb_array_length(p_filters->'disport') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(disport IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'disport') || ')))';
+      END IF;
+    END IF;
+    
+    -- Disport Inspector filter (array)
+    IF p_filters ? 'disportInspector' THEN
+      IF jsonb_typeof(p_filters->'disportInspector') = 'array' AND jsonb_array_length(p_filters->'disportInspector') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(disport_inspector IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'disportInspector') || ')))';
+      END IF;
     END IF;
     
     -- Loading period start date range filters
-    IF p_filters ? 'loading_period_start_from' AND p_filters->>'loading_period_start_from' IS NOT NULL AND p_filters->>'loading_period_start_from' != '' THEN
+    IF p_filters ? 'loadingPeriodStartFrom' AND p_filters->>'loadingPeriodStartFrom' IS NOT NULL AND p_filters->>'loadingPeriodStartFrom' != '' THEN
       v_where_clause := v_where_clause || 
         CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('loading_period_start >= %L::date', p_filters->>'loading_period_start_from');
+        format('loading_period_start >= %L::date', p_filters->>'loadingPeriodStartFrom');
     END IF;
     
-    IF p_filters ? 'loading_period_start_to' AND p_filters->>'loading_period_start_to' IS NOT NULL AND p_filters->>'loading_period_start_to' != '' THEN
+    IF p_filters ? 'loadingPeriodStartTo' AND p_filters->>'loadingPeriodStartTo' IS NOT NULL AND p_filters->>'loadingPeriodStartTo' != '' THEN
       v_where_clause := v_where_clause || 
         CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('loading_period_start <= %L::date', p_filters->>'loading_period_start_to');
+        format('loading_period_start <= %L::date', p_filters->>'loadingPeriodStartTo');
     END IF;
     
     -- Loading period end date range filters
-    IF p_filters ? 'loading_period_end_from' AND p_filters->>'loading_period_end_from' IS NOT NULL AND p_filters->>'loading_period_end_from' != '' THEN
+    IF p_filters ? 'loadingPeriodEndFrom' AND p_filters->>'loadingPeriodEndFrom' IS NOT NULL AND p_filters->>'loadingPeriodEndFrom' != '' THEN
       v_where_clause := v_where_clause || 
         CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('loading_period_end >= %L::date', p_filters->>'loading_period_end_from');
+        format('loading_period_end >= %L::date', p_filters->>'loadingPeriodEndFrom');
     END IF;
     
-    IF p_filters ? 'loading_period_end_to' AND p_filters->>'loading_period_end_to' IS NOT NULL AND p_filters->>'loading_period_end_to' != '' THEN
+    IF p_filters ? 'loadingPeriodEndTo' AND p_filters->>'loadingPeriodEndTo' IS NOT NULL AND p_filters->>'loadingPeriodEndTo' != '' THEN
       v_where_clause := v_where_clause || 
         CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-        format('loading_period_end <= %L::date', p_filters->>'loading_period_end_to');
+        format('loading_period_end <= %L::date', p_filters->>'loadingPeriodEndTo');
+    END IF;
+
+    -- Nomination ETA filter
+    IF p_filters ? 'nominationEtaFrom' AND p_filters->>'nominationEtaFrom' IS NOT NULL AND p_filters->>'nominationEtaFrom' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('nomination_eta >= %L::timestamp', p_filters->>'nominationEtaFrom');
     END IF;
     
-    -- Status filter (all, in-process, completed)
-    IF p_filters ? 'status' AND p_filters->>'status' IS NOT NULL AND p_filters->>'status' != '' AND p_filters->>'status' != 'all' THEN
-      IF p_filters->>'status' = 'in-process' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          '(balance IS NULL OR balance > 0)';
-      ELSIF p_filters->>'status' = 'completed' THEN
-        v_where_clause := v_where_clause || 
-          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
-          'balance <= 0';
-      END IF;
+    IF p_filters ? 'nominationEtaTo' AND p_filters->>'nominationEtaTo' IS NOT NULL AND p_filters->>'nominationEtaTo' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('nomination_eta <= %L::timestamp', p_filters->>'nominationEtaTo');
+    END IF;
+
+    -- Nomination Valid filter
+    IF p_filters ? 'nominationValidFrom' AND p_filters->>'nominationValidFrom' IS NOT NULL AND p_filters->>'nominationValidFrom' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('nomination_valid >= %L::timestamp', p_filters->>'nominationValidFrom');
+    END IF;
+    
+    IF p_filters ? 'nominationValidTo' AND p_filters->>'nominationValidTo' IS NOT NULL AND p_filters->>'nominationValidTo' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('nomination_valid <= %L::timestamp', p_filters->>'nominationValidTo');
+    END IF;
+
+    -- Cash Flow filter
+    IF p_filters ? 'cashFlowFrom' AND p_filters->>'cashFlowFrom' IS NOT NULL AND p_filters->>'cashFlowFrom' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('cash_flow >= %L::date', p_filters->>'cashFlowFrom');
+    END IF;
+    
+    IF p_filters ? 'cashFlowTo' AND p_filters->>'cashFlowTo' IS NOT NULL AND p_filters->>'cashFlowTo' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('cash_flow <= %L::date', p_filters->>'cashFlowTo');
+    END IF;
+
+    -- BL Date filter
+    IF p_filters ? 'blDateFrom' AND p_filters->>'blDateFrom' IS NOT NULL AND p_filters->>'blDateFrom' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('bl_date >= %L::date', p_filters->>'blDateFrom');
+    END IF;
+    
+    IF p_filters ? 'blDateTo' AND p_filters->>'blDateTo' IS NOT NULL AND p_filters->>'blDateTo' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('bl_date <= %L::date', p_filters->>'blDateTo');
+    END IF;
+
+    -- COD Date filter
+    IF p_filters ? 'codDateFrom' AND p_filters->>'codDateFrom' IS NOT NULL AND p_filters->>'codDateFrom' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('cod_date >= %L::date', p_filters->>'codDateFrom');
+    END IF;
+    
+    IF p_filters ? 'codDateTo' AND p_filters->>'codDateTo' IS NOT NULL AND p_filters->>'codDateTo' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('cod_date <= %L::date', p_filters->>'codDateTo');
     END IF;
   END IF;
   
-  -- Add status = 'open' constraint if not already specified
+  -- Add base filter to exclude transfers and reconciliations
   IF v_where_clause = '' THEN
-    v_where_clause := ' WHERE status = ''open''';
+    v_where_clause := ' WHERE product NOT IN (''Transfer'', ''RECONCILIATION'')';
   ELSE
-    v_where_clause := v_where_clause || ' AND status = ''open''';
+    v_where_clause := v_where_clause || ' AND product NOT IN (''Transfer'', ''RECONCILIATION'')';
   END IF;
   
   -- Build the ORDER BY clause from the sort columns array
@@ -192,10 +245,30 @@ BEGIN
         v_order_by := v_order_by || ', ';
       END IF;
       
-      -- Add the sort column and direction
-      v_order_by := v_order_by || format('%I %s', 
-                                     v_sort_item->>'column', 
-                                     CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
+      -- Map frontend column names to database column names
+      DECLARE
+        column_name TEXT;
+      BEGIN
+        column_name := v_sort_item->>'column';
+        
+        -- Map any frontend column names that differ from database column names
+        IF column_name = 'nominationEta' THEN
+          column_name := 'nomination_eta';
+        ELSIF column_name = 'nominationValid' THEN
+          column_name := 'nomination_valid';
+        ELSIF column_name = 'cashFlow' THEN
+          column_name := 'cash_flow';
+        ELSIF column_name = 'blDate' THEN
+          column_name := 'bl_date';
+        ELSIF column_name = 'codDate' THEN
+          column_name := 'cod_date';
+        END IF;
+        
+        -- Add the sort column and direction
+        v_order_by := v_order_by || format('%I %s', 
+                                       column_name, 
+                                       CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
+      END;
     END LOOP;
     
     -- Add sort_order as a tie-breaker if it's not already included
@@ -208,7 +281,7 @@ BEGIN
   END IF;
   
   -- First, count total filtered records
-  v_query := 'SELECT COUNT(*) FROM open_trades' || v_where_clause;
+  v_query := 'SELECT COUNT(*) FROM movements' || v_where_clause;
   
   EXECUTE v_query INTO v_total_count;
   
@@ -217,16 +290,16 @@ BEGIN
   
   -- Query for the filtered and paginated data
   IF v_total_count > 0 THEN
-    v_query := 'SELECT json_agg(t) FROM (SELECT * FROM open_trades' || 
+    v_query := 'SELECT json_agg(t) FROM (SELECT * FROM movements' || 
               v_where_clause || 
               v_order_by || 
               format(' LIMIT %s OFFSET %s', p_page_size, (p_page - 1) * p_page_size) ||
               ') t';
     
-    EXECUTE v_query INTO v_filtered_trades;
+    EXECUTE v_query INTO v_filtered_movements;
   ELSE
     -- If no results, return empty JSON array
-    v_filtered_trades := '[]'::json;
+    v_filtered_movements := '[]'::json;
   END IF;
   
   -- Create pagination metadata
@@ -239,8 +312,8 @@ BEGIN
   
   -- Return combined result
   RETURN json_build_object(
-    'trades', COALESCE(v_filtered_trades, '[]'::json),
+    'movements', COALESCE(v_filtered_movements, '[]'::json),
     'pagination', v_pagination_meta
   );
 END;
-$function$;
+$function$

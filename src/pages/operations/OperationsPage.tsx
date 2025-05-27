@@ -26,7 +26,7 @@ const OperationsPage = () => {
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [openTradeFilters, setOpenTradeFilters] = useState<OpenTradeFilters>({ status: 'all' });
-  const [activeFilterCount, setActiveFilterCount] = useState<number>(0);
+  const [activeOpenTradeFilterCount, setActiveOpenTradeFilterCount] = useState<number>(0);
   
   // Add sort configuration using the hook
   const { sortColumns, handleSort: toggleSortColumn } = useMovementDateSort();
@@ -54,7 +54,7 @@ const OperationsPage = () => {
     customsStatusOptions
   } = useReferenceData();
 
-  // Count active filters
+  // Count active filters for open trades
   useEffect(() => {
     let count = 0;
     Object.entries(openTradeFilters).forEach(([key, value]) => {
@@ -62,7 +62,7 @@ const OperationsPage = () => {
         count++;
       }
     });
-    setActiveFilterCount(count);
+    setActiveOpenTradeFilterCount(count);
   }, [openTradeFilters]);
 
   // Initialize sort_order for all tables when component mounts
@@ -199,9 +199,9 @@ const OperationsPage = () => {
                       className="relative"
                     >
                       <Filter className="mr-2 h-4 w-4" /> Filter
-                      {activeFilterCount > 0 && (
+                      {activeOpenTradeFilterCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                          {activeFilterCount}
+                          {activeOpenTradeFilterCount}
                         </span>
                       )}
                     </Button>
@@ -222,7 +222,7 @@ const OperationsPage = () => {
               onOpenChange={setIsOpenTradesFilterOpen}
               filters={openTradeFilters}
               onFiltersChange={handleOpenTradeFilterChange}
-              activeFilterCount={activeFilterCount}
+              activeFilterCount={activeOpenTradeFilterCount}
               availableOptions={openTradeFilterOptions || {
                 product: [],
                 counterparty: [],
