@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OpenTrade } from '@/hooks/useOpenTrades';
-import { formatDate } from '@/utils/dateUtils';
+import { formatDate } from '@/lib/formatters';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -27,19 +27,25 @@ import ProductToken from '@/components/operations/storage/ProductToken';
 import PaginationNav from '@/components/ui/pagination-nav';
 import { PaginationParams } from '@/types/pagination';
 import { OpenTradeFilters, useFilteredOpenTrades } from '@/hooks/useFilteredOpenTrades';
+import { DateSortColumn, SortConfig } from '@/hooks/useMovementDateSort';
+import { DateSortHeader } from '@/components/operations/DateSortHeader';
 
 interface OpenTradesTableProps {
   onRefresh?: () => void;
   filters?: OpenTradeFilters;
   paginationParams?: PaginationParams;
   onPageChange?: (page: number) => void;
+  sortColumns?: SortConfig[];
+  onSort?: (column: DateSortColumn) => void;
 }
 
 const OpenTradesTable: React.FC<OpenTradesTableProps> = ({ 
   onRefresh,
   filters = {},
   paginationParams,
-  onPageChange
+  onPageChange,
+  sortColumns = [],
+  onSort
 }) => {
   const { 
     openTrades,
@@ -49,7 +55,7 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
     refetchOpenTrades,
     activeFilterCount,
     noResultsFound
-  } = useFilteredOpenTrades(filters, paginationParams);
+  } = useFilteredOpenTrades(filters, paginationParams, sortColumns);
   
   const [localTrades, setLocalTrades] = React.useState<OpenTrade[]>([]);
   const [selectedTrade, setSelectedTrade] = React.useState<OpenTrade | null>(null);
@@ -253,8 +259,30 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
       <TableHead className="text-right">Quantity</TableHead>
       <TableHead>Sustainability</TableHead>
       <TableHead>Product</TableHead>
-      <TableHead>Loading Start</TableHead>
-      <TableHead>Loading End</TableHead>
+      <TableHead>
+        {onSort ? (
+          <DateSortHeader
+            column="loading_period_start"
+            label="Loading Start"
+            sortColumns={sortColumns || []}
+            onSort={onSort}
+          />
+        ) : (
+          "Loading Start"
+        )}
+      </TableHead>
+      <TableHead>
+        {onSort ? (
+          <DateSortHeader
+            column="loading_period_end"
+            label="Loading End"
+            sortColumns={sortColumns || []}
+            onSort={onSort}
+          />
+        ) : (
+          "Loading End"
+        )}
+      </TableHead>
       <TableHead>Counterparty</TableHead>
       <TableHead>Pricing Type</TableHead>
       <TableHead>Formula</TableHead>

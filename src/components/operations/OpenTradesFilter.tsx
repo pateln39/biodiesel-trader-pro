@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import {
@@ -13,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useReferenceData } from '@/hooks/useReferenceData';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,19 @@ import {
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format, parseISO } from 'date-fns';
+import { formatDateForStorage } from '@/utils/dateParsingUtils';
+
+interface OpenTradeFilterOptions {
+  product: string[];
+  counterparty: string[];
+  incoTerm: string[];
+  sustainability: string[];
+  creditStatus: string[];
+  customsStatus: string[];
+  contractStatus: string[];
+}
 
 interface OpenTradesFilterProps {
   open: boolean;
@@ -30,6 +43,7 @@ interface OpenTradesFilterProps {
   filters: OpenTradeFilters;
   onFiltersChange: (filters: OpenTradeFilters) => void;
   activeFilterCount: number;
+  availableOptions: OpenTradeFilterOptions;
 }
 
 interface FilterCategory {
@@ -45,18 +59,24 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   onOpenChange,
   filters,
   onFiltersChange,
-  activeFilterCount
+  activeFilterCount,
+  availableOptions
 }) => {
   const [tempFilters, setTempFilters] = useState<OpenTradeFilters>(filters);
-  const { 
-    counterparties,
-    sustainabilityOptions,
-    creditStatusOptions,
-    customsStatusOptions,
-    productOptions,
-    incoTermOptions,
-    contractStatusOptions
-  } = useReferenceData();
+  
+  // Date states for the pickers
+  const [loadingStartFrom, setLoadingStartFrom] = useState<Date | null>(
+    tempFilters.loading_period_start_from ? new Date(tempFilters.loading_period_start_from) : null
+  );
+  const [loadingStartTo, setLoadingStartTo] = useState<Date | null>(
+    tempFilters.loading_period_start_to ? new Date(tempFilters.loading_period_start_to) : null
+  );
+  const [loadingEndFrom, setLoadingEndFrom] = useState<Date | null>(
+    tempFilters.loading_period_end_from ? new Date(tempFilters.loading_period_end_from) : null
+  );
+  const [loadingEndTo, setLoadingEndTo] = useState<Date | null>(
+    tempFilters.loading_period_end_to ? new Date(tempFilters.loading_period_end_to) : null
+  );
 
   // Reset temporary filters when dialog opens
   useEffect(() => {
@@ -94,8 +114,25 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
       }
       
       setTempFilters(convertedFilters);
+      
+      // Set date states
+      setLoadingStartFrom(filters.loading_period_start_from ? new Date(filters.loading_period_start_from) : null);
+      setLoadingStartTo(filters.loading_period_start_to ? new Date(filters.loading_period_start_to) : null);
+      setLoadingEndFrom(filters.loading_period_end_from ? new Date(filters.loading_period_end_from) : null);
+      setLoadingEndTo(filters.loading_period_end_to ? new Date(filters.loading_period_end_to) : null);
     }
   }, [open, filters]);
+
+  // Update date filters whenever date picker values change
+  useEffect(() => {
+    setTempFilters(prev => ({
+      ...prev,
+      loading_period_start_from: loadingStartFrom ? formatDateForStorage(loadingStartFrom) : undefined,
+      loading_period_start_to: loadingStartTo ? formatDateForStorage(loadingStartTo) : undefined,
+      loading_period_end_from: loadingEndFrom ? formatDateForStorage(loadingEndFrom) : undefined,
+      loading_period_end_to: loadingEndTo ? formatDateForStorage(loadingEndTo) : undefined
+    }));
+  }, [loadingStartFrom, loadingStartTo, loadingEndFrom, loadingEndTo]);
 
   // Handle single value changes
   const handleChange = (field: keyof OpenTradeFilters, value: string) => {
@@ -124,25 +161,25 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
     
     switch (category) {
       case 'product':
-        options = productOptions;
+        options = availableOptions.product;
         break;
       case 'counterparty':
-        options = counterparties;
+        options = availableOptions.counterparty;
         break;
       case 'inco_term':
-        options = incoTermOptions;
+        options = availableOptions.incoTerm;
         break;
       case 'sustainability':
-        options = sustainabilityOptions;
+        options = availableOptions.sustainability;
         break;
       case 'credit_status':
-        options = creditStatusOptions;
+        options = availableOptions.creditStatus;
         break;
       case 'customs_status':
-        options = customsStatusOptions;
+        options = availableOptions.customsStatus;
         break;
       case 'contract_status':
-        options = contractStatusOptions;
+        options = availableOptions.contractStatus;
         break;
       default:
         options = [];
@@ -162,58 +199,62 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
   const handleReset = () => {
     const defaultFilters: OpenTradeFilters = { status: 'all' };
     setTempFilters(defaultFilters);
+    setLoadingStartFrom(null);
+    setLoadingStartTo(null);
+    setLoadingEndFrom(null);
+    setLoadingEndTo(null);
     onFiltersChange(defaultFilters);
     onOpenChange(false);
   };
 
-  // Create filter categories
+  // Create filter categories using available options
   const filterCategories: FilterCategory[] = [
     {
       id: 'product',
       label: 'Product',
-      options: productOptions,
+      options: availableOptions.product,
       selectedOptions: Array.isArray(tempFilters.product) ? tempFilters.product : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, product: values.length ? values : undefined }))
     },
     {
       id: 'counterparty',
       label: 'Counterparty',
-      options: counterparties,
+      options: availableOptions.counterparty,
       selectedOptions: Array.isArray(tempFilters.counterparty) ? tempFilters.counterparty : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values.length ? values : undefined }))
     },
     {
       id: 'inco_term',
       label: 'Incoterm',
-      options: incoTermOptions,
+      options: availableOptions.incoTerm,
       selectedOptions: Array.isArray(tempFilters.inco_term) ? tempFilters.inco_term : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, inco_term: values.length ? values : undefined }))
     },
     {
       id: 'sustainability',
       label: 'Sustainability',
-      options: sustainabilityOptions,
+      options: availableOptions.sustainability,
       selectedOptions: Array.isArray(tempFilters.sustainability) ? tempFilters.sustainability : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values.length ? values : undefined }))
     },
     {
       id: 'credit_status',
       label: 'Credit Status',
-      options: creditStatusOptions,
+      options: availableOptions.creditStatus,
       selectedOptions: Array.isArray(tempFilters.credit_status) ? tempFilters.credit_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, credit_status: values.length ? values : undefined }))
     },
     {
       id: 'customs_status',
       label: 'Customs Status',
-      options: customsStatusOptions,
+      options: availableOptions.customsStatus,
       selectedOptions: Array.isArray(tempFilters.customs_status) ? tempFilters.customs_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, customs_status: values.length ? values : undefined }))
     },
     {
       id: 'contract_status',
       label: 'Contract Status',
-      options: contractStatusOptions,
+      options: availableOptions.contractStatus,
       selectedOptions: Array.isArray(tempFilters.contract_status) ? tempFilters.contract_status : [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, contract_status: values.length ? values : undefined }))
     }
@@ -343,6 +384,108 @@ const OpenTradesFilter: React.FC<OpenTradesFilterProps> = ({
                 </RadioGroup>
               </div>
             </div>
+
+            {/* Date Range Filters */}
+            <Accordion type="multiple" className="w-full mb-4">
+              <AccordionItem value="date-ranges">
+                <AccordionTrigger className="py-2 hover:no-underline">
+                  <div className="flex items-center">
+                    <span>Date Ranges</span>
+                    {(loadingStartFrom || loadingStartTo || loadingEndFrom || loadingEndTo) && (
+                      <Badge variant="secondary" className="ml-2">
+                        {[
+                          loadingStartFrom ? 1 : 0, 
+                          loadingStartTo ? 1 : 0, 
+                          loadingEndFrom ? 1 : 0, 
+                          loadingEndTo ? 1 : 0
+                        ].reduce((a, b) => a + b, 0)}
+                      </Badge>
+                    )}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    {/* Loading Period Start Range */}
+                    <div className="space-y-2">
+                      <Label className="font-medium">Loading Period Start</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From</Label>
+                          <DatePicker 
+                            date={loadingStartFrom ? loadingStartFrom : new Date()} 
+                            setDate={(date) => setLoadingStartFrom(date)} 
+                            disabled={false}
+                            placeholder="Select start date"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To</Label>
+                          <DatePicker 
+                            date={loadingStartTo ? loadingStartTo : new Date()} 
+                            setDate={(date) => setLoadingStartTo(date)} 
+                            disabled={false}
+                            placeholder="Select end date"
+                          />
+                        </div>
+                      </div>
+                      {loadingStartFrom && loadingStartTo && (
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => {
+                              setLoadingStartFrom(null);
+                              setLoadingStartTo(null);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Loading Period End Range */}
+                    <div className="space-y-2">
+                      <Label className="font-medium">Loading Period End</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From</Label>
+                          <DatePicker 
+                            date={loadingEndFrom ? loadingEndFrom : new Date()} 
+                            setDate={(date) => setLoadingEndFrom(date)} 
+                            disabled={false}
+                            placeholder="Select start date"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To</Label>
+                          <DatePicker 
+                            date={loadingEndTo ? loadingEndTo : new Date()} 
+                            setDate={(date) => setLoadingEndTo(date)} 
+                            disabled={false}
+                            placeholder="Select end date"
+                          />
+                        </div>
+                      </div>
+                      {loadingEndFrom && loadingEndTo && (
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => {
+                              setLoadingEndFrom(null);
+                              setLoadingEndTo(null);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Multi-select Filters */}
             <Accordion type="multiple" className="w-full">

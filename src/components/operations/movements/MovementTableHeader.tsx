@@ -62,7 +62,7 @@ const MovementTableHeader: React.FC<MovementTableHeaderProps> = ({
       <TableHead className="h-10 whitespace-nowrap">Scheduled Quantity</TableHead>
       <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
-          column="nominationEta"
+          column={"nominationEta" as DateSortColumn}
           label="Nomination ETA"
           sortColumns={sortColumns}
           onSort={onToggleSortColumn}
@@ -70,7 +70,7 @@ const MovementTableHeader: React.FC<MovementTableHeaderProps> = ({
       </TableHead>
       <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
-          column="nominationValid"
+          column={"nominationValid" as DateSortColumn}
           label="Nomination Valid"
           sortColumns={sortColumns}
           onSort={onToggleSortColumn}
@@ -78,7 +78,7 @@ const MovementTableHeader: React.FC<MovementTableHeaderProps> = ({
       </TableHead>
       <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
-          column="cashFlow"
+          column={"cashFlow" as DateSortColumn}
           label="Cash Flow Date"
           sortColumns={sortColumns}
           onSort={onToggleSortColumn}
@@ -91,7 +91,7 @@ const MovementTableHeader: React.FC<MovementTableHeaderProps> = ({
       <TableHead className="h-10 whitespace-nowrap">Disport Inspector</TableHead>
       <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
-          column="blDate"
+          column={"blDate" as DateSortColumn}
           label="BL Date"
           sortColumns={sortColumns}
           onSort={onToggleSortColumn}
@@ -100,7 +100,7 @@ const MovementTableHeader: React.FC<MovementTableHeaderProps> = ({
       <TableHead className="h-10 whitespace-nowrap">Actual Quantity</TableHead>
       <TableHead className="h-10 whitespace-nowrap">
         <DateSortHeader
-          column="codDate"
+          column={"codDate" as DateSortColumn}
           label="COD Date"
           sortColumns={sortColumns}
           onSort={onToggleSortColumn}

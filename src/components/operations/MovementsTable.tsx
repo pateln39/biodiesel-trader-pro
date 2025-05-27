@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ import TradeDetailsDialog from './TradeDetailsDialog';
 import { SortableTable } from '@/components/ui/sortable-table';
 import { StorageFormDialog } from './movements/StorageFormDialog';
 import { toast } from 'sonner';
-import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import { SortConfig } from '@/hooks/useMovementDateSort';
 import DemurrageCalculatorDialog from './demurrage/DemurrageCalculatorDialog';
 import { getGroupColorClasses } from '@/utils/colorUtils';
 import MovementTableHeader from './movements/MovementTableHeader';
@@ -42,6 +43,8 @@ interface MovementsTableProps {
   isUngrouping: boolean;
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
+  sortColumns: SortConfig[];
+  onToggleSortColumn: (column: any) => void;
 }
 
 const MovementsTable: React.FC<MovementsTableProps> = ({ 
@@ -52,7 +55,9 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   onUngroupMovement,
   isUngrouping,
   pagination,
-  onPageChange
+  onPageChange,
+  sortColumns,
+  onToggleSortColumn
 }) => {
   const queryClient = useQueryClient();
   const [selectedMovement, setSelectedMovement] = React.useState<Movement | null>(null);
@@ -154,7 +159,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
   const handleEditComplete = () => {
     setEditDialogOpen(false);
     setSelectedMovement(null);
-    queryClient.invalidateQueries({ queryKey: ['movements'] });
+    queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
   };
 
   // Fix for the type mismatch - create a wrapper function that adapts the interface
@@ -206,7 +211,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       toast.success("Status updated", {
         description: "Movement status has been updated successfully."
@@ -232,7 +237,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       setIsCommentsDialogOpen(false);
       setSelectedMovementForComments(null);
       toast.success("Comments updated", {
@@ -258,7 +263,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movements'] });
+      queryClient.invalidateQueries({ queryKey: ['filteredMovements'] });
       queryClient.invalidateQueries({ queryKey: ['openTrades'] });
       
       toast.success("Movement deleted", {
@@ -273,14 +278,8 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     }
   });
 
-  const {
-    sortColumns,
-    toggleSortColumn,
-    sortMovements,
-    hasSorting
-  } = useMovementDateSort();
-
-  const sortedMovements = sortMovements(filteredMovements);
+  // Determine if sorting is active to disable drag and drop
+  const hasSorting = sortColumns.length > 0;
 
   if (filteredMovements.length === 0) {
     return (
@@ -298,7 +297,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       allSelected={selectedMovementIds.length === filteredMovements.length}
       filteredMovementsLength={filteredMovements.length}
       sortColumns={sortColumns}
-      onToggleSortColumn={toggleSortColumn}
+      onToggleSortColumn={onToggleSortColumn}
     />
   );
 
@@ -306,7 +305,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
     <MovementRow
       movement={movement}
       index={index}
-      movements={sortedMovements}
+      movements={filteredMovements}
       isSelected={selectedMovementIds.includes(movement.id)}
       onToggleSelect={onToggleSelect}
       onStatusChange={handleStatusChange}
@@ -326,7 +325,7 @@ const MovementsTable: React.FC<MovementsTableProps> = ({
       <ScrollArea className="w-full" orientation="horizontal">
         <div className="w-full min-w-[1800px]">
           <SortableTable
-            items={sortedMovements}
+            items={filteredMovements}
             onReorder={onReorder}
             renderHeader={renderHeader}
             renderRow={renderRow}

@@ -222,64 +222,67 @@ export const useSortableMovements = (
   }, [filterOptions]);
 
   const filteredMovements = useMemo(() => {
-    const hasActiveFilters = Object.values(filters).some(f => f.length > 0);
+    const hasActiveFilters = Object.values(filters).some(f => 
+      Array.isArray(f) ? f.length > 0 : (typeof f === 'string' && f !== '')
+    );
     
     if (!hasActiveFilters) {
       return localMovements;
     }
     
     return localMovements.filter(movement => {
-      if (filters.status.length > 0 && !filters.status.includes(movement.status)) {
+      // Handle array filters
+      if (Array.isArray(filters.status) && filters.status.length > 0 && !filters.status.includes(movement.status)) {
         return false;
       }
       
-      if (filters.product.length > 0 && !filters.product.includes(movement.product)) {
+      if (Array.isArray(filters.product) && filters.product.length > 0 && !filters.product.includes(movement.product)) {
         return false;
       }
       
-      if (filters.buySell.length > 0 && !filters.buySell.includes(movement.buySell)) {
+      if (Array.isArray(filters.buySell) && filters.buySell.length > 0 && !filters.buySell.includes(movement.buySell)) {
         return false;
       }
       
-      if (filters.incoTerm.length > 0 && !filters.incoTerm.includes(movement.incoTerm)) {
+      if (Array.isArray(filters.incoTerm) && filters.incoTerm.length > 0 && !filters.incoTerm.includes(movement.incoTerm)) {
         return false;
       }
       
-      if (filters.sustainability.length > 0 && 
+      if (Array.isArray(filters.sustainability) && filters.sustainability.length > 0 && 
           (!movement.sustainability || !filters.sustainability.includes(movement.sustainability))) {
         return false;
       }
       
-      if (filters.counterparty.length > 0 && !filters.counterparty.includes(movement.counterpartyName)) {
+      if (Array.isArray(filters.counterparty) && filters.counterparty.length > 0 && !filters.counterparty.includes(movement.counterpartyName)) {
         return false;
       }
       
-      if (filters.creditStatus.length > 0 && 
+      if (Array.isArray(filters.creditStatus) && filters.creditStatus.length > 0 && 
           (!movement.creditStatus || !filters.creditStatus.includes(movement.creditStatus))) {
         return false;
       }
       
-      if (filters.customsStatus.length > 0 && 
+      if (Array.isArray(filters.customsStatus) && filters.customsStatus.length > 0 && 
           (!movement.customsStatus || !filters.customsStatus.includes(movement.customsStatus))) {
         return false;
       }
       
-      if (filters.loadport.length > 0 && 
+      if (Array.isArray(filters.loadport) && filters.loadport.length > 0 && 
           (!movement.loadport || !filters.loadport.includes(movement.loadport))) {
         return false;
       }
       
-      if (filters.loadportInspector.length > 0 && 
+      if (Array.isArray(filters.loadportInspector) && filters.loadportInspector.length > 0 && 
           (!movement.loadportInspector || !filters.loadportInspector.includes(movement.loadportInspector))) {
         return false;
       }
       
-      if (filters.disport.length > 0 && 
+      if (Array.isArray(filters.disport) && filters.disport.length > 0 && 
           (!movement.disport || !filters.disport.includes(movement.disport))) {
         return false;
       }
       
-      if (filters.disportInspector.length > 0 && 
+      if (Array.isArray(filters.disportInspector) && filters.disportInspector.length > 0 && 
           (!movement.disportInspector || !filters.disportInspector.includes(movement.disportInspector))) {
         return false;
       }

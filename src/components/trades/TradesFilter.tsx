@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,76 +22,42 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
-
-// Define interface for filter options
-export interface FilterOptions {
-  tradeReference?: string;
-  status: string[]; // Changed back to array
-  product: string[];
-  buySell: string[]; // Changed back to array
-  incoTerm: string[];
-  sustainability: string[];
-  counterparty: string[];
-  creditStatus: string[];
-  customsStatus: string[];
-  loadport: string[];
-  loadportInspector: string[];
-  disport: string[];
-  disportInspector: string[];
-  // Date range filters
-  loadingPeriodStartFrom?: Date;
-  loadingPeriodStartTo?: Date;
-  loadingPeriodEndFrom?: Date;
-  loadingPeriodEndTo?: Date;
-  nominationEtaFrom?: Date;
-  nominationEtaTo?: Date;
-  nominationValidFrom?: Date;
-  nominationValidTo?: Date;
-  cashFlowFrom?: Date;
-  cashFlowTo?: Date;
-  blDateFrom?: Date;
-  blDateTo?: Date;
-  codDateFrom?: Date;
-  codDateTo?: Date;
-}
+import { TradeFilterOptions } from '@/hooks/useFilteredTrades';
 
 interface FilterCategory {
-  id: keyof FilterOptions;
+  id: keyof TradeFilterOptions;
   label: string;
   options: string[];
   selectedOptions: string[];
   onChange: (value: string[]) => void;
 }
 
-interface MovementsFilterProps {
+interface TradesFilterProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  filterOptions: FilterOptions;
+  filterOptions: Partial<TradeFilterOptions>; // Updated to accept Partial
   availableOptions: {
-    status: string[];
-    product: string[];
     buySell: string[];
-    incoTerm: string[];
+    product: string[];
     sustainability: string[];
-    counterparty: string[];
+    incoTerm: string[];
     creditStatus: string[];
     customsStatus: string[];
-    loadport: string[];
-    loadportInspector: string[];
-    disport: string[];
-    disportInspector: string[];
+    contractStatus: string[];
+    pricingType: string[];
+    counterparty: string[];
   };
-  onFilterChange: (filters: FilterOptions) => void;
+  onFilterChange: (filters: Partial<TradeFilterOptions>) => void; // Updated to return Partial
 }
 
-const MovementsFilter: React.FC<MovementsFilterProps> = ({
+const TradesFilter: React.FC<TradesFilterProps> = ({
   open,
   onOpenChange,
   filterOptions,
   availableOptions,
   onFilterChange
 }) => {
-  const [tempFilters, setTempFilters] = React.useState<FilterOptions>({ ...filterOptions });
+  const [tempFilters, setTempFilters] = React.useState<Partial<TradeFilterOptions>>({ ...filterOptions });
 
   React.useEffect(() => {
     if (open) {
@@ -99,7 +65,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     }
   }, [filterOptions, open]);
 
-  const handleToggleOption = (category: keyof FilterOptions, option: string) => {
+  const handleToggleOption = (category: keyof TradeFilterOptions, option: string) => {
     setTempFilters(prev => {
       const currentValue = prev[category];
       if (Array.isArray(currentValue)) {
@@ -116,7 +82,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     });
   };
 
-  const handleSelectAll = (category: keyof FilterOptions, selected: boolean) => {
+  const handleSelectAll = (category: keyof TradeFilterOptions, selected: boolean) => {
     if (category in availableOptions) {
       setTempFilters(prev => ({
         ...prev,
@@ -125,21 +91,21 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     }
   };
 
-  const handleTextChange = (category: keyof FilterOptions, value: string) => {
+  const handleTextChange = (category: keyof TradeFilterOptions, value: string) => {
     setTempFilters(prev => ({
       ...prev,
       [category]: value || undefined
     }));
   };
 
-  const handleDateChange = (category: keyof FilterOptions, date: Date | undefined) => {
+  const handleDateChange = (category: keyof TradeFilterOptions, date: Date | undefined) => {
     setTempFilters(prev => ({
       ...prev,
       [category]: date
     }));
   };
 
-  const clearDateRange = (fromKey: keyof FilterOptions, toKey: keyof FilterOptions) => {
+  const clearDateRange = (fromKey: keyof TradeFilterOptions, toKey: keyof TradeFilterOptions) => {
     setTempFilters(prev => ({
       ...prev,
       [fromKey]: undefined,
@@ -153,125 +119,95 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
   };
 
   const handleReset = () => {
-    const emptyFilters: FilterOptions = {
+    const emptyFilters: Partial<TradeFilterOptions> = {
       tradeReference: undefined,
-      status: [],
-      product: [],
       buySell: [],
-      incoTerm: [],
+      product: [],
       sustainability: [],
-      counterparty: [],
+      incoTerm: [],
       creditStatus: [],
       customsStatus: [],
-      loadport: [],
-      loadportInspector: [],
-      disport: [],
-      disportInspector: [],
+      contractStatus: [],
+      pricingType: [],
+      counterparty: [],
       loadingPeriodStartFrom: undefined,
       loadingPeriodStartTo: undefined,
       loadingPeriodEndFrom: undefined,
       loadingPeriodEndTo: undefined,
-      nominationEtaFrom: undefined,
-      nominationEtaTo: undefined,
-      nominationValidFrom: undefined,
-      nominationValidTo: undefined,
-      cashFlowFrom: undefined,
-      cashFlowTo: undefined,
-      blDateFrom: undefined,
-      blDateTo: undefined,
-      codDateFrom: undefined,
-      codDateTo: undefined,
+      pricingPeriodStartFrom: undefined,
+      pricingPeriodStartTo: undefined,
+      pricingPeriodEndFrom: undefined,
+      pricingPeriodEndTo: undefined,
     };
     setTempFilters(emptyFilters);
     onFilterChange(emptyFilters);
     onOpenChange(false);
   };
 
-  // Create filter categories for checkbox arrays
+  // Create filter categories for checkbox arrays - Updated to handle potentially undefined arrays
   const filterCategories: FilterCategory[] = [
-    {
-      id: 'status',
-      label: 'Status',
-      options: availableOptions.status,
-      selectedOptions: tempFilters.status,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, status: values }))
-    },
     {
       id: 'buySell',
       label: 'Buy/Sell',
       options: availableOptions.buySell,
-      selectedOptions: tempFilters.buySell,
+      selectedOptions: tempFilters.buySell || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, buySell: values }))
     },
     {
       id: 'product',
       label: 'Product',
       options: availableOptions.product,
-      selectedOptions: tempFilters.product,
+      selectedOptions: tempFilters.product || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, product: values }))
-    },
-    {
-      id: 'incoTerm',
-      label: 'Incoterm',
-      options: availableOptions.incoTerm,
-      selectedOptions: tempFilters.incoTerm,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, incoTerm: values }))
-    },
-    {
-      id: 'sustainability',
-      label: 'Sustainability',
-      options: availableOptions.sustainability,
-      selectedOptions: tempFilters.sustainability,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values }))
     },
     {
       id: 'counterparty',
       label: 'Counterparty',
       options: availableOptions.counterparty,
-      selectedOptions: tempFilters.counterparty,
+      selectedOptions: tempFilters.counterparty || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, counterparty: values }))
+    },
+    {
+      id: 'sustainability',
+      label: 'Sustainability',
+      options: availableOptions.sustainability,
+      selectedOptions: tempFilters.sustainability || [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, sustainability: values }))
+    },
+    {
+      id: 'incoTerm',
+      label: 'Incoterm',
+      options: availableOptions.incoTerm,
+      selectedOptions: tempFilters.incoTerm || [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, incoTerm: values }))
     },
     {
       id: 'creditStatus',
       label: 'Credit Status',
       options: availableOptions.creditStatus,
-      selectedOptions: tempFilters.creditStatus,
+      selectedOptions: tempFilters.creditStatus || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, creditStatus: values }))
     },
     {
       id: 'customsStatus',
       label: 'Customs Status',
       options: availableOptions.customsStatus,
-      selectedOptions: tempFilters.customsStatus,
+      selectedOptions: tempFilters.customsStatus || [],
       onChange: (values) => setTempFilters(prev => ({ ...prev, customsStatus: values }))
     },
     {
-      id: 'loadport',
-      label: 'Loadport',
-      options: availableOptions.loadport,
-      selectedOptions: tempFilters.loadport,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, loadport: values }))
+      id: 'contractStatus',
+      label: 'Contract Status',
+      options: availableOptions.contractStatus,
+      selectedOptions: tempFilters.contractStatus || [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, contractStatus: values }))
     },
     {
-      id: 'loadportInspector',
-      label: 'Loadport Inspector',
-      options: availableOptions.loadportInspector,
-      selectedOptions: tempFilters.loadportInspector,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, loadportInspector: values }))
-    },
-    {
-      id: 'disport',
-      label: 'Disport',
-      options: availableOptions.disport,
-      selectedOptions: tempFilters.disport,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, disport: values }))
-    },
-    {
-      id: 'disportInspector',
-      label: 'Disport Inspector',
-      options: availableOptions.disportInspector,
-      selectedOptions: tempFilters.disportInspector,
-      onChange: (values) => setTempFilters(prev => ({ ...prev, disportInspector: values }))
+      id: 'pricingType',
+      label: 'Pricing Type',
+      options: availableOptions.pricingType,
+      selectedOptions: tempFilters.pricingType || [],
+      onChange: (values) => setTempFilters(prev => ({ ...prev, pricingType: values }))
     }
   ];
 
@@ -293,11 +229,8 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     const dateRanges = [
       { from: tempFilters.loadingPeriodStartFrom, to: tempFilters.loadingPeriodStartTo },
       { from: tempFilters.loadingPeriodEndFrom, to: tempFilters.loadingPeriodEndTo },
-      { from: tempFilters.nominationEtaFrom, to: tempFilters.nominationEtaTo },
-      { from: tempFilters.nominationValidFrom, to: tempFilters.nominationValidTo },
-      { from: tempFilters.cashFlowFrom, to: tempFilters.cashFlowTo },
-      { from: tempFilters.blDateFrom, to: tempFilters.blDateTo },
-      { from: tempFilters.codDateFrom, to: tempFilters.codDateTo },
+      { from: tempFilters.pricingPeriodStartFrom, to: tempFilters.pricingPeriodStartTo },
+      { from: tempFilters.pricingPeriodEndFrom, to: tempFilters.pricingPeriodEndTo },
     ];
     
     dateRanges.forEach(range => {
@@ -365,8 +298,8 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
     toKey 
   }: { 
     title: string;
-    fromKey: keyof FilterOptions;
-    toKey: keyof FilterOptions;
+    fromKey: keyof TradeFilterOptions;
+    toKey: keyof TradeFilterOptions;
   }) => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -408,7 +341,7 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
       <DialogContent className="sm:max-w-[450px] max-h-[85vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Filter Movements</span>
+            <span>Filter Trades</span>
             {getActiveFilterCount() > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {getActiveFilterCount()} active {getActiveFilterCount() === 1 ? 'filter' : 'filters'}
@@ -451,11 +384,8 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                       const activeRanges = [
                         { from: tempFilters.loadingPeriodStartFrom, to: tempFilters.loadingPeriodStartTo },
                         { from: tempFilters.loadingPeriodEndFrom, to: tempFilters.loadingPeriodEndTo },
-                        { from: tempFilters.nominationEtaFrom, to: tempFilters.nominationEtaTo },
-                        { from: tempFilters.nominationValidFrom, to: tempFilters.nominationValidTo },
-                        { from: tempFilters.cashFlowFrom, to: tempFilters.cashFlowTo },
-                        { from: tempFilters.blDateFrom, to: tempFilters.blDateTo },
-                        { from: tempFilters.codDateFrom, to: tempFilters.codDateTo },
+                        { from: tempFilters.pricingPeriodStartFrom, to: tempFilters.pricingPeriodStartTo },
+                        { from: tempFilters.pricingPeriodEndFrom, to: tempFilters.pricingPeriodEndTo },
                       ].filter(range => range.from || range.to).length;
                       
                       return activeRanges > 0 && (
@@ -477,29 +407,14 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
                       toKey="loadingPeriodEndTo" 
                     />
                     <DateRangeSection 
-                      title="Nomination ETA" 
-                      fromKey="nominationEtaFrom" 
-                      toKey="nominationEtaTo" 
+                      title="Pricing Period Start" 
+                      fromKey="pricingPeriodStartFrom" 
+                      toKey="pricingPeriodStartTo" 
                     />
                     <DateRangeSection 
-                      title="Nomination Valid" 
-                      fromKey="nominationValidFrom" 
-                      toKey="nominationValidTo" 
-                    />
-                    <DateRangeSection 
-                      title="Cash Flow" 
-                      fromKey="cashFlowFrom" 
-                      toKey="cashFlowTo" 
-                    />
-                    <DateRangeSection 
-                      title="BL Date" 
-                      fromKey="blDateFrom" 
-                      toKey="blDateTo" 
-                    />
-                    <DateRangeSection 
-                      title="COD Date" 
-                      fromKey="codDateFrom" 
-                      toKey="codDateTo" 
+                      title="Pricing Period End" 
+                      fromKey="pricingPeriodEndFrom" 
+                      toKey="pricingPeriodEndTo" 
                     />
                   </div>
                 </AccordionContent>
@@ -556,4 +471,4 @@ const MovementsFilter: React.FC<MovementsFilterProps> = ({
   );
 };
 
-export default MovementsFilter;
+export default TradesFilter;

@@ -16,6 +16,8 @@ import { exportMovementsToExcel, exportOpenTradesToExcel } from '@/utils/excelEx
 import { initializeAssignmentSortOrder, fixDuplicateSortOrders } from '@/utils/cleanupUtils';
 import { useSortableMovements } from '@/hooks/useSortableMovements';
 import { OpenTradeFilters } from '@/hooks/useFilteredOpenTrades';
+import { useMovementDateSort } from '@/hooks/useMovementDateSort';
+import { useOpenTradeFilterOptions } from '@/hooks/useOpenTradeFilterOptions';
 
 const OperationsPage = () => {
   const [activeTab, setActiveTab] = useState<string>('open-trades');
@@ -24,7 +26,10 @@ const OperationsPage = () => {
   const [isMovementsFilterOpen, setIsMovementsFilterOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [openTradeFilters, setOpenTradeFilters] = useState<OpenTradeFilters>({ status: 'all' });
-  const [activeFilterCount, setActiveFilterCount] = useState<number>(0);
+  const [activeOpenTradeFilterCount, setActiveOpenTradeFilterCount] = useState<number>(0);
+  
+  // Add sort configuration using the hook
+  const { sortColumns, handleSort: toggleSortColumn } = useMovementDateSort();
   
   // Use the useSortableMovements hook to get filtered movements and filter-related functions
   const {
@@ -35,6 +40,13 @@ const OperationsPage = () => {
     handleReorder
   } = useSortableMovements();
   
+  // Use the new hook to get filter options from actual open trades data
+  const { 
+    data: openTradeFilterOptions,
+    isLoading: isLoadingOpenTradeFilterOptions,
+    error: openTradeFilterOptionsError
+  } = useOpenTradeFilterOptions();
+  
   const { 
     counterparties,
     sustainabilityOptions,
@@ -42,7 +54,7 @@ const OperationsPage = () => {
     customsStatusOptions
   } = useReferenceData();
 
-  // Count active filters
+  // Count active filters for open trades
   useEffect(() => {
     let count = 0;
     Object.entries(openTradeFilters).forEach(([key, value]) => {
@@ -50,7 +62,7 @@ const OperationsPage = () => {
         count++;
       }
     });
-    setActiveFilterCount(count);
+    setActiveOpenTradeFilterCount(count);
   }, [openTradeFilters]);
 
   // Initialize sort_order for all tables when component mounts
@@ -187,9 +199,9 @@ const OperationsPage = () => {
                       className="relative"
                     >
                       <Filter className="mr-2 h-4 w-4" /> Filter
-                      {activeFilterCount > 0 && (
+                      {activeOpenTradeFilterCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
-                          {activeFilterCount}
+                          {activeOpenTradeFilterCount}
                         </span>
                       )}
                     </Button>
@@ -210,7 +222,16 @@ const OperationsPage = () => {
               onOpenChange={setIsOpenTradesFilterOpen}
               filters={openTradeFilters}
               onFiltersChange={handleOpenTradeFilterChange}
-              activeFilterCount={activeFilterCount}
+              activeFilterCount={activeOpenTradeFilterCount}
+              availableOptions={openTradeFilterOptions || {
+                product: [],
+                counterparty: [],
+                incoTerm: [],
+                sustainability: [],
+                creditStatus: [],
+                customsStatus: [],
+                contractStatus: [],
+              }}
             />
           </TabsContent>
 
@@ -248,6 +269,8 @@ const OperationsPage = () => {
                   onToggleSelect={() => {}} // Empty function as default
                   onUngroupMovement={() => {}} // Empty function as default
                   isUngrouping={false} // Default to false
+                  sortColumns={sortColumns} // Add the missing sortColumns prop
+                  onToggleSortColumn={toggleSortColumn} // Add the missing onToggleSortColumn prop
                 />
               </CardContent>
             </Card>
