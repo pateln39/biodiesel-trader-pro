@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -230,19 +229,22 @@ export const useFilteredTrades = (
             efpDesignatedMonth: leg.efp_designated_month,
             mtmFutureMonth: leg.mtm_future_month,
             contractStatus: leg.contract_status,
-            comments: leg.comments
+            comments: leg.comments,
+            // Store parent trade data for later use
+            parentTradeReference: leg.parent_trade_reference,
+            counterparty: leg.counterparty
           });
         });
 
-        // Convert to PhysicalTrade objects (simplified for now)
+        // Convert to PhysicalTrade objects using the correct data from joined tables
         const transformedTrades = Array.from(tradeLegsMap.entries()).map(([parentTradeId, legs]) => {
           const firstLeg = legs[0];
           return {
             id: parentTradeId,
-            tradeReference: firstLeg.legReference.split('-')[0], // Extract base reference
+            tradeReference: firstLeg.parentTradeReference, // Use the full trade reference from parent_trades
             tradeType: 'physical' as const,
             physicalType: 'spot' as const, // Default for now
-            counterparty: 'Unknown', // Would need to join with parent_trades
+            counterparty: firstLeg.counterparty, // Use the actual counterparty from parent_trades
             createdAt: new Date(),
             updatedAt: new Date(),
             ...firstLeg,
