@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/utils/dateUtils';
+import { formatDate } from '@/lib/formatters';
 import { PhysicalTrade, PhysicalTradeLeg } from '@/types/physical';
 import FormulaCellDisplay from './FormulaCellDisplay';
 import CommentsCellInput from './CommentsCellInput';

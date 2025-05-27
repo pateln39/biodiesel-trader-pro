@@ -21,7 +21,8 @@ export const formatDate = (
   
   try {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return new Intl.DateTimeFormat('en-US', options).format(dateObj);
+    // Use 'en-GB' locale to get "1 Jan 2025" format without leading zero on day
+    return new Intl.DateTimeFormat('en-GB', options).format(dateObj);
   } catch (error) {
     console.error('Error formatting date:', error);
     return '-';

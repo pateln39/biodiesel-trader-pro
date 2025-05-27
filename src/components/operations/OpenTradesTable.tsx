@@ -1,4 +1,3 @@
-
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OpenTrade } from '@/hooks/useOpenTrades';
-import { formatDate } from '@/utils/dateUtils';
+import { formatDate } from '@/lib/formatters';
 import { Loader2, Ship, MessageSquare, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
