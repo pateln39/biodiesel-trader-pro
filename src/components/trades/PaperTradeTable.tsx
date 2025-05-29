@@ -341,6 +341,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       toast.error('Invalid execution date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
     }
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  };
   
   const updateRightSide = (index: number, field: string, value: any) => {
     const newLegs = [...legs];
@@ -505,8 +511,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                         value={leg.period || ''} 
                         onChange={(e) => updateLeftSide(index, 'period', e.target.value)}
                         onBlur={(e) => handlePeriodBlur(index, e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="MMM-YY"
                         className="w-32"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={6}
                       />
                       {leg.period && !isPeriodInExposureRange(leg.period) && (
                         <div title="This period is outside the current exposure table range">
@@ -521,6 +531,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       value={leg.price !== undefined ? leg.price : ''}
                       min="0"
                       onChange={(e) => updateLeftSide(index, 'price', e.target.value === '' ? '' : Number(e.target.value))}
+                      onKeyDown={handleKeyDown}
                       className="w-24"
                     />
                   </td>
@@ -586,11 +597,15 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                   <td className="px-4 py-3 text-white">
                     <Input 
                       type="text" 
-                      value={leg.executionTradeDate ? formatDateForDisplay(leg.executionTradeDate) : leg.executionTradeDate || ''}
+                      value={leg.executionTradeDate || ''}
                       onChange={(e) => updateLeftSide(index, 'executionTradeDate', e.target.value)}
                       onBlur={(e) => handleExecutionDateBlur(index, e.target.value)}
+                      onKeyDown={handleKeyDown}
                       placeholder="dd-mm-yyyy"
                       className="w-32"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={10}
                     />
                   </td>
                 </tr>
