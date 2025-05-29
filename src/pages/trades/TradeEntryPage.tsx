@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -181,18 +182,9 @@ const TradeEntryPage = () => {
     try {
       console.log('[PAPER_SUBMIT] Creating paper trade with data:', tradeData);
       
-      // Update the trade data to include execution trade date in each leg
-      const updatedTradeData = {
-        ...tradeData,
-        legs: tradeData.legs.map((leg: any) => ({
-          ...leg,
-          executionTradeDate: tradeData.executionTradeDate
-        }))
-      };
-      
       // This will now use our fixed buildCompleteExposuresObject function
       // which correctly preserves the sign of right-side quantities
-      createPaperTrade(updatedTradeData, {
+      createPaperTrade(tradeData, {
         onSuccess: () => {
           navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });
         }

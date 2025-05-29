@@ -807,7 +807,6 @@ export type Database = {
           broker: string | null
           buy_sell: string
           created_at: string
-          execution_trade_date: string | null
           exposures: Json | null
           formula: Json | null
           id: string
@@ -828,7 +827,6 @@ export type Database = {
           broker?: string | null
           buy_sell: string
           created_at?: string
-          execution_trade_date?: string | null
           exposures?: Json | null
           formula?: Json | null
           id?: string
@@ -849,7 +847,6 @@ export type Database = {
           broker?: string | null
           buy_sell?: string
           created_at?: string
-          execution_trade_date?: string | null
           exposures?: Json | null
           formula?: Json | null
           id?: string

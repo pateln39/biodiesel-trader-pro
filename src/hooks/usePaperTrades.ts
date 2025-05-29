@@ -1,113 +1,105 @@
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getMonthDates, formatDateForDatabase, buildCompleteExposuresObject } from '@/utils/paperTrade';
+import { BuySell, Product } from '@/types/trade';
+import { PaperTrade, PaperTradeLeg } from '@/types/paper';
+import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
+import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
+import { mapProductToCanonical } from '@/utils/productMapping';
+import { buildCompleteExposuresObject } from '@/utils/paperTrade';
+import { PaginationParams, PaginationMeta } from '@/types/pagination';
 
-export const usePaperTrades = () => {
-  const queryClient = useQueryClient();
+// Import these from the paperTrade utility module
+import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
+import { countBusinessDays } from '@/utils/dateUtils';
 
-  // Fetch paper trades with legs
-  const { data: paperTrades = [], isLoading, error, refetch: refetchPaperTrades } = useQuery({
-    queryKey: ['paperTrades'],
-    queryFn: async () => {
-      const { data: trades, error: tradesError } = await supabase
-        .from('paper_trades')
-        .select(`
-          *,
-          legs:paper_trade_legs(*)
-        `)
-        .order('created_at', { ascending: false });
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  };
+};
 
-      if (tradesError) {
-        throw new Error(`Error fetching paper trades: ${tradesError.message}`);
-      }
-
-      // Process the data to match the expected format
-      return trades.map(trade => ({
-        ...trade,
-        tradeReference: trade.trade_reference, // Map database field to expected property name
-        tradeType: 'paper' as const,
-        createdAt: new Date(trade.created_at),
-        updatedAt: new Date(trade.updated_at),
-        buySell: trade.legs?.[0]?.buy_sell || 'buy', // Default from first leg
-        product: trade.legs?.[0]?.product || '', // Default from first leg
-        legs: trade.legs.map((leg: any) => {
-          // Parse mtm_formula if it exists and has rightSide
-          let rightSide = null;
-          if (leg.mtm_formula && leg.mtm_formula.rightSide) {
-            rightSide = leg.mtm_formula.rightSide;
-          }
-
-          // Determine relationship type from instrument
-          let relationshipType = 'FP';
-          if (leg.instrument && leg.instrument.includes('DIFF')) {
-            relationshipType = 'DIFF';
-          } else if (leg.instrument && leg.instrument.includes('SPREAD')) {
-            relationshipType = 'SPREAD';
-          }
-
-          return {
-            id: leg.id,
-            paperTradeId: leg.paper_trade_id, // Map database field correctly
-            legReference: leg.leg_reference,
-            buySell: leg.buy_sell,
-            product: leg.product,
-            quantity: leg.quantity,
-            period: leg.period,
-            price: leg.price,
-            broker: leg.broker,
-            instrument: leg.instrument,
-            relationshipType,
-            rightSide,
-            formula: leg.formula,
-            mtmFormula: leg.mtm_formula,
-            exposures: leg.exposures,
-            executionTradeDate: leg.execution_trade_date
-          };
-        })
-      }));
-    },
-  });
-
-  // Create paper trade mutation
-  const createPaperTrade = useMutation({
-    mutationFn: async (tradeData: any) => {
-      console.log('[PAPER_TRADES] Creating paper trade with data:', tradeData);
+// Create a new function to calculate daily distribution
+const calculateDailyDistribution = (
+  period: string,
+  product: string,
+  quantity: number,
+  buySell: BuySell
+): Record<string, Record<string, number>> => {
+  const monthDates = getMonthDates(period);
+  if (!monthDates) {
+    return {};
+  }
+  
+  const { startDate, endDate } = monthDates;
+  const businessDaysInMonth = countBusinessDays(startDate, endDate);
+  
+  if (businessDaysInMonth === 0) {
+    return {};
+  }
+  
+  const dailyDistribution: Record<string, Record<string, number>> = {};
+  const buySellMultiplier = buySell === 'buy' ? 1 : -1;
+  const exposureValue = quantity * buySellMultiplier;
+  const dailyExposure = exposureValue / businessDaysInMonth;
+  
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
+      const dateStr = formatDateForDatabase(currentDate); // Use timezone-safe formatter
       
-      // 1. Create the parent paper trade
-      const { data: paperTrade, error: paperTradeError } = await supabase
-        .from('paper_trades')
-        .insert({
-          trade_reference: tradeData.tradeReference,
-          broker: tradeData.broker,
-          counterparty: tradeData.counterparty || 'Market'
-        })
-        .select()
-        .single();
-        
-      if (paperTradeError) {
-        throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
+      if (!dailyDistribution[product]) {
+        dailyDistribution[product] = {};
       }
       
-      // 2. Create the paper trade legs
-      for (const leg of tradeData.legs) {
-        // Create properly structured mtmFormula with rightSide if needed
-        let mtmFormula = leg.mtmFormula || {};
-        if (leg.rightSide && leg.relationshipType !== 'FP') {
-          mtmFormula.rightSide = leg.rightSide;
-        }
+      dailyDistribution[product][dateStr] = dailyExposure;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return dailyDistribution;
+};
+
+export const createPaperTrade = async (
+  formData: Partial<PaperTrade>,
+  options?: { onSuccess?: () => void }
+): Promise<PaperTrade> => {
+  try {
+    if (!formData.tradeReference) {
+      throw new Error('Trade reference is required');
+    }
+    
+    const { data: paperTrade, error: paperTradeError } = await supabase
+      .from('paper_trades')
+      .insert({
+        trade_reference: formData.tradeReference,
+        counterparty: formData.broker || 'Paper Trade',
+        broker: formData.broker
+      })
+      .select('id')
+      .single();
+      
+    if (paperTradeError) {
+      throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
+    }
+    
+    if (formData.legs && formData.legs.length > 0) {
+      for (let i = 0; i < formData.legs.length; i++) {
+        const leg = formData.legs[i];
+        const legReference = generateLegReference(formData.tradeReference || '', i);
         
-        // Build a complete, correctly normalized exposures object using our fixed function
-        let exposures = buildCompleteExposuresObject(leg);
+        let tradingPeriod = leg.period;
         
         let pricingPeriodStart = null;
         let pricingPeriodEnd = null;
         
-        if (leg.period) {
+        if (tradingPeriod) {
           try {
             // Get the dates using our utility function
-            const dates = getMonthDates(leg.period);
+            const dates = getMonthDates(tradingPeriod);
             
             if (dates) {
               // Format dates for database storage without timezone issues
@@ -119,26 +111,47 @@ export const usePaperTrades = () => {
           }
         }
         
-        console.log('[PAPER_TRADES] Creating leg with exposures:', exposures);
+        // Build properly normalized exposures object
+        const exposures = buildCompleteExposuresObject(leg);
         
-        // Create each leg
+        const instrument = generateInstrumentName(
+          leg.product, 
+          leg.relationshipType,
+          leg.rightSide?.product
+        );
+        
+        let mtmFormulaForDb = null;
+        if (leg.mtmFormula) {
+          mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
+        } else {
+          mtmFormulaForDb = {};
+        }
+        
+        if (leg.rightSide) {
+          mtmFormulaForDb.rightSide = {
+            ...leg.rightSide,
+            price: leg.rightSide.price || 0
+          };
+        }
+        
+        const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
+        
         const legData = {
+          leg_reference: legReference,
           paper_trade_id: paperTrade.id,
-          leg_reference: leg.legReference,
           buy_sell: leg.buySell,
-          product: leg.product,
+          product: mapProductToCanonical(leg.product) as Product,
           quantity: leg.quantity,
-          period: leg.period,
           price: leg.price,
-          broker: leg.broker || tradeData.broker,
-          instrument: leg.instrument,
-          trading_period: leg.period,
-          formula: leg.formula,
-          mtm_formula: mtmFormula,
-          exposures: exposures,
+          broker: leg.broker || formData.broker,
+          period: tradingPeriod,
+          trading_period: tradingPeriod,
+          formula: formulaForDb,
+          mtm_formula: mtmFormulaForDb,
           pricing_period_start: pricingPeriodStart,
           pricing_period_end: pricingPeriodEnd,
-          execution_trade_date: tradeData.executionTradeDate || null
+          instrument: instrument,
+          exposures: exposures
         };
         
         const { error: legError } = await supabase
@@ -146,28 +159,451 @@ export const usePaperTrades = () => {
           .insert(legData);
           
         if (legError) {
-          throw new Error(`Error creating paper trade leg: ${legError.message}`);
+          throw new Error(`Error creating trade leg: ${legError.message}`);
+        }
+      }
+    }
+    
+    return {
+      id: paperTrade.id,
+      tradeReference: formData.tradeReference,
+      tradeType: 'paper',
+      broker: formData.broker || '',
+      counterparty: formData.counterparty || '',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      buySell: 'buy',
+      product: 'UCOME',
+      legs: []
+    } as PaperTrade;
+  } catch (error: any) {
+    throw new Error(`Error creating paper trade: ${error.message}`);
+  }
+};
+
+export const usePaperTrades = (paginationParams?: PaginationParams) => {
+  const queryClient = useQueryClient();
+  const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
+  const isProcessingRef = useRef<boolean>(false);
+  
+  const debouncedRefetch = useRef(debounce((fn: Function) => {
+    if (isProcessingRef.current) {
+      console.log("[PAPER] Skipping paper trade refetch as an operation is in progress");
+      return;
+    }
+    console.log("[PAPER] Executing debounced paper trade refetch");
+    fn();
+  }, 500)).current;
+  
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['paper-trades', paginationParams],
+    queryFn: () => fetchPaperTrades(paginationParams),
+    staleTime: 2000,
+    refetchOnWindowFocus: false
+  });
+  
+  async function fetchPaperTrades(params?: PaginationParams): Promise<{ paperTrades: PaperTrade[], pagination: PaginationMeta }> {
+    console.log("[PAPER] Fetching paper trades with pagination:", params);
+    
+    // First, get the total count of LEGS (not parent trades)
+    const { count: legCount, error: legCountError } = await supabase
+      .from('paper_trade_legs')
+      .select('*', { count: 'exact', head: true });
+      
+    if (legCountError) {
+      console.error('[PAPER] Error counting paper trade legs:', legCountError.message);
+      throw legCountError;
+    }
+    
+    // Calculate pagination metadata based on leg count
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 15;
+    const totalItems = legCount || 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    
+    // Calculate range for pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    // Fetch LEGS with parent trade info (join query)
+    const { data: legData, error: legError } = await supabase
+      .from('paper_trade_legs')
+      .select(`
+        id,
+        paper_trade_id,
+        leg_reference,
+        buy_sell,
+        product,
+        quantity,
+        price,
+        period,
+        broker,
+        instrument,
+        trading_period,
+        formula,
+        mtm_formula,
+        pricing_period_start,
+        pricing_period_end,
+        exposures,
+        created_at,
+        updated_at,
+        paper_trades(
+          id,
+          trade_reference,
+          counterparty,
+          broker,
+          created_at,
+          updated_at
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+      
+    if (legError) {
+      console.error('[PAPER] Error fetching paper trade legs:', legError.message);
+      throw legError;
+    }
+    
+    if (!legData || legData.length === 0) {
+      return {
+        paperTrades: [],
+        pagination: {
+          totalItems,
+          totalPages: totalPages > 0 ? totalPages : 1,
+          currentPage: page,
+          pageSize
+        }
+      };
+    }
+    
+    console.log(`[PAPER] Found ${legData.length} paper trade legs on page ${page}`);
+    
+    // Group legs by parent trade
+    const tradeMap = new Map<string, PaperTrade>();
+    
+    // Process each leg and build the trade structure
+    legData.forEach(leg => {
+      const parentData = leg.paper_trades as any;
+      const tradeId = leg.paper_trade_id;
+      
+      // Initialize parent trade if not already in map
+      if (!tradeMap.has(tradeId)) {
+        tradeMap.set(tradeId, {
+          id: parentData.id,
+          tradeReference: parentData.trade_reference,
+          tradeType: 'paper' as const,
+          counterparty: parentData.counterparty,
+          broker: parentData.broker || '',
+          createdAt: new Date(parentData.created_at),
+          updatedAt: new Date(parentData.updated_at),
+          buySell: 'buy' as BuySell,
+          product: 'UCOME' as Product,
+          legs: [] // Will be populated below
+        });
+      }
+      
+      // Get trade from map to add the leg
+      const trade = tradeMap.get(tradeId)!;
+      
+      // Process leg data
+      const instrument = leg.instrument || '';
+      let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+      
+      if (instrument.includes('DIFF')) {
+        relationshipType = 'DIFF';
+      } else if (instrument.includes('SPREAD')) {
+        relationshipType = 'SPREAD';
+      }
+      
+      let rightSide = undefined;
+      
+      if (leg.mtm_formula && 
+          typeof leg.mtm_formula === 'object' && 
+          'rightSide' in leg.mtm_formula) {
+        rightSide = leg.mtm_formula.rightSide;
+      }
+      
+      let exposuresObj: PaperTradeLeg['exposures'] = {
+        physical: {},
+        pricing: {},
+        paper: {}
+      };
+      
+      if (leg.exposures) {
+        if (typeof leg.exposures === 'object') {
+          const exposuresData = leg.exposures as Record<string, any>;
+          
+          if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+            Object.entries(exposuresData.physical).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.physical[canonicalProduct] = value as number;
+            });
+            
+            if (!rightSide && Object.keys(exposuresData.physical).length === 2 && relationshipType !== 'FP') {
+              const products = Object.keys(exposuresData.physical);
+              if (products.length === 2) {
+                const mainProduct = mapProductToCanonical(leg.product);
+                const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
+                
+                if (secondProduct) {
+                  rightSide = {
+                    product: secondProduct,
+                    quantity: exposuresData.physical[secondProduct],
+                    period: leg.period || '',
+                  };
+                }
+              }
+            }
+          }
+          
+          if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+            Object.entries(exposuresData.paper).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.paper[canonicalProduct] = value as number;
+            });
+          }
+          
+          if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+            Object.entries(exposuresData.pricing).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.pricing[canonicalProduct] = value as number;
+            });
+          }
+        }
+      } 
+      
+      if (leg.mtm_formula && typeof leg.mtm_formula === 'object') {
+        const mtmData = leg.mtm_formula as Record<string, any>;
+        
+        if (mtmData.exposures && typeof mtmData.exposures === 'object') {
+          const mtmExposures = mtmData.exposures as Record<string, any>;
+          
+          if (mtmExposures.physical && typeof mtmExposures.physical === 'object') {
+            Object.entries(mtmExposures.physical).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.physical[canonicalProduct] = value as number;
+              exposuresObj.paper[canonicalProduct] = value as number;
+            });
+            
+            if (!rightSide && Object.keys(mtmExposures.physical).length === 2 && relationshipType !== 'FP') {
+              const products = Object.keys(mtmExposures.physical);
+              if (products.length === 2) {
+                const mainProduct = mapProductToCanonical(leg.product);
+                const secondProduct = products.find(p => mapProductToCanonical(p) !== mainProduct);
+                
+                if (secondProduct) {
+                  rightSide = {
+                    product: secondProduct,
+                    quantity: mtmExposures.physical[secondProduct],
+                    period: leg.period || '',
+                  };
+                }
+              }
+            }
+          }
+          
+          if (mtmExposures.pricing && typeof mtmExposures.pricing === 'object') {
+            Object.entries(mtmExposures.pricing).forEach(([key, value]) => {
+              const canonicalProduct = mapProductToCanonical(key);
+              exposuresObj.pricing[canonicalProduct] = value as number;
+            });
+          }
         }
       }
       
-      return paperTrade;
+      if (rightSide && !rightSide.period && leg.period) {
+        rightSide.period = leg.period;
+      }
+      
+      if (rightSide && rightSide.price === undefined) {
+        rightSide.price = 0;
+      }
+      
+      if (rightSide && rightSide.product) {
+        rightSide.product = mapProductToCanonical(rightSide.product);
+      }
+      
+      // Add the processed leg to the trade
+      trade.legs.push({
+        id: leg.id,
+        paperTradeId: leg.paper_trade_id,
+        legReference: leg.leg_reference,
+        buySell: leg.buy_sell as BuySell,
+        product: mapProductToCanonical(leg.product) as Product,
+        quantity: leg.quantity,
+        period: leg.period || leg.trading_period || '', 
+        price: leg.price || 0,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationshipType,
+        rightSide: rightSide,
+        formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
+        mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
+        exposures: exposuresObj
+      } as PaperTradeLeg);
+    });
+    
+    // Convert map values to array
+    const paperTrades = Array.from(tradeMap.values());
+    
+    return {
+      paperTrades,
+      pagination: {
+        totalItems,
+        totalPages: totalPages > 0 ? totalPages : 1,
+        currentPage: page,
+        pageSize
+      }
+    };
+  };
+  
+  const setupRealtimeSubscriptions = useCallback(() => {
+    return setupPaperTradeSubscriptions(
+      realtimeChannelsRef,
+      isProcessingRef, 
+      debouncedRefetch,
+      refetch
+    );
+  }, [refetch, debouncedRefetch]);
+  
+  useEffect(() => {
+    const cleanup = setupRealtimeSubscriptions();
+    
+    return () => {
+      cleanup();
+    };
+  }, [setupRealtimeSubscriptions]);
+  
+  const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
+    mutationFn: async (tradeData: Partial<PaperTrade>) => {
+      if (!tradeData.tradeReference) {
+        throw new Error('Trade reference is required');
+      }
+      
+      const { data: paperTrade, error: paperTradeError } = await supabase
+        .from('paper_trades')
+        .insert({
+          trade_reference: tradeData.tradeReference,
+          counterparty: tradeData.broker || 'Paper Trade',
+          broker: tradeData.broker
+        })
+        .select('id, trade_reference, counterparty, broker, created_at, updated_at')
+        .single();
+        
+      if (paperTradeError) {
+        throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
+      }
+      
+      if (tradeData.legs && tradeData.legs.length > 0) {
+        for (let i = 0; i < tradeData.legs.length; i++) {
+          const leg = tradeData.legs[i];
+          const legReference = generateLegReference(tradeData.tradeReference || '', i);
+          
+          let tradingPeriod = leg.period;
+          
+          let pricingPeriodStart = null;
+          let pricingPeriodEnd = null;
+          
+          if (tradingPeriod) {
+            try {
+              // Get the dates using our utility function
+              const dates = getMonthDates(tradingPeriod);
+              
+              if (dates) {
+                // Format dates for database storage without timezone issues
+                pricingPeriodStart = formatDateForDatabase(dates.startDate);
+                pricingPeriodEnd = formatDateForDatabase(dates.endDate);
+              }
+            } catch (e) {
+              console.error('Error parsing period date:', e);
+            }
+          }
+          
+          // Build properly normalized exposures object using our fixed function
+          const exposures = buildCompleteExposuresObject(leg);
+          
+          console.log(`[PAPER] Built exposures for leg ${i}:`, exposures);
+          
+          const instrument = generateInstrumentName(
+            leg.product, 
+            leg.relationshipType,
+            leg.rightSide?.product
+          );
+          
+          let mtmFormulaForDb = null;
+          if (leg.mtmFormula) {
+            mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
+          } else {
+            mtmFormulaForDb = {};
+          }
+          
+          if (leg.rightSide) {
+            mtmFormulaForDb.rightSide = {
+              ...leg.rightSide,
+              price: leg.rightSide.price || 0
+            };
+          }
+          
+          const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
+          
+          const legData = {
+            leg_reference: legReference,
+            paper_trade_id: paperTrade.id,
+            buy_sell: leg.buySell,
+            product: mapProductToCanonical(leg.product) as Product,
+            quantity: leg.quantity,
+            price: leg.price,
+            broker: leg.broker || tradeData.broker,
+            period: tradingPeriod,
+            trading_period: tradingPeriod,
+            formula: formulaForDb,
+            mtm_formula: mtmFormulaForDb,
+            pricing_period_start: pricingPeriodStart,
+            pricing_period_end: pricingPeriodEnd,
+            instrument: instrument,
+            exposures: exposures
+          };
+          
+          const { error: legError } = await supabase
+            .from('paper_trade_legs')
+            .insert(legData);
+            
+          if (legError) {
+            throw new Error(`Error creating trade leg: ${legError.message}`);
+          }
+        }
+      }
+      
+      return {
+        ...tradeData, 
+        id: paperTrade.id,
+        createdAt: new Date(paperTrade.created_at),
+        updatedAt: new Date(paperTrade.updated_at),
+        buySell: 'buy' as BuySell,
+        product: 'UCOME' as Product,
+      } as PaperTrade;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['paperTrades'] });
-      toast.success('Paper trade created successfully');
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
+        toast.success('Paper trade created successfully');
+      }, 500);
     },
     onError: (error: Error) => {
       toast.error('Failed to create paper trade', {
         description: error.message
       });
     }
-  }).mutateAsync;
-
+  });
+  
   return {
-    paperTrades,
+    paperTrades: data?.paperTrades || [],
+    pagination: data?.pagination,
     isLoading,
     error,
-    refetchPaperTrades,
-    createPaperTrade
+    createPaperTrade,
+    isCreating,
+    refetchPaperTrades: refetch
   };
 };

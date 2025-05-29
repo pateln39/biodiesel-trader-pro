@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Filter, AlertCircle, FileDown } from 'lucide-react';
@@ -143,13 +142,14 @@ const TradesPage = () => {
     activeFilterCount
   } = useFilteredTrades(tradeFilters, paginationParams, sortColumns);
   
-  // Load paper trades - no pagination parameter needed since usePaperTrades doesn't accept it
+  // Load paper trades with pagination from URL
   const { 
     paperTrades, 
     isLoading: paperLoading, 
     error: paperError, 
-    refetchPaperTrades
-  } = usePaperTrades();
+    refetchPaperTrades,
+    pagination: paperPagination
+  } = usePaperTrades(paginationParams);
 
   // Load filter options for physical trades
   const { options: filterOptions } = useTradeFilterOptions();
@@ -353,6 +353,7 @@ const TradesPage = () => {
             isLoading={paperLoading}
             error={paperError}
             refetchPaperTrades={refetchPaperTrades}
+            pagination={paperPagination}
             onPageChange={handlePageChange}
           />
         </CardContent>

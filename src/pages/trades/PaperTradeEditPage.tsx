@@ -133,8 +133,7 @@ const PaperTradeEditPage = () => {
           mtm_formula: mtmFormula,
           exposures: exposures,
           pricing_period_start: pricingPeriodStart,
-          pricing_period_end: pricingPeriodEnd,
-          execution_trade_date: updatedTrade.executionTradeDate || null
+          pricing_period_end: pricingPeriodEnd
         };
         
         const { error: createLegError } = await supabase
