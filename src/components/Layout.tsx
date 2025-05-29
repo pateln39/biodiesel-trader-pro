@@ -97,10 +97,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" />, id: 'audit' },
   ];
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
-  const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarOpen && 
