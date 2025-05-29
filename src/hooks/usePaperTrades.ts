@@ -26,6 +26,12 @@ export const usePaperTrades = () => {
       // Process the data to match the expected format
       return trades.map(trade => ({
         ...trade,
+        tradeReference: trade.trade_reference, // Map database field to expected property name
+        tradeType: 'paper' as const,
+        createdAt: new Date(trade.created_at),
+        updatedAt: new Date(trade.updated_at),
+        buySell: trade.legs?.[0]?.buy_sell || 'buy', // Default from first leg
+        product: trade.legs?.[0]?.product || '', // Default from first leg
         legs: trade.legs.map((leg: any) => {
           // Parse mtm_formula if it exists and has rightSide
           let rightSide = null;
@@ -43,6 +49,7 @@ export const usePaperTrades = () => {
 
           return {
             id: leg.id,
+            paperTradeId: leg.paper_trade_id, // Map database field correctly
             legReference: leg.leg_reference,
             buySell: leg.buy_sell,
             product: leg.product,
