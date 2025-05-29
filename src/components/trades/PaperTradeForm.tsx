@@ -51,6 +51,13 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
+  const [executionTradeDate, setExecutionTradeDate] = useState<string>(() => {
+    if (initialData && initialData.legs && initialData.legs.length > 0 && initialData.legs[0].executionTradeDate) {
+      // Convert from database format (YYYY-MM-DD) to input format (YYYY-MM-DD)
+      return initialData.legs[0].executionTradeDate;
+    }
+    return '';
+  });
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
     if (initialData && initialData.legs && initialData.legs.length > 0) {
@@ -211,6 +218,11 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     const broker = brokers.find(b => b.id === selectedBroker);
     const brokerName = broker?.name || '';
     
+    if (!executionTradeDate) {
+      toast.error('Execution Trade Date is required');
+      return;
+    }
+    
     if (!validatePaperTradeForm(brokerName, tradeLegs)) {
       return;
     }
@@ -219,6 +231,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       tradeReference,
       tradeType: 'paper',
       broker: brokerName,
+      executionTradeDate,
       legs: tradeLegs.map((leg, index) => {
         const legReference = initialData?.legs?.[index]?.legReference || 
                             generateLegReference(tradeReference, index);
@@ -227,6 +240,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           ...leg,
           legReference,
           broker: brokerName,
+          executionTradeDate,
           mtmFormula: leg.mtmFormula || createEmptyFormula(),
           formula: leg.formula || createEmptyFormula(),
         };
@@ -288,6 +302,20 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
             </div>
           </div>
         )}
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <Label htmlFor="execution-trade-date">Execution Trade Date</Label>
+        <Input
+          id="execution-trade-date"
+          type="date"
+          value={executionTradeDate}
+          onChange={(e) => setExecutionTradeDate(e.target.value)}
+          className="w-64"
+          required
+        />
       </div>
 
       <Separator />
