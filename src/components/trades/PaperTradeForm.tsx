@@ -109,16 +109,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
-  const [executionTradeDate, setExecutionTradeDate] = useState(() => {
-    if (initialData && initialData.legs && initialData.legs.length > 0) {
-      // Get execution date from first leg if available
-      const firstLeg = initialData.legs[0];
-      if (firstLeg.executionTradeDate) {
-        return formatDateForDisplay(firstLeg.executionTradeDate);
-      }
-    }
-    return '';
-  });
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
     if (initialData && initialData.legs && initialData.legs.length > 0) {
@@ -135,7 +125,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         rightSide: leg.rightSide,
         formula: leg.formula,
         mtmFormula: leg.mtmFormula,
-        exposures: leg.exposures
+        exposures: leg.exposures,
+        executionTradeDate: leg.executionTradeDate
       }));
     }
     return [];
@@ -273,29 +264,15 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setExposureData(exposures);
   };
   
-  const handleExecutionDateBlur = () => {
-    if (executionTradeDate && !validateDateFormat(executionTradeDate)) {
-      toast.error('Invalid date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
-    }
-  };
-  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const broker = brokers.find(b => b.id === selectedBroker);
     const brokerName = broker?.name || '';
     
-    // Validate execution trade date if provided
-    if (executionTradeDate && !validateDateFormat(executionTradeDate)) {
-      toast.error('Invalid execution trade date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
-      return;
-    }
-    
     if (!validatePaperTradeForm(brokerName, tradeLegs)) {
       return;
     }
-    
-    const formattedExecutionDate = formatDateForDatabase(executionTradeDate);
     
     const tradeData = {
       tradeReference,
@@ -311,7 +288,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           broker: brokerName,
           mtmFormula: leg.mtmFormula || createEmptyFormula(),
           formula: leg.formula || createEmptyFormula(),
-          executionTradeDate: formattedExecutionDate
+          executionTradeDate: leg.executionTradeDate
         };
       })
     };
@@ -349,19 +326,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               {isAddingBroker ? 'Cancel' : '+ Add Broker'}
             </Button>
           </div>
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="execution-trade-date">Execution Trade Date</Label>
-          <Input
-            id="execution-trade-date"
-            type="text"
-            value={executionTradeDate}
-            onChange={(e) => setExecutionTradeDate(e.target.value)}
-            onBlur={handleExecutionDateBlur}
-            placeholder="dd-mm-yyyy"
-            className="flex-grow"
-          />
         </div>
         
         {isAddingBroker && (

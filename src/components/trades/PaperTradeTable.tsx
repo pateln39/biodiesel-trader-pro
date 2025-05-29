@@ -16,6 +16,47 @@ interface PaperTradeTableProps {
   onLegsChange: (legs: any[]) => void;
 }
 
+// Helper function to validate date format (dd-mm-yyyy)
+const validateDateFormat = (dateStr: string): boolean => {
+  if (!dateStr.trim()) return true; // Empty is valid
+  
+  const datePattern = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const match = dateStr.match(datePattern);
+  
+  if (!match) return false;
+  
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  
+  // Basic validation
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+  
+  return true;
+};
+
+// Helper function to convert ISO date to dd-mm-yyyy format for display
+const formatDateForDisplay = (isoDate: string | Date | null): string => {
+  if (!isoDate) return '';
+  
+  let date: Date;
+  if (typeof isoDate === 'string') {
+    date = new Date(isoDate);
+  } else {
+    date = isoDate;
+  }
+  
+  if (isNaN(date.getTime())) return '';
+  
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  
+  return `${day}-${month}-${year}`;
+};
+
 const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange }) => {
   const [productRelationships, setProductRelationships] = useState<ProductRelationship[]>([]);
   
@@ -96,6 +137,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       rightSide: null,
       formula: createEmptyFormula(),
       mtmFormula: createEmptyFormula(),
+      executionTradeDate: '',
       exposures: {
         physical: {},
         paper: {},
@@ -114,7 +156,8 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     const newLeg = {
       ...JSON.parse(JSON.stringify(previousLeg)),
       id: crypto.randomUUID(),
-      period: ''
+      period: '',
+      executionTradeDate: ''
     };
     
     if (newLeg.rightSide) {
@@ -123,7 +166,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     onLegsChange([...legs, newLeg]);
     toast.success('Previous row copied', {
-      description: 'Please enter a period for the new row'
+      description: 'Please enter a period and execution date for the new row'
     });
   };
   
@@ -292,6 +335,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
       toast.error('Invalid period format. Please use MMM-YY format (e.g., Jan-25)');
     }
   };
+
+  const handleExecutionDateBlur = (index: number, value: string) => {
+    if (value && !validateDateFormat(value)) {
+      toast.error('Invalid execution date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
+    }
+  };
   
   const updateRightSide = (index: number, field: string, value: any) => {
     const newLegs = [...legs];
@@ -381,7 +430,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={1}>PRODUCT TYPE</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={4}>LEFT SIDE</th>
               <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={4}>RIGHT SIDE</th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={2}>MTM</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider" colSpan={3}>MTM</th>
             </tr>
             <tr>
               <th className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider"></th>
@@ -396,6 +445,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Price</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Formula</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Period</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Execution Date</th>
             </tr>
           </thead>
           <tbody className="bg-transparent divide-y divide-gray-200">
@@ -533,11 +583,21 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       className="w-32 bg-brand-navy/30 text-white border-brand-navy/50 cursor-default"
                     />
                   </td>
+                  <td className="px-4 py-3 text-white">
+                    <Input 
+                      type="text" 
+                      value={leg.executionTradeDate ? formatDateForDisplay(leg.executionTradeDate) : leg.executionTradeDate || ''}
+                      onChange={(e) => updateLeftSide(index, 'executionTradeDate', e.target.value)}
+                      onBlur={(e) => handleExecutionDateBlur(index, e.target.value)}
+                      placeholder="dd-mm-yyyy"
+                      className="w-32"
+                    />
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="px-6 py-4 text-center text-white bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
+                <td colSpan={13} className="px-6 py-4 text-center text-white bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
                   No trade legs yet. Click "Add Row" to start building your trade.
                 </td>
               </tr>
