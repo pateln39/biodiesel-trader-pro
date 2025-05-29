@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { createEmptyFormula } from '@/utils/formulaUtils';
 import { toast } from 'sonner';
@@ -20,6 +21,18 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   const [productRelationships, setProductRelationships] = useState<ProductRelationship[]>([]);
   
   const availablePeriods = getNextMonths(13);
+  
+  // Helper function to validate period format (MMM-YY)
+  const validatePeriodFormat = (period: string): boolean => {
+    if (!period) return false;
+    const regex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}$/;
+    return regex.test(period);
+  };
+  
+  // Helper function to check if period is in the current exposure range
+  const isPeriodInExposureRange = (period: string): boolean => {
+    return availablePeriods.includes(period);
+  };
   
   useEffect(() => {
     const fetchProductRelationships = async () => {
@@ -111,7 +124,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     onLegsChange([...legs, newLeg]);
     toast.success('Previous row copied', {
-      description: 'Please select a period for the new row'
+      description: 'Please enter a period for the new row'
     });
   };
   
@@ -218,6 +231,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     const leg = { ...newLegs[index] };
     
     (leg as any)[field] = value;
+    
+    // Validate period format if it's a period field
+    if (field === 'period' && value && !validatePeriodFormat(value)) {
+      toast.error('Invalid period format. Please use MMM-YY format (e.g., Jan-25)');
+      return;
+    }
     
     if (leg.rightSide && (field === 'quantity' || field === 'period')) {
       leg.rightSide = {
@@ -431,21 +450,21 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                     />
                   </td>
                   <td className="px-4 py-3 text-white">
-                    <Select 
-                      value={leg.period || ''} 
-                      onValueChange={(value) => updateLeftSide(index, 'period', value)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Select period" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePeriods.map((period) => (
-                          <SelectItem key={period} value={period}>
-                            {period}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center space-x-1">
+                      <Input 
+                        type="text" 
+                        value={leg.period || ''} 
+                        onChange={(e) => updateLeftSide(index, 'period', e.target.value)}
+                        placeholder="MMM-YY"
+                        className="w-32"
+                      />
+                      {leg.period && !isPeriodInExposureRange(leg.period) && (
+                        <AlertTriangle 
+                          className="h-4 w-4 text-yellow-500 flex-shrink-0" 
+                          title="This period is outside the current exposure table range"
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-white">
                     <Input 

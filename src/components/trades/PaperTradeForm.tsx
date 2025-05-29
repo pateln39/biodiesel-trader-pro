@@ -177,7 +177,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     
     if (legs.length > 0) {
       legs.forEach(leg => {
-        if (!leg.period || !leg.product) return;
+        // Only include legs with periods that are in the current exposure range
+        if (!leg.period || !leg.product || !availableMonths.includes(leg.period)) {
+          return;
+        }
         
         const monthIndex = exposures.findIndex(e => e.month === leg.period);
         if (monthIndex === -1) return;
@@ -302,7 +305,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       <Separator />
       
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Exposure Table</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Exposure Table</h3>
+          <p className="text-sm text-muted-foreground">
+            Only showing exposures for periods within the next 13 months
+          </p>
+        </div>
         <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 overflow-x-auto">
           <Table className="min-w-full divide-y divide-gray-200">
             <TableHeader className="bg-transparent">
