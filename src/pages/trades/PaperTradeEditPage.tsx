@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
-import { useMutation } from '@tanstack/react-query';
+import { usePaperTrade } from '@/hooks/usePaperTrades';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getMonthDates, formatDateForDatabase, buildCompleteExposuresObject } from '@/utils/paperTrade';
@@ -16,11 +16,11 @@ import { getMonthDates, formatDateForDatabase, buildCompleteExposuresObject } fr
 const PaperTradeEditPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { paperTrades, isLoading, refetchPaperTrades } = usePaperTrades();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   
-  // Find the trade from fetched trades
-  const trade = paperTrades.find(t => t.id === id);
+  // Use the new direct fetch hook instead of relying on paginated data
+  const { data: trade, isLoading, error: fetchError } = usePaperTrade(id || '');
   
   console.log('[PAPER_EDIT] Current trade data:', trade);
   
@@ -133,7 +133,8 @@ const PaperTradeEditPage = () => {
           mtm_formula: mtmFormula,
           exposures: exposures,
           pricing_period_start: pricingPeriodStart,
-          pricing_period_end: pricingPeriodEnd
+          pricing_period_end: pricingPeriodEnd,
+          execution_trade_date: leg.executionTradeDate ? new Date(leg.executionTradeDate).toISOString().split('T')[0] : null
         };
         
         const { error: createLegError } = await supabase
@@ -149,7 +150,9 @@ const PaperTradeEditPage = () => {
     },
     onSuccess: () => {
       toast.success('Paper trade updated successfully');
-      refetchPaperTrades();
+      // Invalidate both the single trade cache and the list cache
+      queryClient.invalidateQueries({ queryKey: ['paper-trade', id] });
+      queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
       navigate('/trades');
     },
     onError: (error: Error) => {
@@ -167,10 +170,12 @@ const PaperTradeEditPage = () => {
   
   // Handle when trade is not found
   useEffect(() => {
-    if (!isLoading && !trade && id) {
+    if (fetchError) {
+      setError('Failed to load trade data');
+    } else if (!isLoading && !trade && id) {
       setError(`Paper trade with ID ${id} not found`);
     }
-  }, [trade, isLoading, id]);
+  }, [trade, isLoading, id, fetchError]);
   
   if (isLoading) {
     return (
