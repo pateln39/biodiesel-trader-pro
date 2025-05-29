@@ -142,25 +142,137 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
   return (
     <div 
       ref={containerRef}
-      className={cn("flex flex-col sm:flex-row items-center justify-between gap-4", className)}
+      className={cn("space-y-4", className)}
       tabIndex={0}
       role="navigation"
       aria-label="Pagination Navigation"
     >
-      {/* Enhanced Context Display */}
-      <div className="text-sm text-muted-foreground">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-          <span>Page {currentPage} of {totalPages}</span>
-          <span className="hidden sm:inline">•</span>
-          <span>Showing {startItem}-{endItem} of {totalItems} items</span>
+      {/* Context Information Row */}
+      <div className="flex justify-center">
+        <div className="text-sm text-muted-foreground">
+          Showing {startItem}-{endItem} of {totalItems} items
         </div>
       </div>
       
-      {/* Pagination Controls */}
-      <div className="flex items-center gap-2">
-        {/* Go to Page Input */}
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-muted-foreground hidden sm:inline">Go to:</span>
+      {/* Navigation Controls Row */}
+      <div className="flex items-center justify-between">
+        {/* Main Navigation */}
+        <div className="flex-1 flex justify-center">
+          <Pagination>
+            <PaginationContent className="gap-1">
+              {/* First Page Button */}
+              <PaginationItem>
+                <PaginationLink 
+                  to={createPageUrl(1)}
+                  onClick={() => handlePageChange(1)}
+                  className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  aria-disabled={currentPage <= 1}
+                  aria-label="Go to first page"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </PaginationLink>
+              </PaginationItem>
+              
+              {/* Previous Button */}
+              <PaginationItem>
+                <PaginationLink 
+                  to={createPageUrl(Math.max(1, currentPage - 1))}
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                  className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  aria-disabled={currentPage <= 1}
+                  direction="previous"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Previous</span>
+                </PaginationLink>
+              </PaginationItem>
+              
+              {/* First page if not in visible range */}
+              {pageNumbers[0] > 1 && (
+                <>
+                  <PaginationItem>
+                    <PaginationLink 
+                      to={createPageUrl(1)}
+                      onClick={() => handlePageChange(1)}
+                      isActive={1 === currentPage}
+                    >
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                  {showFirstEllipsis && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                </>
+              )}
+              
+              {/* Visible page numbers */}
+              {pageNumbers.map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    to={createPageUrl(page)}
+                    onClick={() => handlePageChange(page)}
+                    isActive={page === currentPage}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              {/* Last page if not in visible range */}
+              {pageNumbers[pageNumbers.length - 1] < totalPages && (
+                <>
+                  {showLastEllipsis && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+                  <PaginationItem>
+                    <PaginationLink 
+                      to={createPageUrl(totalPages)}
+                      onClick={() => handlePageChange(totalPages)}
+                      isActive={totalPages === currentPage}
+                    >
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                </>
+              )}
+              
+              {/* Next Button */}
+              <PaginationItem>
+                <PaginationLink 
+                  to={createPageUrl(Math.min(totalPages, currentPage + 1))}
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                  className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  aria-disabled={currentPage >= totalPages}
+                  direction="next"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </PaginationLink>
+              </PaginationItem>
+              
+              {/* Last Page Button */}
+              <PaginationItem>
+                <PaginationLink 
+                  to={createPageUrl(totalPages)}
+                  onClick={() => handlePageChange(totalPages)}
+                  className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  aria-disabled={currentPage >= totalPages}
+                  aria-label="Go to last page"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </PaginationLink>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+        
+        {/* Go to Page Input - Right Side */}
+        <div className="flex items-center gap-2 ml-8">
+          <span className="text-sm text-muted-foreground">Go to:</span>
           <Input
             type="number"
             min={1}
@@ -183,123 +295,12 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
             size="sm"
             variant="outline"
             onClick={handleGoToPage}
-            className="h-8 px-2"
+            className="h-8 px-3"
             aria-label="Go to specified page"
           >
             Go
           </Button>
         </div>
-        
-        <Pagination>
-          <PaginationContent>
-            {/* First Page Button */}
-            <PaginationItem>
-              <PaginationLink 
-                to={createPageUrl(1)}
-                onClick={() => handlePageChange(1)}
-                className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage <= 1}
-                aria-label="Go to first page"
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </PaginationLink>
-            </PaginationItem>
-            
-            {/* Previous Button */}
-            <PaginationItem>
-              <PaginationLink 
-                to={createPageUrl(Math.max(1, currentPage - 1))}
-                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage <= 1}
-                direction="previous"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Previous</span>
-              </PaginationLink>
-            </PaginationItem>
-            
-            {/* First page if not in visible range */}
-            {pageNumbers[0] > 1 && (
-              <>
-                <PaginationItem>
-                  <PaginationLink 
-                    to={createPageUrl(1)}
-                    onClick={() => handlePageChange(1)}
-                    isActive={1 === currentPage}
-                  >
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-                {showFirstEllipsis && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-              </>
-            )}
-            
-            {/* Visible page numbers */}
-            {pageNumbers.map((page) => (
-              <PaginationItem key={page}>
-                <PaginationLink
-                  to={createPageUrl(page)}
-                  onClick={() => handlePageChange(page)}
-                  isActive={page === currentPage}
-                >
-                  {page}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-            
-            {/* Last page if not in visible range */}
-            {pageNumbers[pageNumbers.length - 1] < totalPages && (
-              <>
-                {showLastEllipsis && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-                <PaginationItem>
-                  <PaginationLink 
-                    to={createPageUrl(totalPages)}
-                    onClick={() => handlePageChange(totalPages)}
-                    isActive={totalPages === currentPage}
-                  >
-                    {totalPages}
-                  </PaginationLink>
-                </PaginationItem>
-              </>
-            )}
-            
-            {/* Next Button */}
-            <PaginationItem>
-              <PaginationLink 
-                to={createPageUrl(Math.min(totalPages, currentPage + 1))}
-                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage >= totalPages}
-                direction="next"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <ChevronRight className="h-4 w-4" />
-              </PaginationLink>
-            </PaginationItem>
-            
-            {/* Last Page Button */}
-            <PaginationItem>
-              <PaginationLink 
-                to={createPageUrl(totalPages)}
-                onClick={() => handlePageChange(totalPages)}
-                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                aria-disabled={currentPage >= totalPages}
-                aria-label="Go to last page"
-              >
-                <ChevronsRight className="h-4 w-4" />
-              </PaginationLink>
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
       </div>
     </div>
   );
