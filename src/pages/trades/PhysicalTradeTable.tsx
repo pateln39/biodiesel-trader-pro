@@ -142,18 +142,10 @@ const PhysicalTradeTable = ({
       
       {/* Pagination Controls */}
       {pagination && onPageChange && (
-        <div className="flex items-center justify-between py-4">
-          <div className="text-sm text-muted-foreground">
-            Showing page {pagination.currentPage} of {pagination.totalPages}
-            {pagination.totalItems > 0 && (
-              <span> ({pagination.totalItems} total records)</span>
-            )}
-          </div>
-          <PaginationNav 
-            pagination={pagination}
-            onPageChange={onPageChange}
-          />
-        </div>
+        <PaginationNav 
+          pagination={pagination}
+          onPageChange={onPageChange}
+        />
       )}
     </div>
   );
