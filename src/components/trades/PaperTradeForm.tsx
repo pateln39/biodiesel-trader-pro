@@ -57,7 +57,6 @@ const validateDateFormat = (dateStr: string): boolean => {
   if (day < 1 || day > 31) return false;
   if (year < 1900 || year > 2100) return false;
   
-  // More detailed validation could be added here for days per month
   return true;
 };
 
@@ -126,7 +125,8 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
         formula: leg.formula,
         mtmFormula: leg.mtmFormula,
         exposures: leg.exposures,
-        executionTradeDate: leg.executionTradeDate
+        // Convert execution date from database format to display format
+        executionTradeDate: leg.executionTradeDate ? formatDateForDisplay(leg.executionTradeDate) : ''
       }));
     }
     return [];
@@ -281,6 +281,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       legs: tradeLegs.map((leg, index) => {
         const legReference = initialData?.legs?.[index]?.legReference || 
                             generateLegReference(tradeReference, index);
+        
+        // Convert execution date from display format to database format                    
+        const formattedExecutionDate = leg.executionTradeDate ? 
+          formatDateForDatabase(leg.executionTradeDate) : null;
                             
         return {
           ...leg,
@@ -288,7 +292,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           broker: brokerName,
           mtmFormula: leg.mtmFormula || createEmptyFormula(),
           formula: leg.formula || createEmptyFormula(),
-          executionTradeDate: leg.executionTradeDate
+          executionTradeDate: formattedExecutionDate
         };
       })
     };
