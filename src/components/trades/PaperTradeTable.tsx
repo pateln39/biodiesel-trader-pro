@@ -23,7 +23,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   
   // Helper function to validate period format (MMM-YY)
   const validatePeriodFormat = (period: string): boolean => {
-    if (!period) return false;
+    if (!period) return true; // Empty is valid during typing
     const regex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}$/;
     return regex.test(period);
   };
@@ -231,12 +231,6 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     (leg as any)[field] = value;
     
-    // Validate period format if it's a period field
-    if (field === 'period' && value && !validatePeriodFormat(value)) {
-      toast.error('Invalid period format. Please use MMM-YY format (e.g., Jan-25)');
-      return;
-    }
-    
     if (leg.rightSide && (field === 'quantity' || field === 'period')) {
       leg.rightSide = {
         ...leg.rightSide,
@@ -291,6 +285,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
     
     newLegs[index] = leg;
     onLegsChange(newLegs);
+  };
+
+  const handlePeriodBlur = (index: number, value: string) => {
+    if (value && !validatePeriodFormat(value)) {
+      toast.error('Invalid period format. Please use MMM-YY format (e.g., Jan-25)');
+    }
   };
   
   const updateRightSide = (index: number, field: string, value: any) => {
@@ -454,6 +454,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                         type="text" 
                         value={leg.period || ''} 
                         onChange={(e) => updateLeftSide(index, 'period', e.target.value)}
+                        onBlur={(e) => handlePeriodBlur(index, e.target.value)}
                         placeholder="MMM-YY"
                         className="w-32"
                       />
