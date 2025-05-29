@@ -492,18 +492,10 @@ const OpenTradesTable: React.FC<OpenTradesTableProps> = ({
 
       {/* Pagination Controls */}
       {pagination && onPageChange && (
-        <div className="flex items-center justify-between py-4">
-          <div className="text-sm text-muted-foreground">
-            Showing page {pagination.currentPage} of {pagination.totalPages}
-            {pagination.totalItems > 0 && (
-              <span> ({pagination.totalItems} total trades)</span>
-            )}
-          </div>
-          <PaginationNav 
-            pagination={pagination}
-            onPageChange={onPageChange}
-          />
-        </div>
+        <PaginationNav 
+          pagination={pagination}
+          onPageChange={onPageChange}
+        />
       )}
 
       <Dialog open={isCommentsDialogOpen} onOpenChange={setIsCommentsDialogOpen}>

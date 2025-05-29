@@ -155,9 +155,12 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
       </div>
       
       {/* Navigation Controls Row */}
-      <div className="flex items-center justify-between">
-        {/* Main Navigation */}
-        <div className="flex-1 flex justify-center">
+      <div className="flex items-center">
+        {/* Left spacer */}
+        <div className="flex-1"></div>
+        
+        {/* Main Navigation - Centered */}
+        <div className="flex-shrink-0">
           <Pagination>
             <PaginationContent className="gap-1">
               {/* First Page Button */}
@@ -271,35 +274,37 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
         </div>
         
         {/* Go to Page Input - Right Side */}
-        <div className="flex items-center gap-2 ml-8">
-          <span className="text-sm text-muted-foreground">Go to:</span>
-          <Input
-            type="number"
-            min={1}
-            max={totalPages}
-            value={goToPage}
-            onChange={(e) => {
-              setGoToPage(e.target.value);
-              setInputError(false);
-            }}
-            onKeyPress={handleInputKeyPress}
-            onFocus={(e) => e.target.select()}
-            className={cn(
-              "w-16 h-8 text-center text-sm",
-              inputError && "border-red-500 focus:border-red-500"
-            )}
-            placeholder={currentPage.toString()}
-            aria-label="Go to page number"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleGoToPage}
-            className="h-8 px-3"
-            aria-label="Go to specified page"
-          >
-            Go
-          </Button>
+        <div className="flex-1 flex justify-end">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Go to:</span>
+            <Input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={goToPage}
+              onChange={(e) => {
+                setGoToPage(e.target.value);
+                setInputError(false);
+              }}
+              onKeyPress={handleInputKeyPress}
+              onFocus={(e) => e.target.select()}
+              className={cn(
+                "w-16 h-8 text-center text-sm",
+                inputError && "border-red-500 focus:border-red-500"
+              )}
+              placeholder={currentPage.toString()}
+              aria-label="Go to page number"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleGoToPage}
+              className="h-8 px-3"
+              aria-label="Go to specified page"
+            >
+              Go
+            </Button>
+          </div>
         </div>
       </div>
     </div>
