@@ -289,6 +289,10 @@ export const createPaperTrade = async (
         
         const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
         
+        // Format execution date for database storage
+        const formattedExecutionDate = leg.executionTradeDate ? 
+          formatDateForDatabase(new Date(leg.executionTradeDate)) : null;
+        
         const legData = {
           leg_reference: legReference,
           paper_trade_id: paperTrade.id,
@@ -304,7 +308,8 @@ export const createPaperTrade = async (
           pricing_period_start: pricingPeriodStart,
           pricing_period_end: pricingPeriodEnd,
           instrument: instrument,
-          exposures: exposures
+          exposures: exposures,
+          execution_trade_date: formattedExecutionDate
         };
         
         const { error: legError } = await supabase
@@ -701,6 +706,10 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
           
           const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
           
+          // Format execution date for database storage
+          const formattedExecutionDate = leg.executionTradeDate ? 
+            formatDateForDatabase(new Date(leg.executionTradeDate)) : null;
+          
           const legData = {
             leg_reference: legReference,
             paper_trade_id: paperTrade.id,
@@ -716,7 +725,8 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
             pricing_period_start: pricingPeriodStart,
             pricing_period_end: pricingPeriodEnd,
             instrument: instrument,
-            exposures: exposures
+            exposures: exposures,
+            execution_trade_date: formattedExecutionDate
           };
           
           const { error: legError } = await supabase

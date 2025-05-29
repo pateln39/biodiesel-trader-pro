@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -145,24 +146,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   });
   
   useEffect(() => {
-    if (initialData && initialData.broker) {
-      const fetchBrokerIdByName = async () => {
-        const { data, error } = await supabase
-          .from('brokers')
-          .select('id')
-          .eq('name', initialData.broker)
-          .single();
-          
-        if (data && !error) {
-          setSelectedBroker(data.id);
-        }
-      };
-      
-      fetchBrokerIdByName();
-    }
-  }, [initialData]);
-  
-  useEffect(() => {
     const fetchBrokers = async () => {
       const { data, error } = await supabase
         .from('brokers')
@@ -178,13 +161,26 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       }
       
       setBrokers(data || []);
-      if (data && data.length > 0 && !selectedBroker) {
+      
+      // Set initial broker selection based on initialData or default
+      if (initialData && initialData.broker) {
+        // Find the broker by name and set its ID
+        const brokerOption = data?.find(b => b.name === initialData.broker);
+        if (brokerOption) {
+          setSelectedBroker(brokerOption.id);
+        } else {
+          // If broker name doesn't exist in the list, set first available
+          if (data && data.length > 0) {
+            setSelectedBroker(data[0].id);
+          }
+        }
+      } else if (data && data.length > 0 && !selectedBroker) {
         setSelectedBroker(data[0].id);
       }
     };
     
     fetchBrokers();
-  }, []);
+  }, [initialData]);
   
   useEffect(() => {
     calculateExposures(tradeLegs);
