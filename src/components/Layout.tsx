@@ -5,6 +5,8 @@ import { FileText, TrendingUp, Package, Clock, PieChart, User, LogOut, Menu, X, 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useSidebarNavigation } from '@/hooks/useSidebarNavigation';
+import { useGlobalKeyboardShortcuts } from '@/hooks/useGlobalKeyboardShortcuts';
 
 const EETLogo = () => {
   return (
@@ -36,36 +38,64 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     return location.pathname.startsWith('/operations');
   };
 
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
+  const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
+
+  // Initialize keyboard navigation hooks
+  const {
+    focusedItemIndex,
+    sidebarFocused,
+    setSidebarFocused,
+    flatMenuItems,
+  } = useSidebarNavigation({
+    sidebarOpen,
+    riskSubmenuOpen,
+    operationsSubmenuOpen,
+    toggleRiskSubmenu,
+    toggleOperationsSubmenu,
+  });
+
+  useGlobalKeyboardShortcuts({
+    toggleSidebar,
+    setSidebarFocused,
+    sidebarOpen,
+  });
+
+  // Helper function to check if an item should be focused
+  const isItemFocused = (itemId: string) => {
+    const itemIndex = flatMenuItems.findIndex(item => item.id === itemId);
+    return sidebarFocused && itemIndex === focusedItemIndex;
+  };
+
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: <PieChart className="h-5 w-5" /> },
-    { path: '/trades', label: 'Trade Entry', icon: <FileText className="h-5 w-5" /> },
+    { path: '/', label: 'Dashboard', icon: <PieChart className="h-5 w-5" />, id: 'dashboard' },
+    { path: '/trades', label: 'Trade Entry', icon: <FileText className="h-5 w-5" />, id: 'trades' },
     { 
       label: 'Operations', 
       icon: <Package className="h-5 w-5" />,
+      id: 'operations-toggle',
       submenu: [
-        { path: '/operations/open-trades', label: 'Open Trades', icon: <Ship className="h-4 w-4" /> },
-        { path: '/operations/movements', label: 'Movements', icon: <Layers className="h-4 w-4" /> },
-        { path: '/operations/storage', label: 'Storage', icon: <Warehouse className="h-4 w-4" /> },
-        { path: '/operations/demurrage', label: 'Demurrage', icon: <Clock className="h-4 w-4" /> },
+        { path: '/operations/open-trades', label: 'Open Trades', icon: <Ship className="h-4 w-4" />, id: 'open-trades' },
+        { path: '/operations/movements', label: 'Movements', icon: <Layers className="h-4 w-4" />, id: 'movements' },
+        { path: '/operations/storage', label: 'Storage', icon: <Warehouse className="h-4 w-4" />, id: 'storage' },
+        { path: '/operations/demurrage', label: 'Demurrage', icon: <Clock className="h-4 w-4" />, id: 'demurrage' },
       ],
     },
     { 
       label: 'Risk', 
       icon: <LineChart className="h-5 w-5" />,
+      id: 'risk-toggle',
       submenu: [
-        { path: '/risk/mtm', label: 'MTM', icon: <TrendingUp className="h-4 w-4" /> },
-        { path: '/risk/pnl', label: 'PNL', icon: <DollarSign className="h-4 w-4" /> },
-        { path: '/risk/exposure', label: 'Exposure', icon: <BarChart className="h-4 w-4" /> },
-        { path: '/risk/prices', label: 'Prices', icon: <LineChart className="h-4 w-4" /> },
-        { path: '/risk/inventory-mtm', label: 'Inventory (MTM)', icon: <Package className="h-4 w-4" /> },
+        { path: '/risk/mtm', label: 'MTM', icon: <TrendingUp className="h-4 w-4" />, id: 'mtm' },
+        { path: '/risk/pnl', label: 'PNL', icon: <DollarSign className="h-4 w-4" />, id: 'pnl' },
+        { path: '/risk/exposure', label: 'Exposure', icon: <BarChart className="h-4 w-4" />, id: 'exposure' },
+        { path: '/risk/prices', label: 'Prices', icon: <LineChart className="h-4 w-4" />, id: 'prices' },
+        { path: '/risk/inventory-mtm', label: 'Inventory (MTM)', icon: <Package className="h-4 w-4" />, id: 'inventory-mtm' },
       ],
     },
-    { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" /> },
+    { path: '/audit', label: 'Audit Log', icon: <Clock className="h-5 w-5" />, id: 'audit' },
   ];
-
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const toggleRiskSubmenu = () => setRiskSubmenuOpen(!riskSubmenuOpen);
-  const toggleOperationsSubmenu = () => setOperationsSubmenuOpen(!operationsSubmenuOpen);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -94,6 +124,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Header */}
       <header className="bg-gradient-to-b from-brand-navy via-brand-navy/75 to-brand-lime/25 text-primary-foreground shadow-md z-20 border-b-[1px] border-brand-lime/70">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -135,12 +166,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       </header>
 
       <div className="flex flex-1">
+        {/* Sidebar */}
         <aside 
           ref={sidebarRef}
           className={cn(
             "fixed inset-y-0 left-0 pt-16 z-10 bg-gradient-to-br from-brand-navy via-brand-navy to-[#122d42] shadow-md transition-all duration-300 ease-in-out border-r-[3px] border-brand-lime/30",
             sidebarOpen ? "w-64 translate-x-0" : "w-0 -translate-x-full"
           )}
+          tabIndex={0}
+          onFocus={() => setSidebarFocused(true)}
+          onBlur={(e) => {
+            // Only blur if focusing outside the sidebar
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setSidebarFocused(false);
+            }
+          }}
         >
           <nav className="p-4 space-y-2 overflow-y-auto h-full bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
             {menuItems.map((item, index) => (
@@ -159,7 +199,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     className="rounded-md transition-colors"
                   >
                     <CollapsibleTrigger asChild>
-                      <button className="flex items-center justify-between w-full p-3 font-medium">
+                      <button 
+                        className={cn(
+                          "flex items-center justify-between w-full p-3 font-medium rounded-md transition-colors",
+                          isItemFocused(item.id) && "bg-primary/20 ring-2 ring-primary/50"
+                        )}
+                      >
                         <div className="flex items-center space-x-3">
                           {item.icon}
                           <span>{item.label}</span>
@@ -176,11 +221,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                         <Link
                           key={subItem.path}
                           to={subItem.path}
-                          className={`flex items-center space-x-3 p-2 rounded-md transition-colors ${
+                          className={cn(
+                            "flex items-center space-x-3 p-2 rounded-md transition-colors",
                             isActive(subItem.path)
                               ? 'bg-primary/10 text-primary'
-                              : 'hover:bg-primary/5'
-                          }`}
+                              : 'hover:bg-primary/5',
+                            isItemFocused(subItem.id) && "bg-primary/20 ring-2 ring-primary/50"
+                          )}
                         >
                           {subItem.icon}
                           <span>{subItem.label}</span>
@@ -193,11 +240,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-3 p-3 rounded-md transition-colors ${
+                  className={cn(
+                    "flex items-center space-x-3 p-3 rounded-md transition-colors",
                     isActive(item.path)
                       ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-primary/5'
-                  }`}
+                      : 'hover:bg-primary/5',
+                    isItemFocused(item.id) && "bg-primary/20 ring-2 ring-primary/50"
+                  )}
                 >
                   {item.icon}
                   <span>{item.label}</span>
@@ -207,6 +256,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </nav>
         </aside>
 
+        {/* Main Content */}
         <main 
           className={cn(
             "flex-1 p-6 bg-background overflow-auto transition-all duration-300 ease-in-out",
