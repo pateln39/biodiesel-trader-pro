@@ -1489,15 +1489,11 @@ export type Database = {
         Returns: number
       }
       get_paginated_terminal_assignments: {
-        Args: {
-          p_terminal_id: string
-          p_page_number: number
-          p_page_size: number
-        }
+        Args: { p_terminal_id: string; p_page?: number; p_page_size?: number }
         Returns: {
           assignments: Json
+          tank_movements: Json
           pagination_meta: Json
-          page_state: Json
         }[]
       }
       get_physical_positions_pivoted: {
