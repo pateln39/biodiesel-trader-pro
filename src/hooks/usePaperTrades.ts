@@ -22,6 +22,159 @@ const debounce = (fn: Function, ms = 300) => {
   };
 };
 
+// Function to fetch a single paper trade by ID
+export const fetchPaperTradeById = async (tradeId: string): Promise<PaperTrade | null> => {
+  console.log(`[PAPER] Fetching single paper trade by ID: ${tradeId}`);
+  
+  // Fetch the parent trade first
+  const { data: parentTrade, error: parentError } = await supabase
+    .from('paper_trades')
+    .select('*')
+    .eq('id', tradeId)
+    .single();
+    
+  if (parentError || !parentTrade) {
+    console.error('[PAPER] Error fetching parent trade:', parentError?.message);
+    return null;
+  }
+  
+  // Fetch all legs for this trade
+  const { data: legData, error: legError } = await supabase
+    .from('paper_trade_legs')
+    .select('*')
+    .eq('paper_trade_id', tradeId)
+    .order('created_at', { ascending: false });
+    
+  if (legError) {
+    console.error('[PAPER] Error fetching trade legs:', legError.message);
+    return null;
+  }
+  
+  if (!legData || legData.length === 0) {
+    console.warn('[PAPER] No legs found for trade:', tradeId);
+    return {
+      id: parentTrade.id,
+      tradeReference: parentTrade.trade_reference,
+      tradeType: 'paper' as const,
+      counterparty: parentTrade.counterparty,
+      broker: parentTrade.broker || '',
+      createdAt: new Date(parentTrade.created_at),
+      updatedAt: new Date(parentTrade.updated_at),
+      buySell: 'buy' as BuySell,
+      product: 'UCOME' as Product,
+      legs: []
+    };
+  }
+  
+  // Process legs
+  const processedLegs: PaperTradeLeg[] = legData.map(leg => {
+    const instrument = leg.instrument || '';
+    let relationshipType: 'FP' | 'DIFF' | 'SPREAD' = 'FP';
+    
+    if (instrument.includes('DIFF')) {
+      relationshipType = 'DIFF';
+    } else if (instrument.includes('SPREAD')) {
+      relationshipType = 'SPREAD';
+    }
+    
+    let rightSide = undefined;
+    
+    if (leg.mtm_formula && 
+        typeof leg.mtm_formula === 'object' && 
+        'rightSide' in leg.mtm_formula) {
+      rightSide = leg.mtm_formula.rightSide;
+    }
+    
+    let exposuresObj: PaperTradeLeg['exposures'] = {
+      physical: {},
+      pricing: {},
+      paper: {}
+    };
+    
+    if (leg.exposures) {
+      if (typeof leg.exposures === 'object') {
+        const exposuresData = leg.exposures as Record<string, any>;
+        
+        if (exposuresData.physical && typeof exposuresData.physical === 'object') {
+          Object.entries(exposuresData.physical).forEach(([key, value]) => {
+            const canonicalProduct = mapProductToCanonical(key);
+            exposuresObj.physical[canonicalProduct] = value as number;
+          });
+        }
+        
+        if (exposuresData.paper && typeof exposuresData.paper === 'object') {
+          Object.entries(exposuresData.paper).forEach(([key, value]) => {
+            const canonicalProduct = mapProductToCanonical(key);
+            exposuresObj.paper[canonicalProduct] = value as number;
+          });
+        }
+        
+        if (exposuresData.pricing && typeof exposuresData.pricing === 'object') {
+          Object.entries(exposuresData.pricing).forEach(([key, value]) => {
+            const canonicalProduct = mapProductToCanonical(key);
+            exposuresObj.pricing[canonicalProduct] = value as number;
+          });
+        }
+      }
+    }
+    
+    if (rightSide && !rightSide.period && leg.period) {
+      rightSide.period = leg.period;
+    }
+    
+    if (rightSide && rightSide.price === undefined) {
+      rightSide.price = 0;
+    }
+    
+    if (rightSide && rightSide.product) {
+      rightSide.product = mapProductToCanonical(rightSide.product);
+    }
+    
+    return {
+      id: leg.id,
+      paperTradeId: leg.paper_trade_id,
+      legReference: leg.leg_reference,
+      buySell: leg.buy_sell as BuySell,
+      product: mapProductToCanonical(leg.product) as Product,
+      quantity: leg.quantity,
+      period: leg.period || leg.trading_period || '', 
+      price: leg.price || 0,
+      broker: leg.broker,
+      instrument: leg.instrument,
+      relationshipType,
+      rightSide: rightSide,
+      formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
+      mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
+      exposures: exposuresObj,
+      executionTradeDate: leg.execution_trade_date ? new Date(leg.execution_trade_date) : undefined
+    } as PaperTradeLeg;
+  });
+  
+  return {
+    id: parentTrade.id,
+    tradeReference: parentTrade.trade_reference,
+    tradeType: 'paper' as const,
+    counterparty: parentTrade.counterparty,
+    broker: parentTrade.broker || '',
+    createdAt: new Date(parentTrade.created_at),
+    updatedAt: new Date(parentTrade.updated_at),
+    buySell: processedLegs[0]?.buySell || 'buy' as BuySell,
+    product: processedLegs[0]?.product || 'UCOME' as Product,
+    legs: processedLegs
+  };
+};
+
+// Hook to fetch a single paper trade
+export const usePaperTrade = (tradeId: string) => {
+  return useQuery({
+    queryKey: ['paper-trade', tradeId],
+    queryFn: () => fetchPaperTradeById(tradeId),
+    enabled: !!tradeId,
+    staleTime: 5000,
+    refetchOnWindowFocus: false
+  });
+};
+
 // Create a new function to calculate daily distribution
 const calculateDailyDistribution = (
   period: string,
@@ -245,6 +398,7 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
         pricing_period_start,
         pricing_period_end,
         exposures,
+        execution_trade_date,
         created_at,
         updated_at,
         paper_trades(
@@ -439,7 +593,8 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
         rightSide: rightSide,
         formula: leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : undefined,
         mtmFormula: leg.mtm_formula ? (typeof leg.mtm_formula === 'string' ? JSON.parse(leg.mtm_formula) : leg.mtm_formula) : undefined,
-        exposures: exposuresObj
+        exposures: exposuresObj,
+        executionTradeDate: leg.execution_trade_date ? new Date(leg.execution_trade_date) : undefined
       } as PaperTradeLeg);
     });
     

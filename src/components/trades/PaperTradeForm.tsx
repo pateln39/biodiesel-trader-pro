@@ -39,6 +39,64 @@ const ALL_PRODUCTS = [
   'ICE GASOIL FUTURES'
 ];
 
+// Helper function to validate date format (dd-mm-yyyy)
+const validateDateFormat = (dateStr: string): boolean => {
+  if (!dateStr.trim()) return true; // Empty is valid
+  
+  const datePattern = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const match = dateStr.match(datePattern);
+  
+  if (!match) return false;
+  
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const year = parseInt(match[3], 10);
+  
+  // Basic validation
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+  
+  // More detailed validation could be added here for days per month
+  return true;
+};
+
+// Helper function to convert dd-mm-yyyy to ISO date format for database
+const formatDateForDatabase = (dateStr: string): string | null => {
+  if (!dateStr.trim()) return null;
+  
+  const datePattern = /^(\d{2})-(\d{2})-(\d{4})$/;
+  const match = dateStr.match(datePattern);
+  
+  if (!match) return null;
+  
+  const day = match[1];
+  const month = match[2];
+  const year = match[3];
+  
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to convert ISO date to dd-mm-yyyy format for display
+const formatDateForDisplay = (isoDate: string | Date | null): string => {
+  if (!isoDate) return '';
+  
+  let date: Date;
+  if (typeof isoDate === 'string') {
+    date = new Date(isoDate);
+  } else {
+    date = isoDate;
+  }
+  
+  if (isNaN(date.getTime())) return '';
+  
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  
+  return `${day}-${month}-${year}`;
+};
+
 const PaperTradeForm: React.FC<PaperTradeFormProps> = ({ 
   tradeReference, 
   onSubmit, 
@@ -51,6 +109,16 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
+  const [executionTradeDate, setExecutionTradeDate] = useState(() => {
+    if (initialData && initialData.legs && initialData.legs.length > 0) {
+      // Get execution date from first leg if available
+      const firstLeg = initialData.legs[0];
+      if (firstLeg.executionTradeDate) {
+        return formatDateForDisplay(firstLeg.executionTradeDate);
+      }
+    }
+    return '';
+  });
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
     if (initialData && initialData.legs && initialData.legs.length > 0) {
@@ -177,7 +245,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     
     if (legs.length > 0) {
       legs.forEach(leg => {
-        if (!leg.period || !leg.product) return;
+        // Only include legs with periods that are in the current exposure range
+        if (!leg.period || !leg.product || !availableMonths.includes(leg.period)) {
+          return;
+        }
         
         const monthIndex = exposures.findIndex(e => e.month === leg.period);
         if (monthIndex === -1) return;
@@ -202,15 +273,29 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     setExposureData(exposures);
   };
   
+  const handleExecutionDateBlur = () => {
+    if (executionTradeDate && !validateDateFormat(executionTradeDate)) {
+      toast.error('Invalid date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
+    }
+  };
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const broker = brokers.find(b => b.id === selectedBroker);
     const brokerName = broker?.name || '';
     
+    // Validate execution trade date if provided
+    if (executionTradeDate && !validateDateFormat(executionTradeDate)) {
+      toast.error('Invalid execution trade date format. Please use dd-mm-yyyy format (e.g., 15-03-2024)');
+      return;
+    }
+    
     if (!validatePaperTradeForm(brokerName, tradeLegs)) {
       return;
     }
+    
+    const formattedExecutionDate = formatDateForDatabase(executionTradeDate);
     
     const tradeData = {
       tradeReference,
@@ -226,6 +311,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           broker: brokerName,
           mtmFormula: leg.mtmFormula || createEmptyFormula(),
           formula: leg.formula || createEmptyFormula(),
+          executionTradeDate: formattedExecutionDate
         };
       })
     };
@@ -265,6 +351,19 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
           </div>
         </div>
         
+        <div className="space-y-2">
+          <Label htmlFor="execution-trade-date">Execution Trade Date</Label>
+          <Input
+            id="execution-trade-date"
+            type="text"
+            value={executionTradeDate}
+            onChange={(e) => setExecutionTradeDate(e.target.value)}
+            onBlur={handleExecutionDateBlur}
+            placeholder="dd-mm-yyyy"
+            className="flex-grow"
+          />
+        </div>
+        
         {isAddingBroker && (
           <div className="space-y-2">
             <Label htmlFor="new-broker">New Broker</Label>
@@ -302,7 +401,12 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       <Separator />
       
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Exposure Table</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Exposure Table</h3>
+          <p className="text-sm text-muted-foreground">
+            Only showing exposures for periods within the next 13 months
+          </p>
+        </div>
         <div className="border rounded-md p-4 bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30 overflow-x-auto">
           <Table className="min-w-full divide-y divide-gray-200">
             <TableHeader className="bg-transparent">

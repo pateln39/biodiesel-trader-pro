@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { usePaperTrade } from '@/hooks/usePaperTrades';
 import { deletePaperTrade, deletePaperTradeLeg } from '@/utils/paperTradeDeleteUtils';
 
 const PaperTradeDeletePage = () => {
@@ -16,19 +16,22 @@ const PaperTradeDeletePage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { paperTrades, isLoading, refetchPaperTrades } = usePaperTrades();
   
-  const trade = paperTrades.find(t => t.id === tradeId);
+  // Use the new direct fetch hook instead of relying on paginated data
+  const { data: trade, isLoading, error: fetchError } = usePaperTrade(tradeId || '');
+  
   const leg = legId ? trade?.legs.find(l => l.id === legId) : null;
   
   const isLegDeletion = Boolean(legId);
   const isMultiLeg = trade?.legs.length && trade.legs.length > 1;
   
   useEffect(() => {
-    if (!isLoading && !trade) {
+    if (fetchError) {
+      setError('Failed to load trade data');
+    } else if (!isLoading && !trade && tradeId) {
       setError('Trade not found');
     }
-  }, [trade, isLoading]);
+  }, [trade, isLoading, fetchError, tradeId]);
   
   const handleDelete = async () => {
     if (!tradeId) return;
@@ -46,7 +49,6 @@ const PaperTradeDeletePage = () => {
       }
       
       setIsSuccess(true);
-      refetchPaperTrades();
       
       // Navigate back after successful deletion - now redirecting to paper tab
       setTimeout(() => {
