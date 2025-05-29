@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -33,7 +32,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   const isPeriodInExposureRange = (period: string): boolean => {
     return availablePeriods.includes(period);
   };
-  
+
   useEffect(() => {
     const fetchProductRelationships = async () => {
       const { data, error } = await supabase
@@ -459,10 +458,9 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                         className="w-32"
                       />
                       {leg.period && !isPeriodInExposureRange(leg.period) && (
-                        <AlertTriangle 
-                          className="h-4 w-4 text-yellow-500 flex-shrink-0" 
-                          title="This period is outside the current exposure table range"
-                        />
+                        <div title="This period is outside the current exposure table range">
+                          <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                        </div>
                       )}
                     </div>
                   </td>
