@@ -141,16 +141,30 @@ const validateLeg = (leg: any, rowIndex: number): string[] => {
   const errors: string[] = [];
   
   if (!leg.broker?.trim()) errors.push('Broker is required');
-  if (!leg.buySell || !['BUY', 'SELL'].includes(leg.buySell.toUpperCase())) {
-    errors.push('Buy/Sell must be BUY or SELL');
+  
+  // Fix Buy/Sell validation - trim whitespace and provide better error messages
+  const buySellValue = leg.buySell?.toString().trim().toUpperCase();
+  if (!buySellValue || !['BUY', 'SELL'].includes(buySellValue)) {
+    errors.push(`Buy/Sell must be BUY or SELL (found: "${leg.buySell}")`);
   }
+  
   if (!leg.product?.trim()) errors.push('Product is required');
-  if (!leg.quantity || leg.quantity <= 0) errors.push('Quantity must be positive');
+  
+  // Fix quantity validation - allow 0, negative, and positive numbers
+  if (leg.quantity === undefined || leg.quantity === null || isNaN(Number(leg.quantity))) {
+    errors.push(`Quantity must be a valid number (found: "${leg.quantity}")`);
+  }
+  
   if (!leg.periodStart?.trim()) errors.push('Period Start is required');
   if (!leg.periodEnd?.trim()) errors.push('Period End is required');
-  if (!leg.price || leg.price < 0) errors.push('Price must be non-negative');
+  
+  // Price can be 0 or negative, just check it's a valid number
+  if (leg.price === undefined || leg.price === null || isNaN(Number(leg.price))) {
+    errors.push(`Price must be a valid number (found: "${leg.price}")`);
+  }
+  
   if (!leg.relationshipType || !['FP', 'DIFF', 'SPREAD'].includes(leg.relationshipType)) {
-    errors.push('Relationship Type must be FP, DIFF, or SPREAD');
+    errors.push(`Relationship Type must be FP, DIFF, or SPREAD (found: "${leg.relationshipType}")`);
   }
   
   // Validate DIFF/SPREAD requirements
@@ -318,11 +332,11 @@ const processTradeGroup = async (
       const leg: ParsedLeg = {
         id: crypto.randomUUID(),
         legReference: generateLegReference(tradeReference, i),
-        buySell: legData.buySell.toLowerCase(),
+        buySell: legData.buySell.toString().trim().toLowerCase(), // Ensure proper trimming
         product: legData.product,
-        quantity: legData.quantity,
+        quantity: Number(legData.quantity), // Convert to number explicitly
         period: period,
-        price: legData.price,
+        price: Number(legData.price), // Convert to number explicitly
         broker: broker,
         instrument: legData.product, // Use product as instrument for now
         relationshipType: legData.relationshipType,
@@ -334,9 +348,9 @@ const processTradeGroup = async (
       if (['DIFF', 'SPREAD'].includes(legData.relationshipType) && legData.rightSideProduct) {
         leg.rightSide = {
           product: legData.rightSideProduct,
-          quantity: -legData.quantity, // Right side is opposite sign
+          quantity: -Number(legData.quantity), // Right side is opposite sign
           period: period,
-          price: legData.rightSidePrice || 0
+          price: Number(legData.rightSidePrice) || 0
         };
       }
       
