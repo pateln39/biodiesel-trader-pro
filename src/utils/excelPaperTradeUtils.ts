@@ -85,18 +85,81 @@ const convertDateRangeToPeriod = (startDate: string, endDate: string): string =>
 const parseExcelDate = (dateValue: any): Date => {
   if (typeof dateValue === 'number') {
     // Excel serial number
-    return XLSX.SSF.parse_date_code(dateValue);
+    try {
+      return XLSX.SSF.parse_date_code(dateValue);
+    } catch (error) {
+      throw new Error(`Invalid Excel date serial number: ${dateValue}`);
+    }
   } else if (typeof dateValue === 'string') {
-    // Text date in dd-mm-yyyy format
-    const parts = dateValue.split('-');
+    // Trim whitespace and normalize separators
+    const cleanedValue = dateValue.trim().replace(/[\/\.]/g, '-');
+    
+    // Text date in dd-mm-yyyy or dd-mm-yy format
+    const parts = cleanedValue.split('-');
     if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1; // Month is 0-based
-      const year = parseInt(parts[2], 10);
-      return new Date(year, month, day);
+      const dayStr = parts[0].trim();
+      const monthStr = parts[1].trim();
+      const yearStr = parts[2].trim();
+      
+      const day = parseInt(dayStr, 10);
+      const month = parseInt(monthStr, 10);
+      let year = parseInt(yearStr, 10);
+      
+      // Validate parsed numbers
+      if (isNaN(day) || isNaN(month) || isNaN(year)) {
+        throw new Error(`Invalid date components - Day: "${dayStr}", Month: "${monthStr}", Year: "${yearStr}"`);
+      }
+      
+      // Handle 2-digit years (assume 2000+)
+      if (year < 100) {
+        year = 2000 + year;
+      }
+      
+      // Validate ranges
+      if (month < 1 || month > 12) {
+        throw new Error(`Invalid month: ${month}. Must be between 1 and 12`);
+      }
+      
+      if (day < 1 || day > 31) {
+        throw new Error(`Invalid day: ${day}. Must be between 1 and 31`);
+      }
+      
+      if (year < 1900 || year > 2100) {
+        throw new Error(`Invalid year: ${year}. Must be between 1900 and 2100`);
+      }
+      
+      // Create date (month is 0-based in JavaScript)
+      const date = new Date(year, month - 1, day);
+      
+      // Verify the date is valid (handles cases like Feb 30)
+      if (date.getFullYear() !== year || date.getMonth() !== (month - 1) || date.getDate() !== day) {
+        throw new Error(`Invalid date: ${day}/${month}/${year} does not exist`);
+      }
+      
+      return date;
+    } else {
+      throw new Error(`Invalid date format: "${dateValue}". Expected dd-mm-yyyy or dd-mm-yy format`);
     }
   }
-  throw new Error('Invalid date format');
+  throw new Error(`Invalid date type: ${typeof dateValue}. Expected number or string`);
+};
+
+// Convert date range to period format (MMM-YY)
+const convertDateRangeToPeriod = (startDate: string, endDate: string): string => {
+  try {
+    const start = parseExcelDate(startDate);
+    const end = parseExcelDate(endDate);
+    
+    // Use the start date's month and year for the period
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[start.getMonth()];
+    const year = start.getFullYear().toString().slice(-2);
+    
+    return `${month}-${year}`;
+  } catch (error: any) {
+    throw new Error(`Date parsing failed: ${error.message}. Please use dd-mm-yyyy format (e.g., 15-12-2024)`);
+  }
 };
 
 // Format date for database storage
@@ -109,7 +172,8 @@ const formatDateForDatabase = (dateStr: string): string | null => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  } catch {
+  } catch (error: any) {
+    console.error(`Failed to format date for database: ${dateStr}`, error.message);
     return null;
   }
 };
@@ -248,20 +312,20 @@ export const parseExcelPaperTrades = async (
             continue;
           }
           
-          // Parse row data
+          // Parse row data with better type conversion
           const legData = {
             broker: row[COLUMNS.BROKER]?.toString().trim() || '',
-            buySell: row[COLUMNS.BUY_SELL]?.toString().toUpperCase() || '',
+            buySell: row[COLUMNS.BUY_SELL]?.toString().trim().toUpperCase() || '',
             product: row[COLUMNS.PRODUCT]?.toString().trim() || '',
-            quantity: parseFloat(row[COLUMNS.QUANTITY]) || 0,
-            periodStart: row[COLUMNS.PERIOD_START]?.toString() || '',
-            periodEnd: row[COLUMNS.PERIOD_END]?.toString() || '',
-            price: parseFloat(row[COLUMNS.PRICE]) || 0,
-            relationshipType: row[COLUMNS.RELATIONSHIP_TYPE]?.toString() || 'FP',
+            quantity: row[COLUMNS.QUANTITY] ?? 0,
+            periodStart: row[COLUMNS.PERIOD_START]?.toString().trim() || '',
+            periodEnd: row[COLUMNS.PERIOD_END]?.toString().trim() || '',
+            price: row[COLUMNS.PRICE] ?? 0,
+            relationshipType: row[COLUMNS.RELATIONSHIP_TYPE]?.toString().trim() || 'FP',
             rightSideProduct: row[COLUMNS.RIGHT_SIDE_PRODUCT]?.toString().trim() || '',
-            rightSideQuantity: parseFloat(row[COLUMNS.RIGHT_SIDE_QUANTITY]) || 0,
-            rightSidePrice: parseFloat(row[COLUMNS.RIGHT_SIDE_PRICE]) || 0,
-            executionTradeDate: row[COLUMNS.EXECUTION_TRADE_DATE]?.toString() || '',
+            rightSideQuantity: row[COLUMNS.RIGHT_SIDE_QUANTITY] ?? 0,
+            rightSidePrice: row[COLUMNS.RIGHT_SIDE_PRICE] ?? 0,
+            executionTradeDate: row[COLUMNS.EXECUTION_TRADE_DATE]?.toString().trim() || '',
             rowIndex: i + 1
           };
           
@@ -433,21 +497,32 @@ export const generateExcelTemplate = () => {
   // Create workbook with instructions sheet
   const workbook = XLSX.utils.book_new();
   
-  // Add instructions sheet
+  // Add instructions sheet with clearer date format guidance
   const instructions = [
     ['Paper Trade Upload Instructions'],
     [''],
     ['1. Each row represents one trade leg'],
     ['2. Use empty rows to separate trade groups (all legs with same broker)'],
     ['3. All legs in the same group must have the same broker'],
-    ['4. Dates should be in dd-mm-yyyy format (e.g., 15-12-2024)'],
+    ['4. IMPORTANT: Dates must be in dd-mm-yyyy format (e.g., 15-12-2024)'],
+    ['   - Day first, then month, then year'],
+    ['   - Use 2-digit day and month (01, 02, etc.)'],
+    ['   - Use 4-digit year (2024, 2025, etc.)'],
+    ['   - Separators can be - / or .'],
     ['5. Buy/Sell must be exactly "BUY" or "SELL"'],
-    ['6. Relationship Type must be "FP", "DIFF", or "SPREAD"'],
-    ['7. For DIFF/SPREAD trades, provide Right Side Product'],
-    ['8. Right Side Quantity will be auto-calculated as negative of main quantity'],
-    ['9. Execution Trade Date is optional'],
+    ['6. Quantity can be positive, negative, or zero'],
+    ['7. Price can be positive, negative, or zero'],
+    ['8. Relationship Type must be "FP", "DIFF", or "SPREAD"'],
+    ['9. For DIFF/SPREAD trades, provide Right Side Product'],
+    ['10. Right Side Quantity will be auto-calculated as negative of main quantity'],
+    ['11. Execution Trade Date is optional'],
     [''],
     ['Sample data is provided in the "Data" sheet'],
+    [''],
+    ['Date Format Examples:'],
+    ['- 15-12-2024 (15th December 2024)'],
+    ['- 01-01-2025 (1st January 2025)'],
+    ['- 28-02-2025 (28th February 2025)'],
     [''],
     ['Available Products:'],
     ['- Argus UCOME'],
