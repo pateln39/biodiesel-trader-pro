@@ -21,10 +21,35 @@ const COLUMNS = {
   EXECUTION_TRADE_DATE: 11
 };
 
+interface PaperTradeRightSide {
+  product: string;
+  quantity: number;
+  period: string;
+  price: number;
+}
+
+interface ParsedLeg {
+  id: string;
+  legReference: string;
+  buySell: string;
+  product: string;
+  quantity: number;
+  period: string;
+  price: number;
+  broker: string;
+  instrument: string;
+  relationshipType: string;
+  rightSide?: PaperTradeRightSide;
+  exposures?: any;
+  executionTradeDate?: string | null;
+}
+
 interface ParsedTrade {
   groupIndex: number;
   broker: string;
-  legs: any[];
+  tradeReference: string;
+  tradeType: string;
+  legs: ParsedLeg[];
   errors: string[];
 }
 
@@ -263,7 +288,7 @@ const processTradeGroup = async (
   
   const broker = group[0].broker;
   const tradeReference = generateTradeReference();
-  const legs: any[] = [];
+  const legs: ParsedLeg[] = [];
   const tradeErrors: string[] = [];
   
   // Ensure all legs in group have same broker
@@ -289,8 +314,8 @@ const processTradeGroup = async (
       // Convert period
       const period = convertDateRangeToPeriod(legData.periodStart, legData.periodEnd);
       
-      // Build leg object
-      const leg = {
+      // Build leg object with proper typing
+      const leg: ParsedLeg = {
         id: crypto.randomUUID(),
         legReference: generateLegReference(tradeReference, i),
         buySell: legData.buySell.toLowerCase(),
