@@ -375,22 +375,24 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
         }
       }
 
-      // Build formula object for DIFF/SPREAD trades
+      // Build formula and mtmFormula to match manual trade format
       let formula = null;
       let mtmFormula = null;
       
       if (leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') {
-        // Create the formula structure that matches manual entry
+        // Create simple formula structure like manual trades (empty tokens)
         formula = {
           type: leg.relationshipType.toLowerCase(),
           leftSide: {
             product: leg.product,
             quantity: leg.quantity
           },
-          rightSide: leg.rightSide
+          rightSide: leg.rightSide,
+          tokens: [],
+          exposures: {}
         };
         
-        // Create MTM formula structure
+        // Create MTM formula structure with name field like manual trades
         mtmFormula = {
           type: leg.relationshipType.toLowerCase(),
           leftSide: {
@@ -398,7 +400,9 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
             quantity: leg.quantity
           },
           rightSide: leg.rightSide,
-          exposures: leg.exposures
+          exposures: leg.exposures,
+          // Add the critical name field that manual trades use for display
+          name: `${leg.product} ${leg.relationshipType}`
         };
       }
 
