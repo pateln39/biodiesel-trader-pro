@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -379,7 +380,7 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
       let mtmFormula = null;
       
       if (leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') {
-        // Create formula structure that matches manual trades (simple tokens and exposures)
+        // Create formula structure that matches manual trades exactly
         formula = {
           tokens: [],
           exposures: {
