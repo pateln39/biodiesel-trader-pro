@@ -50,7 +50,7 @@ const PaperTradeUploader: React.FC = () => {
   const lastProgressUpdateRef = useRef<number>(0);
   const uploadStartTimeRef = useRef<number>(0);
   
-  // Use the hook to get the mutation
+  // Use the hook to get the mutation (single declaration)
   const { createPaperTrade, isCreating } = usePaperTrades();
 
   const handleFileSelect = (selectedFile: File) => {
@@ -75,9 +75,6 @@ const PaperTradeUploader: React.FC = () => {
     setEstimatedTimeRemaining('');
     setUploadStatus('');
   };
-
-  // Use the hook to get the mutation
-  const { createPaperTrade, isCreating } = usePaperTrades();
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
