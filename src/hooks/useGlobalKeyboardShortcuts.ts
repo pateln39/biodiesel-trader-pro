@@ -32,6 +32,14 @@ export const useGlobalKeyboardShortcuts = ({
         }, 100);
       }
     }
+
+    // Handle Alt+S to focus sidebar (only if sidebar is already open)
+    if (e.altKey && e.key === 's') {
+      e.preventDefault();
+      if (sidebarOpen) {
+        setSidebarFocused(true);
+      }
+    }
   }, [toggleSidebar, setSidebarFocused, sidebarOpen]);
 
   useEffect(() => {
