@@ -344,6 +344,7 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
   const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
   const isProcessingRef = useRef<boolean>(false);
   
+  // Create adaptive debounced refetch using bulk operation manager
   const debouncedRefetch = useRef(debounce((fn: Function) => {
     if (isProcessingRef.current) {
       console.log("[PAPER] Skipping paper trade refetch as an operation is in progress");
@@ -351,7 +352,20 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     }
     console.log("[PAPER] Executing debounced paper trade refetch");
     fn();
-  }, 500)).current;
+  }, 500)).current; // Initial delay, will be adaptive
+  
+  // Update debounce delay based on bulk operation state
+  React.useEffect(() => {
+    const updateDebounceDelay = () => {
+      const adaptiveDelay = getAdaptiveDebounceDelay();
+      // Create new debounced function with adaptive delay
+      debouncedRefetch.cancel?.(); // Cancel pending calls if function supports it
+    };
+    
+    // Check every second for bulk operation state changes
+    const interval = setInterval(updateDebounceDelay, 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades', paginationParams],

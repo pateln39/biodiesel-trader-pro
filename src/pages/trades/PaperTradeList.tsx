@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import PaperTradeRowActions from '@/components/trades/paper/PaperTradeRowActions
 import { TruncatedCell } from '@/components/operations/storage/TruncatedCell';
 import PaginationNav from '@/components/ui/pagination-nav';
 import { PaginationMeta } from '@/types/pagination';
+import BulkOperationStatus from '@/components/trades/BulkOperationStatus';
 
 // Constants for cell width to maintain consistency
 const CELL_WIDTHS = {
@@ -44,6 +44,17 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   pagination,
   onPageChange
 }) => {
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  const handleManualRefresh = async () => {
+    setIsManualRefreshing(true);
+    try {
+      await refetchPaperTrades();
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return <TableLoadingState />;
   }
@@ -57,6 +68,12 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Bulk Operation Status Banner */}
+      <BulkOperationStatus 
+        onManualRefresh={handleManualRefresh}
+        isRefreshing={isManualRefreshing}
+      />
+      
       <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
         <ScrollArea className="w-full" orientation="horizontal">
           <div className="min-w-[1200px]">

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +15,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useUploadJob } from '@/hooks/useUploadJob';
+import { startBulkOperation, endBulkOperation } from '@/utils/bulkOperationManager';
 
 interface ValidationError {
   row: number;
@@ -134,6 +134,11 @@ const PaperTradeUploader: React.FC = () => {
     }
 
     console.log('[UPLOADER_DEBUG] Starting upload process');
+    
+    // Start bulk operation tracking
+    const bulkOperationId = `manual-upload-${Date.now()}`;
+    startBulkOperation(bulkOperationId);
+    
     setIsProcessing(true);
     setUploadProgress(0);
     setUploadStatus('Sending trades to backend for processing...');
@@ -172,6 +177,10 @@ const PaperTradeUploader: React.FC = () => {
       console.error('[FRONTEND_UPLOAD] Upload failed:', error);
       setUploadStatus('Upload failed');
       setIsProcessing(false);
+      
+      // End bulk operation tracking on error
+      endBulkOperation(bulkOperationId);
+      
       toast.error('Upload failed', {
         description: error.message || 'An unexpected error occurred'
       });
