@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getNextMonths } from '@/utils/dateUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table';
+import { usePaperTradeFormKeyboardShortcuts } from '@/hooks/usePaperTradeFormKeyboardShortcuts';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -213,6 +214,53 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     calculateExposures(tradeLegs);
   }, [tradeLegs]);
   
+  // Add keyboard shortcuts for paper trade form
+  usePaperTradeFormKeyboardShortcuts({
+    onAddBroker: () => setIsAddingBroker(!isAddingBroker),
+    onAddRow: () => {
+      const newLeg = {
+        id: crypto.randomUUID(),
+        product: '',
+        buySell: 'buy' as any,
+        quantity: 0,
+        period: '',
+        price: 0,
+        relationshipType: 'FP' as any,
+        rightSide: null,
+        formula: createEmptyFormula(),
+        mtmFormula: createEmptyFormula(),
+        executionTradeDate: '',
+        exposures: {
+          physical: {},
+          paper: {},
+          pricing: {}
+        }
+      };
+      setTradeLegs([...tradeLegs, newLeg]);
+    },
+    onCopyPreviousRow: () => {
+      if (tradeLegs.length > 0) {
+        const previousLeg = tradeLegs[tradeLegs.length - 1];
+        const newLeg = {
+          ...JSON.parse(JSON.stringify(previousLeg)),
+          id: crypto.randomUUID(),
+          period: '',
+          executionTradeDate: ''
+        };
+        if (newLeg.rightSide) {
+          newLeg.rightSide.period = '';
+        }
+        setTradeLegs([...tradeLegs, newLeg]);
+      }
+    },
+    onSubmit: () => {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      document.querySelector('form')?.dispatchEvent(event);
+    },
+    onCancel,
+    hasLegs: tradeLegs.length > 0,
+  });
+  
   const handleAddBroker = async () => {
     if (!newBrokerName.trim()) {
       toast.error('Broker name cannot be empty');
@@ -367,6 +415,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               type="button" 
               variant="outline" 
               onClick={() => setIsAddingBroker(!isAddingBroker)}
+              title="Ctrl+Shift+B"
             >
               {isAddingBroker ? 'Cancel' : '+ Add Broker'}
             </Button>
@@ -376,6 +425,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               Original broker "{initialData.broker}" not found in active brokers list
             </p>
           )}
+          <p className="text-xs text-muted-foreground">
+            Shortcuts: Ctrl+Shift+B (Add Broker) | Ctrl+Shift+R (Add Row) | Ctrl+Shift+C (Copy Row)
+          </p>
         </div>
         
         {isAddingBroker && (
@@ -454,10 +506,10 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       <Separator />
 
       <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" onClick={onCancel} title="Escape">
           Cancel
         </Button>
-        <Button type="submit">
+        <Button type="submit" title="Ctrl+S">
           {isEditMode ? 'Update Trade' : 'Create Trade'}
         </Button>
       </div>

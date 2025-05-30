@@ -1,5 +1,6 @@
 
 import { useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface UseGlobalKeyboardShortcutsProps {
   toggleSidebar: () => void;
@@ -12,6 +13,8 @@ export const useGlobalKeyboardShortcuts = ({
   setSidebarFocused,
   sidebarOpen,
 }: UseGlobalKeyboardShortcutsProps) => {
+  const navigate = useNavigate();
+
   const handleGlobalKeyDown = useCallback((e: KeyboardEvent) => {
     // Don't handle shortcuts when typing in inputs
     if (document.activeElement?.tagName === 'INPUT' || 
@@ -40,7 +43,13 @@ export const useGlobalKeyboardShortcuts = ({
         setSidebarFocused(true);
       }
     }
-  }, [toggleSidebar, setSidebarFocused, sidebarOpen]);
+
+    // Handle Ctrl+N to create new trade (global shortcut)
+    if (e.ctrlKey && e.key === 'n') {
+      e.preventDefault();
+      navigate('/trades/new');
+    }
+  }, [toggleSidebar, setSidebarFocused, sidebarOpen, navigate]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleGlobalKeyDown);
