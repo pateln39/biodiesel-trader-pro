@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -380,19 +379,34 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
       let mtmFormula = null;
       
       if (leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') {
-        // Create simple formula structure like manual trades (empty tokens)
+        // Create formula structure that matches manual trades (simple tokens and exposures)
         formula = {
-          type: leg.relationshipType.toLowerCase(),
-          leftSide: {
-            product: leg.product,
-            quantity: leg.quantity
-          },
-          rightSide: leg.rightSide,
           tokens: [],
-          exposures: {}
+          exposures: {
+            pricing: {
+              "Argus HVO": 0,
+              "Argus RME": 0,
+              "Argus FAME0": 0,
+              "Argus UCOME": 0,
+              "Platts LSGO": 0,
+              "Platts Diesel": 0,
+              "ICE GASOIL FUTURES": 0,
+              "ICE GASOIL FUTURES (EFP)": 0
+            },
+            physical: {
+              "Argus HVO": 0,
+              "Argus RME": 0,
+              "Argus FAME0": 0,
+              "Argus UCOME": 0,
+              "Platts LSGO": 0,
+              "Platts Diesel": 0,
+              "ICE GASOIL FUTURES": 0,
+              "ICE GASOIL FUTURES (EFP)": 0
+            }
+          }
         };
         
-        // Create MTM formula structure with name field like manual trades
+        // Create MTM formula structure with relationship data and name field
         mtmFormula = {
           type: leg.relationshipType.toLowerCase(),
           leftSide: {
