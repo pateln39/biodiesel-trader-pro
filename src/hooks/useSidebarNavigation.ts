@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -177,6 +176,16 @@ export const useSidebarNavigation = ({
 
   const flatMenuItems = createFlatMenuItems();
 
+  // Enhanced setSidebarFocused function to reset focus to first item
+  const setSidebarFocusedWithReset = useCallback((focused: boolean) => {
+    setSidebarFocused(focused);
+    if (focused && flatMenuItems.length > 0) {
+      setFocusedItemIndex(0);
+    } else if (!focused) {
+      setFocusedItemIndex(-1);
+    }
+  }, [flatMenuItems.length]);
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!sidebarFocused || !sidebarOpen) return;
@@ -229,7 +238,7 @@ export const useSidebarNavigation = ({
   return {
     focusedItemIndex,
     sidebarFocused,
-    setSidebarFocused,
+    setSidebarFocused: setSidebarFocusedWithReset,
     flatMenuItems,
   };
 };

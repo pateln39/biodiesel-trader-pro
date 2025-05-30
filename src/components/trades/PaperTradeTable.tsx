@@ -457,7 +457,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
           <tbody className="bg-transparent divide-y divide-gray-200">
             {legs.length > 0 ? (
               legs.map((leg, index) => (
-                <tr key={leg.id || index} className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25">
+                <tr key={leg.id || index} className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25" data-row-index={index}>
                   <td className="px-2 py-3 text-white">
                     <Button 
                       type="button" 
@@ -474,7 +474,7 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
                       value={getRelationshipDisplayText(leg)}
                       onValueChange={(value) => handleProductSelect(index, value)}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger className="w-full" data-testid="product-select">
                         <SelectValue placeholder="Select product" />
                       </SelectTrigger>
                       <SelectContent>

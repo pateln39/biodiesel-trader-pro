@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getNextMonths } from '@/utils/dateUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table';
+import { usePaperTradeFormKeyboardShortcuts } from '@/hooks/usePaperTradeFormKeyboardShortcuts';
 
 interface PaperTradeFormProps {
   tradeReference: string;
@@ -109,6 +110,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
   const [brokersLoaded, setBrokersLoaded] = useState(false);
+  const brokerSelectRef = useRef<HTMLButtonElement>(null);
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
     if (initialData && initialData.legs && initialData.legs.length > 0) {
@@ -144,6 +146,16 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       return entry;
     });
   });
+  
+  // Focus broker dropdown when form opens (not in edit mode)
+  useEffect(() => {
+    if (!isEditMode && brokerSelectRef.current) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        brokerSelectRef.current?.focus();
+      }, 100);
+    }
+  }, [isEditMode]);
   
   // Initialize broker selection from initialData immediately
   useEffect(() => {
@@ -212,6 +224,77 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   useEffect(() => {
     calculateExposures(tradeLegs);
   }, [tradeLegs]);
+  
+  const handleAddRow = () => {
+    const newLeg = {
+      id: crypto.randomUUID(),
+      product: '',
+      buySell: 'buy' as any,
+      quantity: 0,
+      period: '',
+      price: 0,
+      relationshipType: 'FP' as any,
+      rightSide: null,
+      formula: createEmptyFormula(),
+      mtmFormula: createEmptyFormula(),
+      executionTradeDate: '',
+      exposures: {
+        physical: {},
+        paper: {},
+        pricing: {}
+      }
+    };
+    const newLegs = [...tradeLegs, newLeg];
+    setTradeLegs(newLegs);
+    
+    // Focus the product dropdown in the new row after a brief delay
+    setTimeout(() => {
+      const rowIndex = newLegs.length - 1;
+      const productSelect = document.querySelector(`[data-row-index="${rowIndex}"] [data-testid="product-select"]`) as HTMLButtonElement;
+      if (productSelect) {
+        productSelect.focus();
+      }
+    }, 100);
+  };
+
+  const handleCopyPreviousRow = () => {
+    if (tradeLegs.length > 0) {
+      const previousLeg = tradeLegs[tradeLegs.length - 1];
+      const newLeg = {
+        ...JSON.parse(JSON.stringify(previousLeg)),
+        id: crypto.randomUUID(),
+        period: '',
+        executionTradeDate: ''
+      };
+      if (newLeg.rightSide) {
+        newLeg.rightSide.period = '';
+      }
+      const newLegs = [...tradeLegs, newLeg];
+      setTradeLegs(newLegs);
+      
+      // Focus the product dropdown in the new row after a brief delay
+      setTimeout(() => {
+        const rowIndex = newLegs.length - 1;
+        const productSelect = document.querySelector(`[data-row-index="${rowIndex}"] [data-testid="product-select"]`) as HTMLButtonElement;
+        if (productSelect) {
+          productSelect.focus();
+        }
+      }, 100);
+    }
+  };
+  
+  // Add keyboard shortcuts for paper trade form
+  usePaperTradeFormKeyboardShortcuts({
+    onAddBroker: () => setIsAddingBroker(!isAddingBroker),
+    onAddRow: handleAddRow,
+    onCopyPreviousRow: handleCopyPreviousRow,
+    onSubmit: () => {
+      const event = new Event('submit', { bubbles: true, cancelable: true });
+      document.querySelector('form')?.dispatchEvent(event);
+    },
+    onCancel,
+    hasLegs: tradeLegs.length > 0,
+  });
   
   const handleAddBroker = async () => {
     if (!newBrokerName.trim()) {
@@ -350,7 +433,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               onValueChange={setSelectedBroker}
               disabled={isAddingBroker}
             >
-              <SelectTrigger id="broker" className="flex-grow">
+              <SelectTrigger ref={brokerSelectRef} id="broker" className="flex-grow">
                 <SelectValue placeholder="Select broker">
                   {getDisplayBrokerName() || "Select broker"}
                 </SelectValue>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDateForStorage } from '@/utils/dateUtils';
 import { calculateExposures, calculateDailyPricingDistribution } from '@/utils/formulaCalculation';
 import { buildCompleteExposuresObject } from '@/utils/paperTrade';
+import { useTradeEntryKeyboardShortcuts } from '@/hooks/useTradeEntryKeyboardShortcuts';
 
 const TradeEntryPage = () => {
   const navigate = useNavigate();
@@ -24,6 +24,12 @@ const TradeEntryPage = () => {
   const queryClient = useQueryClient();
   const [tradeType, setTradeType] = useState<TradeType>('physical');
   const { createPaperTrade } = usePaperTrades();
+  
+  // Add keyboard shortcuts for trade entry
+  useTradeEntryKeyboardShortcuts({
+    tradeType,
+    setTradeType: (type: TradeType) => setTradeType(type),
+  });
   
   const handlePhysicalSubmit = async (tradeData: any) => {
     try {
