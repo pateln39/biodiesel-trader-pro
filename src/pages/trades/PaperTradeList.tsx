@@ -75,14 +75,15 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
               <TableBody>
                 {paperTrades && paperTrades.length > 0 ? (
                   paperTrades.flatMap((trade) => {
-                    return trade.legs.map((leg, legIndex) => {
+                    return trade.legs.map((leg) => {
                       let productDisplay = formatProductDisplay(
                         leg.product,
                         leg.relationshipType,
                         leg.rightSide?.product
                       );
                       
-                      const displayReference = `${trade.tradeReference}${legIndex > 0 ? `-${String.fromCharCode(97 + legIndex)}` : '-a'}`;
+                      // Use the stored leg reference directly from the database
+                      const displayReference = leg.legReference || `${trade.tradeReference}-a`;
                       const isMultiLeg = trade.legs.length > 1;
                       
                       // Calculate the display price based on relationship type
