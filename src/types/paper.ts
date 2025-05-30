@@ -46,6 +46,7 @@ export interface PaperTradeLeg {
     paperDailyDistribution?: Record<string, Record<string, number>>;
     pricingDailyDistribution?: Record<string, Record<string, number>>;
   };
+  executionTradeDate?: Date | string;
 }
 
 // Complete paper trade with parent and legs
