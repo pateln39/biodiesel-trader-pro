@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { buildCompleteExposuresObject } from '@/utils/paperTrade';
 import { PaginationParams, PaginationMeta } from '@/types/pagination';
+import { getAdaptiveDebounceDelay } from '@/utils/bulkOperationManager';
 
 // Import these from the paperTrade utility module
 import { getMonthDates, formatDateForDatabase } from '@/utils/paperTrade';
@@ -16,10 +17,17 @@ import { countBusinessDays } from '@/utils/dateUtils';
 
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function(...args: any[]) {
+  const debouncedFn = function(...args: any[]) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
   };
+  
+  // Add cancel method
+  debouncedFn.cancel = () => {
+    clearTimeout(timeoutId);
+  };
+  
+  return debouncedFn;
 };
 
 // Function to fetch a single paper trade by ID
@@ -355,11 +363,13 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
   }, 500)).current; // Initial delay, will be adaptive
   
   // Update debounce delay based on bulk operation state
-  React.useEffect(() => {
+  useEffect(() => {
     const updateDebounceDelay = () => {
       const adaptiveDelay = getAdaptiveDebounceDelay();
       // Create new debounced function with adaptive delay
-      debouncedRefetch.cancel?.(); // Cancel pending calls if function supports it
+      if (debouncedRefetch.cancel) {
+        debouncedRefetch.cancel(); // Cancel pending calls
+      }
     };
     
     // Check every second for bulk operation state changes
