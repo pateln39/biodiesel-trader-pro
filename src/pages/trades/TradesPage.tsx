@@ -12,6 +12,7 @@ import { PaginationParams } from '@/types/pagination';
 import PhysicalTradeTable from './PhysicalTradeTable';
 import PaperTradeList from './PaperTradeList';
 import TradesFilter from '@/components/trades/TradesFilter';
+import PaperTradeUploader from '@/components/trades/PaperTradeUploader';
 
 // Import isolated hooks
 import { useFilteredTrades, TradeFilterOptions } from '@/hooks/useFilteredTrades';
@@ -338,6 +339,7 @@ const TradesPage = () => {
           <CardDescription className="flex justify-between items-center">
             <span>View and manage paper trade positions</span>
             <div className="flex space-x-2">
+              <PaperTradeUploader />
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>

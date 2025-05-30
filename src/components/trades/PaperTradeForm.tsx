@@ -351,6 +351,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       tradeType: 'paper',
       broker: brokerName,
       legs: tradeLegs.map((leg, index) => {
+        // Use generateLegReference for consistent leg reference generation
         const legReference = initialData?.legs?.[index]?.legReference || 
                             generateLegReference(tradeReference, index);
         
