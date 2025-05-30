@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { generateTradeReference, generateLegReference } from './tradeUtils';
@@ -60,6 +61,7 @@ interface ValidationError {
 interface ParseResult {
   trades: ParsedTrade[];
   errors: ValidationError[];
+  corruptionDetected: boolean;
 }
 
 // Parse Excel date (handles both serial numbers and text dates)
@@ -99,6 +101,12 @@ const parseExcelDate = (dateValue: any): Date => {
     } catch (error) {
       throw new Error(`Failed to convert Excel serial number ${dateValue}: ${error.message}`);
     }
+  } else if (dateValue instanceof Date) {
+    // Already a Date object
+    if (isNaN(dateValue.getTime())) {
+      throw new Error(`Invalid Date object: ${dateValue}`);
+    }
+    return dateValue;
   } else if (typeof dateValue === 'string') {
     // Trim whitespace and normalize separators
     const cleanedValue = dateValue.trim().replace(/[\/\.]/g, '-');
@@ -150,7 +158,7 @@ const parseExcelDate = (dateValue: any): Date => {
       throw new Error(`Invalid date format: "${dateValue}". Expected dd-mm-yyyy or dd-mm-yy format`);
     }
   }
-  throw new Error(`Invalid date type: ${typeof dateValue}. Expected number or string`);
+  throw new Error(`Invalid date type: ${typeof dateValue}. Expected number, Date object, or string`);
 };
 
 // Convert date range to period format (MMM-YY) - now accepts raw Excel values
@@ -377,6 +385,7 @@ export const parseExcelPaperTrades = async (
         const errors: ValidationError[] = [];
         let currentGroup: any[] = [];
         let groupIndex = 0;
+        let corruptionDetected = false;
         
         // Skip header row (assume first row is headers)
         for (let i = 1; i < jsonData.length; i++) {
@@ -444,7 +453,7 @@ export const parseExcelPaperTrades = async (
           onProgress(100);
         }
         
-        resolve({ trades, errors });
+        resolve({ trades, errors, corruptionDetected });
       } catch (error: any) {
         reject(new Error(`Failed to parse Excel file: ${error.message}`));
       }
@@ -575,7 +584,11 @@ export const generateExcelTemplate = () => {
     ['', '', '', '', '', '', '', '', '', '', '', ''], // Empty row to separate groups
     
     // Trade Group 3 (SPREAD trade)
-    ['FXCM', 'SELL', 'Argus HVO', 150, '01-03-2025', '31-03-2025', 45.50, 'SPREAD', 'ICE GASOIL FUTURES', -150, 890.25, '']
+    ['FXCM', 'SELL', 'Argus HVO', 150, '01-03-2025', '31-03-2025', 45.50, 'SPREAD', 'ICE GASOIL FUTURES', -150, 890.25, ''],
+    ['', '', '', '', '', '', '', '', '', '', '', ''], // Empty row to separate groups
+    
+    // Trade Group 4 (LSGO FP trade)
+    ['FXCM', 'BUY', 'Platts LSGO', 100, '01-04-2025', '30-04-2025', 890.00, 'FP', '', '', '', '']
   ];
   
   const worksheetData = [headers, ...sampleData];
