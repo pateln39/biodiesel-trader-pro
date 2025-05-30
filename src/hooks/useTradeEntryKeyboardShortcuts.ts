@@ -25,8 +25,8 @@ export const useTradeEntryKeyboardShortcuts = ({
       return;
     }
 
-    // Global shortcut: Ctrl+N for new trade
-    if (e.ctrlKey && e.key === 'n') {
+    // Global shortcut: Alt+N for new trade
+    if (e.altKey && e.key === 'n') {
       e.preventDefault();
       if (onNewTrade) {
         onNewTrade();
@@ -38,15 +38,15 @@ export const useTradeEntryKeyboardShortcuts = ({
 
     // Trade type switching shortcuts (only on trade entry page)
     if (location.pathname === '/trades/new' && setTradeType) {
-      // Ctrl+1 for Physical Trade
-      if (e.ctrlKey && e.key === '1') {
+      // Alt+1 for Physical Trade
+      if (e.altKey && e.key === '1') {
         e.preventDefault();
         setTradeType('physical' as TradeType);
         return;
       }
 
-      // Ctrl+2 for Paper Trade
-      if (e.ctrlKey && e.key === '2') {
+      // Alt+2 for Paper Trade
+      if (e.altKey && e.key === '2') {
         e.preventDefault();
         setTradeType('paper' as TradeType);
         return;

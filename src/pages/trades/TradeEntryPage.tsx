@@ -216,9 +216,6 @@ const TradeEntryPage = () => {
             <p className="text-muted-foreground">
               Create a new trade by filling out the form below
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Shortcuts: Ctrl+1 (Physical) | Ctrl+2 (Paper) | Ctrl+N (New Trade)
-            </p>
           </div>
         </div>
 

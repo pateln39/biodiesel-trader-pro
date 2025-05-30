@@ -44,8 +44,8 @@ export const useGlobalKeyboardShortcuts = ({
       }
     }
 
-    // Handle Ctrl+N to create new trade (global shortcut)
-    if (e.ctrlKey && e.key === 'n') {
+    // Handle Alt+N to create new trade (global shortcut)
+    if (e.altKey && e.key === 'n') {
       e.preventDefault();
       navigate('/trades/new');
     }

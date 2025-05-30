@@ -27,24 +27,24 @@ export const usePaperTradeFormKeyboardShortcuts = ({
       return;
     }
 
-    // Ctrl+Shift+B - Add/Toggle Broker
-    if (e.ctrlKey && e.shiftKey && e.key === 'B') {
+    // Alt+B - Add/Toggle Broker
+    if (e.altKey && e.key === 'b') {
       e.preventDefault();
       onAddBroker();
       toast.success('Broker mode toggled');
       return;
     }
 
-    // Ctrl+Shift+R - Add new row
-    if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+    // Alt+R - Add new row
+    if (e.altKey && e.key === 'r') {
       e.preventDefault();
       onAddRow();
       toast.success('New row added');
       return;
     }
 
-    // Ctrl+Shift+C - Copy previous row
-    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+    // Alt+C - Copy previous row
+    if (e.altKey && e.key === 'c') {
       e.preventDefault();
       if (hasLegs) {
         onCopyPreviousRow();
@@ -55,8 +55,8 @@ export const usePaperTradeFormKeyboardShortcuts = ({
       return;
     }
 
-    // Ctrl+S - Save/Submit trade
-    if (e.ctrlKey && e.key === 's') {
+    // Alt+S - Save/Submit trade
+    if (e.altKey && e.key === 's') {
       e.preventDefault();
       onSubmit();
       return;
