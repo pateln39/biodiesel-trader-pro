@@ -16,6 +16,37 @@ const PROCESSING_CONFIG = {
   PROGRESS_UPDATE_INTERVAL: 1000 // Update progress every second
 };
 
+// Utility function to get month start and end dates from a period string (e.g., 'Dec-23')
+const getMonthDates = (periodString: string): { startDate: Date; endDate: Date } | null => {
+  try {
+    const [month, year] = periodString.split('-');
+    const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      .findIndex(m => m === month);
+    
+    if (monthIndex === -1) {
+      console.error(`Invalid month format in period string: ${periodString}`);
+      return null;
+    }
+    
+    const fullYear = 2000 + parseInt(year);
+    const startDate = new Date(fullYear, monthIndex, 1);
+    const endDate = new Date(fullYear, monthIndex + 1, 0);
+    
+    return { startDate, endDate };
+  } catch (error) {
+    console.error(`Error parsing period string: ${periodString}`, error);
+    return null;
+  }
+};
+
+// Format date for database storage
+const formatDateForDatabase = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -291,7 +322,13 @@ async function processTradeChunk(supabase: any, chunk: any[]): Promise<{ success
         exposures: leg.exposures,
         execution_trade_date: leg.executionTradeDate,
         relationship_type: leg.relationshipType,
-        right_side: leg.rightSide
+        right_side: leg.rightSide,
+        // Add the missing display fields
+        trading_period: leg.period,
+        pricing_period_start: leg.pricingPeriodStart,
+        pricing_period_end: leg.pricingPeriodEnd,
+        formula: leg.formula,
+        mtm_formula: leg.mtmFormula
       }));
 
       const { error: legsError } = await supabase
@@ -325,19 +362,65 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
     tradeReference: parsedTrade.tradeReference,
     broker: parsedTrade.broker,
     counterparty: 'Paper Trade Counterparty',
-    legs: parsedTrade.legs.map(leg => ({
-      legReference: leg.legReference,
-      buySell: leg.buySell.toLowerCase(),
-      product: leg.product,
-      quantity: leg.quantity,
-      period: leg.period,
-      price: leg.price,
-      broker: leg.broker,
-      instrument: leg.instrument,
-      exposures: leg.exposures,
-      executionTradeDate: leg.executionTradeDate,
-      relationshipType: leg.relationshipType || 'FP',
-      rightSide: leg.rightSide || null
-    }))
+    legs: parsedTrade.legs.map(leg => {
+      // Get period dates for pricing period calculation
+      let pricingPeriodStart = null;
+      let pricingPeriodEnd = null;
+      
+      if (leg.period) {
+        const monthDates = getMonthDates(leg.period);
+        if (monthDates) {
+          pricingPeriodStart = formatDateForDatabase(monthDates.startDate);
+          pricingPeriodEnd = formatDateForDatabase(monthDates.endDate);
+        }
+      }
+
+      // Build formula object for DIFF/SPREAD trades
+      let formula = null;
+      let mtmFormula = null;
+      
+      if (leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') {
+        // Create the formula structure that matches manual entry
+        formula = {
+          type: leg.relationshipType.toLowerCase(),
+          leftSide: {
+            product: leg.product,
+            quantity: leg.quantity
+          },
+          rightSide: leg.rightSide
+        };
+        
+        // Create MTM formula structure
+        mtmFormula = {
+          type: leg.relationshipType.toLowerCase(),
+          leftSide: {
+            product: leg.product,
+            quantity: leg.quantity
+          },
+          rightSide: leg.rightSide,
+          exposures: leg.exposures
+        };
+      }
+
+      return {
+        legReference: leg.legReference,
+        buySell: leg.buySell.toLowerCase(),
+        product: leg.product,
+        quantity: leg.quantity,
+        period: leg.period,
+        price: leg.price,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        exposures: leg.exposures,
+        executionTradeDate: leg.executionTradeDate,
+        relationshipType: leg.relationshipType || 'FP',
+        rightSide: leg.rightSide || null,
+        // Add the missing display fields
+        pricingPeriodStart,
+        pricingPeriodEnd,
+        formula,
+        mtmFormula
+      };
+    })
   };
 }

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Info, X } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   parseExcelPaperTrades, 
@@ -15,7 +15,6 @@ import {
 } from '@/utils/excelPaperTradeUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
-import { useUploadJob } from '@/hooks/useUploadJob';
 
 interface ValidationError {
   row: number;
@@ -31,12 +30,7 @@ const PaperTradeUploader: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
-  const [isCancelled, setIsCancelled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const completionHandledRef = useRef(false);
-  
-  // Use the upload job hook for backend processing
-  const { job, isLoading: isJobLoading, error: jobError, startPolling, stopPolling } = useUploadJob();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -53,10 +47,7 @@ const PaperTradeUploader: React.FC = () => {
 
   const resetUploadState = () => {
     setUploadProgress(0);
-    setIsCancelled(false);
     setUploadStatus('');
-    completionHandledRef.current = false;
-    stopPolling();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -115,10 +106,8 @@ const PaperTradeUploader: React.FC = () => {
     }
 
     setIsProcessing(true);
-    setIsCancelled(false);
     setUploadProgress(0);
     setUploadStatus('Sending trades to backend for processing...');
-    completionHandledRef.current = false;
 
     try {
       console.log('[FRONTEND_UPLOAD] Starting backend upload for', parsedTrades.length, 'trades');
@@ -139,14 +128,17 @@ const PaperTradeUploader: React.FC = () => {
       const jobId = data.jobId;
       console.log('[FRONTEND_UPLOAD] Started backend job:', jobId);
       
-      toast.info('Upload started in backend', {
-        description: `Processing ${parsedTrades.length} trades. You can monitor progress below.`
-      });
-
-      setUploadStatus('Backend processing started. Monitoring progress...');
+      // Close dialog immediately and show success
+      setIsOpen(false);
+      setFile(null);
+      setParsedTrades([]);
+      setShowPreview(false);
+      resetUploadState();
+      setIsProcessing(false);
       
-      // Start polling for job status
-      startPolling(jobId);
+      toast.success('Upload started successfully!', {
+        description: `Processing ${parsedTrades.length} trades in the background. Check back in a few moments.`
+      });
 
     } catch (error: any) {
       console.error('[FRONTEND_UPLOAD] Upload failed:', error);
@@ -156,15 +148,6 @@ const PaperTradeUploader: React.FC = () => {
       });
       setIsProcessing(false);
     }
-  };
-
-  const handleCancel = () => {
-    setIsCancelled(true);
-    setIsProcessing(false);
-    stopPolling();
-    completionHandledRef.current = true;
-    toast.warning('Upload cancelled');
-    resetUploadState();
   };
 
   const downloadTemplate = () => {
@@ -178,78 +161,10 @@ const PaperTradeUploader: React.FC = () => {
     }
   };
 
-  // Update progress and status from job polling
-  React.useEffect(() => {
-    if (job && !completionHandledRef.current) {
-      setUploadProgress(job.progress_percentage || 0);
-      
-      const currentStatus = job.metadata?.currentStatus || '';
-      if (currentStatus) {
-        setUploadStatus(currentStatus);
-      }
-
-      // Handle job completion
-      if (job.status === 'completed') {
-        completionHandledRef.current = true;
-        setIsProcessing(false);
-        setUploadStatus('Upload completed successfully');
-        toast.success(`Successfully uploaded ${job.processed_items} trade groups`);
-        
-        // Close dialog and reset after a short delay to show final state
-        setTimeout(() => {
-          setIsOpen(false);
-          setFile(null);
-          setParsedTrades([]);
-          setShowPreview(false);
-          resetUploadState();
-        }, 1500);
-        
-      } else if (job.status === 'completed_with_errors') {
-        completionHandledRef.current = true;
-        setIsProcessing(false);
-        setUploadStatus(`Upload completed with ${job.failed_items} errors`);
-        toast.warning(`Upload completed: ${job.processed_items} successful, ${job.failed_items} failed`);
-        
-      } else if (job.status === 'failed') {
-        completionHandledRef.current = true;
-        setIsProcessing(false);
-        setUploadStatus('Upload failed');
-        toast.error('Upload failed', {
-          description: job.error_message || 'Unknown error occurred'
-        });
-      }
-    }
-  }, [job]);
-
-  // Handle job error
-  React.useEffect(() => {
-    if (jobError && !completionHandledRef.current) {
-      completionHandledRef.current = true;
-      setIsProcessing(false);
-      setUploadStatus('Failed to monitor upload progress');
-      toast.error('Upload monitoring failed', {
-        description: jobError
-      });
-    }
-  }, [jobError]);
-
-  // Cleanup on unmount
-  React.useEffect(() => {
-    return () => {
-      stopPolling();
-    };
-  }, [stopPolling]);
-
   const totalLegs = parsedTrades.reduce((acc, trade) => acc + (trade.legs?.length || 0), 0);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
-      setIsOpen(open);
-      if (!open) {
-        stopPolling();
-        resetUploadState();
-      }
-    }}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
@@ -334,7 +249,7 @@ const PaperTradeUploader: React.FC = () => {
               {file && (
                 <div className="mt-3 flex gap-2">
                   <Button onClick={parseFile} disabled={isProcessing} size="sm">
-                    {isProcessing && !job ? 'Parsing...' : 'Parse File'}
+                    {isProcessing && !showPreview ? 'Parsing...' : 'Parse File'}
                   </Button>
                   <Button
                     variant="outline"
@@ -354,40 +269,16 @@ const PaperTradeUploader: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Progress Bar with Backend Status */}
-          {(isProcessing || isJobLoading) && (
+          {/* Progress Bar */}
+          {isProcessing && (
             <Card>
               <CardContent className="pt-4">
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span>{uploadStatus}</span>
+                    <span>{uploadStatus || 'Processing...'}</span>
                     <span>{Math.round(uploadProgress)}%</span>
                   </div>
                   <Progress value={uploadProgress} />
-                  
-                  {job && (
-                    <div className="flex justify-between items-center text-xs text-muted-foreground">
-                      <span>Processed: {job.processed_items} / {job.total_items}</span>
-                      {job.failed_items > 0 && (
-                        <span className="text-red-500">Failed: {job.failed_items}</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Cancel Control */}
-                  {(isProcessing || isJobLoading) && !completionHandledRef.current && (
-                    <div className="flex gap-2 justify-center pt-2">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={isCancelled}
-                      >
-                        <X className="mr-1 h-3 w-3" />
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -438,10 +329,10 @@ const PaperTradeUploader: React.FC = () => {
                   </Button>
                   <Button
                     onClick={uploadTrades}
-                    disabled={validationErrors.length > 0 || isProcessing || isJobLoading}
+                    disabled={validationErrors.length > 0 || isProcessing}
                     size="sm"
                   >
-                    Upload {parsedTrades.length} Trade Groups (Backend Processing)
+                    Upload {parsedTrades.length} Trade Groups
                   </Button>
                 </div>
               </CardContent>
