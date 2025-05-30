@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +19,7 @@ import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface ParsedTrade {
-  groupIndex: number;
-  broker: string;
-  legs: any[];
-  errors: string[];
-}
-
+// Use the ParsedTrade interface from the utils file
 interface ValidationError {
   row: number;
   errors: string[];
@@ -33,7 +28,7 @@ interface ValidationError {
 const PaperTradeUploader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [parsedTrades, setParsedTrades] = useState<ParsedTrade[]>([]);
+  const [parsedTrades, setParsedTrades] = useState<any[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -142,7 +137,7 @@ const PaperTradeUploader: React.FC = () => {
         setUploadStatus(`Creating trade ${i + 1} of ${parsedTrades.length}...`);
 
         try {
-          console.log('[UPLOAD] Transforming trade:', trade.tradeReference);
+          console.log('[UPLOAD] Transforming trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
           const transformedTrade = transformParsedTradeForDatabase(trade);
           
           console.log('[UPLOAD] Creating trade in database:', transformedTrade);
@@ -151,20 +146,22 @@ const PaperTradeUploader: React.FC = () => {
             createPaperTrade(transformedTrade, {
               onSuccess: () => {
                 successCount++;
-                console.log('[UPLOAD] Successfully created trade:', trade.tradeReference);
+                console.log('[UPLOAD] Successfully created trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
                 resolve(true);
               },
               onError: (error: any) => {
                 failureCount++;
                 const errorMsg = error?.message || 'Unknown error';
-                console.error('[UPLOAD] Failed to create trade:', trade.tradeReference, errorMsg);
-                failedTrades.push(`${trade.tradeReference}: ${errorMsg}`);
+                const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
+                console.error('[UPLOAD] Failed to create trade:', tradeRef, errorMsg);
+                failedTrades.push(`${tradeRef}: ${errorMsg}`);
                 reject(error);
               }
             });
           });
         } catch (error: any) {
-          console.error('[UPLOAD] Trade creation failed:', trade.tradeReference, error);
+          const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
+          console.error('[UPLOAD] Trade creation failed:', tradeRef, error);
           // Continue with next trade instead of stopping
         }
       }
@@ -216,7 +213,7 @@ const PaperTradeUploader: React.FC = () => {
     }
   };
 
-  const totalLegs = parsedTrades.reduce((acc, trade) => acc + trade.legs.length, 0);
+  const totalLegs = parsedTrades.reduce((acc, trade) => acc + (trade.legs?.length || 0), 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -364,10 +361,10 @@ const PaperTradeUploader: React.FC = () => {
                       {parsedTrades.map((trade, index) => (
                         <TableRow key={index}>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell>{trade.broker}</TableCell>
-                          <TableCell>{trade.legs.length}</TableCell>
+                          <TableCell>{trade.broker || 'Unknown'}</TableCell>
+                          <TableCell>{trade.legs?.length || 0}</TableCell>
                           <TableCell>
-                            {trade.legs.map(leg => leg.product).join(', ')}
+                            {trade.legs?.map((leg: any) => leg.product).join(', ') || 'N/A'}
                           </TableCell>
                         </TableRow>
                       ))}
