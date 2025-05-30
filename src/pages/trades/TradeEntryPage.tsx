@@ -28,7 +28,7 @@ const TradeEntryPage = () => {
   // Add keyboard shortcuts for trade entry
   useTradeEntryKeyboardShortcuts({
     tradeType,
-    setTradeType,
+    setTradeType: (type: TradeType) => setTradeType(type),
   });
   
   const handlePhysicalSubmit = async (tradeData: any) => {

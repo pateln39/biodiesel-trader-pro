@@ -1,10 +1,11 @@
 
 import { useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { TradeType } from '@/types';
 
 interface UseTradeEntryKeyboardShortcutsProps {
-  tradeType?: string;
-  setTradeType?: (type: string) => void;
+  tradeType?: TradeType;
+  setTradeType?: (type: TradeType) => void;
   onNewTrade?: () => void;
 }
 
@@ -40,14 +41,14 @@ export const useTradeEntryKeyboardShortcuts = ({
       // Ctrl+1 for Physical Trade
       if (e.ctrlKey && e.key === '1') {
         e.preventDefault();
-        setTradeType('physical');
+        setTradeType('physical' as TradeType);
         return;
       }
 
       // Ctrl+2 for Paper Trade
       if (e.ctrlKey && e.key === '2') {
         e.preventDefault();
-        setTradeType('paper');
+        setTradeType('paper' as TradeType);
         return;
       }
     }
