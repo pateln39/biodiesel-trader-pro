@@ -1,5 +1,3 @@
-
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +15,6 @@ import {
   validateAndCreateBrokers
 } from '@/utils/excelPaperTradeUtils';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Use the ParsedTrade interface from the utils file
@@ -230,16 +227,16 @@ const PaperTradeUploader: React.FC = () => {
           Upload Excel
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Upload Paper Trades from Excel</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Template Download */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <FileSpreadsheet className="h-5 w-5" />
                 Excel Template
               </CardTitle>
@@ -248,7 +245,7 @@ const PaperTradeUploader: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={downloadTemplate} variant="outline">
+              <Button onClick={downloadTemplate} variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" />
                 Download Template
               </Button>
@@ -257,25 +254,25 @@ const PaperTradeUploader: React.FC = () => {
 
           {/* File Upload */}
           <Card>
-            <CardHeader>
-              <CardTitle>Upload Excel File</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Upload Excel File</CardTitle>
               <CardDescription>
                 Select or drag and drop your Excel file containing paper trades
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors cursor-pointer"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                <div className="mt-4">
-                  <Label className="text-lg font-medium">
+                <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                <div className="mt-2">
+                  <Label className="text-sm font-medium">
                     {file ? file.name : 'Choose file or drag and drop'}
                   </Label>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 mt-1">
                     Excel files (.xlsx, .xls) only
                   </p>
                 </div>
@@ -289,12 +286,13 @@ const PaperTradeUploader: React.FC = () => {
               </div>
 
               {file && (
-                <div className="mt-4 flex gap-2">
-                  <Button onClick={parseFile} disabled={isProcessing}>
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={parseFile} disabled={isProcessing} size="sm">
                     {isProcessing ? 'Parsing...' : 'Parse File'}
                   </Button>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => {
                       setFile(null);
                       setShowPreview(false);
@@ -312,7 +310,7 @@ const PaperTradeUploader: React.FC = () => {
           {/* Progress Bar */}
           {isProcessing && (
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>{uploadStatus}</span>
@@ -330,7 +328,7 @@ const PaperTradeUploader: React.FC = () => {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Validation Errors Found</AlertTitle>
               <AlertDescription>
-                <ScrollArea className="h-32 mt-2">
+                <ScrollArea className="h-24 mt-2">
                   {validationErrors.map((error, index) => (
                     <div key={index} className="text-sm">
                       <strong>Row {error.row}:</strong> {error.errors.join(', ')}
@@ -341,54 +339,31 @@ const PaperTradeUploader: React.FC = () => {
             </Alert>
           )}
 
-          {/* Preview */}
+          {/* Summary and Upload */}
           {showPreview && parsedTrades.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  Preview Parsed Trades
+                  Ready to Upload
                 </CardTitle>
                 <CardDescription>
                   Found {parsedTrades.length} trade groups with {totalLegs} total legs
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-64">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Group</TableHead>
-                        <TableHead>Broker</TableHead>
-                        <TableHead>Legs</TableHead>
-                        <TableHead>Products</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {parsedTrades.map((trade, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{trade.broker || 'Unknown'}</TableCell>
-                          <TableCell>{trade.legs?.length || 0}</TableCell>
-                          <TableCell>
-                            {trade.legs?.map((leg: any) => leg.product).join(', ') || 'N/A'}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
                     onClick={() => setShowPreview(false)}
+                    size="sm"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={uploadTrades}
                     disabled={validationErrors.length > 0 || isProcessing || isCreating}
+                    size="sm"
                   >
                     Upload {parsedTrades.length} Trade Groups
                   </Button>
@@ -403,4 +378,3 @@ const PaperTradeUploader: React.FC = () => {
 };
 
 export default PaperTradeUploader;
-
