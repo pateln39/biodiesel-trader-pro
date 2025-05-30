@@ -1438,6 +1438,89 @@ export type Database = {
         }
         Relationships: []
       }
+      upload_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          failed_items: number | null
+          id: string
+          job_type: string
+          metadata: Json | null
+          processed_items: number | null
+          progress_percentage: number | null
+          status: string
+          total_items: number | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number | null
+          id?: string
+          job_type?: string
+          metadata?: Json | null
+          processed_items?: number | null
+          progress_percentage?: number | null
+          status?: string
+          total_items?: number | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          failed_items?: number | null
+          id?: string
+          job_type?: string
+          metadata?: Json | null
+          processed_items?: number | null
+          progress_percentage?: number | null
+          status?: string
+          total_items?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      upload_trade_data: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string
+          processed_at: string | null
+          processing_status: string
+          trade_data: Json
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id: string
+          processed_at?: string | null
+          processing_status?: string
+          trade_data: Json
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          processed_at?: string | null
+          processing_status?: string
+          trade_data?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_trade_data_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "upload_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1446,6 +1529,10 @@ export type Database = {
       calculate_open_quantity: {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
+      }
+      cleanup_old_upload_jobs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       filter_movements: {
         Args: {
