@@ -192,7 +192,7 @@ const TradeEntryPage = () => {
       // which correctly preserves the sign of right-side quantities
       createPaperTrade(tradeData, {
         onSuccess: () => {
-          navigate('/trades', { state: { created: true, tradeReference: tradeData.tradeReference } });
+          navigate('/trades?tab=paper&page=1', { state: { created: true, tradeReference: tradeData.tradeReference } });
         }
       });
     } catch (error: any) {

@@ -345,6 +345,12 @@ const PaperTradeTable: React.FC<PaperTradeTableProps> = ({ legs, onLegsChange })
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      
+      // Check if the target is the execution date input
+      const target = e.target as HTMLInputElement;
+      if (target && target.placeholder === 'dd-mm-yyyy') {
+        target.blur(); // Remove focus from the execution date input
+      }
     }
   };
   
