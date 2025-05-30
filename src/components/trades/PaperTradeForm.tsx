@@ -109,7 +109,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
   const [brokers, setBrokers] = useState<BrokerOption[]>([]);
   const [isAddingBroker, setIsAddingBroker] = useState(false);
   const [newBrokerName, setNewBrokerName] = useState('');
-  const [brokersLoaded, setBrokersLoaded] = useState(false);
   const brokerSelectRef = useRef<HTMLButtonElement>(null);
   
   const [tradeLegs, setTradeLegs] = useState<any[]>(() => {
@@ -157,16 +156,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     }
   }, [isEditMode]);
   
-  // Initialize broker selection from initialData immediately
-  useEffect(() => {
-    if (initialData?.broker && !selectedBroker) {
-      console.log('[PAPER_FORM] Initial broker from data:', initialData.broker);
-      
-      // For edit mode, we want to preserve the broker name even if we don't have the ID yet
-      // We'll match it when brokers are loaded
-    }
-  }, [initialData, selectedBroker]);
-  
   useEffect(() => {
     const fetchBrokers = async () => {
       console.log('[PAPER_FORM] Fetching brokers...');
@@ -187,39 +176,16 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
       
       console.log('[PAPER_FORM] Brokers loaded:', data?.length || 0);
       setBrokers(data || []);
-      setBrokersLoaded(true);
       
-      // Handle broker selection after brokers are loaded
-      if (data && data.length > 0) {
-        if (initialData?.broker) {
-          // Find the broker by name (case-insensitive, trimmed)
-          const initialBrokerName = initialData.broker.trim().toLowerCase();
-          const brokerOption = data.find(b => b.name.trim().toLowerCase() === initialBrokerName);
-          
-          if (brokerOption) {
-            console.log('[PAPER_FORM] Found matching broker:', brokerOption.name, 'ID:', brokerOption.id);
-            setSelectedBroker(brokerOption.id);
-          } else {
-            console.warn('[PAPER_FORM] Broker not found in active list:', initialData.broker);
-            console.log('[PAPER_FORM] Available brokers:', data.map(b => b.name));
-            
-            // In edit mode, if the broker isn't found, don't auto-select first one
-            // This preserves the original broker name in the form
-            if (!isEditMode && data.length > 0) {
-              console.log('[PAPER_FORM] Fallback to first broker for new trade');
-              setSelectedBroker(data[0].id);
-            }
-          }
-        } else if (!selectedBroker && !isEditMode) {
-          // Only auto-select first broker for new trades
-          console.log('[PAPER_FORM] Auto-selecting first broker for new trade');
-          setSelectedBroker(data[0].id);
-        }
+      // For new trades only, auto-select the first broker
+      if (!isEditMode && data && data.length > 0 && !selectedBroker) {
+        console.log('[PAPER_FORM] Auto-selecting first broker for new trade');
+        setSelectedBroker(data[0].id);
       }
     };
     
     fetchBrokers();
-  }, [initialData, selectedBroker, isEditMode]);
+  }, [isEditMode, selectedBroker]);
   
   useEffect(() => {
     calculateExposures(tradeLegs);
@@ -331,7 +297,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     calculateExposures(newLegs);
   };
   
-  // ... keep existing code (calculateExposures function)
   const calculateExposures = (legs: any[]) => {
     const exposures = availableMonths.map(month => {
       const entry: any = { month };
@@ -407,21 +372,6 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
     onSubmit(tradeData);
   };
   
-  // Get display broker name - show the name from initialData if broker not found in active list
-  const getDisplayBrokerName = () => {
-    if (selectedBroker) {
-      const broker = brokers.find(b => b.id === selectedBroker);
-      return broker?.name || '';
-    }
-    
-    // If in edit mode and no broker selected but we have initialData broker, show that
-    if (isEditMode && initialData?.broker && brokersLoaded) {
-      return initialData.broker;
-    }
-    
-    return '';
-  };
-  
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
@@ -434,9 +384,7 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               disabled={isAddingBroker}
             >
               <SelectTrigger ref={brokerSelectRef} id="broker" className="flex-grow">
-                <SelectValue placeholder="Select broker">
-                  {getDisplayBrokerName() || "Select broker"}
-                </SelectValue>
+                <SelectValue placeholder="Select broker" />
               </SelectTrigger>
               <SelectContent>
                 {brokers.map((broker) => (
@@ -454,9 +402,9 @@ const PaperTradeForm: React.FC<PaperTradeFormProps> = ({
               {isAddingBroker ? 'Cancel' : '+ Add Broker'}
             </Button>
           </div>
-          {isEditMode && initialData?.broker && !selectedBroker && brokersLoaded && (
-            <p className="text-sm text-orange-600">
-              Original broker "{initialData.broker}" not found in active brokers list
+          {isEditMode && (
+            <p className="text-sm text-muted-foreground">
+              Please select the broker for this trade
             </p>
           )}
         </div>
