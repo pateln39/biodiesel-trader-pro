@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   parseExcelPaperTrades, 
@@ -251,6 +251,23 @@ const PaperTradeUploader: React.FC = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Important Usage Instructions */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Template Usage Instructions</AlertTitle>
+            <AlertDescription>
+              <div className="mt-2 text-sm">
+                <p className="mb-2">
+                  <strong>Important:</strong> Use the downloaded template as a formatting reference only.
+                </p>
+                <p>
+                  When ready to upload your actual trade data, copy your trades into a <strong>new Excel file</strong> 
+                  following the same format. The template file itself cannot be uploaded directly with your data.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
 
           {/* File Upload */}
           <Card>
