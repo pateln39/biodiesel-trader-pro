@@ -37,7 +37,26 @@ const PaperTradeUploader: React.FC = () => {
   // Use the upload job monitoring hook
   const { job, isLoading: jobIsLoading, error: jobError, startPolling, stopPolling } = useUploadJob();
 
+  // Add console logging for debugging
+  React.useEffect(() => {
+    console.log('[UPLOADER_DEBUG] Dialog state:', { isOpen, isProcessing, currentJobId });
+  }, [isOpen, isProcessing, currentJobId]);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    console.log('[UPLOADER_DEBUG] Dialog open change:', open);
+    if (!open && !isProcessing) {
+      // Only allow closing if not processing
+      handleCloseDialog();
+    } else if (!open && isProcessing) {
+      // Prevent closing during processing
+      console.log('[UPLOADER_DEBUG] Preventing dialog close during processing');
+      return;
+    }
+    setIsOpen(open);
+  };
+
   const handleFileSelect = (selectedFile: File) => {
+    console.log('[UPLOADER_DEBUG] File selected:', selectedFile.name);
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
       toast.error('Please select an Excel file (.xlsx or .xls)');
       return;
@@ -75,6 +94,7 @@ const PaperTradeUploader: React.FC = () => {
   const parseFile = async () => {
     if (!file) return;
 
+    console.log('[UPLOADER_DEBUG] Starting file parse');
     setIsProcessing(true);
     setUploadProgress(0);
 
@@ -93,6 +113,7 @@ const PaperTradeUploader: React.FC = () => {
         toast.success(`Successfully parsed ${result.trades.length} trade groups.`);
       }
     } catch (error: any) {
+      console.error('[UPLOADER_DEBUG] Parse error:', error);
       toast.error('Failed to parse Excel file', {
         description: error.message
       });
@@ -112,6 +133,7 @@ const PaperTradeUploader: React.FC = () => {
       return;
     }
 
+    console.log('[UPLOADER_DEBUG] Starting upload process');
     setIsProcessing(true);
     setUploadProgress(0);
     setUploadStatus('Sending trades to backend for processing...');
@@ -149,16 +171,17 @@ const PaperTradeUploader: React.FC = () => {
     } catch (error: any) {
       console.error('[FRONTEND_UPLOAD] Upload failed:', error);
       setUploadStatus('Upload failed');
+      setIsProcessing(false);
       toast.error('Upload failed', {
         description: error.message || 'An unexpected error occurred'
       });
-      setIsProcessing(false);
     }
   };
 
   // Monitor job completion and show notifications
   React.useEffect(() => {
     if (job && currentJobId) {
+      console.log('[UPLOADER_DEBUG] Job status update:', job.status);
       const isCompleted = job.status === 'completed' || 
                          job.status === 'completed_with_errors' || 
                          job.status === 'failed';
@@ -210,12 +233,14 @@ const PaperTradeUploader: React.FC = () => {
   }, [jobError, currentJobId]);
 
   const handleCloseDialog = () => {
+    console.log('[UPLOADER_DEBUG] Closing dialog');
     // Stop polling and reset state
     stopPolling();
     setIsOpen(false);
     setFile(null);
     setParsedTrades([]);
     setShowPreview(false);
+    setValidationErrors([]);
     resetUploadState();
     setIsProcessing(false);
   };
@@ -237,9 +262,15 @@ const PaperTradeUploader: React.FC = () => {
   const showJobProgress = currentJobId && (isProcessing || jobIsLoading);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button 
+          variant="outline"
+          onClick={() => {
+            console.log('[UPLOADER_DEBUG] Button clicked');
+            setIsOpen(true);
+          }}
+        >
           <Upload className="mr-2 h-4 w-4" />
           Upload Excel
         </Button>
