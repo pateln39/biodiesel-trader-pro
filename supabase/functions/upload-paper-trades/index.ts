@@ -46,6 +46,62 @@ const formatDateForDatabase = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Map short product names to full prefixed names (for uploaded trades only)
+const mapProductToFullName = (shortProduct: string): string => {
+  if (!shortProduct) return shortProduct;
+  
+  const normalized = shortProduct.trim().toUpperCase();
+  
+  switch (normalized) {
+    case 'UCOME':
+      return 'Argus UCOME';
+    case 'FAME0':
+    case 'FAME':
+      return 'Argus FAME0';
+    case 'RME':
+      return 'Argus RME';
+    case 'HVO':
+      return 'Argus HVO';
+    case 'LSGO':
+    case 'PLATTS LSGO':
+      return 'Platts LSGO';
+    case 'DIESEL':
+    case 'PLATTS DIESEL':
+      return 'Platts Diesel';
+    case 'GASOIL':
+    case 'ICE GASOIL FUTURES':
+      return 'ICE GASOIL FUTURES';
+    case 'EFP':
+    case 'ICE GASOIL FUTURES (EFP)':
+      return 'ICE GASOIL FUTURES (EFP)';
+    default:
+      // If already prefixed, return as-is
+      if (normalized.startsWith('ARGUS ') || 
+          normalized.startsWith('PLATTS ') || 
+          normalized.startsWith('ICE ')) {
+        return shortProduct;
+      }
+      return shortProduct;
+  }
+};
+
+// Format instrument name for uploaded trades (short name + relationship type)
+const formatInstrumentName = (shortProduct: string, relationshipType: string): string => {
+  if (!shortProduct) return shortProduct;
+  
+  const cleanProduct = shortProduct.trim().toUpperCase();
+  
+  if (relationshipType === 'FP') {
+    return `${cleanProduct} FP`;
+  } else if (relationshipType === 'DIFF') {
+    return `${cleanProduct} DIFF`;
+  } else if (relationshipType === 'SPREAD') {
+    return `${cleanProduct} SPREAD`;
+  }
+  
+  return cleanProduct;
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -374,6 +430,13 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
         }
       }
 
+      // Map short product name to full prefixed name for uploaded trades
+      const originalProduct = leg.product; // Keep original for instrument formatting
+      const fullProduct = mapProductToFullName(leg.product);
+      
+      // Format instrument name using original short product + relationship type
+      const instrumentName = formatInstrumentName(originalProduct, leg.relationshipType || 'FP');
+
       // Build formula and mtmFormula to match manual trade format exactly
       let formula = null;
       let mtmFormula = null;
@@ -407,18 +470,20 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
         };
         
         // Create simplified MTM formula structure matching manual trades exactly
+        const rightSideFullProduct = leg.rightSide ? mapProductToFullName(leg.rightSide.product) : '';
+        
         mtmFormula = {
-          name: `${leg.product} ${leg.relationshipType}`,
+          name: `${fullProduct} ${leg.relationshipType}`,
           tokens: [],
           exposures: {
             physical: {
-              [leg.product]: leg.period,
-              [leg.rightSide.product]: null
+              [fullProduct]: leg.period,
+              [rightSideFullProduct]: null
             }
           },
           rightSide: {
-            product: leg.rightSide.product,
-            quantity: leg.rightSide.quantity,
+            product: rightSideFullProduct,
+            quantity: leg.rightSide?.quantity || 0,
             period: leg.period,
             price: 0
           }
@@ -428,16 +493,21 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
       return {
         legReference: leg.legReference,
         buySell: leg.buySell.toLowerCase(),
-        product: leg.product,
+        product: fullProduct, // Use full prefixed product name
         quantity: leg.quantity,
         period: leg.period,
         price: leg.price,
         broker: leg.broker,
-        instrument: leg.instrument,
+        instrument: instrumentName, // Use formatted instrument name (short + type)
         exposures: leg.exposures,
         executionTradeDate: leg.executionTradeDate,
         relationshipType: leg.relationshipType || 'FP',
-        rightSide: leg.rightSide || null,
+        rightSide: leg.rightSide ? {
+          product: mapProductToFullName(leg.rightSide.product), // Use full name in rightSide too
+          quantity: leg.rightSide.quantity,
+          period: leg.rightSide.period || leg.period,
+          price: leg.rightSide.price
+        } : null,
         // Add the missing display fields
         pricingPeriodStart,
         pricingPeriodEnd,
