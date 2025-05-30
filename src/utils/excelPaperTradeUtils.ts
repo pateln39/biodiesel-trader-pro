@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { generateTradeReference, generateLegReference } from './tradeUtils';
@@ -65,11 +66,39 @@ interface ParseResult {
 // Parse Excel date (handles both serial numbers and text dates)
 const parseExcelDate = (dateValue: any): Date => {
   if (typeof dateValue === 'number') {
-    // Excel serial number
+    // Excel serial number - convert to JavaScript Date
     try {
-      return XLSX.SSF.parse_date_code(dateValue);
+      // Excel epoch starts at 1900-01-01, but JavaScript Date uses 1970-01-01
+      // Excel has a leap year bug where it thinks 1900 was a leap year
+      // For dates after Feb 28, 1900, we need to subtract 1 day
+      const excelEpoch = new Date(1900, 0, 1); // January 1, 1900
+      const msPerDay = 24 * 60 * 60 * 1000;
+      
+      // Convert Excel serial number to JavaScript Date
+      let adjustedSerial = dateValue;
+      
+      // Account for Excel's leap year bug (Excel thinks 1900 was a leap year)
+      if (dateValue > 59) { // After Feb 28, 1900
+        adjustedSerial = dateValue - 1;
+      }
+      
+      // Calculate the date
+      const date = new Date(excelEpoch.getTime() + (adjustedSerial - 1) * msPerDay);
+      
+      // Validate the resulting date
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid Excel date serial number: ${dateValue}`);
+      }
+      
+      // Check if the resulting date is reasonable (between 1900 and 2100)
+      const year = date.getFullYear();
+      if (year < 1900 || year > 2100) {
+        throw new Error(`Excel date serial number ${dateValue} resulted in unreasonable year: ${year}`);
+      }
+      
+      return date;
     } catch (error) {
-      throw new Error(`Invalid Excel date serial number: ${dateValue}`);
+      throw new Error(`Failed to convert Excel serial number ${dateValue}: ${error.message}`);
     }
   } else if (typeof dateValue === 'string') {
     // Trim whitespace and normalize separators
