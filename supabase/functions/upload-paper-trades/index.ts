@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -375,7 +374,7 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
         }
       }
 
-      // Build formula and mtmFormula to match manual trade format
+      // Build formula and mtmFormula to match manual trade format exactly
       let formula = null;
       let mtmFormula = null;
       
@@ -407,17 +406,22 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
           }
         };
         
-        // Create MTM formula structure with relationship data and name field
+        // Create simplified MTM formula structure matching manual trades exactly
         mtmFormula = {
-          type: leg.relationshipType.toLowerCase(),
-          leftSide: {
-            product: leg.product,
-            quantity: leg.quantity
+          name: `${leg.product} ${leg.relationshipType}`,
+          tokens: [],
+          exposures: {
+            physical: {
+              [leg.product]: leg.period,
+              [leg.rightSide.product]: null
+            }
           },
-          rightSide: leg.rightSide,
-          exposures: leg.exposures,
-          // Add the critical name field that manual trades use for display
-          name: `${leg.product} ${leg.relationshipType}`
+          rightSide: {
+            product: leg.rightSide.product,
+            quantity: leg.rightSide.quantity,
+            period: leg.period,
+            price: 0
+          }
         };
       }
 
