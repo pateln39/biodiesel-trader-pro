@@ -125,11 +125,18 @@ const parseExcelDate = (dateValue: any): Date => {
   throw new Error(`Invalid date type: ${typeof dateValue}. Expected number or string`);
 };
 
-// Convert date range to period format (MMM-YY)
-const convertDateRangeToPeriod = (startDate: string, endDate: string): string => {
+// Convert date range to period format (MMM-YY) - now accepts raw Excel values
+const convertDateRangeToPeriod = (startDateValue: any, endDateValue: any): string => {
   try {
-    const start = parseExcelDate(startDate);
-    const end = parseExcelDate(endDate);
+    console.log('[DATE_PARSING] Converting date range to period:', { 
+      startDateValue, 
+      endDateValue,
+      startType: typeof startDateValue,
+      endType: typeof endDateValue 
+    });
+    
+    const start = parseExcelDate(startDateValue);
+    const end = parseExcelDate(endDateValue);
     
     // Use the start date's month and year for the period
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
@@ -137,24 +144,33 @@ const convertDateRangeToPeriod = (startDate: string, endDate: string): string =>
     const month = monthNames[start.getMonth()];
     const year = start.getFullYear().toString().slice(-2);
     
-    return `${month}-${year}`;
+    const period = `${month}-${year}`;
+    console.log('[DATE_PARSING] Successfully converted to period:', period);
+    return period;
   } catch (error: any) {
+    console.error('[DATE_PARSING] Failed to convert date range:', error.message);
     throw new Error(`Date parsing failed: ${error.message}. Please use dd-mm-yyyy format (e.g., 15-12-2024)`);
   }
 };
 
 // Format date for database storage
-const formatDateForDatabase = (dateStr: string): string | null => {
-  if (!dateStr?.trim()) return null;
+const formatDateForDatabase = (dateValue: any): string | null => {
+  if (!dateValue) return null;
+  
+  // Handle empty string case
+  if (typeof dateValue === 'string' && !dateValue.trim()) return null;
   
   try {
-    const date = parseExcelDate(dateStr);
+    console.log('[DATE_FORMATTING] Formatting date for database:', { dateValue, type: typeof dateValue });
+    const date = parseExcelDate(dateValue);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    const formatted = `${year}-${month}-${day}`;
+    console.log('[DATE_FORMATTING] Successfully formatted:', formatted);
+    return formatted;
   } catch (error: any) {
-    console.error(`Failed to format date for database: ${dateStr}`, error.message);
+    console.error(`[DATE_FORMATTING] Failed to format date for database:`, { dateValue, error: error.message });
     return null;
   }
 };
@@ -200,8 +216,8 @@ const validateLeg = (leg: any, rowIndex: number): string[] => {
     errors.push(`Quantity must be a valid number (found: "${leg.quantity}")`);
   }
   
-  if (!leg.periodStart?.trim()) errors.push('Period Start is required');
-  if (!leg.periodEnd?.trim()) errors.push('Period End is required');
+  if (!leg.periodStart) errors.push('Period Start is required');
+  if (!leg.periodEnd) errors.push('Period End is required');
   
   // Price can be 0 or negative, just check it's a valid number
   if (leg.price === undefined || leg.price === null || isNaN(Number(leg.price))) {
@@ -293,22 +309,34 @@ export const parseExcelPaperTrades = async (
             continue;
           }
           
-          // Parse row data with better type conversion
+          // Parse row data preserving raw Excel values for dates
           const legData = {
-            broker: row[COLUMNS.BROKER]?.toString().trim() || '',
-            buySell: row[COLUMNS.BUY_SELL]?.toString().trim().toUpperCase() || '',
-            product: row[COLUMNS.PRODUCT]?.toString().trim() || '',
+            broker: row[COLUMNS.BROKER] ? row[COLUMNS.BROKER].toString().trim() : '',
+            buySell: row[COLUMNS.BUY_SELL] ? row[COLUMNS.BUY_SELL].toString().trim().toUpperCase() : '',
+            product: row[COLUMNS.PRODUCT] ? row[COLUMNS.PRODUCT].toString().trim() : '',
             quantity: row[COLUMNS.QUANTITY] ?? 0,
-            periodStart: row[COLUMNS.PERIOD_START]?.toString().trim() || '',
-            periodEnd: row[COLUMNS.PERIOD_END]?.toString().trim() || '',
+            // Keep raw Excel values for dates (don't convert to string yet)
+            periodStart: row[COLUMNS.PERIOD_START],
+            periodEnd: row[COLUMNS.PERIOD_END],
             price: row[COLUMNS.PRICE] ?? 0,
-            relationshipType: row[COLUMNS.RELATIONSHIP_TYPE]?.toString().trim() || 'FP',
-            rightSideProduct: row[COLUMNS.RIGHT_SIDE_PRODUCT]?.toString().trim() || '',
+            relationshipType: row[COLUMNS.RELATIONSHIP_TYPE] ? row[COLUMNS.RELATIONSHIP_TYPE].toString().trim() : 'FP',
+            rightSideProduct: row[COLUMNS.RIGHT_SIDE_PRODUCT] ? row[COLUMNS.RIGHT_SIDE_PRODUCT].toString().trim() : '',
             rightSideQuantity: row[COLUMNS.RIGHT_SIDE_QUANTITY] ?? 0,
             rightSidePrice: row[COLUMNS.RIGHT_SIDE_PRICE] ?? 0,
-            executionTradeDate: row[COLUMNS.EXECUTION_TRADE_DATE]?.toString().trim() || '',
+            // Keep raw Excel value for execution date
+            executionTradeDate: row[COLUMNS.EXECUTION_TRADE_DATE],
             rowIndex: i + 1
           };
+          
+          console.log('[EXCEL_PARSING] Parsed row data:', {
+            rowIndex: i + 1,
+            periodStart: legData.periodStart,
+            periodStartType: typeof legData.periodStart,
+            periodEnd: legData.periodEnd,
+            periodEndType: typeof legData.periodEnd,
+            executionTradeDate: legData.executionTradeDate,
+            executionTradeDateType: typeof legData.executionTradeDate
+          });
           
           currentGroup.push(legData);
         }
@@ -370,7 +398,7 @@ const processTradeGroup = async (
     }
     
     try {
-      // Convert period
+      // Convert period using raw Excel values
       const period = convertDateRangeToPeriod(legData.periodStart, legData.periodEnd);
       
       // Build leg object with proper typing
@@ -404,6 +432,7 @@ const processTradeGroup = async (
       
       legs.push(leg);
     } catch (error: any) {
+      console.error('[TRADE_PROCESSING] Error processing leg:', error);
       errors.push({
         row: legData.rowIndex,
         errors: [error.message]
