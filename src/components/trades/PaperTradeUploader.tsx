@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Info, Clock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   parseExcelPaperTrades, 
@@ -15,6 +15,7 @@ import {
 } from '@/utils/excelPaperTradeUtils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { useUploadJob } from '@/hooks/useUploadJob';
 
 interface ValidationError {
   row: number;
@@ -30,7 +31,11 @@ const PaperTradeUploader: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use the upload job monitoring hook
+  const { job, isLoading: jobIsLoading, error: jobError, startPolling, stopPolling } = useUploadJob();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -48,6 +53,8 @@ const PaperTradeUploader: React.FC = () => {
   const resetUploadState = () => {
     setUploadProgress(0);
     setUploadStatus('');
+    setCurrentJobId(null);
+    stopPolling();
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -128,16 +135,15 @@ const PaperTradeUploader: React.FC = () => {
       const jobId = data.jobId;
       console.log('[FRONTEND_UPLOAD] Started backend job:', jobId);
       
-      // Close dialog immediately and show success
-      setIsOpen(false);
-      setFile(null);
-      setParsedTrades([]);
-      setShowPreview(false);
-      resetUploadState();
-      setIsProcessing(false);
+      // Store job ID and start monitoring
+      setCurrentJobId(jobId);
+      setUploadStatus('Processing trades in background...');
       
-      toast.success('Upload started successfully!', {
-        description: `Processing ${parsedTrades.length} trades in the background. Check back in a few moments.`
+      // Start polling the job status
+      startPolling(jobId);
+      
+      toast.info('Upload started successfully!', {
+        description: `Processing ${parsedTrades.length} trades in the background...`
       });
 
     } catch (error: any) {
@@ -148,6 +154,70 @@ const PaperTradeUploader: React.FC = () => {
       });
       setIsProcessing(false);
     }
+  };
+
+  // Monitor job completion and show notifications
+  React.useEffect(() => {
+    if (job && currentJobId) {
+      const isCompleted = job.status === 'completed' || 
+                         job.status === 'completed_with_errors' || 
+                         job.status === 'failed';
+
+      if (isCompleted) {
+        setIsProcessing(false);
+        
+        if (job.status === 'completed') {
+          toast.success('Upload completed successfully!', {
+            description: `Successfully processed ${job.processed_items} trade groups.`
+          });
+        } else if (job.status === 'completed_with_errors') {
+          toast.warning('Upload completed with some errors', {
+            description: `Processed ${job.processed_items} successfully, ${job.failed_items} failed.`
+          });
+        } else if (job.status === 'failed') {
+          toast.error('Upload failed', {
+            description: job.error_message || 'An unexpected error occurred during processing.'
+          });
+        }
+
+        // Close dialog after showing notification
+        setTimeout(() => {
+          handleCloseDialog();
+        }, 2000);
+      } else {
+        // Update progress for ongoing job
+        if (job.progress_percentage !== undefined) {
+          setUploadProgress(job.progress_percentage);
+        }
+        
+        if (job.metadata?.currentStatus) {
+          setUploadStatus(job.metadata.currentStatus);
+        }
+      }
+    }
+  }, [job, currentJobId]);
+
+  // Handle job monitoring errors
+  React.useEffect(() => {
+    if (jobError && currentJobId) {
+      console.error('[JOB_MONITORING] Error:', jobError);
+      setIsProcessing(false);
+      setUploadStatus('Failed to monitor upload progress');
+      toast.error('Upload monitoring failed', {
+        description: 'Unable to track upload progress. Please refresh to check status.'
+      });
+    }
+  }, [jobError, currentJobId]);
+
+  const handleCloseDialog = () => {
+    // Stop polling and reset state
+    stopPolling();
+    setIsOpen(false);
+    setFile(null);
+    setParsedTrades([]);
+    setShowPreview(false);
+    resetUploadState();
+    setIsProcessing(false);
   };
 
   const downloadTemplate = () => {
@@ -163,8 +233,11 @@ const PaperTradeUploader: React.FC = () => {
 
   const totalLegs = parsedTrades.reduce((acc, trade) => acc + (trade.legs?.length || 0), 0);
 
+  // Determine if we should show job progress
+  const showJobProgress = currentJobId && (isProcessing || jobIsLoading);
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
@@ -173,7 +246,15 @@ const PaperTradeUploader: React.FC = () => {
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Upload Paper Trades from Excel</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Upload Paper Trades from Excel</DialogTitle>
+            {showJobProgress && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <Clock className="h-4 w-4 animate-spin" />
+                Processing...
+              </div>
+            )}
+          </div>
         </DialogHeader>
         
         <div className="space-y-4">
@@ -246,7 +327,7 @@ const PaperTradeUploader: React.FC = () => {
                 />
               </div>
 
-              {file && (
+              {file && !showJobProgress && (
                 <div className="mt-3 flex gap-2">
                   <Button onClick={parseFile} disabled={isProcessing} size="sm">
                     {isProcessing && !showPreview ? 'Parsing...' : 'Parse File'}
@@ -269,8 +350,8 @@ const PaperTradeUploader: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Progress Bar */}
-          {isProcessing && (
+          {/* Progress Bar - Show for both parsing and job processing */}
+          {(isProcessing || showJobProgress) && (
             <Card>
               <CardContent className="pt-4">
                 <div className="space-y-3">
@@ -279,13 +360,26 @@ const PaperTradeUploader: React.FC = () => {
                     <span>{Math.round(uploadProgress)}%</span>
                   </div>
                   <Progress value={uploadProgress} />
+                  
+                  {/* Show detailed job info if available */}
+                  {job && currentJobId && (
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div>Status: {job.status}</div>
+                      {job.processed_items > 0 && (
+                        <div>Progress: {job.processed_items} / {job.total_items} trade groups</div>
+                      )}
+                      {job.failed_items > 0 && (
+                        <div className="text-amber-600">Failed: {job.failed_items} items</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
 
           {/* Validation Errors */}
-          {validationErrors.length > 0 && (
+          {validationErrors.length > 0 && !showJobProgress && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Validation Errors Found</AlertTitle>
@@ -302,7 +396,7 @@ const PaperTradeUploader: React.FC = () => {
           )}
 
           {/* Summary and Upload */}
-          {showPreview && parsedTrades.length > 0 && (
+          {showPreview && parsedTrades.length > 0 && !showJobProgress && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -313,8 +407,7 @@ const PaperTradeUploader: React.FC = () => {
                   Found {parsedTrades.length} trade groups with {totalLegs} total legs
                   <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
                     <strong>Backend Processing:</strong> Your trades will be processed on our servers 
-                    in batches to ensure reliability. Large uploads are handled efficiently without 
-                    browser limitations.
+                    in batches to ensure reliability. You can monitor progress in real-time.
                   </div>
                 </CardDescription>
               </CardHeader>
@@ -333,6 +426,41 @@ const PaperTradeUploader: React.FC = () => {
                     size="sm"
                   >
                     Upload {parsedTrades.length} Trade Groups
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Job Completion Summary */}
+          {job && currentJobId && (job.status === 'completed' || job.status === 'completed_with_errors' || job.status === 'failed') && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  {job.status === 'completed' ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : job.status === 'completed_with_errors' ? (
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                  ) : (
+                    <X className="h-5 w-5 text-red-500" />
+                  )}
+                  Upload {job.status === 'completed' ? 'Completed' : job.status === 'completed_with_errors' ? 'Completed with Errors' : 'Failed'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div>Total items: {job.total_items}</div>
+                  <div>Successfully processed: {job.processed_items}</div>
+                  {job.failed_items > 0 && (
+                    <div>Failed: {job.failed_items}</div>
+                  )}
+                  {job.error_message && (
+                    <div className="text-red-600">Error: {job.error_message}</div>
+                  )}
+                </div>
+                <div className="mt-4">
+                  <Button onClick={handleCloseDialog} size="sm">
+                    Close
                   </Button>
                 </div>
               </CardContent>
