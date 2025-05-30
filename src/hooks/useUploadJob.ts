@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface UploadJob {
@@ -26,7 +26,8 @@ export const useUploadJob = (): UseUploadJobReturn => {
   const [job, setJob] = useState<UploadJob | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isCompletedRef = useRef(false);
 
   const fetchJobStatus = useCallback(async (jobId: string) => {
     try {
@@ -43,56 +44,72 @@ export const useUploadJob = (): UseUploadJobReturn => {
       setJob(data);
       setError(null);
 
-      // Stop polling if job is completed or failed
-      if (data.status === 'completed' || data.status === 'completed_with_errors' || data.status === 'failed') {
+      // Check if job is completed
+      const isCompleted = data.status === 'completed' || 
+                         data.status === 'completed_with_errors' || 
+                         data.status === 'failed';
+
+      if (isCompleted && !isCompletedRef.current) {
+        isCompletedRef.current = true;
         setIsLoading(false);
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
+        
+        // Clear polling interval immediately
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
         }
       }
     } catch (err: any) {
       setError(err.message);
       setIsLoading(false);
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
     }
-  }, [pollingInterval]);
+  }, []);
 
   const startPolling = useCallback((jobId: string) => {
+    // Reset completion tracking
+    isCompletedRef.current = false;
     setIsLoading(true);
     setError(null);
     setJob(null);
+
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
 
     // Initial fetch
     fetchJobStatus(jobId);
 
     // Start polling every 2 seconds
-    const interval = setInterval(() => {
-      fetchJobStatus(jobId);
+    pollingIntervalRef.current = setInterval(() => {
+      if (!isCompletedRef.current) {
+        fetchJobStatus(jobId);
+      }
     }, 2000);
-
-    setPollingInterval(interval);
   }, [fetchJobStatus]);
 
   const stopPolling = useCallback(() => {
     setIsLoading(false);
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
+    isCompletedRef.current = true;
+    
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
-  }, [pollingInterval]);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [pollingInterval]);
+  }, []);
 
   return {
     job,

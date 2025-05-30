@@ -33,6 +33,7 @@ const PaperTradeUploader: React.FC = () => {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [isCancelled, setIsCancelled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const completionHandledRef = useRef(false);
   
   // Use the upload job hook for backend processing
   const { job, isLoading: isJobLoading, error: jobError, startPolling, stopPolling } = useUploadJob();
@@ -54,6 +55,7 @@ const PaperTradeUploader: React.FC = () => {
     setUploadProgress(0);
     setIsCancelled(false);
     setUploadStatus('');
+    completionHandledRef.current = false;
     stopPolling();
   };
 
@@ -116,6 +118,7 @@ const PaperTradeUploader: React.FC = () => {
     setIsCancelled(false);
     setUploadProgress(0);
     setUploadStatus('Sending trades to backend for processing...');
+    completionHandledRef.current = false;
 
     try {
       console.log('[FRONTEND_UPLOAD] Starting backend upload for', parsedTrades.length, 'trades');
@@ -159,6 +162,7 @@ const PaperTradeUploader: React.FC = () => {
     setIsCancelled(true);
     setIsProcessing(false);
     stopPolling();
+    completionHandledRef.current = true;
     toast.warning('Upload cancelled');
     resetUploadState();
   };
@@ -176,7 +180,7 @@ const PaperTradeUploader: React.FC = () => {
 
   // Update progress and status from job polling
   React.useEffect(() => {
-    if (job) {
+    if (job && !completionHandledRef.current) {
       setUploadProgress(job.progress_percentage || 0);
       
       const currentStatus = job.metadata?.currentStatus || '';
@@ -186,23 +190,28 @@ const PaperTradeUploader: React.FC = () => {
 
       // Handle job completion
       if (job.status === 'completed') {
+        completionHandledRef.current = true;
         setIsProcessing(false);
         setUploadStatus('Upload completed successfully');
         toast.success(`Successfully uploaded ${job.processed_items} trade groups`);
         
-        // Close dialog and reset
-        setIsOpen(false);
-        setFile(null);
-        setParsedTrades([]);
-        setShowPreview(false);
-        resetUploadState();
+        // Close dialog and reset after a short delay to show final state
+        setTimeout(() => {
+          setIsOpen(false);
+          setFile(null);
+          setParsedTrades([]);
+          setShowPreview(false);
+          resetUploadState();
+        }, 1500);
         
       } else if (job.status === 'completed_with_errors') {
+        completionHandledRef.current = true;
         setIsProcessing(false);
         setUploadStatus(`Upload completed with ${job.failed_items} errors`);
         toast.warning(`Upload completed: ${job.processed_items} successful, ${job.failed_items} failed`);
         
       } else if (job.status === 'failed') {
+        completionHandledRef.current = true;
         setIsProcessing(false);
         setUploadStatus('Upload failed');
         toast.error('Upload failed', {
@@ -214,7 +223,8 @@ const PaperTradeUploader: React.FC = () => {
 
   // Handle job error
   React.useEffect(() => {
-    if (jobError) {
+    if (jobError && !completionHandledRef.current) {
+      completionHandledRef.current = true;
       setIsProcessing(false);
       setUploadStatus('Failed to monitor upload progress');
       toast.error('Upload monitoring failed', {
@@ -223,10 +233,23 @@ const PaperTradeUploader: React.FC = () => {
     }
   }, [jobError]);
 
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
+
   const totalLegs = parsedTrades.reduce((acc, trade) => acc + (trade.legs?.length || 0), 0);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) {
+        stopPolling();
+        resetUploadState();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button variant="outline">
           <Upload className="mr-2 h-4 w-4" />
@@ -352,7 +375,7 @@ const PaperTradeUploader: React.FC = () => {
                   )}
                   
                   {/* Cancel Control */}
-                  {(isProcessing || isJobLoading) && (
+                  {(isProcessing || isJobLoading) && !completionHandledRef.current && (
                     <div className="flex gap-2 justify-center pt-2">
                       <Button
                         variant="destructive"

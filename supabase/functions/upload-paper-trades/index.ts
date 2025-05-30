@@ -289,7 +289,9 @@ async function processTradeChunk(supabase: any, chunk: any[]): Promise<{ success
         broker: leg.broker,
         instrument: leg.instrument,
         exposures: leg.exposures,
-        execution_trade_date: leg.executionTradeDate
+        execution_trade_date: leg.executionTradeDate,
+        relationship_type: leg.relationshipType,
+        right_side: leg.rightSide
       }));
 
       const { error: legsError } = await supabase
@@ -333,7 +335,9 @@ function transformParsedTradeForDatabase(parsedTrade: any): any {
       broker: leg.broker,
       instrument: leg.instrument,
       exposures: leg.exposures,
-      executionTradeDate: leg.executionTradeDate
+      executionTradeDate: leg.executionTradeDate,
+      relationshipType: leg.relationshipType || 'FP',
+      rightSide: leg.rightSide || null
     }))
   };
 }
