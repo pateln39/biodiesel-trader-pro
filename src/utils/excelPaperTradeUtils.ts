@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { generateTradeReference, generateLegReference } from './tradeUtils';
@@ -62,24 +61,6 @@ interface ParseResult {
   trades: ParsedTrade[];
   errors: ValidationError[];
 }
-
-// Convert date range to period format (MMM-YY)
-const convertDateRangeToPeriod = (startDate: string, endDate: string): string => {
-  try {
-    const start = parseExcelDate(startDate);
-    const end = parseExcelDate(endDate);
-    
-    // Use the start date's month and year for the period
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[start.getMonth()];
-    const year = start.getFullYear().toString().slice(-2);
-    
-    return `${month}-${year}`;
-  } catch (error) {
-    throw new Error('Invalid date format. Use dd-mm-yyyy');
-  }
-};
 
 // Parse Excel date (handles both serial numbers and text dates)
 const parseExcelDate = (dateValue: any): Date => {
