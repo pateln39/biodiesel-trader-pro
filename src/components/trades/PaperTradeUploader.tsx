@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +36,9 @@ const PaperTradeUploader: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { createPaperTrade } = usePaperTrades();
+  
+  // Use the hook to get the mutation
+  const { createPaperTrade, isCreating } = usePaperTrades();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -125,7 +128,7 @@ const PaperTradeUploader: React.FC = () => {
       setUploadProgress(20);
       setUploadStatus('Brokers validated. Creating trades...');
 
-      // Step 2: Transform and upload trades
+      // Step 2: Transform and upload trades sequentially
       let successCount = 0;
       let failureCount = 0;
       const failedTrades: string[] = [];
@@ -142,12 +145,13 @@ const PaperTradeUploader: React.FC = () => {
           
           console.log('[UPLOAD] Creating trade in database:', transformedTrade);
           
+          // Use the mutation properly with a Promise wrapper
           await new Promise((resolve, reject) => {
             createPaperTrade(transformedTrade, {
-              onSuccess: () => {
+              onSuccess: (createdTrade) => {
                 successCount++;
                 console.log('[UPLOAD] Successfully created trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
-                resolve(true);
+                resolve(createdTrade);
               },
               onError: (error: any) => {
                 failureCount++;
@@ -159,9 +163,12 @@ const PaperTradeUploader: React.FC = () => {
               }
             });
           });
+
         } catch (error: any) {
+          failureCount++;
           const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
           console.error('[UPLOAD] Trade creation failed:', tradeRef, error);
+          failedTrades.push(`${tradeRef}: ${error.message || 'Unknown error'}`);
           // Continue with next trade instead of stopping
         }
       }
@@ -381,7 +388,7 @@ const PaperTradeUploader: React.FC = () => {
                   </Button>
                   <Button
                     onClick={uploadTrades}
-                    disabled={validationErrors.length > 0 || isProcessing}
+                    disabled={validationErrors.length > 0 || isProcessing || isCreating}
                   >
                     Upload {parsedTrades.length} Trade Groups
                   </Button>
@@ -396,3 +403,4 @@ const PaperTradeUploader: React.FC = () => {
 };
 
 export default PaperTradeUploader;
+
