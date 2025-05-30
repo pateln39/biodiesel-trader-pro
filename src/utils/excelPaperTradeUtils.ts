@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { generateTradeReference, generateLegReference } from './tradeUtils';
@@ -267,23 +266,89 @@ const validateLeg = (leg: any, rowIndex: number): string[] => {
   return errors;
 };
 
+// Transform parsed trade data to match PaperTrade interface
+export const transformParsedTradeForDatabase = (parsedTrade: ParsedTrade): any => {
+  // Transform the main trade object
+  const transformedTrade = {
+    tradeReference: parsedTrade.tradeReference,
+    broker: parsedTrade.broker,
+    counterparty: 'Paper Trade Counterparty', // Default for paper trades
+    legs: parsedTrade.legs.map(leg => ({
+      legReference: leg.legReference,
+      buySell: leg.buySell.toLowerCase(), // Ensure lowercase
+      product: leg.product,
+      quantity: leg.quantity,
+      period: leg.period,
+      price: leg.price,
+      broker: leg.broker,
+      instrument: leg.instrument,
+      relationshipType: leg.relationshipType,
+      rightSide: leg.rightSide ? {
+        product: leg.rightSide.product,
+        quantity: leg.rightSide.quantity,
+        period: leg.rightSide.period || leg.period,
+        price: leg.rightSide.price
+      } : undefined,
+      exposures: leg.exposures,
+      executionTradeDate: leg.executionTradeDate
+    }))
+  };
+
+  return transformedTrade;
+};
+
+// Validate and ensure all brokers exist in database
+export const validateAndCreateBrokers = async (trades: ParsedTrade[]): Promise<string[]> => {
+  const errors: string[] = [];
+  const uniqueBrokers = [...new Set(trades.map(trade => trade.broker))];
+  
+  console.log('[BROKER_VALIDATION] Checking brokers:', uniqueBrokers);
+
+  for (const brokerName of uniqueBrokers) {
+    if (!brokerName || brokerName.trim() === '') {
+      errors.push('Empty broker name found');
+      continue;
+    }
+
+    try {
+      await ensureBrokerExists(brokerName.trim());
+      console.log('[BROKER_VALIDATION] Broker ensured:', brokerName);
+    } catch (error: any) {
+      console.error('[BROKER_VALIDATION] Failed to ensure broker:', brokerName, error);
+      errors.push(`Failed to create/validate broker "${brokerName}": ${error.message}`);
+    }
+  }
+
+  return errors;
+};
+
 // Check and create broker if it doesn't exist
 const ensureBrokerExists = async (brokerName: string): Promise<void> => {
-  const { data: existingBroker } = await supabase
+  console.log('[BROKER_CHECK] Checking broker:', brokerName);
+  
+  const { data: existingBroker, error: checkError } = await supabase
     .from('brokers')
     .select('id')
     .eq('name', brokerName)
     .eq('is_active', true)
     .single();
     
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+    throw new Error(`Failed to check broker: ${checkError.message}`);
+  }
+    
   if (!existingBroker) {
-    const { error } = await supabase
+    console.log('[BROKER_CREATE] Creating new broker:', brokerName);
+    const { error: createError } = await supabase
       .from('brokers')
       .insert({ name: brokerName, is_active: true });
       
-    if (error) {
-      throw new Error(`Failed to create broker: ${error.message}`);
+    if (createError) {
+      throw new Error(`Failed to create broker: ${createError.message}`);
     }
+    console.log('[BROKER_CREATE] Successfully created broker:', brokerName);
+  } else {
+    console.log('[BROKER_CHECK] Broker already exists:', brokerName);
   }
 };
 

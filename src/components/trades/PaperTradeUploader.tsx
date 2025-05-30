@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,12 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { parseExcelPaperTrades, generateExcelTemplate } from '@/utils/excelPaperTradeUtils';
+import { 
+  parseExcelPaperTrades, 
+  generateExcelTemplate, 
+  transformParsedTradeForDatabase,
+  validateAndCreateBrokers
+} from '@/utils/excelPaperTradeUtils';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,6 +38,7 @@ const PaperTradeUploader: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { createPaperTrade } = usePaperTrades();
 
@@ -99,45 +104,104 @@ const PaperTradeUploader: React.FC = () => {
       return;
     }
 
+    if (parsedTrades.length === 0) {
+      toast.error('No trades to upload');
+      return;
+    }
+
     setIsProcessing(true);
     setUploadProgress(0);
+    setUploadStatus('Validating brokers...');
 
     try {
+      // Step 1: Validate and create brokers
+      console.log('[UPLOAD] Starting broker validation for', parsedTrades.length, 'trades');
+      const brokerErrors = await validateAndCreateBrokers(parsedTrades);
+      
+      if (brokerErrors.length > 0) {
+        console.error('[UPLOAD] Broker validation failed:', brokerErrors);
+        setUploadStatus('Broker validation failed');
+        brokerErrors.forEach(error => {
+          toast.error('Broker validation failed', { description: error });
+        });
+        return;
+      }
+
+      setUploadProgress(20);
+      setUploadStatus('Brokers validated. Creating trades...');
+
+      // Step 2: Transform and upload trades
       let successCount = 0;
+      let failureCount = 0;
+      const failedTrades: string[] = [];
       
       for (let i = 0; i < parsedTrades.length; i++) {
         const trade = parsedTrades[i];
-        
-        await new Promise((resolve) => {
-          createPaperTrade(trade, {
-            onSuccess: () => {
-              successCount++;
-              setUploadProgress(((i + 1) / parsedTrades.length) * 100);
-              resolve(true);
-            },
-            onError: (error: any) => {
-              console.error(`Failed to create trade group ${i + 1}:`, error);
-              toast.error(`Failed to create trade group ${i + 1}`, {
-                description: error.message
-              });
-              resolve(false);
-            }
+        const progress = 20 + ((i / parsedTrades.length) * 80);
+        setUploadProgress(progress);
+        setUploadStatus(`Creating trade ${i + 1} of ${parsedTrades.length}...`);
+
+        try {
+          console.log('[UPLOAD] Transforming trade:', trade.tradeReference);
+          const transformedTrade = transformParsedTradeForDatabase(trade);
+          
+          console.log('[UPLOAD] Creating trade in database:', transformedTrade);
+          
+          await new Promise((resolve, reject) => {
+            createPaperTrade(transformedTrade, {
+              onSuccess: () => {
+                successCount++;
+                console.log('[UPLOAD] Successfully created trade:', trade.tradeReference);
+                resolve(true);
+              },
+              onError: (error: any) => {
+                failureCount++;
+                const errorMsg = error?.message || 'Unknown error';
+                console.error('[UPLOAD] Failed to create trade:', trade.tradeReference, errorMsg);
+                failedTrades.push(`${trade.tradeReference}: ${errorMsg}`);
+                reject(error);
+              }
+            });
           });
-        });
+        } catch (error: any) {
+          console.error('[UPLOAD] Trade creation failed:', trade.tradeReference, error);
+          // Continue with next trade instead of stopping
+        }
       }
 
-      toast.success(`Successfully uploaded ${successCount} trade groups`);
-      setIsOpen(false);
-      setFile(null);
-      setParsedTrades([]);
-      setShowPreview(false);
+      setUploadProgress(100);
+      setUploadStatus('Upload complete');
+
+      // Show results
+      if (successCount > 0) {
+        toast.success(`Successfully uploaded ${successCount} trade groups`);
+      }
+      
+      if (failureCount > 0) {
+        toast.warning(`${failureCount} trades failed to upload`, {
+          description: failedTrades.length > 0 ? failedTrades[0] : 'Check console for details'
+        });
+        
+        // Log all failed trades for debugging
+        console.error('[UPLOAD] Failed trades:', failedTrades);
+      }
+
+      // Close dialog if all succeeded or if user wants to close after partial success
+      if (failureCount === 0) {
+        setIsOpen(false);
+        setFile(null);
+        setParsedTrades([]);
+        setShowPreview(false);
+      }
+
     } catch (error: any) {
+      console.error('[UPLOAD] Upload process failed:', error);
+      setUploadStatus('Upload failed');
       toast.error('Upload failed', {
-        description: error.message
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsProcessing(false);
-      setUploadProgress(0);
     }
   };
 
@@ -247,7 +311,7 @@ const PaperTradeUploader: React.FC = () => {
               <CardContent className="pt-6">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Processing...</span>
+                    <span>{uploadStatus}</span>
                     <span>{Math.round(uploadProgress)}%</span>
                   </div>
                   <Progress value={uploadProgress} />
