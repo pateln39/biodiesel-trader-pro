@@ -23,6 +23,14 @@ interface ValidationError {
   errors: string[];
 }
 
+// Configuration for batch processing
+const BATCH_CONFIG = {
+  CHUNK_SIZE: 5, // Process 5 trades at a time
+  CHUNK_DELAY: 500, // 500ms delay between chunks
+  INDIVIDUAL_TIMEOUT: 10000, // 10 second timeout per trade
+  MAX_RETRIES: 2 // Maximum retries for failed trades
+};
+
 const PaperTradeUploader: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -32,6 +40,8 @@ const PaperTradeUploader: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [currentBatch, setCurrentBatch] = useState(0);
+  const [totalBatches, setTotalBatches] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Use the hook to get the mutation
@@ -93,6 +103,76 @@ const PaperTradeUploader: React.FC = () => {
     }
   };
 
+  // Helper function to create a timeout wrapper for individual trade creation
+  const createTradeWithTimeout = (trade: any, timeoutMs: number): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('Trade creation timeout'));
+      }, timeoutMs);
+
+      createPaperTrade(transformParsedTradeForDatabase(trade), {
+        onSuccess: (result) => {
+          clearTimeout(timer);
+          resolve(result);
+        },
+        onError: (error) => {
+          clearTimeout(timer);
+          reject(error);
+        }
+      });
+    });
+  };
+
+  // Helper function to process a single chunk of trades
+  const processTradeChunk = async (chunk: any[], chunkIndex: number): Promise<{ successes: number; failures: any[] }> => {
+    console.log(`[BATCH_UPLOAD] Processing chunk ${chunkIndex + 1} with ${chunk.length} trades`);
+    
+    // Use Promise.allSettled to process all trades in chunk simultaneously
+    const results = await Promise.allSettled(
+      chunk.map(async (trade, index) => {
+        const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
+        console.log(`[BATCH_UPLOAD] Processing trade ${tradeRef} in chunk ${chunkIndex + 1}`);
+        
+        try {
+          const result = await createTradeWithTimeout(trade, BATCH_CONFIG.INDIVIDUAL_TIMEOUT);
+          console.log(`[BATCH_UPLOAD] Successfully created trade: ${tradeRef}`);
+          return { success: true, trade: tradeRef, result };
+        } catch (error: any) {
+          console.error(`[BATCH_UPLOAD] Failed to create trade: ${tradeRef}`, error);
+          return { 
+            success: false, 
+            trade: tradeRef, 
+            error: error.message || 'Unknown error',
+            originalTrade: trade
+          };
+        }
+      })
+    );
+
+    // Process results
+    let successes = 0;
+    const failures: any[] = [];
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value.success) {
+        successes++;
+      } else {
+        const failureInfo = result.status === 'fulfilled' 
+          ? result.value 
+          : { 
+              success: false, 
+              trade: chunk[index].tradeReference || `Group ${chunk[index].groupIndex + 1}`,
+              error: 'Promise rejected',
+              originalTrade: chunk[index]
+            };
+        failures.push(failureInfo);
+      }
+    });
+
+    return { successes, failures };
+  };
+
+  // Enhanced upload function with batch processing
   const uploadTrades = async () => {
     if (validationErrors.length > 0) {
       toast.error('Please fix validation errors before uploading');
@@ -110,11 +190,11 @@ const PaperTradeUploader: React.FC = () => {
 
     try {
       // Step 1: Validate and create brokers
-      console.log('[UPLOAD] Starting broker validation for', parsedTrades.length, 'trades');
+      console.log('[BATCH_UPLOAD] Starting broker validation for', parsedTrades.length, 'trades');
       const brokerErrors = await validateAndCreateBrokers(parsedTrades);
       
       if (brokerErrors.length > 0) {
-        console.error('[UPLOAD] Broker validation failed:', brokerErrors);
+        console.error('[BATCH_UPLOAD] Broker validation failed:', brokerErrors);
         setUploadStatus('Broker validation failed');
         brokerErrors.forEach(error => {
           toast.error('Broker validation failed', { description: error });
@@ -122,73 +202,86 @@ const PaperTradeUploader: React.FC = () => {
         return;
       }
 
-      setUploadProgress(20);
-      setUploadStatus('Brokers validated. Creating trades...');
+      setUploadProgress(10);
+      setUploadStatus('Brokers validated. Starting batch upload...');
 
-      // Step 2: Transform and upload trades sequentially
-      let successCount = 0;
-      let failureCount = 0;
-      const failedTrades: string[] = [];
-      
-      for (let i = 0; i < parsedTrades.length; i++) {
-        const trade = parsedTrades[i];
-        const progress = 20 + ((i / parsedTrades.length) * 80);
-        setUploadProgress(progress);
-        setUploadStatus(`Creating trade ${i + 1} of ${parsedTrades.length}...`);
+      // Step 2: Split trades into chunks
+      const chunks: any[][] = [];
+      for (let i = 0; i < parsedTrades.length; i += BATCH_CONFIG.CHUNK_SIZE) {
+        chunks.push(parsedTrades.slice(i, i + BATCH_CONFIG.CHUNK_SIZE));
+      }
+
+      setTotalBatches(chunks.length);
+      console.log(`[BATCH_UPLOAD] Split ${parsedTrades.length} trades into ${chunks.length} chunks`);
+
+      // Step 3: Process chunks sequentially with parallel processing within each chunk
+      let totalSuccesses = 0;
+      let totalFailures = 0;
+      const allFailures: any[] = [];
+
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+        setCurrentBatch(chunkIndex + 1);
+        
+        // Calculate progress: 10% for broker validation, 90% for uploads
+        const baseProgress = 10;
+        const uploadProgress = (chunkIndex / chunks.length) * 90;
+        setUploadProgress(baseProgress + uploadProgress);
+        setUploadStatus(`Processing batch ${chunkIndex + 1} of ${chunks.length} (${chunk.length} trades)...`);
 
         try {
-          console.log('[UPLOAD] Transforming trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
-          const transformedTrade = transformParsedTradeForDatabase(trade);
+          const { successes, failures } = await processTradeChunk(chunk, chunkIndex);
           
-          console.log('[UPLOAD] Creating trade in database:', transformedTrade);
-          
-          // Use the mutation properly with a Promise wrapper
-          await new Promise((resolve, reject) => {
-            createPaperTrade(transformedTrade, {
-              onSuccess: (createdTrade) => {
-                successCount++;
-                console.log('[UPLOAD] Successfully created trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
-                resolve(createdTrade);
-              },
-              onError: (error: any) => {
-                failureCount++;
-                const errorMsg = error?.message || 'Unknown error';
-                const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
-                console.error('[UPLOAD] Failed to create trade:', tradeRef, errorMsg);
-                failedTrades.push(`${tradeRef}: ${errorMsg}`);
-                reject(error);
-              }
-            });
-          });
+          totalSuccesses += successes;
+          totalFailures += failures.length;
+          allFailures.push(...failures);
+
+          console.log(`[BATCH_UPLOAD] Chunk ${chunkIndex + 1} completed: ${successes} successes, ${failures.length} failures`);
+
+          // Add delay between chunks to prevent overwhelming the system
+          if (chunkIndex < chunks.length - 1) {
+            console.log(`[BATCH_UPLOAD] Waiting ${BATCH_CONFIG.CHUNK_DELAY}ms before next chunk...`);
+            await new Promise(resolve => setTimeout(resolve, BATCH_CONFIG.CHUNK_DELAY));
+          }
 
         } catch (error: any) {
-          failureCount++;
-          const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
-          console.error('[UPLOAD] Trade creation failed:', tradeRef, error);
-          failedTrades.push(`${tradeRef}: ${error.message || 'Unknown error'}`);
-          // Continue with next trade instead of stopping
+          console.error(`[BATCH_UPLOAD] Chunk ${chunkIndex + 1} processing failed:`, error);
+          // Add all trades in this chunk as failures
+          chunk.forEach(trade => {
+            allFailures.push({
+              trade: trade.tradeReference || `Group ${trade.groupIndex + 1}`,
+              error: 'Chunk processing failed',
+              originalTrade: trade
+            });
+          });
+          totalFailures += chunk.length;
         }
       }
 
       setUploadProgress(100);
       setUploadStatus('Upload complete');
 
-      // Show results
-      if (successCount > 0) {
-        toast.success(`Successfully uploaded ${successCount} trade groups`);
+      // Step 4: Show results and summary
+      console.log(`[BATCH_UPLOAD] Final results: ${totalSuccesses} successes, ${totalFailures} failures`);
+
+      if (totalSuccesses > 0) {
+        toast.success(`Successfully uploaded ${totalSuccesses} trade groups`, {
+          description: totalFailures > 0 ? `${totalFailures} trades failed` : undefined
+        });
       }
       
-      if (failureCount > 0) {
-        toast.warning(`${failureCount} trades failed to upload`, {
-          description: failedTrades.length > 0 ? failedTrades[0] : 'Check console for details'
+      if (totalFailures > 0) {
+        const failureMessages = allFailures.slice(0, 3).map(f => `${f.trade}: ${f.error}`);
+        toast.warning(`${totalFailures} trades failed to upload`, {
+          description: failureMessages.join('; ') + (allFailures.length > 3 ? '...' : '')
         });
         
         // Log all failed trades for debugging
-        console.error('[UPLOAD] Failed trades:', failedTrades);
+        console.error('[BATCH_UPLOAD] All failed trades:', allFailures);
       }
 
       // Close dialog if all succeeded or if user wants to close after partial success
-      if (failureCount === 0) {
+      if (totalFailures === 0) {
         setIsOpen(false);
         setFile(null);
         setParsedTrades([]);
@@ -196,13 +289,15 @@ const PaperTradeUploader: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('[UPLOAD] Upload process failed:', error);
+      console.error('[BATCH_UPLOAD] Upload process failed:', error);
       setUploadStatus('Upload failed');
       toast.error('Upload failed', {
         description: error.message || 'An unexpected error occurred'
       });
     } finally {
       setIsProcessing(false);
+      setCurrentBatch(0);
+      setTotalBatches(0);
     }
   };
 
@@ -334,6 +429,11 @@ const PaperTradeUploader: React.FC = () => {
                     <span>{Math.round(uploadProgress)}%</span>
                   </div>
                   <Progress value={uploadProgress} />
+                  {totalBatches > 0 && (
+                    <div className="text-xs text-muted-foreground text-center">
+                      Batch {currentBatch} of {totalBatches}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -366,6 +466,11 @@ const PaperTradeUploader: React.FC = () => {
                 </CardTitle>
                 <CardDescription>
                   Found {parsedTrades.length} trade groups with {totalLegs} total legs
+                  {parsedTrades.length > 10 && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Large upload will be processed in batches of {BATCH_CONFIG.CHUNK_SIZE} trades
+                    </div>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent>
