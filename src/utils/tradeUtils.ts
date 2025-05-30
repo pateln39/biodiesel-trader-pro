@@ -1,6 +1,8 @@
+
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { supabase } from '@/integrations/supabase/client';
+import { generateLegSuffix } from './suffixUtils';
 
 // Generate a unique trade reference
 export const generateTradeReference = (): string => {
@@ -14,9 +16,9 @@ export const generateTradeReference = (): string => {
   return `${year}${month}${day}-${random}`;
 };
 
-// Generate a leg reference from a trade reference
+// Generate a leg reference from a trade reference using proper suffix generation
 export const generateLegReference = (tradeReference: string, legNumber: number): string => {
-  const suffix = String.fromCharCode(97 + legNumber); // 0 -> 'a', 1 -> 'b', etc.
+  const suffix = generateLegSuffix(legNumber);
   return `${tradeReference}-${suffix}`;
 };
 

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/Layout';
 import PhysicalTradeForm from '@/components/trades/PhysicalTradeForm';
 import PaperTradeForm from '@/components/trades/PaperTradeForm';
-import { generateTradeReference } from '@/utils/tradeUtils';
+import { generateTradeReference, generateLegReference } from '@/utils/tradeUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { TradeType, PricingFormula } from '@/types';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
@@ -188,9 +188,18 @@ const TradeEntryPage = () => {
     try {
       console.log('[PAPER_SUBMIT] Creating paper trade with data:', tradeData);
       
+      // Ensure all legs have proper leg references generated using the new suffix system
+      const tradeDataWithProperReferences = {
+        ...tradeData,
+        legs: tradeData.legs.map((leg: any, index: number) => ({
+          ...leg,
+          legReference: generateLegReference(tradeData.tradeReference, index)
+        }))
+      };
+      
       // This will now use our fixed buildCompleteExposuresObject function
       // which correctly preserves the sign of right-side quantities
-      createPaperTrade(tradeData, {
+      createPaperTrade(tradeDataWithProperReferences, {
         onSuccess: () => {
           navigate('/trades?tab=paper&page=1', { state: { created: true, tradeReference: tradeData.tradeReference } });
         }
