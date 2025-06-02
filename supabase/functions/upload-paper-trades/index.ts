@@ -30,7 +30,7 @@ const generateTradeReference = (): string => {
   const year = now.getFullYear().toString().slice(-2);
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
-  const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const random = Math.floor(10000 + Math.random() * 90000);
   return `${year}${month}${day}-${random}`;
 };
 
@@ -390,8 +390,13 @@ serve(async (req) => {
           
           // Create instrument name based on product and relationship type
           let instrument = legData.product;
-          if (legData.relationshipType === 'DIFF' || legData.relationshipType === 'SPREAD') {
-            instrument = `${legData.product} ${legData.relationshipType}`;
+          if (legData.relationshipType === 'FP') {
+            instrument = `${legData.product} FP`;
+          } else if (legData.relationshipType === 'DIFF') {
+            instrument = `${legData.product} DIFF`;
+          } else if (legData.relationshipType === 'SPREAD') {
+            const rightSideProduct = legData.rightSideProduct || 'LSGO';
+            instrument = `${legData.product}-${rightSideProduct} SPREAD`;
           }
           
           const leg = {
