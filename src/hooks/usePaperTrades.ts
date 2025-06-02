@@ -359,7 +359,7 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     staleTime: 2000,
     refetchOnWindowFocus: false
   });
-  
+
   async function fetchPaperTrades(params?: PaginationParams): Promise<{ paperTrades: PaperTrade[], pagination: PaginationMeta }> {
     console.log("[PAPER] Fetching paper trades with pagination:", params);
     
@@ -617,158 +617,40 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     };
   };
   
-  const setupRealtimeSubscriptions = useCallback(() => {
+  // Set up realtime subscriptions
+  useEffect(() => {
     return setupPaperTradeSubscriptions(
       realtimeChannelsRef,
-      isProcessingRef, 
+      isProcessingRef,
       debouncedRefetch,
       refetch
     );
-  }, [refetch, debouncedRefetch]);
+  }, [refetch]);
   
-  useEffect(() => {
-    const cleanup = setupRealtimeSubscriptions();
-    
-    return () => {
-      cleanup();
-    };
-  }, [setupRealtimeSubscriptions]);
-  
-  const { mutate: createPaperTrade, isPending: isCreating } = useMutation({
-    mutationFn: async (tradeData: Partial<PaperTrade>) => {
-      if (!tradeData.tradeReference) {
-        throw new Error('Trade reference is required');
-      }
-      
-      const { data: paperTrade, error: paperTradeError } = await supabase
-        .from('paper_trades')
-        .insert({
-          trade_reference: tradeData.tradeReference,
-          counterparty: tradeData.broker || 'Paper Trade',
-          broker: tradeData.broker
-        })
-        .select('id, trade_reference, counterparty, broker, created_at, updated_at')
-        .single();
-        
-      if (paperTradeError) {
-        throw new Error(`Error creating paper trade: ${paperTradeError.message}`);
-      }
-      
-      if (tradeData.legs && tradeData.legs.length > 0) {
-        for (let i = 0; i < tradeData.legs.length; i++) {
-          const leg = tradeData.legs[i];
-          const legReference = generateLegReference(tradeData.tradeReference || '', i);
-          
-          let tradingPeriod = leg.period;
-          
-          let pricingPeriodStart = null;
-          let pricingPeriodEnd = null;
-          
-          if (tradingPeriod) {
-            try {
-              // Get the dates using our utility function
-              const dates = getMonthDates(tradingPeriod);
-              
-              if (dates) {
-                // Format dates for database storage without timezone issues
-                pricingPeriodStart = formatDateForDatabase(dates.startDate);
-                pricingPeriodEnd = formatDateForDatabase(dates.endDate);
-              }
-            } catch (e) {
-              console.error('Error parsing period date:', e);
-            }
-          }
-          
-          // Build properly normalized exposures object using our fixed function
-          const exposures = buildCompleteExposuresObject(leg);
-          
-          console.log(`[PAPER] Built exposures for leg ${i}:`, exposures);
-          
-          const instrument = generateInstrumentName(
-            leg.product, 
-            leg.relationshipType,
-            leg.rightSide?.product
-          );
-          
-          let mtmFormulaForDb = null;
-          if (leg.mtmFormula) {
-            mtmFormulaForDb = typeof leg.mtmFormula === 'string' ? JSON.parse(leg.mtmFormula) : {...leg.mtmFormula};
-          } else {
-            mtmFormulaForDb = {};
-          }
-          
-          if (leg.rightSide) {
-            mtmFormulaForDb.rightSide = {
-              ...leg.rightSide,
-              price: leg.rightSide.price || 0
-            };
-          }
-          
-          const formulaForDb = leg.formula ? (typeof leg.formula === 'string' ? JSON.parse(leg.formula) : leg.formula) : null;
-          
-          // Format execution date for database storage
-          const formattedExecutionDate = leg.executionTradeDate ? 
-            formatDateForDatabase(new Date(leg.executionTradeDate)) : null;
-          
-          const legData = {
-            leg_reference: legReference,
-            paper_trade_id: paperTrade.id,
-            buy_sell: leg.buySell,
-            product: mapProductToCanonical(leg.product) as Product,
-            quantity: leg.quantity,
-            price: leg.price,
-            broker: leg.broker || tradeData.broker,
-            period: tradingPeriod,
-            trading_period: tradingPeriod,
-            formula: formulaForDb,
-            mtm_formula: mtmFormulaForDb,
-            pricing_period_start: pricingPeriodStart,
-            pricing_period_end: pricingPeriodEnd,
-            instrument: instrument,
-            exposures: exposures,
-            execution_trade_date: formattedExecutionDate
-          };
-          
-          const { error: legError } = await supabase
-            .from('paper_trade_legs')
-            .insert(legData);
-            
-          if (legError) {
-            throw new Error(`Error creating trade leg: ${legError.message}`);
-          }
-        }
-      }
-      
-      return {
-        ...tradeData, 
-        id: paperTrade.id,
-        createdAt: new Date(paperTrade.created_at),
-        updatedAt: new Date(paperTrade.updated_at),
-        buySell: 'buy' as BuySell,
-        product: 'UCOME' as Product,
-      } as PaperTrade;
-    },
+  const createPaperTradeMutation = useMutation({
+    mutationFn: createPaperTrade,
     onSuccess: () => {
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
-        queryClient.invalidateQueries({ queryKey: ['exposure-data'] });
-        toast.success('Paper trade created successfully');
-      }, 500);
+      queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
+      toast.success('Paper trade created successfully');
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      console.error('Error creating paper trade:', error);
       toast.error('Failed to create paper trade', {
         description: error.message
       });
     }
   });
-  
+
   return {
     paperTrades: data?.paperTrades || [],
-    pagination: data?.pagination,
+    pagination: data?.pagination || { totalItems: 0, totalPages: 1, currentPage: 1, pageSize: 15 },
     isLoading,
     error,
-    createPaperTrade,
-    isCreating,
-    refetchPaperTrades: refetch
+    refetch,
+    createPaperTrade: createPaperTradeMutation.mutate,
+    isCreating: createPaperTradeMutation.isPending,
+    // Expose subscription control for external components
+    realtimeChannelsRef,
+    isProcessingRef
   };
 };

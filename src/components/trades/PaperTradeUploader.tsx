@@ -16,6 +16,7 @@ import {
 } from '@/utils/excelPaperTradeUtils';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { pausePaperSubscriptions, resumePaperSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 
 // Use the ParsedTrade interface from the utils file
 interface ValidationError {
@@ -34,8 +35,13 @@ const PaperTradeUploader: React.FC = () => {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Use the hook to get the mutation
-  const { createPaperTrade, isCreating } = usePaperTrades();
+  // Use the hook to get the mutation and subscription controls
+  const { 
+    createPaperTrade, 
+    isCreating, 
+    realtimeChannelsRef, 
+    isProcessingRef 
+  } = usePaperTrades();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -106,10 +112,19 @@ const PaperTradeUploader: React.FC = () => {
 
     setIsProcessing(true);
     setUploadProgress(0);
-    setUploadStatus('Validating brokers...');
+    setUploadStatus('Preparing upload...');
 
     try {
+      // Show upload started toast
+      toast.success('Upload started - processing trades in background');
+      
+      // Pause real-time subscriptions to prevent DOM updates
+      console.log('[UPLOAD] Pausing real-time subscriptions');
+      pausePaperSubscriptions(realtimeChannelsRef.current);
+      isProcessingRef.current = true;
+
       // Step 1: Validate and create brokers
+      setUploadStatus('Validating brokers...');
       console.log('[UPLOAD] Starting broker validation for', parsedTrades.length, 'trades');
       const brokerErrors = await validateAndCreateBrokers(parsedTrades);
       
@@ -175,7 +190,7 @@ const PaperTradeUploader: React.FC = () => {
 
       // Show results
       if (successCount > 0) {
-        toast.success(`Successfully uploaded ${successCount} trade groups`);
+        toast.success(`Upload completed! Successfully uploaded ${successCount} trade groups. Please refresh the page to see the new trades.`);
       }
       
       if (failureCount > 0) {
@@ -202,6 +217,10 @@ const PaperTradeUploader: React.FC = () => {
         description: error.message || 'An unexpected error occurred'
       });
     } finally {
+      // Always resume subscriptions and reset processing state
+      console.log('[UPLOAD] Resuming real-time subscriptions');
+      resumePaperSubscriptions(realtimeChannelsRef.current);
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
   };

@@ -821,6 +821,8 @@ export type Database = {
           pricing_period_start: string | null
           product: string
           quantity: number
+          relationship_type: string | null
+          right_side: Json | null
           trading_period: string | null
           updated_at: string
         }
@@ -842,6 +844,8 @@ export type Database = {
           pricing_period_start?: string | null
           product: string
           quantity: number
+          relationship_type?: string | null
+          right_side?: Json | null
           trading_period?: string | null
           updated_at?: string
         }
@@ -863,6 +867,8 @@ export type Database = {
           pricing_period_start?: string | null
           product?: string
           quantity?: number
+          relationship_type?: string | null
+          right_side?: Json | null
           trading_period?: string | null
           updated_at?: string
         }
@@ -1446,6 +1452,10 @@ export type Database = {
       calculate_open_quantity: {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
+      }
+      cleanup_old_upload_jobs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       filter_movements: {
         Args: {
