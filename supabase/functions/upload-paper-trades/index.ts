@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as XLSX from 'https://deno.land/x/sheetjs@v0.18.3/xlsx.mjs'
@@ -158,21 +157,103 @@ const formatDateForDatabase = (dateValue: any): string | null => {
   }
 };
 
-// Build exposures object
-const buildExposuresObject = (leg: any): any => {
+// Helper function to count business days
+const getBusinessDaysCount = (startDate: Date, endDate: Date): number => {
+  let count = 0;
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    // Check if day is not a weekend (0 = Sunday, 6 = Saturday)
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
+      count++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return count;
+};
+
+// Add a function to calculate daily distribution
+const calculateDailyDistribution = (
+  period: string,
+  product: string,
+  quantity: number,
+  buySell: string
+): Record<string, Record<string, number>> => {
+  const monthDates = getMonthDates(period);
+  if (!monthDates) {
+    return {};
+  }
+  
+  // Calculate business days
+  const { startDate, endDate } = monthDates;
+  const businessDays = getBusinessDaysCount(startDate, endDate);
+  
+  if (businessDays === 0) {
+    return {};
+  }
+  
+  // Use the quantity directly - preserving its sign
+  const exposureValue = quantity;
+  const dailyExposure = exposureValue / businessDays;
+  
+  // Create distribution object
+  const distribution: Record<string, Record<string, number>> = {};
+  distribution[product] = {};
+  
+  const currentDate = new Date(startDate);
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Not weekend
+      const dateStr = formatDateForDatabase(currentDate); // Use our timezone-safe formatter
+      distribution[product][dateStr] = dailyExposure;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return distribution;
+};
+
+// Updated function to build complete exposures object with daily distributions
+const buildCompleteExposuresObject = (leg: any): any => {
   const buySellMultiplier = leg.buySell === 'buy' ? 1 : -1;
   const leftQuantity = leg.quantity * buySellMultiplier;
   
   const exposures = {
     physical: {},
     paper: { [leg.product]: leftQuantity },
-    pricing: { [leg.product]: leftQuantity }
+    pricing: { [leg.product]: leftQuantity },
+    paperDailyDistribution: {},
+    pricingDailyDistribution: {}
   };
   
+  // Handle right side for DIFF or SPREAD relationships
   if ((leg.relationshipType === 'DIFF' || leg.relationshipType === 'SPREAD') && leg.rightSide) {
     const rightQuantity = leg.rightSide.quantity * buySellMultiplier;
     exposures.paper[leg.rightSide.product] = rightQuantity;
     exposures.pricing[leg.rightSide.product] = rightQuantity;
+  }
+  
+  // Calculate daily distributions if period is available
+  if (leg.period) {
+    // For each product in paper exposures, calculate daily distribution
+    Object.entries(exposures.paper).forEach(([product, quantity]) => {
+      // We pass the quantity directly since it already has the correct sign
+      const dailyDist = calculateDailyDistribution(leg.period, product, quantity as number, 'buy');
+      
+      if (Object.keys(dailyDist).length > 0) {
+        // For paperDailyDistribution
+        exposures.paperDailyDistribution = {
+          ...exposures.paperDailyDistribution,
+          ...dailyDist
+        };
+        
+        // For pricingDailyDistribution
+        exposures.pricingDailyDistribution = {
+          ...exposures.pricingDailyDistribution,
+          ...dailyDist
+        };
+      }
+    });
   }
   
   return exposures;
@@ -426,8 +507,8 @@ serve(async (req) => {
             };
           }
           
-          // Calculate exposures
-          leg.exposures = buildExposuresObject(leg);
+          // Calculate complete exposures with daily distributions
+          leg.exposures = buildCompleteExposuresObject(leg);
           
           legs.push(leg);
         } catch (error) {
