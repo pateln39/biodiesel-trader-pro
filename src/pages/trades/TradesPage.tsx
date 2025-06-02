@@ -13,7 +13,6 @@ import PhysicalTradeTable from './PhysicalTradeTable';
 import PaperTradeList from './PaperTradeList';
 import TradesFilter from '@/components/trades/TradesFilter';
 import PaperTradeUploader from '@/components/trades/PaperTradeUploader';
-import BulkOperationStatus from '@/components/trades/BulkOperationStatus';
 
 // Import isolated hooks
 import { useFilteredTrades, TradeFilterOptions } from '@/hooks/useFilteredTrades';
@@ -334,36 +333,33 @@ const TradesPage = () => {
 
   const renderPaperTradesTab = () => {
     return (
-      <div className="space-y-4">
-        <BulkOperationStatus onRefresh={refetchPaperTrades} />
-        <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
-          <CardHeader>
-            <CardTitle>Paper Trades</CardTitle>
-            <CardDescription className="flex justify-between items-center">
-              <span>View and manage paper trade positions</span>
-              <div className="flex space-x-2">
-                <PaperTradeUploader />
-                <Button variant="outline" size="sm">
-                  <Filter className="mr-2 h-4 w-4" /> Filter
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportPaperTrades}>
-                  <FileDown className="mr-2 h-4 w-4" /> Export
-                </Button>
-              </div>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PaperTradeList
-              paperTrades={paperTrades}
-              isLoading={paperLoading}
-              error={paperError}
-              refetchPaperTrades={refetchPaperTrades}
-              pagination={paperPagination}
-              onPageChange={handlePageChange}
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="bg-gradient-to-br from-brand-navy/75 via-brand-navy/60 to-brand-lime/25 border-r-[3px] border-brand-lime/30">
+        <CardHeader>
+          <CardTitle>Paper Trades</CardTitle>
+          <CardDescription className="flex justify-between items-center">
+            <span>View and manage paper trade positions</span>
+            <div className="flex space-x-2">
+              <PaperTradeUploader onUploadSuccess={refetchPaperTrades} />
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" /> Filter
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPaperTrades}>
+                <FileDown className="mr-2 h-4 w-4" /> Export
+              </Button>
+            </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PaperTradeList
+            paperTrades={paperTrades}
+            isLoading={paperLoading}
+            error={paperError}
+            refetchPaperTrades={refetchPaperTrades}
+            pagination={paperPagination}
+            onPageChange={handlePageChange}
+          />
+        </CardContent>
+      </Card>
     );
   };
 
