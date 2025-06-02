@@ -46,6 +46,19 @@ const BulkOperationStatus: React.FC<BulkOperationStatusProps> = ({
         return 'default';
     }
   };
+
+  const getMessage = () => {
+    switch (subscriptionStatus.reason) {
+      case 'bulk_operation':
+        return subscriptionStatus.message;
+      case 'cooldown':
+        return 'Upload completed successfully! Please refresh the page to see the latest data.';
+      case 'circuit_breaker':
+        return subscriptionStatus.message;
+      default:
+        return subscriptionStatus.message;
+    }
+  };
   
   return (
     <Alert variant={getVariant()} className="mb-4">
@@ -54,7 +67,7 @@ const BulkOperationStatus: React.FC<BulkOperationStatusProps> = ({
           {getStatusIcon()}
           <div>
             <AlertDescription>
-              {subscriptionStatus.message}
+              {getMessage()}
               {isBulkMode && activeBulkOperations.size > 0 && (
                 <span className="ml-2 text-xs opacity-75">
                   ({activeBulkOperations.size} operation{activeBulkOperations.size !== 1 ? 's' : ''} active)
@@ -64,18 +77,16 @@ const BulkOperationStatus: React.FC<BulkOperationStatusProps> = ({
           </div>
         </div>
         
-        {subscriptionStatus.reason !== 'bulk_operation' && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onManualRefresh}
-            disabled={isRefreshing}
-            className="ml-4"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh Now
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onManualRefresh}
+          disabled={isRefreshing}
+          className="ml-4"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {subscriptionStatus.reason === 'cooldown' ? 'Refresh Now' : 'Refresh'}
+        </Button>
       </div>
     </Alert>
   );

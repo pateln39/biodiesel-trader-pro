@@ -15,7 +15,6 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useUploadJob } from '@/hooks/useUploadJob';
-import { startBulkOperation, endBulkOperation } from '@/utils/bulkOperationManager';
 
 interface ValidationError {
   row: number;
@@ -135,10 +134,6 @@ const PaperTradeUploader: React.FC = () => {
 
     console.log('[UPLOADER_DEBUG] Starting upload process');
     
-    // Start bulk operation tracking
-    const bulkOperationId = `manual-upload-${Date.now()}`;
-    startBulkOperation(bulkOperationId);
-    
     setIsProcessing(true);
     setUploadProgress(0);
     setUploadStatus('Sending trades to backend for processing...');
@@ -166,7 +161,7 @@ const PaperTradeUploader: React.FC = () => {
       setCurrentJobId(jobId);
       setUploadStatus('Processing trades in background...');
       
-      // Start polling the job status
+      // Start polling the job status (useUploadJob will handle bulk operation tracking)
       startPolling(jobId);
       
       toast.info('Upload started successfully!', {
@@ -177,9 +172,6 @@ const PaperTradeUploader: React.FC = () => {
       console.error('[FRONTEND_UPLOAD] Upload failed:', error);
       setUploadStatus('Upload failed');
       setIsProcessing(false);
-      
-      // End bulk operation tracking on error
-      endBulkOperation(bulkOperationId);
       
       toast.error('Upload failed', {
         description: error.message || 'An unexpected error occurred'
