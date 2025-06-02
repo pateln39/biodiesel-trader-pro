@@ -343,10 +343,10 @@ const TradesPage = () => {
               <PaperTradeUploader 
                 subscriptionControls={getSubscriptionControls()}
                 onUploadSuccess={() => {
-                  // Refresh the page after successful upload
+                  // Refresh the page after successful upload - changed delay to 5 seconds
                   setTimeout(() => {
                     window.location.reload();
-                  }, 1000);
+                  }, 5000);
                 }}
               />
               <Button variant="outline" size="sm">
