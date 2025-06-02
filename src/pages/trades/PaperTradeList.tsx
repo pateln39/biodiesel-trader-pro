@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
@@ -44,17 +45,6 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   pagination,
   onPageChange
 }) => {
-  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-
-  const handleManualRefresh = async () => {
-    setIsManualRefreshing(true);
-    try {
-      await refetchPaperTrades();
-    } finally {
-      setIsManualRefreshing(false);
-    }
-  };
-
   if (isLoading) {
     return <TableLoadingState />;
   }
@@ -69,10 +59,7 @@ const PaperTradeList: React.FC<PaperTradeListProps> = ({
   return (
     <div className="space-y-4">
       {/* Bulk Operation Status Banner */}
-      <BulkOperationStatus 
-        onManualRefresh={handleManualRefresh}
-        isRefreshing={isManualRefreshing}
-      />
+      <BulkOperationStatus />
       
       <div className="rounded-md border border-white/10 overflow-hidden shadow-sm">
         <ScrollArea className="w-full" orientation="horizontal">
