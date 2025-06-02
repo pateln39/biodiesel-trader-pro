@@ -647,6 +647,7 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     isLoading,
     error,
     refetch,
+    refetchPaperTrades: refetch, // Add this alias for compatibility
     createPaperTrade: createPaperTradeMutation.mutate,
     isCreating: createPaperTradeMutation.isPending,
     // Expose subscription control for external components
