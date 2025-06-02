@@ -149,7 +149,8 @@ const TradesPage = () => {
     isLoading: paperLoading, 
     error: paperError, 
     refetchPaperTrades,
-    pagination: paperPagination
+    pagination: paperPagination,
+    getSubscriptionControls
   } = usePaperTrades(paginationParams);
 
   // Load filter options for physical trades
@@ -339,7 +340,15 @@ const TradesPage = () => {
           <CardDescription className="flex justify-between items-center">
             <span>View and manage paper trade positions</span>
             <div className="flex space-x-2">
-              <PaperTradeUploader />
+              <PaperTradeUploader 
+                subscriptionControls={getSubscriptionControls()}
+                onUploadSuccess={() => {
+                  // Refresh the page after successful upload - changed delay to 5 seconds
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 5000);
+                }}
+              />
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>
