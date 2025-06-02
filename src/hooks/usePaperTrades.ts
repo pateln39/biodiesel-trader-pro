@@ -1,10 +1,10 @@
+
 import { useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { BuySell, Product } from '@/types/trade';
 import { PaperTrade, PaperTradeLeg } from '@/types/paper';
-import { setupPaperTradeSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 import { generateLegReference, generateInstrumentName } from '@/utils/tradeUtils';
 import { mapProductToCanonical } from '@/utils/productMapping';
 import { buildCompleteExposuresObject } from '@/utils/paperTrade';
@@ -20,6 +20,113 @@ const debounce = (fn: Function, ms = 300) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn(...args), ms);
   };
+};
+
+// Global singleton for subscription management
+let globalSubscriptionManager: {
+  channels: { [key: string]: any };
+  refetchCallbacks: Set<Function>;
+  isProcessing: boolean;
+  debouncedRefetch: Function;
+} | null = null;
+
+const initializeGlobalSubscriptionManager = () => {
+  if (!globalSubscriptionManager) {
+    globalSubscriptionManager = {
+      channels: {},
+      refetchCallbacks: new Set(),
+      isProcessing: false,
+      debouncedRefetch: debounce((callbacks: Set<Function>) => {
+        if (!globalSubscriptionManager?.isProcessing) {
+          console.log('[PAPER] Executing debounced refetch for all callbacks');
+          callbacks.forEach(callback => {
+            try {
+              callback();
+            } catch (error) {
+              console.error('[PAPER] Error executing refetch callback:', error);
+            }
+          });
+        }
+      }, 500)
+    };
+  }
+  return globalSubscriptionManager;
+};
+
+const setupGlobalPaperSubscriptions = () => {
+  const manager = initializeGlobalSubscriptionManager();
+  
+  // Only set up subscriptions if they don't exist
+  if (!manager.channels.paperTradesChannel) {
+    console.log('[PAPER] Setting up global paper trade subscriptions');
+    
+    try {
+      const paperTradesChannel = supabase
+        .channel('paper_trades_global')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'paper_trades'
+        }, (payload) => {
+          if (manager.channels.paperTradesChannel?.isPaused) {
+            console.log('[PAPER] Subscription paused, skipping update for paper_trades');
+            return;
+          }
+          
+          if (!manager.isProcessing) {
+            console.log('[PAPER] Paper trades changed, debouncing refetch...', payload);
+            manager.debouncedRefetch(manager.refetchCallbacks);
+          }
+        })
+        .subscribe();
+
+      manager.channels.paperTradesChannel = paperTradesChannel;
+    } catch (error) {
+      console.error('[PAPER] Error setting up paper trades channel:', error);
+    }
+
+    try {
+      const paperTradeLegsChannel = supabase
+        .channel('paper_trade_legs_global')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'paper_trade_legs' 
+        }, (payload) => {
+          if (manager.channels.paperTradeLegsChannel?.isPaused) {
+            console.log('[PAPER] Subscription paused, skipping update for paper_trade_legs');
+            return;
+          }
+          
+          if (!manager.isProcessing) {
+            console.log('[PAPER] Paper trade legs changed, debouncing refetch...', payload);
+            manager.debouncedRefetch(manager.refetchCallbacks);
+          }
+        })
+        .subscribe();
+
+      manager.channels.paperTradeLegsChannel = paperTradeLegsChannel;
+    } catch (error) {
+      console.error('[PAPER] Error setting up paper trade legs channel:', error);
+    }
+  }
+};
+
+const cleanupGlobalSubscriptions = () => {
+  if (globalSubscriptionManager) {
+    console.log('[PAPER] Cleaning up global paper trade subscriptions');
+    Object.keys(globalSubscriptionManager.channels).forEach(key => {
+      if (globalSubscriptionManager!.channels[key]) {
+        try {
+          supabase.removeChannel(globalSubscriptionManager!.channels[key]);
+          globalSubscriptionManager!.channels[key] = null;
+        } catch (e) {
+          console.error(`[PAPER] Error removing global channel ${key}:`, e);
+        }
+      }
+    });
+    globalSubscriptionManager.refetchCallbacks.clear();
+  }
 };
 
 // Function to fetch a single paper trade by ID
@@ -341,17 +448,6 @@ export const createPaperTrade = async (
 
 export const usePaperTrades = (paginationParams?: PaginationParams) => {
   const queryClient = useQueryClient();
-  const realtimeChannelsRef = useRef<{ [key: string]: any }>({});
-  const isProcessingRef = useRef<boolean>(false);
-  
-  const debouncedRefetch = useRef(debounce((fn: Function) => {
-    if (isProcessingRef.current) {
-      console.log("[PAPER] Skipping paper trade refetch as an operation is in progress");
-      return;
-    }
-    console.log("[PAPER] Executing debounced paper trade refetch");
-    fn();
-  }, 500)).current;
   
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['paper-trades', paginationParams],
@@ -617,14 +713,24 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     };
   };
   
-  // Set up realtime subscriptions
+  // Set up global realtime subscriptions and register this hook's refetch callback
   useEffect(() => {
-    return setupPaperTradeSubscriptions(
-      realtimeChannelsRef,
-      isProcessingRef,
-      debouncedRefetch,
-      refetch
-    );
+    setupGlobalPaperSubscriptions();
+    const manager = initializeGlobalSubscriptionManager();
+    
+    // Add this hook's refetch callback to the global set
+    manager.refetchCallbacks.add(refetch);
+    
+    // Cleanup function to remove the callback when component unmounts
+    return () => {
+      manager.refetchCallbacks.delete(refetch);
+      
+      // Only cleanup global subscriptions if no more callbacks are registered
+      if (manager.refetchCallbacks.size === 0) {
+        cleanupGlobalSubscriptions();
+        globalSubscriptionManager = null;
+      }
+    };
   }, [refetch]);
   
   const createPaperTradeMutation = useMutation({
@@ -641,6 +747,29 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     }
   });
 
+  // Expose subscription controls for upload operations
+  const getSubscriptionControls = () => {
+    const manager = initializeGlobalSubscriptionManager();
+    return {
+      pauseSubscriptions: () => {
+        manager.isProcessing = true;
+        Object.keys(manager.channels).forEach(key => {
+          if (manager.channels[key]) {
+            manager.channels[key].isPaused = true;
+          }
+        });
+      },
+      resumeSubscriptions: () => {
+        manager.isProcessing = false;
+        Object.keys(manager.channels).forEach(key => {
+          if (manager.channels[key]) {
+            manager.channels[key].isPaused = false;
+          }
+        });
+      }
+    };
+  };
+
   return {
     paperTrades: data?.paperTrades || [],
     pagination: data?.pagination || { totalItems: 0, totalPages: 1, currentPage: 1, pageSize: 15 },
@@ -650,8 +779,7 @@ export const usePaperTrades = (paginationParams?: PaginationParams) => {
     refetchPaperTrades: refetch, // Add this alias for compatibility
     createPaperTrade: createPaperTradeMutation.mutate,
     isCreating: createPaperTradeMutation.isPending,
-    // Expose subscription control for external components
-    realtimeChannelsRef,
-    isProcessingRef
+    // Expose subscription controls for external components
+    getSubscriptionControls
   };
 };

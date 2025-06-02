@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,9 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateExcelTemplate } from '@/utils/excelPaperTradeUtils';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { pausePaperSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -38,9 +37,16 @@ interface ParsedTradeData {
 
 interface PaperTradeUploaderProps {
   onUploadSuccess?: () => void;
+  subscriptionControls?: {
+    pauseSubscriptions: () => void;
+    resumeSubscriptions: () => void;
+  };
 }
 
-const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess }) => {
+const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ 
+  onUploadSuccess,
+  subscriptionControls 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<ParsedTradeData | null>(null);
@@ -50,8 +56,6 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const { realtimeChannelsRef, isProcessingRef } = usePaperTrades();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -207,9 +211,10 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
     try {
       console.log('[UPLOAD] Starting backend upload process');
       
-      // Pause real-time subscriptions during upload
-      pausePaperSubscriptions(realtimeChannelsRef.current);
-      isProcessingRef.current = true;
+      // Pause real-time subscriptions during upload if controls are available
+      if (subscriptionControls) {
+        subscriptionControls.pauseSubscriptions();
+      }
 
       // Convert file to base64
       setUploadStatus('Reading file...');
@@ -251,6 +256,11 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
       setFile(null);
       setParsedData(null);
 
+      // Call the success callback if provided
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+
     } catch (error: any) {
       console.error('[UPLOAD] Upload failed:', error);
       setUploadStatus('Upload failed');
@@ -260,7 +270,6 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
     } finally {
       // Reset processing state but do NOT resume subscriptions
       // User will refresh the page to see new data
-      isProcessingRef.current = false;
       setIsProcessing(false);
     }
   };
