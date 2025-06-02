@@ -339,7 +339,7 @@ const TradesPage = () => {
           <CardDescription className="flex justify-between items-center">
             <span>View and manage paper trade positions</span>
             <div className="flex space-x-2">
-              <PaperTradeUploader onUploadSuccess={refetchPaperTrades} />
+              <PaperTradeUploader />
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" /> Filter
               </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,7 @@ import { toast } from 'sonner';
 import { generateExcelTemplate } from '@/utils/excelPaperTradeUtils';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { pausePaperSubscriptions, resumePaperSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
+import { pausePaperSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
 import { supabase } from '@/integrations/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -208,7 +207,7 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
     try {
       console.log('[UPLOAD] Starting backend upload process');
       
-      // Pause real-time subscriptions
+      // Pause real-time subscriptions during upload
       pausePaperSubscriptions(realtimeChannelsRef.current);
       isProcessingRef.current = true;
 
@@ -242,14 +241,11 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
       setUploadStatus('Upload completed successfully');
       setUploadComplete(true);
 
+      // Updated success toast with refresh instruction
       toast.success('Upload completed successfully!', {
-        description: `Processed ${response.tradeCount} trade groups with ${response.totalLegs} legs.`
+        description: `Processed ${response.tradeCount} trade groups with ${response.totalLegs} legs. Please refresh the page to see the new trades.`,
+        duration: 8000 // Longer duration so user has time to read the refresh instruction
       });
-
-      // Call the success callback to refresh the data
-      if (onUploadSuccess) {
-        onUploadSuccess();
-      }
 
       // Reset form
       setFile(null);
@@ -262,8 +258,8 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
         description: error.message || 'An unexpected error occurred'
       });
     } finally {
-      // Always resume subscriptions and reset processing state
-      resumePaperSubscriptions(realtimeChannelsRef.current);
+      // Reset processing state but do NOT resume subscriptions
+      // User will refresh the page to see new data
       isProcessingRef.current = false;
       setIsProcessing(false);
     }
@@ -471,7 +467,7 @@ const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess
                   Upload Completed
                 </CardTitle>
                 <CardDescription>
-                  Your trades have been processed successfully.
+                  Your trades have been processed successfully. Please refresh the page to see the new trades.
                 </CardDescription>
               </CardHeader>
               <CardContent>
