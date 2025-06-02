@@ -13,6 +13,7 @@ import PhysicalTradeTable from './PhysicalTradeTable';
 import PaperTradeList from './PaperTradeList';
 import TradesFilter from '@/components/trades/TradesFilter';
 import PaperTradeUploader from '@/components/trades/PaperTradeUploader';
+import BulkOperationStatus from '@/components/trades/BulkOperationStatus';
 
 // Import isolated hooks
 import { useFilteredTrades, TradeFilterOptions } from '@/hooks/useFilteredTrades';
