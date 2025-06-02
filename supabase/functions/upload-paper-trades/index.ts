@@ -24,16 +24,52 @@ const COLUMNS = {
   EXECUTION_TRADE_DATE: 11
 }
 
-// Generate trade reference
+// Generate trade reference using the same format as manual trades
 const generateTradeReference = (): string => {
-  const timestamp = Date.now().toString();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `PT-${timestamp.slice(-6)}-${random}`;
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+  return `${year}${month}${day}-${random}`;
 };
 
-// Generate leg reference
+// Generate leg reference using the same format as manual trades
 const generateLegReference = (tradeReference: string, legIndex: number): string => {
-  return `${tradeReference}-${String(legIndex + 1).padStart(2, '0')}`;
+  const suffixes = 'abcdefghijklmnopqrstuvwxyz';
+  let suffix = '';
+  let index = legIndex;
+  
+  do {
+    suffix = suffixes[index % 26] + suffix;
+    index = Math.floor(index / 26) - 1;
+  } while (index >= 0);
+  
+  return `${tradeReference}-${suffix}`;
+};
+
+// Get month start and end dates from a period string (e.g., 'Dec-23')
+const getMonthDates = (periodString: string): { startDate: Date; endDate: Date } | null => {
+  try {
+    const [month, year] = periodString.split('-');
+    
+    const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      .findIndex(m => m === month);
+    
+    if (monthIndex === -1) {
+      console.error(`Invalid month format in period string: ${periodString}`);
+      return null;
+    }
+    
+    const fullYear = 2000 + parseInt(year);
+    const startDate = new Date(fullYear, monthIndex, 1);
+    const endDate = new Date(fullYear, monthIndex + 1, 0);
+    
+    return { startDate, endDate };
+  } catch (error) {
+    console.error(`Error parsing period string: ${periodString}`, error);
+    return null;
+  }
 };
 
 // Parse Excel date
@@ -347,6 +383,17 @@ serve(async (req) => {
         try {
           const period = convertDateRangeToPeriod(legData.periodStart, legData.periodEnd);
           
+          // Get pricing period dates from the period
+          const monthDates = getMonthDates(period);
+          const pricingPeriodStart = monthDates ? formatDateForDatabase(monthDates.startDate) : null;
+          const pricingPeriodEnd = monthDates ? formatDateForDatabase(monthDates.endDate) : null;
+          
+          // Create instrument name based on product and relationship type
+          let instrument = legData.product;
+          if (legData.relationshipType === 'DIFF' || legData.relationshipType === 'SPREAD') {
+            instrument = `${legData.product} ${legData.relationshipType}`;
+          }
+          
           const leg = {
             id: crypto.randomUUID(),
             legReference: generateLegReference(tradeReference, i),
@@ -356,8 +403,10 @@ serve(async (req) => {
             period: period,
             price: Number(legData.price),
             broker: broker,
-            instrument: legData.product,
+            instrument: instrument,
             relationshipType: legData.relationshipType,
+            pricingPeriodStart: pricingPeriodStart,
+            pricingPeriodEnd: pricingPeriodEnd,
             executionTradeDate: legData.executionTradeDate ? 
               formatDateForDatabase(legData.executionTradeDate) : null
           };
@@ -446,6 +495,8 @@ serve(async (req) => {
                   trading_period: leg.period,
                   instrument: leg.instrument,
                   exposures: leg.exposures,
+                  pricing_period_start: leg.pricingPeriodStart,
+                  pricing_period_end: leg.pricingPeriodEnd,
                   execution_trade_date: leg.executionTradeDate
                 };
                 
