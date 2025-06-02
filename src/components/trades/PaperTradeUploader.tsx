@@ -6,36 +6,52 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { 
-  parseExcelPaperTrades, 
-  generateExcelTemplate, 
-  transformParsedTradeForDatabase,
-  validateAndCreateBrokers
-} from '@/utils/excelPaperTradeUtils';
+import { generateExcelTemplate } from '@/utils/excelPaperTradeUtils';
 import { usePaperTrades } from '@/hooks/usePaperTrades';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { pausePaperSubscriptions } from '@/utils/paperTradeSubscriptionUtils';
+import { supabase } from '@/integrations/supabase/client';
+import * as XLSX from 'xlsx';
 
-// Use the ParsedTrade interface from the utils file
 interface ValidationError {
   row: number;
   errors: string[];
 }
 
-const PaperTradeUploader: React.FC = () => {
+interface UploadResponse {
+  success: boolean;
+  message?: string;
+  tradeCount?: number;
+  totalLegs?: number;
+  errors?: ValidationError[];
+  error?: string;
+}
+
+interface ParsedTradeData {
+  tradeGroups: any[];
+  totalTrades: number;
+  totalLegs: number;
+  validationErrors: ValidationError[];
+}
+
+interface PaperTradeUploaderProps {
+  onUploadSuccess?: () => void;
+}
+
+const PaperTradeUploader: React.FC<PaperTradeUploaderProps> = ({ onUploadSuccess }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [parsedTrades, setParsedTrades] = useState<any[]>([]);
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [parsedData, setParsedData] = useState<ParsedTradeData | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [showPreview, setShowPreview] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [uploadComplete, setUploadComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Use the hook to get the mutation
-  const { createPaperTrade, isCreating } = usePaperTrades();
+  const { realtimeChannelsRef, isProcessingRef } = usePaperTrades();
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -44,9 +60,8 @@ const PaperTradeUploader: React.FC = () => {
     }
 
     setFile(selectedFile);
-    setShowPreview(false);
-    setParsedTrades([]);
-    setValidationErrors([]);
+    setParsedData(null);
+    setUploadComplete(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -64,144 +79,188 @@ const PaperTradeUploader: React.FC = () => {
     }
   };
 
-  const parseFile = async () => {
-    if (!file) return;
+  const validateFile = async () => {
+    if (!file) {
+      toast.error('No file selected');
+      return;
+    }
 
-    setIsProcessing(true);
-    setUploadProgress(0);
-
+    setIsValidating(true);
+    
     try {
-      const result = await parseExcelPaperTrades(file, (progress) => {
-        setUploadProgress(progress);
-      });
-
-      setParsedTrades(result.trades);
-      setValidationErrors(result.errors);
-      setShowPreview(true);
-
-      if (result.errors.length > 0) {
-        toast.warning(`Found ${result.errors.length} validation errors. Please review before uploading.`);
-      } else {
-        toast.success(`Successfully parsed ${result.trades.length} trade groups.`);
+      // Parse the Excel file on the frontend for validation
+      const fileBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(fileBuffer, { type: 'array' });
+      
+      if (!workbook.SheetNames.length) {
+        throw new Error('No sheets found in Excel file');
       }
+      
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Simple validation - check for basic structure
+      const errors: ValidationError[] = [];
+      const tradeGroups: any[] = [];
+      let currentGroup: any[] = [];
+      let groupIndex = 0;
+      
+      // Expected columns
+      const expectedColumns = ['Broker', 'Buy/Sell', 'Product', 'Quantity', 'Period Start', 'Period End', 'Price', 'Relationship Type'];
+      
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i] as any[];
+        
+        // Check for group separator (empty row)
+        const isGroupSeparator = row.length === 0 || row.every(cell => !cell);
+        
+        if (isGroupSeparator && currentGroup.length > 0) {
+          tradeGroups.push({
+            groupIndex,
+            legs: currentGroup.length,
+            firstRow: currentGroup[0]?.rowIndex || i
+          });
+          currentGroup = [];
+          groupIndex++;
+          continue;
+        }
+        
+        if (row.length === 0 || row.every(cell => !cell)) {
+          continue;
+        }
+        
+        // Basic validation
+        const legData = {
+          broker: row[0] ? row[0].toString().trim() : '',
+          buySell: row[1] ? row[1].toString().trim() : '',
+          product: row[2] ? row[2].toString().trim() : '',
+          quantity: row[3] ?? 0,
+          rowIndex: i + 1
+        };
+        
+        // Validate required fields
+        if (!legData.broker) {
+          errors.push({ row: i + 1, errors: ['Broker is required'] });
+        }
+        if (!legData.buySell || !['BUY', 'SELL'].includes(legData.buySell.toUpperCase())) {
+          errors.push({ row: i + 1, errors: ['Buy/Sell must be BUY or SELL'] });
+        }
+        if (!legData.product) {
+          errors.push({ row: i + 1, errors: ['Product is required'] });
+        }
+        if (isNaN(Number(legData.quantity))) {
+          errors.push({ row: i + 1, errors: ['Quantity must be a valid number'] });
+        }
+        
+        currentGroup.push(legData);
+      }
+      
+      // Process the last group
+      if (currentGroup.length > 0) {
+        tradeGroups.push({
+          groupIndex,
+          legs: currentGroup.length,
+          firstRow: currentGroup[0]?.rowIndex || jsonData.length
+        });
+      }
+      
+      const totalLegs = tradeGroups.reduce((acc, group) => acc + group.legs, 0);
+      
+      setParsedData({
+        tradeGroups,
+        totalTrades: tradeGroups.length,
+        totalLegs,
+        validationErrors: errors
+      });
+      
+      if (errors.length === 0) {
+        toast.success('File validated successfully!', {
+          description: `Found ${tradeGroups.length} trade groups with ${totalLegs} legs`
+        });
+      } else {
+        toast.error('Validation errors found', {
+          description: `Found ${errors.length} errors that need to be fixed`
+        });
+      }
+      
     } catch (error: any) {
-      toast.error('Failed to parse Excel file', {
-        description: error.message
+      console.error('[VALIDATION] Validation failed:', error);
+      toast.error('Validation failed', {
+        description: error.message || 'An unexpected error occurred'
       });
     } finally {
-      setIsProcessing(false);
+      setIsValidating(false);
     }
   };
 
   const uploadTrades = async () => {
-    if (validationErrors.length > 0) {
-      toast.error('Please fix validation errors before uploading');
-      return;
-    }
-
-    if (parsedTrades.length === 0) {
-      toast.error('No trades to upload');
+    if (!file || !parsedData || parsedData.validationErrors.length > 0) {
+      toast.error('Please validate the file first and fix any errors');
       return;
     }
 
     setIsProcessing(true);
     setUploadProgress(0);
-    setUploadStatus('Validating brokers...');
+    setUploadStatus('Preparing upload...');
 
     try {
-      // Step 1: Validate and create brokers
-      console.log('[UPLOAD] Starting broker validation for', parsedTrades.length, 'trades');
-      const brokerErrors = await validateAndCreateBrokers(parsedTrades);
+      console.log('[UPLOAD] Starting backend upload process');
       
-      if (brokerErrors.length > 0) {
-        console.error('[UPLOAD] Broker validation failed:', brokerErrors);
-        setUploadStatus('Broker validation failed');
-        brokerErrors.forEach(error => {
-          toast.error('Broker validation failed', { description: error });
-        });
-        return;
+      // Pause real-time subscriptions during upload
+      pausePaperSubscriptions(realtimeChannelsRef.current);
+      isProcessingRef.current = true;
+
+      // Convert file to base64
+      setUploadStatus('Reading file...');
+      setUploadProgress(10);
+      
+      const fileBuffer = await file.arrayBuffer();
+      const base64Data = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)));
+
+      setUploadStatus('Sending to server...');
+      setUploadProgress(25);
+
+      // Call the Edge Function
+      const { data, error } = await supabase.functions.invoke('upload-paper-trades', {
+        body: { fileData: base64Data }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Upload failed');
       }
 
-      setUploadProgress(20);
-      setUploadStatus('Brokers validated. Creating trades...');
+      const response = data as UploadResponse;
 
-      // Step 2: Transform and upload trades sequentially
-      let successCount = 0;
-      let failureCount = 0;
-      const failedTrades: string[] = [];
-      
-      for (let i = 0; i < parsedTrades.length; i++) {
-        const trade = parsedTrades[i];
-        const progress = 20 + ((i / parsedTrades.length) * 80);
-        setUploadProgress(progress);
-        setUploadStatus(`Creating trade ${i + 1} of ${parsedTrades.length}...`);
-
-        try {
-          console.log('[UPLOAD] Transforming trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
-          const transformedTrade = transformParsedTradeForDatabase(trade);
-          
-          console.log('[UPLOAD] Creating trade in database:', transformedTrade);
-          
-          // Use the mutation properly with a Promise wrapper
-          await new Promise((resolve, reject) => {
-            createPaperTrade(transformedTrade, {
-              onSuccess: (createdTrade) => {
-                successCount++;
-                console.log('[UPLOAD] Successfully created trade:', trade.tradeReference || `Group ${trade.groupIndex + 1}`);
-                resolve(createdTrade);
-              },
-              onError: (error: any) => {
-                failureCount++;
-                const errorMsg = error?.message || 'Unknown error';
-                const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
-                console.error('[UPLOAD] Failed to create trade:', tradeRef, errorMsg);
-                failedTrades.push(`${tradeRef}: ${errorMsg}`);
-                reject(error);
-              }
-            });
-          });
-
-        } catch (error: any) {
-          failureCount++;
-          const tradeRef = trade.tradeReference || `Group ${trade.groupIndex + 1}`;
-          console.error('[UPLOAD] Trade creation failed:', tradeRef, error);
-          failedTrades.push(`${tradeRef}: ${error.message || 'Unknown error'}`);
-          // Continue with next trade instead of stopping
-        }
+      if (!response.success) {
+        throw new Error(response.error || 'Upload failed');
       }
 
+      // Successful upload
       setUploadProgress(100);
-      setUploadStatus('Upload complete');
+      setUploadStatus('Upload completed successfully');
+      setUploadComplete(true);
 
-      // Show results
-      if (successCount > 0) {
-        toast.success(`Successfully uploaded ${successCount} trade groups`);
-      }
-      
-      if (failureCount > 0) {
-        toast.warning(`${failureCount} trades failed to upload`, {
-          description: failedTrades.length > 0 ? failedTrades[0] : 'Check console for details'
-        });
-        
-        // Log all failed trades for debugging
-        console.error('[UPLOAD] Failed trades:', failedTrades);
-      }
+      // Updated success toast with refresh instruction
+      toast.success('Upload completed successfully!', {
+        description: `Processed ${response.tradeCount} trade groups with ${response.totalLegs} legs. Please refresh the page to see the new trades.`,
+        duration: 8000 // Longer duration so user has time to read the refresh instruction
+      });
 
-      // Close dialog if all succeeded or if user wants to close after partial success
-      if (failureCount === 0) {
-        setIsOpen(false);
-        setFile(null);
-        setParsedTrades([]);
-        setShowPreview(false);
-      }
+      // Reset form
+      setFile(null);
+      setParsedData(null);
 
     } catch (error: any) {
-      console.error('[UPLOAD] Upload process failed:', error);
+      console.error('[UPLOAD] Upload failed:', error);
       setUploadStatus('Upload failed');
       toast.error('Upload failed', {
         description: error.message || 'An unexpected error occurred'
       });
     } finally {
+      // Reset processing state but do NOT resume subscriptions
+      // User will refresh the page to see new data
+      isProcessingRef.current = false;
       setIsProcessing(false);
     }
   };
@@ -217,7 +276,13 @@ const PaperTradeUploader: React.FC = () => {
     }
   };
 
-  const totalLegs = parsedTrades.reduce((acc, trade) => acc + (trade.legs?.length || 0), 0);
+  const resetForm = () => {
+    setFile(null);
+    setParsedData(null);
+    setUploadComplete(false);
+    setUploadProgress(0);
+    setUploadStatus('');
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -285,20 +350,21 @@ const PaperTradeUploader: React.FC = () => {
                 />
               </div>
 
-              {file && (
+              {file && !parsedData && (
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={parseFile} disabled={isProcessing} size="sm">
-                    {isProcessing ? 'Parsing...' : 'Parse File'}
+                  <Button 
+                    onClick={validateFile} 
+                    disabled={isValidating} 
+                    size="sm"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    {isValidating ? 'Validating...' : 'Validate File'}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setFile(null);
-                      setShowPreview(false);
-                      setParsedTrades([]);
-                      setValidationErrors([]);
-                    }}
+                    onClick={resetForm}
+                    disabled={isValidating}
                   >
                     Clear
                   </Button>
@@ -306,6 +372,59 @@ const PaperTradeUploader: React.FC = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Validation Results */}
+          {parsedData && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  {parsedData.validationErrors.length === 0 ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-red-500" />
+                  )}
+                  Validation Results
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="text-sm">
+                    <p><strong>Trade Groups:</strong> {parsedData.totalTrades}</p>
+                    <p><strong>Total Legs:</strong> {parsedData.totalLegs}</p>
+                    <p><strong>Validation Errors:</strong> {parsedData.validationErrors.length}</p>
+                  </div>
+
+                  {parsedData.validationErrors.length === 0 ? (
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={uploadTrades} 
+                        disabled={isProcessing} 
+                        size="sm"
+                      >
+                        {isProcessing ? 'Uploading...' : 'Upload Trades'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetForm}
+                        disabled={isProcessing}
+                      >
+                        Start Over
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={resetForm}
+                    >
+                      Fix Errors & Try Again
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Progress Bar */}
           {isProcessing && (
@@ -323,13 +442,13 @@ const PaperTradeUploader: React.FC = () => {
           )}
 
           {/* Validation Errors */}
-          {validationErrors.length > 0 && (
+          {parsedData && parsedData.validationErrors.length > 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Validation Errors Found</AlertTitle>
               <AlertDescription>
                 <ScrollArea className="h-24 mt-2">
-                  {validationErrors.map((error, index) => (
+                  {parsedData.validationErrors.map((error, index) => (
                     <div key={index} className="text-sm">
                       <strong>Row {error.row}:</strong> {error.errors.join(', ')}
                     </div>
@@ -339,33 +458,32 @@ const PaperTradeUploader: React.FC = () => {
             </Alert>
           )}
 
-          {/* Summary and Upload */}
-          {showPreview && parsedTrades.length > 0 && (
+          {/* Success Message */}
+          {uploadComplete && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CheckCircle className="h-5 w-5 text-green-500" />
-                  Ready to Upload
+                  Upload Completed
                 </CardTitle>
                 <CardDescription>
-                  Found {parsedTrades.length} trade groups with {totalLegs} total legs
+                  Your trades have been processed successfully. Please refresh the page to see the new trades.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => setShowPreview(false)}
+                    onClick={resetForm}
                     size="sm"
                   >
-                    Cancel
+                    Upload Another File
                   </Button>
                   <Button
-                    onClick={uploadTrades}
-                    disabled={validationErrors.length > 0 || isProcessing || isCreating}
+                    onClick={() => setIsOpen(false)}
                     size="sm"
                   >
-                    Upload {parsedTrades.length} Trade Groups
+                    Close
                   </Button>
                 </div>
               </CardContent>
