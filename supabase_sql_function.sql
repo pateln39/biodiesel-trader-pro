@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
  RETURNS json
  LANGUAGE plpgsql
@@ -374,7 +375,10 @@ BEGIN
     END IF;
   END IF;
   
-  -- Build the ORDER BY clause from the sort columns array
+  -- Build the ORDER BY clause - always use leg creation date for consistency with trade entry
+  v_order_by := ' ORDER BY tl.created_at DESC';
+  
+  -- Override if custom sort columns are provided
   IF p_sort_columns IS NOT NULL AND jsonb_typeof(p_sort_columns) = 'array' AND jsonb_array_length(p_sort_columns) > 0 THEN
     v_order_by := ' ORDER BY ';
     
@@ -392,8 +396,8 @@ BEGIN
       BEGIN
         column_name := v_sort_item->>'column';
         
-        -- Map column names - use leg creation date for sorting
-        IF column_name = 'created_at' OR column_name = 'leg_created_at' THEN
+        -- Always map created_at to leg creation date for consistency
+        IF column_name = 'created_at' THEN
           column_name := 'tl.created_at';
         ELSIF column_name = 'calculated_at' THEN
           column_name := 'p.calculated_at';
@@ -406,7 +410,8 @@ BEGIN
         ELSIF column_name = 'mtm_value' THEN
           column_name := 'p.mtm_value';
         ELSE
-          column_name := 'tl.created_at'; -- Default fallback to leg creation date
+          -- Default fallback to leg creation date for consistency
+          column_name := 'tl.created_at';
         END IF;
         
         -- Add the sort column and direction
@@ -415,9 +420,6 @@ BEGIN
                                        CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
       END;
     END LOOP;
-  ELSE
-    -- Default sort order by trade leg creation date (most recent first)
-    v_order_by := ' ORDER BY tl.created_at DESC';
   END IF;
   
   -- First, count total filtered records
@@ -548,7 +550,10 @@ BEGIN
     END IF;
   END IF;
   
-  -- Build the ORDER BY clause from the sort columns array
+  -- Build the ORDER BY clause - always use leg creation date for consistency with trade entry
+  v_order_by := ' ORDER BY ptl.created_at DESC';
+  
+  -- Override if custom sort columns are provided
   IF p_sort_columns IS NOT NULL AND jsonb_typeof(p_sort_columns) = 'array' AND jsonb_array_length(p_sort_columns) > 0 THEN
     v_order_by := ' ORDER BY ';
     
@@ -566,8 +571,8 @@ BEGIN
       BEGIN
         column_name := v_sort_item->>'column';
         
-        -- Map column names - use leg creation date for sorting
-        IF column_name = 'created_at' OR column_name = 'leg_created_at' THEN
+        -- Always map created_at to leg creation date for consistency
+        IF column_name = 'created_at' THEN
           column_name := 'ptl.created_at';
         ELSIF column_name = 'calculated_at' THEN
           column_name := 'p.calculated_at';
@@ -582,7 +587,8 @@ BEGIN
         ELSIF column_name = 'period' THEN
           column_name := 'p.period';
         ELSE
-          column_name := 'ptl.created_at'; -- Default fallback to leg creation date
+          -- Default fallback to leg creation date for consistency
+          column_name := 'ptl.created_at';
         END IF;
         
         -- Add the sort column and direction
@@ -591,9 +597,6 @@ BEGIN
                                        CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
       END;
     END LOOP;
-  ELSE
-    -- Default sort order by paper trade leg creation date (most recent first)
-    v_order_by := ' ORDER BY ptl.created_at DESC';
   END IF;
   
   -- First, count total filtered records
