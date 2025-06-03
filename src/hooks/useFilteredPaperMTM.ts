@@ -49,10 +49,10 @@ export const useFilteredPaperMTM = ({
     queryKey: ['filteredPaperMTM', page, pageSize, filters, sortColumns],
     queryFn: async (): Promise<PaginatedResponse<PaperMTMPosition>> => {
       const { data, error } = await supabase.rpc('filter_paper_mtm_positions', {
-        p_filters: filters,
+        p_filters: filters as any,
         p_page: page,
         p_page_size: pageSize,
-        p_sort_columns: sortColumns,
+        p_sort_columns: sortColumns as any,
       });
 
       if (error) {
@@ -60,9 +60,20 @@ export const useFilteredPaperMTM = ({
         throw new Error(`Failed to fetch paper MTM positions: ${error.message}`);
       }
 
+      // Type assertion since we know the structure from our SQL function
+      const result = data as {
+        positions: PaperMTMPosition[];
+        pagination: {
+          totalItems: number;
+          totalPages: number;
+          currentPage: number;
+          pageSize: number;
+        };
+      };
+
       return {
-        data: data?.positions || [],
-        meta: data?.pagination || {
+        data: result?.positions || [],
+        meta: result?.pagination || {
           totalItems: 0,
           totalPages: 1,
           currentPage: page,
