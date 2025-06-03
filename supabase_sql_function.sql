@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
  RETURNS json
  LANGUAGE plpgsql
@@ -317,7 +318,7 @@ BEGIN
 END;
 $function$;
 
--- Function to filter physical MTM positions with sorting by trade leg creation date
+-- Simplified function to filter physical MTM positions with consistent sorting by trade leg creation date
 CREATE OR REPLACE FUNCTION public.filter_physical_mtm_positions(
   p_page integer DEFAULT 1,
   p_page_size integer DEFAULT 15
@@ -340,7 +341,7 @@ BEGIN
   -- Calculate total pages
   v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
   
-  -- Query for the paginated data with explicit column selection, sorted by leg creation date
+  -- Query for the paginated data with explicit column selection, sorted by leg creation date (newest first)
   IF v_total_count > 0 THEN
     v_query := 'SELECT json_agg(t) FROM (
                   SELECT 
@@ -394,7 +395,7 @@ BEGIN
 END;
 $function$;
 
--- Function to filter paper MTM positions with sorting by paper trade leg creation date
+-- Simplified function to filter paper MTM positions with consistent sorting by paper trade leg creation date
 CREATE OR REPLACE FUNCTION public.filter_paper_mtm_positions(
   p_page integer DEFAULT 1,
   p_page_size integer DEFAULT 15
@@ -417,7 +418,7 @@ BEGIN
   -- Calculate total pages
   v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
   
-  -- Query for the paginated data with explicit column selection, sorted by leg creation date
+  -- Query for the paginated data with explicit column selection, sorted by leg creation date (newest first)
   IF v_total_count > 0 THEN
     v_query := 'SELECT json_agg(t) FROM (
                   SELECT 
