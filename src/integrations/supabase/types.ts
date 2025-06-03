@@ -1600,15 +1600,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_mtm_value: {
-        Args: {
-          trade_price: number
-          mtm_price: number
-          quantity: number
-          buy_sell: string
-        }
-        Returns: number
-      }
       calculate_open_quantity: {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
@@ -1635,14 +1626,6 @@ export type Database = {
         }
         Returns: number
       }
-      cleanup_old_upload_jobs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      determine_period_type: {
-        Args: { start_date: string; end_date: string; reference_date?: string }
-        Returns: string
-      }
       evaluate_simple_formula: {
         Args: {
           formula: Json
@@ -1652,20 +1635,12 @@ export type Database = {
         }
         Returns: number
       }
-      extract_instruments_from_formula: {
-        Args: { formula_tokens: Json }
-        Returns: string[]
-      }
       fetch_forward_price_for_period: {
         Args: { instrument_code: string; period_start: string }
         Returns: number
       }
       fetch_historical_average_price: {
         Args: { instrument_code: string; start_date: string; end_date: string }
-        Returns: number
-      }
-      fetch_latest_price: {
-        Args: { instrument_code: string }
         Returns: number
       }
       filter_movements: {
@@ -1734,33 +1709,9 @@ export type Database = {
         Args: { instrument_id: string; start_date: string; end_date: string }
         Returns: number
       }
-      get_instrument_id_by_code: {
-        Args: { instrument_code: string }
-        Returns: string
-      }
-      get_instrument_id_by_product: {
-        Args: { product_name: string }
-        Returns: string
-      }
       get_next_tank_display_order: {
         Args: { terminal_id_param: string }
         Returns: number
-      }
-      get_paginated_terminal_assignments: {
-        Args: { p_terminal_id: string; p_page?: number; p_page_size?: number }
-        Returns: {
-          assignments: Json
-          tank_movements: Json
-          pagination_meta: Json
-        }[]
-      }
-      get_period_type: {
-        Args: {
-          period_start: string
-          period_end: string
-          reference_date?: string
-        }
-        Returns: string
       }
       get_physical_positions_pivoted: {
         Args: Record<PropertyKey, never>
@@ -1777,14 +1728,6 @@ export type Database = {
           end_date?: string
         }
         Returns: number
-      }
-      get_total_mtm_values: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          physicaltotal: number
-          papertotal: number
-          combinedtotal: number
-        }[]
       }
       get_trades_per_month: {
         Args: Record<PropertyKey, never>
@@ -1824,23 +1767,7 @@ export type Database = {
           | { product_name: string; color_class_value?: string }
         Returns: string
       }
-      insert_sustainability: {
-        Args: { sustainability_name: string }
-        Returns: string
-      }
-      map_product_to_instrument_code: {
-        Args: { product_name: string }
-        Returns: string
-      }
       populate_movement_loading_periods: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      populate_paper_mtm_positions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      populate_physical_mtm_positions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -1850,15 +1777,6 @@ export type Database = {
       }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
-        Returns: undefined
-      }
-      update_terminal_pagination_state: {
-        Args: {
-          p_terminal_id: string
-          p_page_number: number
-          p_page_size: number
-          p_new_state: Json
-        }
         Returns: undefined
       }
       update_terminal_sort_order: {
