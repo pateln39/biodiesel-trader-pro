@@ -1640,9 +1640,7 @@ export type Database = {
         Returns: undefined
       }
       determine_period_type: {
-        Args:
-          | { start_date: string; end_date: string }
-          | { start_date: string; end_date: string; reference_date?: string }
+        Args: { start_date: string; end_date: string; reference_date?: string }
         Returns: string
       }
       evaluate_simple_formula: {
