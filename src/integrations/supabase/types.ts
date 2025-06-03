@@ -1767,6 +1767,10 @@ export type Database = {
           | { product_name: string; color_class_value?: string }
         Returns: string
       }
+      insert_sustainability: {
+        Args: { sustainability_name: string }
+        Returns: string
+      }
       populate_movement_loading_periods: {
         Args: Record<PropertyKey, never>
         Returns: undefined

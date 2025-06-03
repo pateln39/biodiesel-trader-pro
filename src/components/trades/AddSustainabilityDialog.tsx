@@ -52,10 +52,11 @@ const AddSustainabilityDialog: React.FC<AddSustainabilityDialogProps> = ({
 
   const addSustainabilityMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const { data: newSustainability, error } = await supabase.rpc(
-        'insert_sustainability',
-        { sustainability_name: data.name }
-      );
+      const { data: newSustainability, error } = await supabase
+        .from('sustainability_options')
+        .insert({ name: data.name })
+        .select()
+        .single();
 
       if (error) throw error;
       return data.name;
