@@ -43,7 +43,7 @@ export const useFilteredPaperMTM = ({
   page = 1,
   pageSize = 15,
   filters = {},
-  sortColumns = [{ column: 'calculated_at', direction: 'desc' }],
+  sortColumns = [{ column: 'leg_created_at', direction: 'desc' }],
 }: UseFilteredPaperMTMParams) => {
   return useQuery({
     queryKey: ['filteredPaperMTM', page, pageSize, filters, sortColumns],

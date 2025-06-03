@@ -47,7 +47,7 @@ export const useFilteredPhysicalMTM = ({
   page = 1,
   pageSize = 15,
   filters = {},
-  sortColumns = [{ column: 'calculated_at', direction: 'desc' }],
+  sortColumns = [{ column: 'leg_created_at', direction: 'desc' }],
 }: UseFilteredPhysicalMTMParams) => {
   return useQuery({
     queryKey: ['filteredPhysicalMTM', page, pageSize, filters, sortColumns],

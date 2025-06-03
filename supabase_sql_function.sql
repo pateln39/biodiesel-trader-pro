@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
  RETURNS json
  LANGUAGE plpgsql
@@ -316,4 +315,303 @@ BEGIN
     'pagination', v_pagination_meta
   );
 END;
-$function$
+$function$;
+
+-- Function to filter physical MTM positions with sorting by trade leg creation date
+CREATE OR REPLACE FUNCTION public.filter_physical_mtm_positions(
+  p_filters jsonb DEFAULT '{}'::jsonb,
+  p_page integer DEFAULT 1,
+  p_page_size integer DEFAULT 15,
+  p_sort_columns jsonb DEFAULT '[{"column": "leg_created_at", "direction": "desc"}]'::jsonb
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_total_count INTEGER;
+  v_total_pages INTEGER;
+  v_filtered_positions JSON;
+  v_pagination_meta JSON;
+  v_where_clause TEXT := '';
+  v_query TEXT;
+  v_order_by TEXT := '';
+  v_sort_item JSONB;
+BEGIN
+  -- Start building the WHERE clause based on filters
+  IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' THEN
+    -- Trade Reference filter (text search)
+    IF p_filters ? 'tradeReference' AND p_filters->>'tradeReference' IS NOT NULL AND p_filters->>'tradeReference' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('p.trade_reference ILIKE ''%%'' || %L || ''%%''', p_filters->>'tradeReference');
+    END IF;
+    
+    -- Product filter (array)
+    IF p_filters ? 'product' THEN
+      IF jsonb_typeof(p_filters->'product') = 'array' AND jsonb_array_length(p_filters->'product') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.product IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'product') || ')))';
+      END IF;
+    END IF;
+    
+    -- Buy/Sell filter (array)
+    IF p_filters ? 'buySell' THEN
+      IF jsonb_typeof(p_filters->'buySell') = 'array' AND jsonb_array_length(p_filters->'buySell') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.buy_sell IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'buySell') || ')))';
+      END IF;
+    END IF;
+    
+    -- Physical Type filter (array)
+    IF p_filters ? 'physicalType' THEN
+      IF jsonb_typeof(p_filters->'physicalType') = 'array' AND jsonb_array_length(p_filters->'physicalType') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.physical_type IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'physicalType') || ')))';
+      END IF;
+    END IF;
+  END IF;
+  
+  -- Build the ORDER BY clause from the sort columns array
+  IF p_sort_columns IS NOT NULL AND jsonb_typeof(p_sort_columns) = 'array' AND jsonb_array_length(p_sort_columns) > 0 THEN
+    v_order_by := ' ORDER BY ';
+    
+    FOR i IN 0..jsonb_array_length(p_sort_columns) - 1 LOOP
+      v_sort_item := p_sort_columns->i;
+      
+      -- Add comma if not the first sort column
+      IF i > 0 THEN
+        v_order_by := v_order_by || ', ';
+      END IF;
+      
+      -- Map frontend column names to database column names
+      DECLARE
+        column_name TEXT;
+      BEGIN
+        column_name := v_sort_item->>'column';
+        
+        -- Map column names - default to leg creation date for chronological order
+        IF column_name = 'leg_created_at' OR column_name = 'created_at' THEN
+          column_name := 'tl.created_at';
+        ELSIF column_name = 'calculated_at' THEN
+          column_name := 'p.calculated_at';
+        ELSIF column_name = 'trade_reference' THEN
+          column_name := 'p.trade_reference';
+        ELSIF column_name = 'product' THEN
+          column_name := 'p.product';
+        ELSIF column_name = 'buy_sell' THEN
+          column_name := 'p.buy_sell';
+        ELSIF column_name = 'mtm_value' THEN
+          column_name := 'p.mtm_value';
+        ELSE
+          column_name := 'tl.created_at'; -- Default fallback
+        END IF;
+        
+        -- Add the sort column and direction
+        v_order_by := v_order_by || format('%s %s', 
+                                       column_name, 
+                                       CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
+      END;
+    END LOOP;
+  ELSE
+    -- Default sort order by trade leg creation date (most recent first)
+    v_order_by := ' ORDER BY tl.created_at DESC';
+  END IF;
+  
+  -- First, count total filtered records
+  v_query := 'SELECT COUNT(*) FROM physical_mtm_positions p 
+              INNER JOIN trade_legs tl ON p.leg_id = tl.id' || v_where_clause;
+  
+  EXECUTE v_query INTO v_total_count;
+  
+  -- Calculate total pages
+  v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
+  
+  -- Query for the filtered and paginated data
+  IF v_total_count > 0 THEN
+    v_query := 'SELECT json_agg(t) FROM (
+                  SELECT p.*, tl.created_at as leg_created_at 
+                  FROM physical_mtm_positions p 
+                  INNER JOIN trade_legs tl ON p.leg_id = tl.id' || 
+              v_where_clause || 
+              v_order_by || 
+              format(' LIMIT %s OFFSET %s', p_page_size, (p_page - 1) * p_page_size) ||
+              ') t';
+    
+    EXECUTE v_query INTO v_filtered_positions;
+  ELSE
+    -- If no results, return empty JSON array
+    v_filtered_positions := '[]'::json;
+  END IF;
+  
+  -- Create pagination metadata
+  v_pagination_meta := json_build_object(
+    'totalItems', v_total_count,
+    'totalPages', GREATEST(v_total_pages, 1),
+    'currentPage', p_page,
+    'pageSize', p_page_size
+  );
+  
+  -- Return combined result
+  RETURN json_build_object(
+    'positions', COALESCE(v_filtered_positions, '[]'::json),
+    'pagination', v_pagination_meta
+  );
+END;
+$function$;
+
+-- Function to filter paper MTM positions with sorting by paper trade leg creation date
+CREATE OR REPLACE FUNCTION public.filter_paper_mtm_positions(
+  p_filters jsonb DEFAULT '{}'::jsonb,
+  p_page integer DEFAULT 1,
+  p_page_size integer DEFAULT 15,
+  p_sort_columns jsonb DEFAULT '[{"column": "leg_created_at", "direction": "desc"}]'::jsonb
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_total_count INTEGER;
+  v_total_pages INTEGER;
+  v_filtered_positions JSON;
+  v_pagination_meta JSON;
+  v_where_clause TEXT := '';
+  v_query TEXT;
+  v_order_by TEXT := '';
+  v_sort_item JSONB;
+BEGIN
+  -- Start building the WHERE clause based on filters
+  IF p_filters IS NOT NULL AND jsonb_typeof(p_filters) = 'object' THEN
+    -- Trade Reference filter (text search)
+    IF p_filters ? 'tradeReference' AND p_filters->>'tradeReference' IS NOT NULL AND p_filters->>'tradeReference' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('p.trade_reference ILIKE ''%%'' || %L || ''%%''', p_filters->>'tradeReference');
+    END IF;
+    
+    -- Product filter (array)
+    IF p_filters ? 'product' THEN
+      IF jsonb_typeof(p_filters->'product') = 'array' AND jsonb_array_length(p_filters->'product') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.product IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'product') || ')))';
+      END IF;
+    END IF;
+    
+    -- Buy/Sell filter (array)
+    IF p_filters ? 'buySell' THEN
+      IF jsonb_typeof(p_filters->'buySell') = 'array' AND jsonb_array_length(p_filters->'buySell') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.buy_sell IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'buySell') || ')))';
+      END IF;
+    END IF;
+    
+    -- Relationship Type filter (array)
+    IF p_filters ? 'relationshipType' THEN
+      IF jsonb_typeof(p_filters->'relationshipType') = 'array' AND jsonb_array_length(p_filters->'relationshipType') > 0 THEN
+        v_where_clause := v_where_clause || 
+          CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+          '(p.relationship_type IN (SELECT jsonb_array_elements_text(' || quote_literal(p_filters->'relationshipType') || ')))';
+      END IF;
+    END IF;
+    
+    -- Period filter (string)
+    IF p_filters ? 'period' AND p_filters->>'period' IS NOT NULL AND p_filters->>'period' != '' THEN
+      v_where_clause := v_where_clause || 
+        CASE WHEN v_where_clause = '' THEN ' WHERE ' ELSE ' AND ' END ||
+        format('p.period = %L', p_filters->>'period');
+    END IF;
+  END IF;
+  
+  -- Build the ORDER BY clause from the sort columns array
+  IF p_sort_columns IS NOT NULL AND jsonb_typeof(p_sort_columns) = 'array' AND jsonb_array_length(p_sort_columns) > 0 THEN
+    v_order_by := ' ORDER BY ';
+    
+    FOR i IN 0..jsonb_array_length(p_sort_columns) - 1 LOOP
+      v_sort_item := p_sort_columns->i;
+      
+      -- Add comma if not the first sort column
+      IF i > 0 THEN
+        v_order_by := v_order_by || ', ';
+      END IF;
+      
+      -- Map frontend column names to database column names
+      DECLARE
+        column_name TEXT;
+      BEGIN
+        column_name := v_sort_item->>'column';
+        
+        -- Map column names - default to leg creation date for chronological order
+        IF column_name = 'leg_created_at' OR column_name = 'created_at' THEN
+          column_name := 'ptl.created_at';
+        ELSIF column_name = 'calculated_at' THEN
+          column_name := 'p.calculated_at';
+        ELSIF column_name = 'trade_reference' THEN
+          column_name := 'p.trade_reference';
+        ELSIF column_name = 'product' THEN
+          column_name := 'p.product';
+        ELSIF column_name = 'buy_sell' THEN
+          column_name := 'p.buy_sell';
+        ELSIF column_name = 'mtm_value' THEN
+          column_name := 'p.mtm_value';
+        ELSIF column_name = 'period' THEN
+          column_name := 'p.period';
+        ELSE
+          column_name := 'ptl.created_at'; -- Default fallback
+        END IF;
+        
+        -- Add the sort column and direction
+        v_order_by := v_order_by || format('%s %s', 
+                                       column_name, 
+                                       CASE WHEN upper(v_sort_item->>'direction') = 'DESC' THEN 'DESC' ELSE 'ASC' END);
+      END;
+    END LOOP;
+  ELSE
+    -- Default sort order by paper trade leg creation date (most recent first)
+    v_order_by := ' ORDER BY ptl.created_at DESC';
+  END IF;
+  
+  -- First, count total filtered records
+  v_query := 'SELECT COUNT(*) FROM paper_mtm_positions p 
+              INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id' || v_where_clause;
+  
+  EXECUTE v_query INTO v_total_count;
+  
+  -- Calculate total pages
+  v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
+  
+  -- Query for the filtered and paginated data
+  IF v_total_count > 0 THEN
+    v_query := 'SELECT json_agg(t) FROM (
+                  SELECT p.*, ptl.created_at as leg_created_at 
+                  FROM paper_mtm_positions p 
+                  INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id' || 
+              v_where_clause || 
+              v_order_by || 
+              format(' LIMIT %s OFFSET %s', p_page_size, (p_page - 1) * p_page_size) ||
+              ') t';
+    
+    EXECUTE v_query INTO v_filtered_positions;
+  ELSE
+    -- If no results, return empty JSON array
+    v_filtered_positions := '[]'::json;
+  END IF;
+  
+  -- Create pagination metadata
+  v_pagination_meta := json_build_object(
+    'totalItems', v_total_count,
+    'totalPages', GREATEST(v_total_pages, 1),
+    'currentPage', p_page,
+    'pageSize', p_page_size
+  );
+  
+  -- Return combined result
+  RETURN json_build_object(
+    'positions', COALESCE(v_filtered_positions, '[]'::json),
+    'pagination', v_pagination_meta
+  );
+END;
+$function$;
