@@ -61,7 +61,7 @@ export const useFilteredPaperMTM = ({
       }
 
       // Type assertion since we know the structure from our SQL function
-      const result = data as {
+      const result = data as unknown as {
         positions: PaperMTMPosition[];
         pagination: {
           totalItems: number;

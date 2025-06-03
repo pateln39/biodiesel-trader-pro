@@ -65,7 +65,7 @@ export const useFilteredPhysicalMTM = ({
       }
 
       // Type assertion since we know the structure from our SQL function
-      const result = data as {
+      const result = data as unknown as {
         positions: PhysicalMTMPosition[];
         pagination: {
           totalItems: number;
