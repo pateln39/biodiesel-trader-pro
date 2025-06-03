@@ -8,9 +8,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Copy, Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PaperTrade } from '@/types/paper';
-import { usePaperTrades } from '@/hooks/usePaperTrades';
+import { paperTradeDeleteUtils } from '@/utils/paperTradeDeleteUtils';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { generateTradeReference } from '@/utils/tradeUtils';
 
 interface PaperTradesTableProps {
   trades: PaperTrade[];
@@ -18,13 +20,67 @@ interface PaperTradesTableProps {
 }
 
 const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) => {
-  const { copyPaperTrade, deletePaperTrade } = usePaperTrades();
   const queryClient = useQueryClient();
   const [tradeToDelete, setTradeToDelete] = useState<PaperTrade | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
 
   const handleCopyTrade = async (trade: PaperTrade) => {
     try {
-      await copyPaperTrade.mutateAsync(trade);
+      setIsCopying(true);
+      
+      // Generate new trade reference
+      const newTradeReference = generateTradeReference();
+      
+      // Create new parent trade
+      const { data: newParentTrade, error: parentError } = await supabase
+        .from('paper_trades')
+        .insert({
+          trade_reference: newTradeReference,
+          counterparty: trade.counterparty,
+          broker: trade.broker,
+        })
+        .select()
+        .single();
+
+      if (parentError || !newParentTrade) {
+        throw new Error('Failed to create new paper trade');
+      }
+
+      // Copy all legs
+      const newLegs = trade.legs.map((leg, index) => ({
+        paper_trade_id: newParentTrade.id,
+        leg_reference: `${newTradeReference}-${String.fromCharCode(65 + index)}`,
+        buy_sell: leg.buySell,
+        product: leg.product,
+        quantity: leg.quantity,
+        period: leg.period,
+        price: leg.price,
+        broker: leg.broker,
+        instrument: leg.instrument,
+        relationship_type: leg.relationshipType,
+        formula: leg.formula,
+        mtm_formula: leg.mtmFormula,
+        pricing_period_start: leg.pricing_period_start,
+        pricing_period_end: leg.pricing_period_end,
+        exposures: leg.exposures,
+        execution_trade_date: leg.executionTradeDate,
+        right_side: leg.rightSide,
+      }));
+
+      const { error: legsError } = await supabase
+        .from('paper_trade_legs')
+        .insert(newLegs);
+
+      if (legsError) {
+        // Cleanup - delete the parent trade if legs creation failed
+        await supabase
+          .from('paper_trades')
+          .delete()
+          .eq('id', newParentTrade.id);
+        throw new Error('Failed to create paper trade legs');
+      }
+
       // Invalidate all paper trade related queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
       queryClient.invalidateQueries({ queryKey: ['filteredPaperTrades'] });
@@ -32,7 +88,10 @@ const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) 
       queryClient.invalidateQueries({ queryKey: ['paperMtmPositions'] });
       toast.success('Paper trade copied successfully');
     } catch (error) {
+      console.error('Error copying paper trade:', error);
       toast.error('Failed to copy paper trade');
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -40,7 +99,8 @@ const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) 
     if (!tradeToDelete) return;
     
     try {
-      await deletePaperTrade.mutateAsync(tradeToDelete.id);
+      setIsDeleting(true);
+      await paperTradeDeleteUtils.deletePaperTrade(tradeToDelete.id);
       // Invalidate all paper trade related queries
       queryClient.invalidateQueries({ queryKey: ['paper-trades'] });
       queryClient.invalidateQueries({ queryKey: ['filteredPaperTrades'] });
@@ -51,6 +111,8 @@ const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) 
     } catch (error) {
       toast.error('Failed to delete paper trade');
       setTradeToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,10 +203,10 @@ const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) 
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleCopyTrade(trade)}
-                      disabled={copyPaperTrade.isPending}
+                      disabled={isCopying}
                     >
                       <Copy className="mr-2 h-4 w-4" />
-                      {copyPaperTrade.isPending ? 'Copying...' : 'Copy'}
+                      {isCopying ? 'Copying...' : 'Copy'}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setTradeToDelete(trade)}
@@ -174,8 +236,9 @@ const PaperTradesTable: React.FC<PaperTradesTableProps> = ({ trades, loading }) 
             <AlertDialogAction 
               onClick={handleDeleteTrade}
               className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

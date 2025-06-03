@@ -7,24 +7,27 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Copy, Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Trade } from '@/types/trade';
-import { useTrades } from '@/hooks/useTrades';
+import { PhysicalTrade } from '@/types/physical';
+import { copyEntireTrade } from '@/utils/tradeUtils';
+import { physicalTradeDeleteUtils } from '@/utils/physicalTradeDeleteUtils';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 interface TradesTableProps {
-  trades: Trade[];
+  trades: PhysicalTrade[];
   loading?: boolean;
 }
 
 const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
-  const { copyTrade, deleteTrade } = useTrades();
   const queryClient = useQueryClient();
-  const [tradeToDelete, setTradeToDelete] = useState<Trade | null>(null);
+  const [tradeToDelete, setTradeToDelete] = useState<PhysicalTrade | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
 
-  const handleCopyTrade = async (trade: Trade) => {
+  const handleCopyTrade = async (trade: PhysicalTrade) => {
     try {
-      await copyTrade.mutateAsync(trade);
+      setIsCopying(true);
+      await copyEntireTrade(trade.id);
       // Invalidate all trade-related queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['filteredTrades'] });
@@ -34,6 +37,8 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
       toast.success('Trade copied successfully');
     } catch (error) {
       toast.error('Failed to copy trade');
+    } finally {
+      setIsCopying(false);
     }
   };
 
@@ -41,7 +46,8 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
     if (!tradeToDelete) return;
     
     try {
-      await deleteTrade.mutateAsync(tradeToDelete.id);
+      setIsDeleting(true);
+      await physicalTradeDeleteUtils.deleteTrade(tradeToDelete.id);
       // Invalidate all trade-related queries
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['filteredTrades'] });
@@ -53,6 +59,8 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
     } catch (error) {
       toast.error('Failed to delete trade');
       setTradeToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -150,10 +158,10 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleCopyTrade(trade)}
-                      disabled={copyTrade.isPending}
+                      disabled={isCopying}
                     >
                       <Copy className="mr-2 h-4 w-4" />
-                      {copyTrade.isPending ? 'Copying...' : 'Copy'}
+                      {isCopying ? 'Copying...' : 'Copy'}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => setTradeToDelete(trade)}
@@ -183,8 +191,9 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
             <AlertDialogAction 
               onClick={handleDeleteTrade}
               className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
