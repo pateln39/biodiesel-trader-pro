@@ -9,7 +9,7 @@ import { MoreHorizontal, Copy, Edit, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PhysicalTrade } from '@/types/physical';
 import { copyEntireTrade } from '@/utils/tradeUtils';
-import { physicalTradeDeleteUtils } from '@/utils/physicalTradeDeleteUtils';
+import { deletePhysicalTrade } from '@/utils/physicalTradeDeleteUtils';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -47,7 +47,7 @@ const TradesTable: React.FC<TradesTableProps> = ({ trades, loading }) => {
     
     try {
       setIsDeleting(true);
-      await physicalTradeDeleteUtils.deleteTrade(tradeToDelete.id);
+      await deletePhysicalTrade(tradeToDelete.id);
       // Invalidate all trade-related queries
       queryClient.invalidateQueries({ queryKey: ['trades'] });
       queryClient.invalidateQueries({ queryKey: ['filteredTrades'] });
