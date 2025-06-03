@@ -4,13 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
-import { useFilteredPhysicalMTM, PhysicalMTMFilters } from '@/hooks/useFilteredPhysicalMTM';
+import { useFilteredPhysicalMTM } from '@/hooks/useFilteredPhysicalMTM';
 import PaginationNav from '@/components/ui/pagination-nav';
 import PriceDetails from '@/components/pricing/PriceDetails';
 
 const PaginatedPhysicalMTMTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<PhysicalMTMFilters>({});
   const [selectedLeg, setSelectedLeg] = useState<{
     legId: string;
     formula: any;
@@ -29,7 +28,6 @@ const PaginatedPhysicalMTMTable: React.FC = () => {
   const { data, isLoading, error } = useFilteredPhysicalMTM({
     page: currentPage,
     pageSize: 15,
-    filters,
   });
 
   const positions = data?.data || [];

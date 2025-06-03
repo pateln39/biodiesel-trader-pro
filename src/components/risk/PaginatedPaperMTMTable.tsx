@@ -4,13 +4,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
-import { useFilteredPaperMTM, PaperMTMFilters } from '@/hooks/useFilteredPaperMTM';
+import { useFilteredPaperMTM } from '@/hooks/useFilteredPaperMTM';
 import PaginationNav from '@/components/ui/pagination-nav';
 import PaperPriceDetails from './PaperPriceDetails';
 
 const PaginatedPaperMTMTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<PaperMTMFilters>({});
   const [selectedLeg, setSelectedLeg] = useState<{
     legId: string;
     product: string;
@@ -28,7 +27,6 @@ const PaginatedPaperMTMTable: React.FC = () => {
   const { data, isLoading, error } = useFilteredPaperMTM({
     page: currentPage,
     pageSize: 15,
-    filters,
   });
 
   const positions = data?.data || [];
