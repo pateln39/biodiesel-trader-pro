@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
  RETURNS json
  LANGUAGE plpgsql
@@ -323,7 +322,7 @@ CREATE OR REPLACE FUNCTION public.filter_physical_mtm_positions(
   p_filters jsonb DEFAULT '{}'::jsonb,
   p_page integer DEFAULT 1,
   p_page_size integer DEFAULT 15,
-  p_sort_columns jsonb DEFAULT '[{"column": "leg_created_at", "direction": "desc"}]'::jsonb
+  p_sort_columns jsonb DEFAULT '[{"column": "created_at", "direction": "desc"}]'::jsonb
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -393,8 +392,8 @@ BEGIN
       BEGIN
         column_name := v_sort_item->>'column';
         
-        -- Map column names - default to leg creation date for chronological order
-        IF column_name = 'leg_created_at' OR column_name = 'created_at' THEN
+        -- Map column names - use leg creation date for sorting
+        IF column_name = 'created_at' OR column_name = 'leg_created_at' THEN
           column_name := 'tl.created_at';
         ELSIF column_name = 'calculated_at' THEN
           column_name := 'p.calculated_at';
@@ -407,7 +406,7 @@ BEGIN
         ELSIF column_name = 'mtm_value' THEN
           column_name := 'p.mtm_value';
         ELSE
-          column_name := 'tl.created_at'; -- Default fallback
+          column_name := 'tl.created_at'; -- Default fallback to leg creation date
         END IF;
         
         -- Add the sort column and direction
@@ -455,8 +454,7 @@ BEGIN
                     p.mtm_future_month,
                     p.calculated_at,
                     p.created_at,
-                    p.updated_at,
-                    tl.created_at as leg_created_at
+                    p.updated_at
                   FROM physical_mtm_positions p 
                   INNER JOIN trade_legs tl ON p.leg_id = tl.id' || 
               v_where_clause || 
@@ -491,7 +489,7 @@ CREATE OR REPLACE FUNCTION public.filter_paper_mtm_positions(
   p_filters jsonb DEFAULT '{}'::jsonb,
   p_page integer DEFAULT 1,
   p_page_size integer DEFAULT 15,
-  p_sort_columns jsonb DEFAULT '[{"column": "leg_created_at", "direction": "desc"}]'::jsonb
+  p_sort_columns jsonb DEFAULT '[{"column": "created_at", "direction": "desc"}]'::jsonb
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -568,8 +566,8 @@ BEGIN
       BEGIN
         column_name := v_sort_item->>'column';
         
-        -- Map column names - default to leg creation date for chronological order
-        IF column_name = 'leg_created_at' OR column_name = 'created_at' THEN
+        -- Map column names - use leg creation date for sorting
+        IF column_name = 'created_at' OR column_name = 'leg_created_at' THEN
           column_name := 'ptl.created_at';
         ELSIF column_name = 'calculated_at' THEN
           column_name := 'p.calculated_at';
@@ -584,7 +582,7 @@ BEGIN
         ELSIF column_name = 'period' THEN
           column_name := 'p.period';
         ELSE
-          column_name := 'ptl.created_at'; -- Default fallback
+          column_name := 'ptl.created_at'; -- Default fallback to leg creation date
         END IF;
         
         -- Add the sort column and direction
@@ -627,8 +625,7 @@ BEGIN
                     p.right_side,
                     p.calculated_at,
                     p.created_at,
-                    p.updated_at,
-                    ptl.created_at as leg_created_at
+                    p.updated_at
                   FROM paper_mtm_positions p 
                   INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id' || 
               v_where_clause || 
