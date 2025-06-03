@@ -29,73 +29,7 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
   const [goToPage, setGoToPage] = useState('');
   const [inputError, setInputError] = useState(false);
   
-  // Calculate which page numbers to show with optimized ellipsis logic
-  const getPageNumbers = () => {
-    const maxVisiblePages = 5;
-    
-    // If total pages fit within max visible, show all
-    if (totalPages <= maxVisiblePages) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    // Adjust start if end is maxed out
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-  };
-  
-  const pageNumbers = getPageNumbers();
-  const showFirstEllipsis = pageNumbers[0] > 2;
-  const showLastEllipsis = pageNumbers[pageNumbers.length - 1] < totalPages - 1;
-  
-  // Calculate item range for current page
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-  
-  if (totalPages <= 1) {
-    return null;
-  }
-
-  // Create URL with updated page parameter
-  const createPageUrl = (page: number) => {
-    const searchParams = new URLSearchParams(location.search);
-    searchParams.set('page', page.toString());
-    return `${location.pathname}?${searchParams.toString()}`;
-  };
-  
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    if (onPageChange && page >= 1 && page <= totalPages) {
-      onPageChange(page);
-    }
-  };
-  
-  // Handle go to page input
-  const handleGoToPage = () => {
-    const pageNum = parseInt(goToPage);
-    if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) {
-      setInputError(true);
-      return;
-    }
-    
-    setInputError(false);
-    setGoToPage('');
-    handlePageChange(pageNum);
-  };
-  
-  // Handle input enter key
-  const handleInputKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleGoToPage();
-    }
-  };
-  
-  // Keyboard navigation
+  // Keyboard navigation - MOVED BEFORE EARLY RETURN
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if the pagination container is focused or no input is focused
@@ -138,6 +72,73 @@ const PaginationNav: React.FC<PaginationNavProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, totalPages]);
+  
+  // EARLY RETURN MOVED AFTER ALL HOOKS
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  // Calculate which page numbers to show with optimized ellipsis logic
+  const getPageNumbers = () => {
+    const maxVisiblePages = 5;
+    
+    // If total pages fit within max visible, show all
+    if (totalPages <= maxVisiblePages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // Adjust start if end is maxed out
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+  };
+  
+  const pageNumbers = getPageNumbers();
+  const showFirstEllipsis = pageNumbers[0] > 2;
+  const showLastEllipsis = pageNumbers[pageNumbers.length - 1] < totalPages - 1;
+  
+  // Calculate item range for current page
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
+
+  // Create URL with updated page parameter
+  const createPageUrl = (page: number) => {
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set('page', page.toString());
+    return `${location.pathname}?${searchParams.toString()}`;
+  };
+  
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    if (onPageChange && page >= 1 && page <= totalPages) {
+      onPageChange(page);
+    }
+  };
+  
+  // Handle go to page input
+  const handleGoToPage = () => {
+    const pageNum = parseInt(goToPage);
+    if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) {
+      setInputError(true);
+      return;
+    }
+    
+    setInputError(false);
+    setGoToPage('');
+    handlePageChange(pageNum);
+  };
+  
+  // Handle input enter key
+  const handleInputKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleGoToPage();
+    }
+  };
   
   return (
     <div 

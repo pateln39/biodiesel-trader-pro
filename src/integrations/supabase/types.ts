@@ -802,6 +802,74 @@ export type Database = {
           },
         ]
       }
+      paper_mtm_positions: {
+        Row: {
+          buy_sell: string
+          calculated_at: string
+          created_at: string
+          id: string
+          leg_id: string
+          leg_reference: string
+          mtm_price: number
+          mtm_value: number
+          period: string
+          period_type: string | null
+          product: string
+          quantity: number
+          relationship_type: string
+          right_side: Json | null
+          trade_price: number
+          trade_reference: string
+          updated_at: string
+        }
+        Insert: {
+          buy_sell: string
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          leg_id: string
+          leg_reference: string
+          mtm_price?: number
+          mtm_value?: number
+          period: string
+          period_type?: string | null
+          product: string
+          quantity: number
+          relationship_type: string
+          right_side?: Json | null
+          trade_price?: number
+          trade_reference: string
+          updated_at?: string
+        }
+        Update: {
+          buy_sell?: string
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          leg_id?: string
+          leg_reference?: string
+          mtm_price?: number
+          mtm_value?: number
+          period?: string
+          period_type?: string | null
+          product?: string
+          quantity?: number
+          relationship_type?: string
+          right_side?: Json | null
+          trade_price?: number
+          trade_reference?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_paper_mtm_leg_id"
+            columns: ["leg_id"]
+            isOneToOne: true
+            referencedRelation: "paper_trade_legs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paper_trade_legs: {
         Row: {
           broker: string | null
@@ -1033,6 +1101,89 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      physical_mtm_positions: {
+        Row: {
+          buy_sell: string
+          calculated_at: string
+          created_at: string
+          efp_agreed_status: boolean | null
+          efp_fixed_value: number | null
+          efp_premium: number | null
+          id: string
+          leg_id: string
+          leg_reference: string
+          mtm_future_month: string | null
+          mtm_price: number
+          mtm_value: number
+          period_type: string | null
+          physical_type: string
+          pricing_period_end: string | null
+          pricing_period_start: string | null
+          pricing_type: string | null
+          product: string
+          quantity: number
+          trade_price: number
+          trade_reference: string
+          updated_at: string
+        }
+        Insert: {
+          buy_sell: string
+          calculated_at?: string
+          created_at?: string
+          efp_agreed_status?: boolean | null
+          efp_fixed_value?: number | null
+          efp_premium?: number | null
+          id?: string
+          leg_id: string
+          leg_reference: string
+          mtm_future_month?: string | null
+          mtm_price?: number
+          mtm_value?: number
+          period_type?: string | null
+          physical_type: string
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          pricing_type?: string | null
+          product: string
+          quantity: number
+          trade_price?: number
+          trade_reference: string
+          updated_at?: string
+        }
+        Update: {
+          buy_sell?: string
+          calculated_at?: string
+          created_at?: string
+          efp_agreed_status?: boolean | null
+          efp_fixed_value?: number | null
+          efp_premium?: number | null
+          id?: string
+          leg_id?: string
+          leg_reference?: string
+          mtm_future_month?: string | null
+          mtm_price?: number
+          mtm_value?: number
+          period_type?: string | null
+          physical_type?: string
+          pricing_period_end?: string | null
+          pricing_period_start?: string | null
+          pricing_type?: string | null
+          product?: string
+          quantity?: number
+          trade_price?: number
+          trade_reference?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_physical_mtm_leg_id"
+            columns: ["leg_id"]
+            isOneToOne: true
+            referencedRelation: "trade_legs"
             referencedColumns: ["id"]
           },
         ]
@@ -1453,9 +1604,44 @@ export type Database = {
         Args: { total: number; tolerance: number; scheduled: number }
         Returns: number
       }
-      cleanup_old_upload_jobs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
+      calculate_paper_mtm_price: {
+        Args: {
+          product_name: string
+          period_month: string
+          relationship_type?: string
+          right_side_product?: string
+        }
+        Returns: number
+      }
+      calculate_physical_mtm_price: {
+        Args: {
+          product_name: string
+          pricing_type: string
+          pricing_period_start: string
+          pricing_period_end: string
+          efp_premium?: number
+          efp_fixed_value?: number
+          efp_agreed_status?: boolean
+          mtm_future_month?: string
+        }
+        Returns: number
+      }
+      evaluate_simple_formula: {
+        Args: {
+          formula: Json
+          period_type: string
+          start_date?: string
+          end_date?: string
+        }
+        Returns: number
+      }
+      fetch_forward_price_for_period: {
+        Args: { instrument_code: string; period_start: string }
+        Returns: number
+      }
+      fetch_historical_average_price: {
+        Args: { instrument_code: string; start_date: string; end_date: string }
+        Returns: number
       }
       filter_movements: {
         Args: {
@@ -1473,6 +1659,24 @@ export type Database = {
           p_page_size?: number
           p_sort_column?: string
           p_sort_direction?: string
+        }
+        Returns: Json
+      }
+      filter_paper_mtm_positions: {
+        Args: {
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_columns?: Json
+        }
+        Returns: Json
+      }
+      filter_physical_mtm_positions: {
+        Args: {
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+          p_sort_columns?: Json
         }
         Returns: Json
       }
@@ -1497,17 +1701,17 @@ export type Database = {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
       }
+      get_forward_price: {
+        Args: { instrument_id: string; target_month: string }
+        Returns: number
+      }
+      get_historical_average_price: {
+        Args: { instrument_id: string; start_date: string; end_date: string }
+        Returns: number
+      }
       get_next_tank_display_order: {
         Args: { terminal_id_param: string }
         Returns: number
-      }
-      get_paginated_terminal_assignments: {
-        Args: { p_terminal_id: string; p_page?: number; p_page_size?: number }
-        Returns: {
-          assignments: Json
-          tank_movements: Json
-          pagination_meta: Json
-        }[]
       }
       get_physical_positions_pivoted: {
         Args: Record<PropertyKey, never>
@@ -1515,6 +1719,15 @@ export type Database = {
           month: string
           products: Json
         }[]
+      }
+      get_price_for_period: {
+        Args: {
+          instrument_code: string
+          period_type: string
+          start_date?: string
+          end_date?: string
+        }
+        Returns: number
       }
       get_trades_per_month: {
         Args: Record<PropertyKey, never>
@@ -1568,15 +1781,6 @@ export type Database = {
       }
       update_sort_order: {
         Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
-        Returns: undefined
-      }
-      update_terminal_pagination_state: {
-        Args: {
-          p_terminal_id: string
-          p_page_number: number
-          p_page_size: number
-          p_new_state: Json
-        }
         Returns: undefined
       }
       update_terminal_sort_order: {
