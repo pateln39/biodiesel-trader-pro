@@ -1,3 +1,4 @@
+
 CREATE OR REPLACE FUNCTION public.filter_movements(p_filters jsonb, p_page integer DEFAULT 1, p_page_size integer DEFAULT 15, p_sort_columns jsonb DEFAULT '[{"column": "sort_order", "direction": "asc"}]'::jsonb)
  RETURNS json
  LANGUAGE plpgsql
@@ -429,10 +430,33 @@ BEGIN
   -- Calculate total pages
   v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
   
-  -- Query for the filtered and paginated data
+  -- Query for the filtered and paginated data with explicit column selection
   IF v_total_count > 0 THEN
     v_query := 'SELECT json_agg(t) FROM (
-                  SELECT p.*, tl.created_at as leg_created_at 
+                  SELECT 
+                    p.id,
+                    p.leg_id,
+                    p.trade_reference,
+                    p.leg_reference,
+                    p.physical_type,
+                    p.buy_sell,
+                    p.product,
+                    p.quantity,
+                    p.pricing_period_start,
+                    p.pricing_period_end,
+                    p.pricing_type,
+                    p.period_type,
+                    p.trade_price,
+                    p.mtm_price,
+                    p.mtm_value,
+                    p.efp_premium,
+                    p.efp_agreed_status,
+                    p.efp_fixed_value,
+                    p.mtm_future_month,
+                    p.calculated_at,
+                    p.created_at,
+                    p.updated_at,
+                    tl.created_at as leg_created_at
                   FROM physical_mtm_positions p 
                   INNER JOIN trade_legs tl ON p.leg_id = tl.id' || 
               v_where_clause || 
@@ -583,10 +607,28 @@ BEGIN
   -- Calculate total pages
   v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
   
-  -- Query for the filtered and paginated data
+  -- Query for the filtered and paginated data with explicit column selection
   IF v_total_count > 0 THEN
     v_query := 'SELECT json_agg(t) FROM (
-                  SELECT p.*, ptl.created_at as leg_created_at 
+                  SELECT 
+                    p.id,
+                    p.leg_id,
+                    p.trade_reference,
+                    p.leg_reference,
+                    p.buy_sell,
+                    p.product,
+                    p.quantity,
+                    p.period,
+                    p.relationship_type,
+                    p.period_type,
+                    p.trade_price,
+                    p.mtm_price,
+                    p.mtm_value,
+                    p.right_side,
+                    p.calculated_at,
+                    p.created_at,
+                    p.updated_at,
+                    ptl.created_at as leg_created_at
                   FROM paper_mtm_positions p 
                   INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id' || 
               v_where_clause || 
