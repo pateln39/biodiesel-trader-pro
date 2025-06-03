@@ -316,4 +316,153 @@ BEGIN
     'pagination', v_pagination_meta
   );
 END;
-$function$
+$function$;
+
+-- Simplified function to filter physical MTM positions with consistent sorting by trade leg creation date
+CREATE OR REPLACE FUNCTION public.filter_physical_mtm_positions(
+  p_page integer DEFAULT 1,
+  p_page_size integer DEFAULT 15
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_total_count INTEGER;
+  v_total_pages INTEGER;
+  v_filtered_positions JSON;
+  v_pagination_meta JSON;
+  v_query TEXT;
+BEGIN
+  -- Count total records
+  SELECT COUNT(*) INTO v_total_count
+  FROM physical_mtm_positions p 
+  INNER JOIN trade_legs tl ON p.leg_id = tl.id;
+  
+  -- Calculate total pages
+  v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
+  
+  -- Query for the paginated data with explicit column selection, sorted by leg creation date (newest first)
+  IF v_total_count > 0 THEN
+    v_query := 'SELECT json_agg(t) FROM (
+                  SELECT 
+                    p.id,
+                    p.leg_id,
+                    p.trade_reference,
+                    p.leg_reference,
+                    p.physical_type,
+                    p.buy_sell,
+                    p.product,
+                    p.quantity,
+                    p.pricing_period_start,
+                    p.pricing_period_end,
+                    p.pricing_type,
+                    p.period_type,
+                    p.trade_price,
+                    p.mtm_price,
+                    p.mtm_value,
+                    p.efp_premium,
+                    p.efp_agreed_status,
+                    p.efp_fixed_value,
+                    p.mtm_future_month,
+                    p.calculated_at,
+                    p.created_at,
+                    p.updated_at
+                  FROM physical_mtm_positions p 
+                  INNER JOIN trade_legs tl ON p.leg_id = tl.id
+                  ORDER BY tl.created_at DESC' || 
+              format(' LIMIT %s OFFSET %s', p_page_size, (p_page - 1) * p_page_size) ||
+              ') t';
+    
+    EXECUTE v_query INTO v_filtered_positions;
+  ELSE
+    -- If no results, return empty JSON array
+    v_filtered_positions := '[]'::json;
+  END IF;
+  
+  -- Create pagination metadata
+  v_pagination_meta := json_build_object(
+    'totalItems', v_total_count,
+    'totalPages', GREATEST(v_total_pages, 1),
+    'currentPage', p_page,
+    'pageSize', p_page_size
+  );
+  
+  -- Return combined result
+  RETURN json_build_object(
+    'positions', COALESCE(v_filtered_positions, '[]'::json),
+    'pagination', v_pagination_meta
+  );
+END;
+$function$;
+
+-- Simplified function to filter paper MTM positions with consistent sorting by paper trade leg creation date
+CREATE OR REPLACE FUNCTION public.filter_paper_mtm_positions(
+  p_page integer DEFAULT 1,
+  p_page_size integer DEFAULT 15
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_total_count INTEGER;
+  v_total_pages INTEGER;
+  v_filtered_positions JSON;
+  v_pagination_meta JSON;
+  v_query TEXT;
+BEGIN
+  -- Count total records
+  SELECT COUNT(*) INTO v_total_count
+  FROM paper_mtm_positions p 
+  INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id;
+  
+  -- Calculate total pages
+  v_total_pages := CEIL(v_total_count::FLOAT / p_page_size);
+  
+  -- Query for the paginated data with explicit column selection, sorted by leg creation date (newest first)
+  IF v_total_count > 0 THEN
+    v_query := 'SELECT json_agg(t) FROM (
+                  SELECT 
+                    p.id,
+                    p.leg_id,
+                    p.trade_reference,
+                    p.leg_reference,
+                    p.buy_sell,
+                    p.product,
+                    p.quantity,
+                    p.period,
+                    p.relationship_type,
+                    p.period_type,
+                    p.trade_price,
+                    p.mtm_price,
+                    p.mtm_value,
+                    p.right_side,
+                    p.calculated_at,
+                    p.created_at,
+                    p.updated_at
+                  FROM paper_mtm_positions p 
+                  INNER JOIN paper_trade_legs ptl ON p.leg_id = ptl.id
+                  ORDER BY ptl.created_at DESC' || 
+              format(' LIMIT %s OFFSET %s', p_page_size, (p_page - 1) * p_page_size) ||
+              ') t';
+    
+    EXECUTE v_query INTO v_filtered_positions;
+  ELSE
+    -- If no results, return empty JSON array
+    v_filtered_positions := '[]'::json;
+  END IF;
+  
+  -- Create pagination metadata
+  v_pagination_meta := json_build_object(
+    'totalItems', v_total_count,
+    'totalPages', GREATEST(v_total_pages, 1),
+    'currentPage', p_page,
+    'pageSize', p_page_size
+  );
+  
+  -- Return combined result
+  RETURN json_build_object(
+    'positions', COALESCE(v_filtered_positions, '[]'::json),
+    'pagination', v_pagination_meta
+  );
+END;
+$function$;

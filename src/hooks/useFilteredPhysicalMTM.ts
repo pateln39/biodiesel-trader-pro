@@ -3,13 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PaginationParams, PaginatedResponse } from '@/types/pagination';
 
-export interface PhysicalMTMFilters {
-  tradeReference?: string;
-  product?: string[];
-  buySell?: string[];
-  physicalType?: string[];
-}
-
 export interface PhysicalMTMPosition {
   id: string;
   leg_id: string;
@@ -35,34 +28,28 @@ export interface PhysicalMTMPosition {
   updated_at: string;
 }
 
-interface UseFilteredPhysicalMTMParams extends PaginationParams {
-  filters?: PhysicalMTMFilters;
-  sortColumns?: Array<{
-    column: string;
-    direction: 'asc' | 'desc';
-  }>;
-}
+interface UseFilteredPhysicalMTMParams extends PaginationParams {}
 
 export const useFilteredPhysicalMTM = ({
   page = 1,
   pageSize = 15,
-  filters = {},
-  sortColumns = [{ column: 'calculated_at', direction: 'desc' }],
 }: UseFilteredPhysicalMTMParams) => {
   return useQuery({
-    queryKey: ['filteredPhysicalMTM', page, pageSize, filters, sortColumns],
+    queryKey: ['filteredPhysicalMTM', page, pageSize],
     queryFn: async (): Promise<PaginatedResponse<PhysicalMTMPosition>> => {
+      console.log(`[PHYSICAL_MTM] Fetching physical MTM positions for page: ${page}`);
+      
       const { data, error } = await supabase.rpc('filter_physical_mtm_positions', {
-        p_filters: filters as any,
         p_page: page,
         p_page_size: pageSize,
-        p_sort_columns: sortColumns as any,
       });
 
       if (error) {
-        console.error('Error fetching physical MTM positions:', error);
+        console.error('[PHYSICAL_MTM] Error fetching physical MTM positions:', error);
         throw new Error(`Failed to fetch physical MTM positions: ${error.message}`);
       }
+
+      console.log('[PHYSICAL_MTM] Raw response:', data);
 
       // Type assertion since we know the structure from our SQL function
       const result = data as unknown as {
@@ -74,6 +61,8 @@ export const useFilteredPhysicalMTM = ({
           pageSize: number;
         };
       };
+
+      console.log('[PHYSICAL_MTM] Processed result:', result);
 
       return {
         data: result?.positions || [],

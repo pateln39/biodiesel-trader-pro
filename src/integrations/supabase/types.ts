@@ -1626,6 +1626,10 @@ export type Database = {
         }
         Returns: number
       }
+      determine_period_type: {
+        Args: { period_text: string }
+        Returns: string
+      }
       evaluate_simple_formula: {
         Args: {
           formula: Json
@@ -1634,6 +1638,10 @@ export type Database = {
           end_date?: string
         }
         Returns: number
+      }
+      extract_relationship_type: {
+        Args: { instrument_text: string }
+        Returns: string
       }
       fetch_forward_price_for_period: {
         Args: { instrument_code: string; period_start: string }
@@ -1663,21 +1671,25 @@ export type Database = {
         Returns: Json
       }
       filter_paper_mtm_positions: {
-        Args: {
-          p_filters?: Json
-          p_page?: number
-          p_page_size?: number
-          p_sort_columns?: Json
-        }
+        Args:
+          | {
+              p_filters?: Json
+              p_page?: number
+              p_page_size?: number
+              p_sort_columns?: Json
+            }
+          | { p_page?: number; p_page_size?: number }
         Returns: Json
       }
       filter_physical_mtm_positions: {
-        Args: {
-          p_filters?: Json
-          p_page?: number
-          p_page_size?: number
-          p_sort_columns?: Json
-        }
+        Args:
+          | {
+              p_filters?: Json
+              p_page?: number
+              p_page_size?: number
+              p_sort_columns?: Json
+            }
+          | { p_page?: number; p_page_size?: number }
         Returns: Json
       }
       filter_trade_legs: {

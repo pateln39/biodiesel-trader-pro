@@ -3,14 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { PaginationParams, PaginatedResponse } from '@/types/pagination';
 
-export interface PaperMTMFilters {
-  tradeReference?: string;
-  product?: string[];
-  buySell?: string[];
-  relationshipType?: string[];
-  period?: string;
-}
-
 export interface PaperMTMPosition {
   id: string;
   leg_id: string;
@@ -31,30 +23,20 @@ export interface PaperMTMPosition {
   updated_at: string;
 }
 
-interface UseFilteredPaperMTMParams extends PaginationParams {
-  filters?: PaperMTMFilters;
-  sortColumns?: Array<{
-    column: string;
-    direction: 'asc' | 'desc';
-  }>;
-}
+interface UseFilteredPaperMTMParams extends PaginationParams {}
 
 export const useFilteredPaperMTM = ({
   page = 1,
   pageSize = 15,
-  filters = {},
-  sortColumns = [{ column: 'calculated_at', direction: 'desc' }],
 }: UseFilteredPaperMTMParams) => {
   return useQuery({
-    queryKey: ['filteredPaperMTM', page, pageSize, filters, sortColumns],
+    queryKey: ['filteredPaperMTM', page, pageSize],
     queryFn: async (): Promise<PaginatedResponse<PaperMTMPosition>> => {
-      console.log('[PAPER_MTM] Fetching paper MTM positions with filters:', filters);
+      console.log('[PAPER_MTM] Fetching paper MTM positions for page:', page);
       
       const { data, error } = await supabase.rpc('filter_paper_mtm_positions', {
-        p_filters: filters as any,
         p_page: page,
         p_page_size: pageSize,
-        p_sort_columns: sortColumns as any,
       });
 
       if (error) {
