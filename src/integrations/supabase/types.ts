@@ -868,6 +868,13 @@ export type Database = {
             referencedRelation: "paper_trade_legs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "paper_mtm_positions_leg_id_fkey"
+            columns: ["leg_id"]
+            isOneToOne: true
+            referencedRelation: "paper_trade_legs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       paper_trade_legs: {
@@ -1745,10 +1752,6 @@ export type Database = {
       }
       initialize_sort_order: {
         Args: { p_table_name: string }
-        Returns: undefined
-      }
-      initialize_tank_sort_orders: {
-        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       initialize_terminal_sort_order: {
