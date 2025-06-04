@@ -1671,25 +1671,11 @@ export type Database = {
         Returns: Json
       }
       filter_paper_mtm_positions: {
-        Args:
-          | {
-              p_filters?: Json
-              p_page?: number
-              p_page_size?: number
-              p_sort_columns?: Json
-            }
-          | { p_page?: number; p_page_size?: number }
+        Args: { p_page?: number; p_page_size?: number }
         Returns: Json
       }
       filter_physical_mtm_positions: {
-        Args:
-          | {
-              p_filters?: Json
-              p_page?: number
-              p_page_size?: number
-              p_sort_columns?: Json
-            }
-          | { p_page?: number; p_page_size?: number }
+        Args: { p_page?: number; p_page_size?: number }
         Returns: Json
       }
       filter_trade_legs: {
