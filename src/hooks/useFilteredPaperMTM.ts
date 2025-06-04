@@ -32,7 +32,7 @@ export const useFilteredPaperMTM = ({
   return useQuery({
     queryKey: ['filteredPaperMTM', page, pageSize],
     queryFn: async (): Promise<PaginatedResponse<PaperMTMPosition>> => {
-      console.log('[PAPER_MTM] Fetching paper MTM positions for page:', page);
+      console.log(`[PAPER_MTM] Fetching paper MTM positions for page: ${page}`);
       
       const { data, error } = await supabase.rpc('filter_paper_mtm_positions', {
         p_page: page,

@@ -868,6 +868,13 @@ export type Database = {
             referencedRelation: "paper_trade_legs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "paper_mtm_positions_leg_id_fkey"
+            columns: ["leg_id"]
+            isOneToOne: true
+            referencedRelation: "paper_trade_legs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       paper_trade_legs: {
@@ -1687,14 +1694,6 @@ export type Database = {
         }
         Returns: Json
       }
-      fix_all_duplicate_sort_orders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      fix_duplicate_sort_orders: {
-        Args: { p_terminal_id: string }
-        Returns: undefined
-      }
       generate_movement_reference: {
         Args: { trade_ref: string; leg_id: string }
         Returns: string
@@ -1705,10 +1704,6 @@ export type Database = {
       }
       get_historical_average_price: {
         Args: { instrument_id: string; start_date: string; end_date: string }
-        Returns: number
-      }
-      get_next_tank_display_order: {
-        Args: { terminal_id_param: string }
         Returns: number
       }
       get_physical_positions_pivoted: {
@@ -1735,25 +1730,9 @@ export type Database = {
           volume: number
         }[]
       }
-      initialize_all_terminal_sort_orders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       initialize_open_trades_filters: {
         Args: { p_search_params: Json }
         Returns: Json
-      }
-      initialize_sort_order: {
-        Args: { p_table_name: string }
-        Returns: undefined
-      }
-      initialize_tank_sort_orders: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      initialize_terminal_sort_order: {
-        Args: { p_terminal_id: string }
-        Returns: undefined
       }
       insert_counterparty: {
         Args: { counterparty_name: string }
@@ -1769,20 +1748,8 @@ export type Database = {
         Args: { sustainability_name: string }
         Returns: string
       }
-      populate_movement_loading_periods: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       update_product_color: {
         Args: { product_name: string; color_class_value: string }
-        Returns: undefined
-      }
-      update_sort_order: {
-        Args: { p_table_name: string; p_id: string; p_new_sort_order: number }
-        Returns: undefined
-      }
-      update_terminal_sort_order: {
-        Args: { p_id: string; p_new_sort_order: number; p_terminal_id: string }
         Returns: undefined
       }
     }
